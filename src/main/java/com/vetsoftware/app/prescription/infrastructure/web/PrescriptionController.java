@@ -2,21 +2,16 @@ package com.vetsoftware.app.prescription.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.prescription.application.command.CreatePrescriptionCommand;
-import com.vetsoftware.app.prescription.application.command.UpdatePrescriptionCommand;
 import com.vetsoftware.app.prescription.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.prescription.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.prescription.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.prescription.application.dto.PrescriptionDto;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.prescription.application.port.in.CreatePrescriptionUseCase;
-import com.vetsoftware.app.prescription.application.port.in.DeletePrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.ExportPrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.FindPrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.ListPrescriptionsUseCase;
-import com.vetsoftware.app.prescription.application.port.in.ReactivatePrescriptionUseCase;
-import com.vetsoftware.app.prescription.application.port.in.UpdatePrescriptionUseCase;
 import com.vetsoftware.app.prescription.infrastructure.web.request.CreatePrescriptionRequest;
-import com.vetsoftware.app.prescription.infrastructure.web.request.UpdatePrescriptionRequest;
 import com.vetsoftware.app.prescription.infrastructure.web.response.AnimalSummary;
 import com.vetsoftware.app.prescription.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.prescription.infrastructure.web.response.ConsultationSummary;
@@ -34,25 +29,17 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/prescriptions")
 public class PrescriptionController {
     private final CreatePrescriptionUseCase createUseCase;
-    private final UpdatePrescriptionUseCase updateUseCase;
     private final FindPrescriptionUseCase findUseCase;
     private final ListPrescriptionsUseCase listUseCase;
-    private final DeletePrescriptionUseCase deleteUseCase;
-    private final ReactivatePrescriptionUseCase reactivateUseCase;
     private final ExportPrescriptionUseCase exportUseCase;
     private final Authz authz;
 
     public PrescriptionController(CreatePrescriptionUseCase createUseCase,
-            UpdatePrescriptionUseCase updateUseCase, FindPrescriptionUseCase findUseCase,
-            ListPrescriptionsUseCase listUseCase, DeletePrescriptionUseCase deleteUseCase,
-            ReactivatePrescriptionUseCase reactivateUseCase,
+            FindPrescriptionUseCase findUseCase, ListPrescriptionsUseCase listUseCase,
             ExportPrescriptionUseCase exportUseCase, Authz authz) {
         this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.exportUseCase = exportUseCase;
         this.authz = authz;
     }
@@ -74,25 +61,6 @@ public class PrescriptionController {
     @GetMapping("/{id}")
     public PrescriptionResponse findById(@PathVariable Long id) {
         return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
-
-    @PutMapping("/{id}")
-    public PrescriptionResponse update(@PathVariable Long id,
-            @Valid @RequestBody UpdatePrescriptionRequest request) {
-        return toResponse(updateUseCase.execute(new UpdatePrescriptionCommand(id, request.date(),
-                request.diagnosis(), request.observations(), request.animalId(),
-                request.consultationId(), authz.currentCompanyIdOrNull())));
-    }
-
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public PrescriptionResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyIdOrNull()));
     }
 
     @GetMapping("/{id}/export.pdf")

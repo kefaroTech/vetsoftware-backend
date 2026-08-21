@@ -14,6 +14,4 @@ public interface OwnerRepository {
     PageResult<Owner> searchByCompanyAndTerm(Long companyId, String query, int page, int pageSize);
 
     void delete(Long id, Long companyId);
-
-    int reactivate(Long id, Long companyId);
 }

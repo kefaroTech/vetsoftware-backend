@@ -46,14 +46,4 @@ public class JpaCompanyTaxProfileRepository implements CompanyTaxProfileReposito
     public boolean existsByCompanyId(Long companyId) {
         return jpaRepository.existsByCompany_Id(companyId);
     }
-
-    @Override
-    public void delete(Long companyId) {
-        jpaRepository.deleteByCompanyId(companyId);
-    }
-
-    @Override
-    public int reactivate(Long companyId) {
-        return jpaRepository.reactivate(companyId);
-    }
 }

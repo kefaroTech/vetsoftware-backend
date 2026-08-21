@@ -18,7 +18,6 @@ import com.vetsoftware.app.laboratorytest.application.port.in.DeleteLaboratoryTe
 import com.vetsoftware.app.laboratorytest.application.port.in.FindLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.ListLaboratoryTestsByAnimalUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.ListLaboratoryTestsUseCase;
-import com.vetsoftware.app.laboratorytest.application.port.in.ReactivateLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.SearchLaboratoryTestsUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.UpdateLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestPriority;
@@ -50,7 +49,6 @@ public class LaboratoryTestController {
     private final ListLaboratoryTestsByAnimalUseCase listByAnimalUseCase;
     private final SearchLaboratoryTestsUseCase searchUseCase;
     private final DeleteLaboratoryTestUseCase deleteUseCase;
-    private final ReactivateLaboratoryTestUseCase reactivateUseCase;
     private final Authz authz;
 
     public LaboratoryTestController(CreateLaboratoryTestUseCase createUseCase,
@@ -59,7 +57,7 @@ public class LaboratoryTestController {
             FindLaboratoryTestUseCase findUseCase, ListLaboratoryTestsUseCase listUseCase,
             ListLaboratoryTestsByAnimalUseCase listByAnimalUseCase,
             SearchLaboratoryTestsUseCase searchUseCase, DeleteLaboratoryTestUseCase deleteUseCase,
-            ReactivateLaboratoryTestUseCase reactivateUseCase, Authz authz) {
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.changeStatusUseCase = changeStatusUseCase;
@@ -68,7 +66,6 @@ public class LaboratoryTestController {
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.searchUseCase = searchUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -147,11 +144,6 @@ public class LaboratoryTestController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public LaboratoryTestResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private LaboratoryTestResponse toResponse(LaboratoryTestDto dto) {

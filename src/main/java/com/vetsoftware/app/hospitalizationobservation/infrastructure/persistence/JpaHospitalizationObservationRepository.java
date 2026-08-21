@@ -73,9 +73,4 @@ public class JpaHospitalizationObservationRepository
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }
-
-    @Override
-    public int reactivate(Long id, Long companyId) {
-        return jpaRepository.reactivate(id, companyId);
-    }
 }

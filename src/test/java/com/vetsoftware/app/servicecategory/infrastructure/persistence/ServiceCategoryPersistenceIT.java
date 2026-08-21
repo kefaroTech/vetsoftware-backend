@@ -196,7 +196,7 @@ class ServiceCategoryPersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("soft delete y reactivacion")
+    @DisplayName("soft delete")
     class SoftDelete {
 
         @Test
@@ -208,33 +208,6 @@ class ServiceCategoryPersistenceIT extends AbstractDataJpaTest {
 
             assertThat(repository.findAllByCompanyId(COMPANY_ID)).extracting(ServiceCategory::getId)
                     .doesNotContain(pausada.getId());
-        }
-
-        @Test
-        @DisplayName("reactivar devuelve la categoria al listado activo")
-        void reactivar_devuelve_la_categoria_al_listado_activo() {
-            ServiceCategory pausada = guardar(CIRUGIAS);
-            deshabilitar(pausada.getId());
-
-            int filas = repository.reactivate(pausada.getId(), COMPANY_ID);
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findAllByCompanyId(COMPANY_ID)).extracting(ServiceCategory::getId)
-                    .contains(pausada.getId());
-        }
-
-        @Test
-        @DisplayName("reactivar desde otra empresa no toca ninguna fila")
-        void reactivar_desde_otra_empresa_no_toca_ninguna_fila() {
-            ServiceCategory pausada = guardar(CIRUGIAS);
-            deshabilitar(pausada.getId());
-
-            int filas = repository.reactivate(pausada.getId(), OTRA_COMPANY_ID);
-
-            // El UPDATE nativo lleva el company_id en el WHERE: sin el, una empresa
-            // resucitaria la categoria de otra y esta volveria a su catalogo.
-            assertThat(filas).isZero();
-            assertThat(repository.findByIdAndCompanyId(pausada.getId(), COMPANY_ID)).isEmpty();
         }
     }
 }

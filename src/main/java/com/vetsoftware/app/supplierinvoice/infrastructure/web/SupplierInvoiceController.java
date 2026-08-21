@@ -26,7 +26,7 @@ import com.vetsoftware.app.supplierinvoice.infrastructure.web.response.BranchSum
 import com.vetsoftware.app.supplierinvoice.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.supplierinvoice.infrastructure.web.response.SupplierInvoicePaymentResponse;
 import com.vetsoftware.app.supplierinvoice.infrastructure.web.response.SupplierInvoiceResponse;
-import com.vetsoftware.app.supplierinvoice.infrastructure.web.response.SupplierSummary;
+import com.vetsoftware.app.supplierinvoice.infrastructure.web.response.SupplierInvoiceSupplierSummary;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -144,7 +144,8 @@ public class SupplierInvoiceController {
         return new SupplierInvoiceResponse(d.id(),
                 new CompanySummary(d.company().id(), d.company().name(), d.company().identifier()),
                 new BranchSummary(d.branch().id(), d.branch().name()),
-                new SupplierSummary(d.supplier().id(), d.supplier().name(), d.supplier().taxId()),
+                new SupplierInvoiceSupplierSummary(d.supplier().id(), d.supplier().name(),
+                        d.supplier().taxId()),
                 d.purchaseOrderId(), d.goodsReceiptId(), d.invoiceNumber(), d.issueDate(),
                 d.dueDate(), d.subtotal(), d.taxAmount(), d.withholdingAmount(), d.total(),
                 d.payableAmount(), d.paidAmount(), d.balance(), d.status(), d.notes(),

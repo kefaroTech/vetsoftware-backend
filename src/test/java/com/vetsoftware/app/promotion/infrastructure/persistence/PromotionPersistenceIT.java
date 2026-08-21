@@ -36,10 +36,6 @@ import org.springframework.context.annotation.Import;
  * todas las consultas. Un repositorio en memoria borraria de verdad y el test
  * pasaria igual el dia que alguien quite la anotacion —y ese dia se perderia el
  * historial de promociones.</li>
- * <li>{@code reactivate} es SQL nativo <i>precisamente</i> porque el
- * {@code @SQLRestriction} le impide a JPA volver a ver la fila para
- * reactivarla. Que ese UPDATE nativo esquive la restriccion solo se puede
- * comprobar contra la base.</li>
  * <li>El {@code CompanyRef} de una lectura no existe en ningun objeto Java
  * previo: lo arma el mapper con los datos que trae el {@code @EntityGraph} de
  * la tabla {@code companies}.</li>
@@ -212,44 +208,6 @@ class PromotionPersistenceIT extends AbstractDataJpaTest {
             // La fila sigue ahi: el historial de precios aplicados depende de ella.
             assertThat(contarFilasCrudas(guardada.getId()).intValue()).isOne();
             assertThat(enabledCrudo(guardada.getId())).isZero();
-        }
-
-        @Test
-        @DisplayName("reactivar devuelve la promocion al listado esquivando la restriccion")
-        void reactivar_devuelve_la_promocion_al_listado() {
-            Promotion guardada = eneroPerruno();
-            releerDesdeLaBase();
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            // JPA ya no ve la fila (@SQLRestriction), asi que reactivarla con un save
-            // seria imposible: por eso el adaptador usa un UPDATE nativo.
-            assertThat(repository.reactivate(guardada.getId(), COMPANY)).isOne();
-
-            assertThat(repository.findById(guardada.getId())).isPresent();
-            assertThat(repository.findAllByCompanyId(COMPANY)).hasSize(1);
-        }
-
-        @Test
-        @DisplayName("reactivar un id inexistente no afecta ninguna fila")
-        void reactivar_un_id_inexistente_no_afecta_nada() {
-            assertThat(repository.reactivate(999_999L, COMPANY)).isZero();
-        }
-
-        @Test
-        @DisplayName("reactivar con el companyId de OTRA empresa afecta 0 filas y la deja oculta")
-        void reactivar_con_la_empresa_ajena_no_afecta_nada() {
-            // El WHERE es la unica barrera: sin el, otra empresa revivia esta promocion y
-            // con ella los precios que se cobran aqui.
-            Promotion guardada = eneroPerruno();
-            releerDesdeLaBase();
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            assertThat(repository.reactivate(guardada.getId(), OTRA_COMPANY)).isZero();
-            releerDesdeLaBase();
-
-            assertThat(repository.findById(guardada.getId())).isEmpty();
         }
 
         private int enabledCrudo(Long id) {

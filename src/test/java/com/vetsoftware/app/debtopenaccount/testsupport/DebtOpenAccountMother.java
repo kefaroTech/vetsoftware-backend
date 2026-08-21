@@ -1,9 +1,6 @@
 package com.vetsoftware.app.debtopenaccount.testsupport;
 
 import com.vetsoftware.app.debtopenaccount.application.command.CreateDebtOpenAccountCommand;
-import com.vetsoftware.app.debtopenaccount.application.command.DeleteDebtOpenAccountCommand;
-import com.vetsoftware.app.debtopenaccount.application.command.ReactivateDebtOpenAccountCommand;
-import com.vetsoftware.app.debtopenaccount.application.command.UpdateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.VoidDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccount;
 import com.vetsoftware.app.debtopenaccount.domain.EmployeeRef;
@@ -123,75 +120,8 @@ public final class DebtOpenAccountMother {
                 COMPANY_ID, EMPLEADO.id(), null, null);
     }
 
-    public static UpdateDebtOpenAccountCommand comandoActualizar() {
-        return new UpdateDebtOpenAccountCommand(PAYMENT_ID, new BigDecimal("45000"), "CARD",
-                OPEN_ACCOUNT_ID, COMPANY_ID, null);
-    }
-
-    /** Edicion por un monto arbitrario sobre la MISMA cuenta (no es traslado). */
-    public static UpdateDebtOpenAccountCommand comandoActualizarPor(String monto) {
-        return new UpdateDebtOpenAccountCommand(PAYMENT_ID, new BigDecimal(monto), "CASH",
-                OPEN_ACCOUNT_ID, COMPANY_ID, null);
-    }
-
-    /** Actualizacion que traslada el abono a OTRA cuenta de la misma empresa. */
-    public static UpdateDebtOpenAccountCommand comandoTrasladar() {
-        return new UpdateDebtOpenAccountCommand(PAYMENT_ID, MONTO, "CASH", OTRA_CUENTA_ID,
-                COMPANY_ID, null);
-    }
-
-    /**
-     * Traslado en sentido inverso: lleva el abono a la cuenta 50. Combinado con
-     * {@link #abonoEnOtraCuenta()} el origen es la 51 y el destino la 50.
-     */
-    public static UpdateDebtOpenAccountCommand comandoTrasladarALaCuentaPrincipal() {
-        return new UpdateDebtOpenAccountCommand(PAYMENT_ID, MONTO, "CASH", OPEN_ACCOUNT_ID,
-                COMPANY_ID, null);
-    }
-
     public static VoidDebtOpenAccountCommand comandoAnular() {
         return new VoidDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID, OTRO_EMPLEADO.id(),
                 "Cobrado por error", null);
-    }
-
-    public static DeleteDebtOpenAccountCommand comandoBorrar() {
-        return comandoBorrarPor(MOTIVO_BAJA);
-    }
-
-    /** Baja con un motivo arbitrario (o en blanco, para el guard del motivo). */
-    public static DeleteDebtOpenAccountCommand comandoBorrarPor(String motivo) {
-        return new DeleteDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID, OTRO_EMPLEADO.id(), motivo,
-                null);
-    }
-
-    /** Baja pedida desde OTRA empresa sobre el mismo id de abono. */
-    public static DeleteDebtOpenAccountCommand comandoBorrarDesdeOtraEmpresa() {
-        return new DeleteDebtOpenAccountCommand(PAYMENT_ID, OTRA_COMPANY_ID, OTRO_EMPLEADO.id(),
-                MOTIVO_BAJA, null);
-    }
-
-    /**
-     * Abono dado de baja Y anulado. Es el estado en el que deja las filas el
-     * {@code DeleteDebtOpenAccountService} de hoy —anula y luego esconde—, y no
-     * aporta a la suma de abonos ni tiene ingreso vivo en caja: reactivarlo solo lo
-     * devuelve a la vista.
-     */
-    public static DebtOpenAccount abonoDeshabilitadoYAnulado() {
-        return new DebtOpenAccount(PAYMENT_ID, MONTO, PaymentMethod.CASH, CUENTA, EMPLEADO, CREADO,
-                null, false, true, OTRO_EMPLEADO, ANULADO, MOTIVO_BAJA, null);
-    }
-
-    /**
-     * Reactivacion de un abono dado de baja. Sin version esperada: el
-     * {@code PATCH /{id}/enable} no lleva cuerpo (#248).
-     */
-    public static ReactivateDebtOpenAccountCommand comandoReactivar() {
-        return new ReactivateDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID, OTRO_EMPLEADO.id());
-    }
-
-    /** Reactivacion pedida desde OTRA empresa sobre el mismo id de abono. */
-    public static ReactivateDebtOpenAccountCommand comandoReactivarDesdeOtraEmpresa() {
-        return new ReactivateDebtOpenAccountCommand(PAYMENT_ID, OTRA_COMPANY_ID,
-                OTRO_EMPLEADO.id());
     }
 }

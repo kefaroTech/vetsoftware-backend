@@ -153,7 +153,7 @@ class LaboratoryTestTypePersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("soft delete y reactivacion")
+    @DisplayName("soft delete")
     class SoftDelete {
 
         @Test
@@ -165,51 +165,6 @@ class LaboratoryTestTypePersistenceIT extends AbstractDataJpaTest {
 
             assertThat(repository.findAllAvailableForCompany(COMPANY_ID))
                     .extracting(LaboratoryTestType::getId).doesNotContain(pausado.getId());
-        }
-
-        @Test
-        @DisplayName("reactivar devuelve el tipo al listado disponible")
-        void reactivar_devuelve_el_tipo_al_listado_disponible() {
-            LaboratoryTestType pausado = guardarPropio("Hemograma");
-            deshabilitar(pausado.getId());
-
-            int filas = repository.reactivate(pausado.getId(), COMPANY_ID);
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findAllAvailableForCompany(COMPANY_ID))
-                    .extracting(LaboratoryTestType::getId).contains(pausado.getId());
-        }
-
-        @Test
-        @DisplayName("reactivar un id inexistente no afecta ninguna fila")
-        void reactivar_un_id_inexistente_no_afecta_ninguna_fila() {
-            assertThat(repository.reactivate(999999L, COMPANY_ID)).isZero();
-        }
-
-        @Test
-        @DisplayName("reactivar con el companyId de OTRA empresa afecta 0 filas y lo deja oculto")
-        void reactivar_con_la_empresa_ajena_no_afecta_ninguna_fila() {
-            // El WHERE es la unica barrera de la reactivacion: no hay lectura previa que
-            // valide la propiedad.
-            LaboratoryTestType pausado = guardarPropio("Hemograma");
-            deshabilitar(pausado.getId());
-
-            assertThat(repository.reactivate(pausado.getId(), OTRA_COMPANY_ID)).isZero();
-            assertThat(repository.findAllAvailableForCompany(COMPANY_ID))
-                    .extracting(LaboratoryTestType::getId).doesNotContain(pausado.getId());
-        }
-
-        @Test
-        @DisplayName("una fila general no la reactiva ninguna empresa: company_id es NULL")
-        void una_fila_general_no_la_reactiva_ninguna_empresa() {
-            // Consecuencia deliberada de acotar la escritura: reactivar una fila general
-            // la devolveria a TODOS los tenants, asi que ninguna empresa puede hacerlo.
-            LaboratoryTestType general = guardarGeneral("Perfil renal");
-            deshabilitar(general.getId());
-
-            assertThat(repository.reactivate(general.getId(), COMPANY_ID)).isZero();
-            assertThat(repository.findAllAvailableForCompany(COMPANY_ID))
-                    .extracting(LaboratoryTestType::getId).doesNotContain(general.getId());
         }
 
         @Test

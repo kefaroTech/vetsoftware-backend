@@ -231,46 +231,18 @@ class HospitalizationProgressNotePersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("Baja y reactivacion")
-    class BajaYReactivacion {
+    @DisplayName("Baja")
+    class Baja {
 
         @Test
-        @DisplayName("eliminar aplica el soft delete y reactivate la revive")
-        void eliminar_y_reactivar() {
+        @DisplayName("eliminar aplica el soft delete y la nota deja de verse")
+        void eliminar_aplica_soft_delete() {
             Long id = guardar(LA_HOSPITALIZACION, "Nota a eliminar");
 
             repository.delete(id);
             entityManager.flush();
             entityManager.clear();
 
-            assertThat(repository.findById(id)).isEmpty();
-
-            int filasActualizadas = repository.reactivate(id, EMPRESA);
-            entityManager.clear();
-
-            assertThat(filasActualizadas).isOne();
-            assertThat(repository.findById(id)).isPresent();
-        }
-
-        /**
-         * El caso que el SQL tiene que rechazar. La empresa no cuelga de la nota sino
-         * de la hospitalizacion padre, asi que lo que se ejercita aqui es el
-         * {@code EXISTS} del UPDATE nativo: con el companyId de otra empresa afecta
-         * cero filas y la nota sigue deshabilitada.
-         */
-        @Test
-        @DisplayName("reactivate() con el companyId de otra empresa no reactiva nada y la fila sigue deshabilitada")
-        void reactivate_con_otra_empresa_no_afecta_filas() {
-            Long id = guardar(LA_HOSPITALIZACION, "Nota a eliminar");
-
-            repository.delete(id);
-            entityManager.flush();
-            entityManager.clear();
-
-            int filasActualizadas = repository.reactivate(id, OTRA_EMPRESA);
-            entityManager.clear();
-
-            assertThat(filasActualizadas).isZero();
             assertThat(repository.findById(id)).isEmpty();
         }
     }

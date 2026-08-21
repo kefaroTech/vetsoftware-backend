@@ -6,24 +6,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
-import com.vetsoftware.app.surgery.application.command.ChangeSurgeryStatusCommand;
 import com.vetsoftware.app.surgery.application.command.CreateSurgeryCommand;
 import com.vetsoftware.app.surgery.application.command.UpdateSurgeryCommand;
 import com.vetsoftware.app.surgery.application.dto.SurgeryDto;
-import com.vetsoftware.app.surgery.application.port.in.ChangeSurgeryStatusUseCase;
 import com.vetsoftware.app.surgery.application.port.in.CreateSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.DeleteSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.FindSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.ListSurgeriesByAnimalUseCase;
 import com.vetsoftware.app.surgery.application.port.in.ListSurgeriesUseCase;
-import com.vetsoftware.app.surgery.application.port.in.ReactivateSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.UpdateSurgeryUseCase;
 import com.vetsoftware.app.surgery.domain.SurgeryNotFoundException;
 import com.vetsoftware.app.surgery.testsupport.SurgeryMother;
@@ -78,8 +74,6 @@ class SurgeryControllerTest {
     @MockitoBean
     private UpdateSurgeryUseCase updateUseCase;
     @MockitoBean
-    private ChangeSurgeryStatusUseCase changeStatusUseCase;
-    @MockitoBean
     private FindSurgeryUseCase findUseCase;
     @MockitoBean
     private ListSurgeriesUseCase listUseCase;
@@ -87,8 +81,6 @@ class SurgeryControllerTest {
     private ListSurgeriesByAnimalUseCase listByAnimalUseCase;
     @MockitoBean
     private DeleteSurgeryUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateSurgeryUseCase reactivateUseCase;
 
     @BeforeEach
     void companyIdOrNullDelContexto() {
@@ -250,36 +242,6 @@ class SurgeryControllerTest {
     }
 
     @Nested
-    @DisplayName("PATCH /surgeries/{id}/status")
-    class CambioDeEstado {
-
-        @Test
-        @DisplayName("responde 200 con el nuevo estado y usa currentCompanyIdOrNull")
-        void responde_200_con_el_nuevo_estado() throws Exception {
-            when(changeStatusUseCase.execute(any())).thenReturn(dto());
-
-            mockMvc.perform(patch("/surgeries/{id}/status", SurgeryMother.SURGERY_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"status":"COMPLETADO"}
-                            """)).andExpect(status().isOk());
-
-            verify(changeStatusUseCase).execute(new ChangeSurgeryStatusCommand(
-                    SurgeryMother.SURGERY_ID, "COMPLETADO", COMPANY_ID));
-        }
-
-        @Test
-        @DisplayName("con status vacio responde 400 y no llega al caso de uso")
-        void con_status_vacio_responde_400() throws Exception {
-            mockMvc.perform(patch("/surgeries/{id}/status", SurgeryMother.SURGERY_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"status":""}
-                            """)).andExpect(status().isBadRequest());
-
-            verify(changeStatusUseCase, never()).execute(any());
-        }
-    }
-
-    @Nested
     @DisplayName("DELETE /surgeries/{id}")
     class Borrado {
 
@@ -296,22 +258,6 @@ class SurgeryControllerTest {
             mockMvc.perform(delete("/surgeries/{id}", SurgeryMother.SURGERY_ID));
 
             verify(deleteUseCase).execute(SurgeryMother.SURGERY_ID, COMPANY_ID);
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /surgeries/{id}/enable")
-    class Reactivacion {
-
-        @Test
-        @DisplayName("responde 200 con la cirugia habilitada, acotada por la empresa del contexto")
-        void responde_200_con_la_cirugia_habilitada() throws Exception {
-            when(reactivateUseCase.execute(SurgeryMother.SURGERY_ID, COMPANY_ID)).thenReturn(dto());
-
-            mockMvc.perform(patch("/surgeries/{id}/enable", SurgeryMother.SURGERY_ID))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(SurgeryMother.SURGERY_ID, COMPANY_ID);
         }
     }
 }

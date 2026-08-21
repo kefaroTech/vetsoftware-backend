@@ -104,16 +104,6 @@ public class JpaAnimalRepository implements AnimalRepository {
                 .map(mapper::toDomain).toList());
     }
 
-    @Override
-    public void delete(Long id, Long companyId) {
-        jpaRepository.findByIdAndCompany_Id(id, companyId).ifPresent(jpaRepository::delete);
-    }
-
-    @Override
-    public int reactivate(Long id, Long companyId) {
-        return jpaRepository.reactivate(id, companyId);
-    }
-
     // --- Enriquecimiento del peso actual derivado del último WeightRecord
     // habilitado ---
 

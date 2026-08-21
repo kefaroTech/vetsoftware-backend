@@ -214,7 +214,7 @@ public class ElectronicDocumentJpaEntity {
     // registrar/transmitir dos veces la misma venta ante un reintento con la
     // respuesta perdida. NULL
     // en los
-    // documentos que no vienen del POS (from-account, notas, legacy).
+    // documentos que no vienen del POS (cierre de cuenta, notas, legacy).
     @Column(name = "client_request_id", length = 36)
     private String clientRequestId;
 

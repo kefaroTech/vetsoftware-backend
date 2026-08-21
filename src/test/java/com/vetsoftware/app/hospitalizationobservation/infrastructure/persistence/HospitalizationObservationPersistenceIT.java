@@ -42,8 +42,8 @@ import org.springframework.context.annotation.Import;
  * <li>El orden por id descendente de
  * {@code findAllByHospitalizationIdAndCompanyId} es SQL real (un {@code Sort}
  * mal armado no lo ve un mock).</li>
- * <li>El soft delete ({@code @SQLDelete}/{@code @SQLRestriction}) y el
- * {@code reactivate} nativo solo se comprueban contra el schema real.</li>
+ * <li>El soft delete ({@code @SQLDelete}/{@code @SQLRestriction}) solo se
+ * comprueba contra el schema real.</li>
  * </ul>
  *
  * <p>
@@ -222,12 +222,12 @@ class HospitalizationObservationPersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("JpaHospitalizationObservationRepository — baja y reactivacion")
-    class BajaYReactivacion {
+    @DisplayName("JpaHospitalizationObservationRepository — baja")
+    class Baja {
 
         @Test
-        @DisplayName("eliminar aplica soft delete y reactivate la revive")
-        void eliminar_y_reactivar() {
+        @DisplayName("eliminar aplica soft delete y la observacion deja de verse")
+        void eliminar_aplica_soft_delete() {
             EmployeeRef veterinario = employeeQueryPort.findById(EMPLOYEE_ID).orElseThrow();
             HospitalizationObservation guardada = repository.save(observacionNueva(veterinario));
             entityManager.flush();
@@ -237,43 +237,6 @@ class HospitalizationObservationPersistenceIT extends AbstractDataJpaTest {
             entityManager.flush();
             entityManager.clear();
 
-            assertThat(repository.findById(guardada.getId())).isEmpty();
-
-            int actualizadas = repository.reactivate(guardada.getId(), COMPANY_ID);
-            entityManager.clear();
-
-            assertThat(actualizadas).isOne();
-            assertThat(repository.findById(guardada.getId())).isPresent();
-        }
-
-        @Test
-        @DisplayName("reactivate sobre un id inexistente no afecta ninguna fila")
-        void reactivate_sobre_id_inexistente_no_afecta_filas() {
-            assertThat(repository.reactivate(999_999L, COMPANY_ID)).isZero();
-        }
-
-        /**
-         * El caso que el SQL tiene que rechazar. La empresa no cuelga de la observacion
-         * sino de la hospitalizacion padre, asi que lo que se ejercita aqui es el
-         * {@code EXISTS} del UPDATE nativo: con el companyId de otra empresa afecta
-         * cero filas y la observacion sigue deshabilitada.
-         */
-        @Test
-        @DisplayName("reactivate() con el companyId de otra empresa no reactiva nada y la fila sigue deshabilitada")
-        void reactivate_con_otra_empresa_no_afecta_filas() {
-            EmployeeRef veterinario = employeeQueryPort.findById(EMPLOYEE_ID).orElseThrow();
-            HospitalizationObservation guardada = repository.save(observacionNueva(veterinario));
-            entityManager.flush();
-            entityManager.clear();
-
-            repository.delete(guardada.getId());
-            entityManager.flush();
-            entityManager.clear();
-
-            int actualizadas = repository.reactivate(guardada.getId(), OTRA_COMPANY_ID);
-            entityManager.clear();
-
-            assertThat(actualizadas).isZero();
             assertThat(repository.findById(guardada.getId())).isEmpty();
         }
     }

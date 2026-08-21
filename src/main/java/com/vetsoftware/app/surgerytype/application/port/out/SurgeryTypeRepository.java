@@ -24,10 +24,4 @@ public interface SurgeryTypeRepository {
     List<SurgeryType> findAllAvailableForCompany(Long companyId);
 
     void delete(Long id);
-
-    /**
-     * Reactiva el tipo SOLO si pertenece a {@code companyId}. Devuelve las filas
-     * afectadas: 0 = no existe en esa empresa.
-     */
-    int reactivate(Long id, Long companyId);
 }

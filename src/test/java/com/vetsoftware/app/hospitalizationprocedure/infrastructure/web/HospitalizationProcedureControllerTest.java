@@ -21,9 +21,7 @@ import com.vetsoftware.app.hospitalizationprocedure.application.dto.Hospitalizat
 import com.vetsoftware.app.hospitalizationprocedure.application.dto.HospitalizationSummaryDto;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.CreateHospitalizationProcedureUseCase;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.DeleteHospitalizationProcedureUseCase;
-import com.vetsoftware.app.hospitalizationprocedure.application.port.in.FindHospitalizationProcedureUseCase;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.ListHospitalizationProceduresByHospitalizationUseCase;
-import com.vetsoftware.app.hospitalizationprocedure.application.port.in.ReactivateHospitalizationProcedureUseCase;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.SuspendHospitalizationProcedureUseCase;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.UpdateHospitalizationProcedureUseCase;
 import com.vetsoftware.app.shared.pagination.PageResult;
@@ -77,13 +75,9 @@ class HospitalizationProcedureControllerTest {
     @MockitoBean
     private UpdateHospitalizationProcedureUseCase updateUseCase;
     @MockitoBean
-    private FindHospitalizationProcedureUseCase findUseCase;
-    @MockitoBean
     private ListHospitalizationProceduresByHospitalizationUseCase listByHospitalizationUseCase;
     @MockitoBean
     private DeleteHospitalizationProcedureUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateHospitalizationProcedureUseCase reactivateUseCase;
     @MockitoBean
     private SuspendHospitalizationProcedureUseCase suspendUseCase;
 
@@ -176,15 +170,6 @@ class HospitalizationProcedureControllerTest {
     class Lectura {
 
         @Test
-        @DisplayName("GET por id devuelve el procedimiento acotado por la empresa del contexto")
-        void get_por_id() throws Exception {
-            when(findUseCase.findById(PROCEDURE_ID, COMPANY_ID)).thenReturn(dto());
-
-            mockMvc.perform(get("/hospitalization-procedures/500")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.name").value("Curacion de herida"));
-        }
-
-        @Test
         @DisplayName("GET por hospitalizacion usa los defectos de paginacion")
         void get_por_hospitalizacion_usa_los_defectos() throws Exception {
             when(listByHospitalizationUseCase.listByHospitalization(HOSPITALIZATION_ID, COMPANY_ID,
@@ -262,21 +247,8 @@ class HospitalizationProcedureControllerTest {
     }
 
     @Nested
-    @DisplayName("reactivacion y suspension")
+    @DisplayName("suspension")
     class Estado {
-
-        @Test
-        @DisplayName("PATCH enable reactiva acotando por la empresa del contexto")
-        void patch_enable_reactiva() throws Exception {
-            // El stub esta atado al par (id, empresa del contexto): si el controller
-            // dejara de pasar el companyId, devolveria null y el test cae.
-            when(reactivateUseCase.execute(PROCEDURE_ID, COMPANY_ID)).thenReturn(dto());
-
-            mockMvc.perform(patch("/hospitalization-procedures/500/enable"))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(PROCEDURE_ID, COMPANY_ID);
-        }
 
         @Test
         @DisplayName("PATCH suspend sella el empleado del contexto y devuelve quien suspendio")

@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,7 +22,6 @@ import com.vetsoftware.app.company.application.port.in.CreateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.DeleteCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.FindCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.ListCompaniesUseCase;
-import com.vetsoftware.app.company.application.port.in.ReactivateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.UpdateCompanyUseCase;
 import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
@@ -79,8 +77,6 @@ class CompanyControllerTest {
     private ListCompaniesUseCase listUseCase;
     @MockitoBean
     private DeleteCompanyUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateCompanyUseCase reactivateUseCase;
 
     private static CompanyDto clinicaNorte() {
         return new CompanyDto(9L, "Clinica Norte", "NIT-900", "Calle 123 #45-67", "3001234567",
@@ -289,24 +285,6 @@ class CompanyControllerTest {
                     .execute(9L);
 
             mockMvc.perform(delete("/companies/9")).andExpect(status().isConflict());
-        }
-
-        @Test
-        @DisplayName("PATCH /companies/{id}/enable reactiva y responde 200")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(9L)).thenReturn(clinicaNorte());
-
-            mockMvc.perform(patch("/companies/9/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(9))
-                    .andExpect(jsonPath("$.enabled").value(true));
-        }
-
-        @Test
-        @DisplayName("PATCH enable de una empresa inexistente responde 404")
-        void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L)).thenThrow(new CompanyNotFoundException(99L));
-
-            mockMvc.perform(patch("/companies/99/enable")).andExpect(status().isNotFound());
         }
     }
 }

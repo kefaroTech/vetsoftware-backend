@@ -151,13 +151,6 @@ public class ProductChargeOpenAccount {
                 clientRequestId);
     }
 
-    public void update(AnimalRef animal, ProductRef product, OpenAccountRef openAccount) {
-        validate(animal, product, openAccount, this.unitPrice);
-        this.animal = animal;
-        this.product = product;
-        this.openAccount = openAccount;
-    }
-
     /**
      * Anula el cargo dejando la fila visible (no toca {@code enabled}): registra
      * quién lo anuló, cuándo y el motivo obligatorio. Un cargo ya anulado no puede

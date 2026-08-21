@@ -15,15 +15,13 @@ import org.hibernate.annotations.SQLRestriction;
  * Perfil fiscal de la empresa con sus responsabilidades DIAN.
  *
  * <p>
- * <b>La baja lógica NO pasa por aquí.</b> Va por
- * {@link CompanyTaxProfileJpaRepository#deleteByCompanyId(Long)}, un UPDATE
- * nativo. El {@code @SQLDelete} solo sustituye el DELETE de la raíz: el borrado
- * en cascada de las responsabilidades lo emite Hibernate <i>antes</i>, y no hay
- * forma de interceptarlo. El {@code orphanRemoval} de {@link #responsibilities}
- * es imprescindible para el camino de edición (quitar una responsabilidad debe
- * borrar su fila) y por sí solo ya propaga el borrado al eliminar el padre, así
- * que llamar a {@code deleteById()} sobre esta entidad destruiría el detalle
- * fiscal: usa el puerto {@code delete(companyId)} del adaptador.
+ * <b>Ojo con el borrado en cascada.</b> El {@code @SQLDelete} solo sustituye el
+ * DELETE de la raíz: el borrado en cascada de las responsabilidades lo emite
+ * Hibernate <i>antes</i>, y no hay forma de interceptarlo. El
+ * {@code orphanRemoval} de {@link #responsibilities} es imprescindible para el
+ * camino de edición (quitar una responsabilidad debe borrar su fila) y por sí
+ * solo ya propaga el borrado al eliminar el padre, así que llamar a
+ * {@code deleteById()} sobre esta entidad destruiría el detalle fiscal.
  */
 @Entity
 @Table(name = "company_tax_profiles")

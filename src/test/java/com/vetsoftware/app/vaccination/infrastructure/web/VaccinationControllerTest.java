@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -27,7 +26,6 @@ import com.vetsoftware.app.vaccination.application.port.in.DeleteVaccinationUseC
 import com.vetsoftware.app.vaccination.application.port.in.FindVaccinationUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.ListVaccinationsByAnimalUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.ListVaccinationsUseCase;
-import com.vetsoftware.app.vaccination.application.port.in.ReactivateVaccinationUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.UpdateVaccinationUseCase;
 import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
 import java.time.LocalDate;
@@ -75,8 +73,6 @@ class VaccinationControllerTest {
     private ListVaccinationsByAnimalUseCase listByAnimalUseCase;
     @MockitoBean
     private DeleteVaccinationUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateVaccinationUseCase reactivateUseCase;
 
     private static VaccinationDto vacunada() {
         return new VaccinationDto(55L, LocalDate.of(2026, 3, 1),
@@ -341,37 +337,6 @@ class VaccinationControllerTest {
                     .execute(99L, WebMvcSliceConfig.COMPANY_ID);
 
             mockMvc.perform(delete("/vaccinations/99")).andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("PATCH /enable responde 200 con el recurso reactivado")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(55L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenReturn(vacunada());
-
-            mockMvc.perform(patch("/vaccinations/55/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(55))
-                    .andExpect(jsonPath("$.enabled").value(true));
-        }
-
-        @Test
-        @DisplayName("PATCH /enable delega en el caso de uso con el companyId del contexto")
-        void patch_enable_delega_con_el_company_id_del_contexto() throws Exception {
-            when(reactivateUseCase.execute(55L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenReturn(vacunada());
-
-            mockMvc.perform(patch("/vaccinations/55/enable"));
-
-            verify(reactivateUseCase).execute(55L, WebMvcSliceConfig.COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("PATCH /enable de una vacunacion inexistente en la empresa responde 404")
-        void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenThrow(new VaccinationNotFoundException(99L));
-
-            mockMvc.perform(patch("/vaccinations/99/enable")).andExpect(status().isNotFound());
         }
     }
 }

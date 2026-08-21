@@ -7,27 +7,23 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
-import com.vetsoftware.app.spa.application.command.ChangeSpaStatusCommand;
 import com.vetsoftware.app.spa.application.command.CreateSpaCommand;
 import com.vetsoftware.app.spa.application.command.UpdateSpaCommand;
 import com.vetsoftware.app.spa.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.spa.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.spa.application.dto.SpaDto;
 import com.vetsoftware.app.spa.application.dto.SpaTypeSummaryDto;
-import com.vetsoftware.app.spa.application.port.in.ChangeSpaStatusUseCase;
 import com.vetsoftware.app.spa.application.port.in.CreateSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.DeleteSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.FindSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.ListSpasByAnimalUseCase;
 import com.vetsoftware.app.spa.application.port.in.ListSpasUseCase;
-import com.vetsoftware.app.spa.application.port.in.ReactivateSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.UpdateSpaUseCase;
 import com.vetsoftware.app.spa.domain.SpaNotFoundException;
 import com.vetsoftware.app.shared.pagination.PageResult;
@@ -70,10 +66,6 @@ class SpaControllerTest {
     private ListSpasByAnimalUseCase listByAnimalUseCase;
     @MockitoBean
     private DeleteSpaUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateSpaUseCase reactivateUseCase;
-    @MockitoBean
-    private ChangeSpaStatusUseCase changeStatusUseCase;
     @MockitoBean
     private Authz authz;
 
@@ -191,40 +183,5 @@ class SpaControllerTest {
         mockMvc.perform(delete("/spas/5")).andExpect(status().isNoContent());
 
         verify(deleteUseCase).execute(5L, 10L);
-    }
-
-    @Test
-    @DisplayName("PATCH /spas/{id}/enable responde 200 con el spa reactivado")
-    void patch_enable_responde_200() throws Exception {
-        when(authz.currentCompanyId()).thenReturn(10L);
-        when(reactivateUseCase.execute(5L, 10L)).thenReturn(spaAgendado());
-
-        mockMvc.perform(patch("/spas/5/enable")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(5)).andExpect(jsonPath("$.enabled").value(true));
-
-        verify(reactivateUseCase).execute(5L, 10L);
-    }
-
-    @Test
-    @DisplayName("PATCH /spas/{id}/status responde 200 con el nuevo estado")
-    void patch_status_responde_200() throws Exception {
-        when(authz.currentCompanyIdOrNull()).thenReturn(10L);
-        when(changeStatusUseCase.execute(any())).thenReturn(spaAgendado());
-
-        mockMvc.perform(patch("/spas/5/status").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"status\":\"COMPLETADO\"}")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(5));
-
-        verify(changeStatusUseCase).execute(new ChangeSpaStatusCommand(5L, "COMPLETADO", 10L));
-    }
-
-    @Test
-    @DisplayName("PATCH /spas/{id}/status sin status responde 400 y no llega al caso de uso")
-    void patch_status_sin_status_responde_400() throws Exception {
-        mockMvc.perform(
-                patch("/spas/5/status").contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isBadRequest());
-
-        verify(changeStatusUseCase, never()).execute(any());
     }
 }

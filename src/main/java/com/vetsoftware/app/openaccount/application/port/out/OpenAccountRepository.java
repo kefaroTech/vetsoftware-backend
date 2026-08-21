@@ -52,10 +52,4 @@ public interface OpenAccountRepository {
     PageResult<OpenAccount> search(SearchOpenAccountsCommand command);
 
     void delete(Long id);
-
-    /**
-     * Reactiva la cuenta SOLO si pertenece a {@code companyId}. Devuelve las filas
-     * afectadas: 0 = no existe en esa empresa.
-     */
-    int reactivate(Long id, Long companyId);
 }

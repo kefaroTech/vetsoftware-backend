@@ -1,7 +1,6 @@
 package com.vetsoftware.app.medicamentprescription.testsupport;
 
 import com.vetsoftware.app.medicamentprescription.application.command.CreateMedicamentPrescriptionCommand;
-import com.vetsoftware.app.medicamentprescription.application.command.UpdateMedicamentPrescriptionCommand;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescription;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentRef;
 import com.vetsoftware.app.medicamentprescription.domain.PrescriptionRef;
@@ -68,11 +67,6 @@ public final class MedicamentPrescriptionMother {
      */
     public static CreateMedicamentPrescriptionCommand comandoCrear(Long companyId) {
         return new CreateMedicamentPrescriptionCommand(MEDICAMENT_ID, "Tableta", 2.0,
-                "Cada 12 horas por 7 dias", "Con alimento", PRESCRIPTION_ID, companyId);
-    }
-
-    public static UpdateMedicamentPrescriptionCommand comandoActualizar(Long companyId) {
-        return new UpdateMedicamentPrescriptionCommand(ID, MEDICAMENT_ID, "Tableta", 2.0,
                 "Cada 12 horas por 7 dias", "Con alimento", PRESCRIPTION_ID, companyId);
     }
 }

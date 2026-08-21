@@ -198,33 +198,6 @@ class OpenAccountTest {
     }
 
     @Nested
-    @DisplayName("update")
-    class Update {
-
-        @Test
-        @DisplayName("reemplaza el owner")
-        void reemplaza_el_owner() {
-            OpenAccount cuenta = valida().build();
-
-            cuenta.update(OpenAccountMother.OTRO_OWNER);
-
-            assertThat(cuenta.getOwner()).isEqualTo(OpenAccountMother.OTRO_OWNER);
-        }
-
-        @Test
-        @DisplayName("rechaza un owner null y no toca el estado")
-        void rechaza_un_owner_null() {
-            OpenAccount cuenta = valida().build();
-
-            assertThatThrownBy(() -> cuenta.update(null))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("owner is required");
-
-            assertThat(cuenta.getOwner()).isEqualTo(OpenAccountMother.OWNER);
-        }
-    }
-
-    @Nested
     @DisplayName("cambio de estado — dinero y transiciones")
     class CambioDeEstado {
 

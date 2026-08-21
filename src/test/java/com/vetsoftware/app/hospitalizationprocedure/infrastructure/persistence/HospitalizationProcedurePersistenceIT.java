@@ -41,8 +41,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
  * hidrata {@code hospitalization}, {@code createdBy} y {@code suspensionBy} en
  * una sola consulta, el orden por id descendente que resuelve
  * {@code findAllByHospitalizationIdAndCompanyId}, y que el soft delete
- * ({@code @SQLDelete}/{@code @SQLRestriction}) y el {@code reactivate} nativo
- * funcionan contra el schema real.
+ * ({@code @SQLDelete}/{@code @SQLRestriction}) funciona contra el schema real.
  *
  * <p>
  * La hospitalizacion padre se crea con el repositorio real de esa feature
@@ -252,12 +251,12 @@ class HospitalizationProcedurePersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("baja y reactivacion")
-    class BajaYReactivacion {
+    @DisplayName("baja")
+    class Baja {
 
         @Test
-        @DisplayName("eliminar aplica soft delete y reactivate la revive")
-        void eliminar_y_reactivar() {
+        @DisplayName("eliminar aplica soft delete y la orden deja de verse")
+        void eliminar_aplica_soft_delete() {
             HospitalizationProcedure guardado = repository.save(orden(CREADO_POR));
             entityManager.flush();
             entityManager.clear();
@@ -266,43 +265,6 @@ class HospitalizationProcedurePersistenceIT extends AbstractDataJpaTest {
             entityManager.flush();
             entityManager.clear();
 
-            assertThat(repository.findById(guardado.getId())).isEmpty();
-
-            int actualizadas = repository.reactivate(guardado.getId(), EMPRESA);
-            entityManager.clear();
-
-            assertThat(actualizadas).isOne();
-            assertThat(repository.findById(guardado.getId())).isPresent();
-        }
-
-        @Test
-        @DisplayName("reactivate() sobre un id inexistente no afecta filas")
-        void reactivate_sobre_id_inexistente() {
-            assertThat(repository.reactivate(999_999L, EMPRESA)).isZero();
-        }
-
-        /**
-         * El caso que justifica el arreglo: la empresa no cuelga de
-         * {@code hospitalization_procedures} sino de la hospitalizacion padre, asi que
-         * el UPDATE nativo la alcanza por un {@code EXISTS} contra
-         * {@code hospitalizations}. Antes el UPDATE solo filtraba por id y reactivaba
-         * la orden de cualquier tenant que conociera el id — y aqui no hay lectura
-         * previa que lo impida.
-         */
-        @Test
-        @DisplayName("reactivate() con el companyId de otra empresa no reactiva nada y la fila sigue deshabilitada")
-        void reactivate_con_company_id_de_otra_empresa_no_reactiva_nada() {
-            HospitalizationProcedure guardado = repository.save(orden(CREADO_POR));
-            entityManager.flush();
-            entityManager.clear();
-            repository.delete(guardado.getId());
-            entityManager.flush();
-            entityManager.clear();
-
-            int actualizadas = repository.reactivate(guardado.getId(), OTRA_EMPRESA);
-            entityManager.clear();
-
-            assertThat(actualizadas).isZero();
             assertThat(repository.findById(guardado.getId())).isEmpty();
         }
     }

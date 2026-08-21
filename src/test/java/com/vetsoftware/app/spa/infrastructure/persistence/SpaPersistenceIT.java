@@ -230,7 +230,7 @@ class SpaPersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("borrado logico y reactivacion")
+    @DisplayName("borrado logico")
     class BorradoYReactivacion {
 
         @Test
@@ -247,44 +247,6 @@ class SpaPersistenceIT extends AbstractDataJpaTest {
             // @SQLDelete + @SQLRestriction("enabled = true"): la fila sigue en la tabla
             // pero ninguna lectura de la entidad la vuelve a traer.
             assertThat(repository.findById(guardado.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate vuelve a habilitar la fila borrada")
-        void reactivate_vuelve_a_habilitar_la_fila() {
-            Spa guardado = repository.save(nuevoSpa(FIRULAIS));
-            entityManager.flush();
-            repository.delete(guardado.getId());
-            entityManager.flush();
-            entityManager.clear();
-
-            int filas = repository.reactivate(guardado.getId(), EMPRESA);
-            entityManager.clear();
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findByIdAndCompanyId(guardado.getId(), EMPRESA)).isPresent();
-        }
-
-        @Test
-        @DisplayName("reactivate con el companyId de OTRA empresa no afecta ninguna fila")
-        void reactivate_con_empresa_ajena_no_afecta_filas() {
-            Spa guardado = repository.save(nuevoSpa(FIRULAIS));
-            entityManager.flush();
-            repository.delete(guardado.getId());
-            entityManager.flush();
-            entityManager.clear();
-
-            int filas = repository.reactivate(guardado.getId(), OTRA_EMPRESA);
-            entityManager.clear();
-
-            assertThat(filas).isZero();
-            assertThat(repository.findById(guardado.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate sobre un id inexistente no afecta ninguna fila")
-        void reactivate_sobre_id_inexistente_no_afecta_filas() {
-            assertThat(repository.reactivate(999_999L, EMPRESA)).isZero();
         }
     }
 }

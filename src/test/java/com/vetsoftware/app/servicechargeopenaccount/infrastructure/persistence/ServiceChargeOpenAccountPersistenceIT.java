@@ -31,10 +31,9 @@ import org.springframework.context.annotation.Import;
  * columnas propias del cargo sobrevive intacto a que el catalogo de servicios o
  * de impuestos cambie despues (el dominio lo congela, la base tiene que
  * devolverlo igual), el scope de empresa navegando
- * {@code openAccount.company.id} (el cargo no guarda su propia empresa), el
- * indice unico de idempotencia por cuenta y el {@code EXISTS} nativo de
- * {@code reactivate} contra {@code open_accounts}. Con un doble del repositorio
- * ninguna de las cuatro se puede falsear.
+ * {@code openAccount.company.id} (el cargo no guarda su propia empresa) y el
+ * indice unico de idempotencia por cuenta. Con un doble del repositorio ninguna
+ * de las tres se puede falsear.
  */
 @Import(PersistenceSliceConfig.class)
 @DisplayName("JpaServiceChargeOpenAccountRepository — impuesto congelado y scope contra MySQL real")
@@ -385,59 +384,6 @@ class ServiceChargeOpenAccountPersistenceIT extends AbstractDataJpaTest {
 
             assertThat(repository.findById(guardado.getId())).isEmpty();
             assertThat(filasCrudas(guardado.getId())).isEqualTo(1L);
-        }
-
-        @Test
-        @DisplayName("reactivar exige la empresa correcta")
-        void reactivar_exige_la_empresa_correcta() {
-            ServiceChargeOpenAccount guardado = cargoConIva();
-            entityManager.flush();
-            repository.delete(guardado.getId());
-            entityManager.flush();
-            entityManager.clear();
-
-            // El UPDATE nativo comprueba el tenant con un EXISTS contra open_accounts: es
-            // el unico sitio donde se puede, porque la fila del cargo no guarda empresa.
-            assertThat(repository.reactivate(guardado.getId(), OTRA_COMPANY)).isZero();
-            assertThat(repository.reactivate(guardado.getId(), COMPANY)).isEqualTo(1);
-            assertThat(repository.findByIdAndCompanyId(guardado.getId(), COMPANY)).isPresent();
-        }
-
-        @Test
-        @DisplayName("la cuenta del cargo apagado se resuelve aunque ningun finder lo vea")
-        void la_cuenta_del_cargo_apagado_se_resuelve() {
-            ServiceChargeOpenAccount guardado = cargoConIva();
-            entityManager.flush();
-            repository.delete(guardado.getId());
-            entityManager.flush();
-            entityManager.clear();
-
-            // Esto es lo que la reactivacion necesita saber ANTES de encender la fila:
-            // que cuenta hay que bloquear y comprobar que sigue abierta (#239). El
-            // @SQLRestriction de la entidad esconde el cargo apagado de todo el HQL
-            // —la primera asercion lo demuestra—, asi que la consulta es nativa a
-            // proposito. Con un doble este test no probaria nada: lo que hay que ver
-            // es que el SQL esquiva el filtro.
-            assertThat(repository.findByIdAndCompanyId(guardado.getId(), COMPANY)).isEmpty();
-            assertThat(repository.findOpenAccountIdIncludingDisabled(guardado.getId(), COMPANY))
-                    .contains(CUENTA);
-        }
-
-        @Test
-        @DisplayName("la cuenta de un cargo ajeno no se resuelve")
-        void la_cuenta_de_un_cargo_ajeno_no_se_resuelve() {
-            ServiceChargeOpenAccount guardado = cargoConIva();
-            entityManager.flush();
-            repository.delete(guardado.getId());
-            entityManager.flush();
-            entityManager.clear();
-
-            // Mismo EXISTS que el UPDATE de reactivar. Si esto resolviera con la
-            // empresa ajena, el caso de uso bloquearia y leeria una cuenta de otro
-            // tenant antes de rechazar nada.
-            assertThat(
-                    repository.findOpenAccountIdIncludingDisabled(guardado.getId(), OTRA_COMPANY))
-                    .isEmpty();
         }
 
         private long filasCrudas(Long id) {

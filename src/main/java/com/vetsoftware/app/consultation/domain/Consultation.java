@@ -45,21 +45,6 @@ public class Consultation {
                 physicalExam, nextControl, animal, company, LocalDateTime.now(), null, true);
     }
 
-    public void update(LocalDate date, ConsultationTypeRef consultationType, String anamnesis,
-            String diagnosis, String prognosis, PhysicalExam physicalExam, LocalDate nextControl,
-            AnimalRef animal, CompanyRef company) {
-        validate(date, consultationType, anamnesis, diagnosis, prognosis, animal, company);
-        this.date = date;
-        this.consultationType = consultationType;
-        this.anamnesis = anamnesis;
-        this.diagnosis = blankToNull(diagnosis);
-        this.prognosis = blankToNull(prognosis);
-        this.physicalExam = physicalExam == null ? PhysicalExam.empty() : physicalExam;
-        this.nextControl = nextControl;
-        this.animal = animal;
-        this.company = company;
-    }
-
     private static void validate(LocalDate date, ConsultationTypeRef consultationType,
             String anamnesis, String diagnosis, String prognosis, AnimalRef animal,
             CompanyRef company) {

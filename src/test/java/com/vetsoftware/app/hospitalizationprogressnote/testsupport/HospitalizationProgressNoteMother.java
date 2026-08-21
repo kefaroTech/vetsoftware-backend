@@ -1,7 +1,6 @@
 package com.vetsoftware.app.hospitalizationprogressnote.testsupport;
 
 import com.vetsoftware.app.hospitalizationprogressnote.application.command.CreateHospitalizationProgressNoteCommand;
-import com.vetsoftware.app.hospitalizationprogressnote.application.command.UpdateHospitalizationProgressNoteCommand;
 import com.vetsoftware.app.hospitalizationprogressnote.domain.EmployeeRef;
 import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationProgressNote;
 import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationRef;
@@ -61,15 +60,5 @@ public final class HospitalizationProgressNoteMother {
     public static CreateHospitalizationProgressNoteCommand comandoCrear(Long companyId) {
         return new CreateHospitalizationProgressNoteCommand(DESCRIPCION, HOSPITALIZATION_ID,
                 EMPLOYEE_ID, companyId);
-    }
-
-    public static UpdateHospitalizationProgressNoteCommand comandoActualizar() {
-        return comandoActualizar(COMPANY_ID);
-    }
-
-    /** El mismo comando dirigido a otra empresa: el caso de fuga entre tenants. */
-    public static UpdateHospitalizationProgressNoteCommand comandoActualizar(Long companyId) {
-        return new UpdateHospitalizationProgressNoteCommand(NOTE_ID,
-                "Evolucion favorable, se ajusta analgesia", companyId);
     }
 }

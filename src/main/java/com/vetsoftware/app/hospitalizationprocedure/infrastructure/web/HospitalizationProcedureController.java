@@ -10,9 +10,7 @@ import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.hospitalizationprocedure.application.dto.HospitalizationSummaryDto;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.CreateHospitalizationProcedureUseCase;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.DeleteHospitalizationProcedureUseCase;
-import com.vetsoftware.app.hospitalizationprocedure.application.port.in.FindHospitalizationProcedureUseCase;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.ListHospitalizationProceduresByHospitalizationUseCase;
-import com.vetsoftware.app.hospitalizationprocedure.application.port.in.ReactivateHospitalizationProcedureUseCase;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.SuspendHospitalizationProcedureUseCase;
 import com.vetsoftware.app.hospitalizationprocedure.application.port.in.UpdateHospitalizationProcedureUseCase;
 import com.vetsoftware.app.hospitalizationprocedure.infrastructure.web.request.CreateHospitalizationProcedureRequest;
@@ -29,26 +27,20 @@ import org.springframework.web.bind.annotation.*;
 public class HospitalizationProcedureController {
     private final CreateHospitalizationProcedureUseCase createUseCase;
     private final UpdateHospitalizationProcedureUseCase updateUseCase;
-    private final FindHospitalizationProcedureUseCase findUseCase;
     private final ListHospitalizationProceduresByHospitalizationUseCase listByHospitalizationUseCase;
     private final DeleteHospitalizationProcedureUseCase deleteUseCase;
-    private final ReactivateHospitalizationProcedureUseCase reactivateUseCase;
     private final SuspendHospitalizationProcedureUseCase suspendUseCase;
     private final Authz authz;
 
     public HospitalizationProcedureController(CreateHospitalizationProcedureUseCase createUseCase,
             UpdateHospitalizationProcedureUseCase updateUseCase,
-            FindHospitalizationProcedureUseCase findUseCase,
             ListHospitalizationProceduresByHospitalizationUseCase listByHospitalizationUseCase,
             DeleteHospitalizationProcedureUseCase deleteUseCase,
-            ReactivateHospitalizationProcedureUseCase reactivateUseCase,
             SuspendHospitalizationProcedureUseCase suspendUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
         this.listByHospitalizationUseCase = listByHospitalizationUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.suspendUseCase = suspendUseCase;
         this.authz = authz;
     }
@@ -72,11 +64,6 @@ public class HospitalizationProcedureController {
                 hospitalizationId, authz.currentCompanyId(), page, pageSize), this::toResponse);
     }
 
-    @GetMapping("/{id}")
-    public HospitalizationProcedureResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
-
     @PutMapping("/{id}")
     public HospitalizationProcedureResponse update(@PathVariable Long id,
             @Valid @RequestBody UpdateHospitalizationProcedureRequest request) {
@@ -90,11 +77,6 @@ public class HospitalizationProcedureController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyId());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public HospitalizationProcedureResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     /**

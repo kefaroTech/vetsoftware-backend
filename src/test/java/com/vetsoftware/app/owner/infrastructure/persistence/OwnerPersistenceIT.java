@@ -206,29 +206,5 @@ class OwnerPersistenceIT extends AbstractDataJpaTest {
                     .extracting(Owner::getId).doesNotContain(pausado.getId());
             assertThat(repository.findByIdAndCompanyId(pausado.getId(), EMPRESA)).isEmpty();
         }
-
-        @Test
-        @DisplayName("reactivar devuelve el owner al listado, acotado a su empresa")
-        void reactivar_devuelve_el_owner_al_listado() {
-            Owner pausado = guardar("Ana Ruiz", "1020304050");
-            deshabilitar(pausado.getId());
-
-            int filas = repository.reactivate(pausado.getId(), EMPRESA);
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findByIdAndCompanyId(pausado.getId(), EMPRESA)).map(Owner::getId)
-                    .contains(pausado.getId());
-        }
-
-        @Test
-        @DisplayName("reactivar con la empresa equivocada no toca ninguna fila")
-        void reactivar_con_la_empresa_equivocada_no_toca_ninguna_fila() {
-            Owner pausado = guardar("Ana Ruiz", "1020304050");
-            deshabilitar(pausado.getId());
-
-            int filas = repository.reactivate(pausado.getId(), OTRA_EMPRESA);
-
-            assertThat(filas).isZero();
-        }
     }
 }

@@ -1,14 +1,12 @@
 package com.vetsoftware.app.employeerole.infrastructure.web;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,7 +20,6 @@ import com.vetsoftware.app.employeerole.application.port.in.CreateEmployeeRoleUs
 import com.vetsoftware.app.employeerole.application.port.in.DeleteEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.in.FindEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.in.ListEmployeeRolesUseCase;
-import com.vetsoftware.app.employeerole.application.port.in.ReactivateEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.in.UpdateEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
 import com.vetsoftware.app.employeerole.testsupport.EmployeeRoleMother;
@@ -71,8 +68,6 @@ class EmployeeRoleControllerTest {
     private ListEmployeeRolesUseCase listUseCase;
     @MockitoBean
     private DeleteEmployeeRoleUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateEmployeeRoleUseCase reactivateUseCase;
 
     @BeforeEach
     void sellarLaEmpresaDelContexto() {
@@ -261,27 +256,6 @@ class EmployeeRoleControllerTest {
                     .when(deleteUseCase).execute(EmployeeRoleMother.EMPLOYEE_ROLE_ID, COMPANY_ID);
 
             mockMvc.perform(delete("/employee-roles/500")).andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("PATCH /enable reactiva con la empresa del contexto y responde 200")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(EmployeeRoleMother.EMPLOYEE_ROLE_ID, COMPANY_ID))
-                    .thenReturn(asignacion());
-
-            mockMvc.perform(patch("/employee-roles/500/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(EmployeeRoleMother.EMPLOYEE_ROLE_ID, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("reactivar una asignacion inexistente responde 404")
-        void reactivar_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(anyLong(), anyLong())).thenThrow(
-                    new EmployeeRoleNotFoundException(EmployeeRoleMother.EMPLOYEE_ROLE_ID));
-
-            mockMvc.perform(patch("/employee-roles/500/enable")).andExpect(status().isNotFound());
         }
     }
 }

@@ -21,6 +21,4 @@ public interface LaboratoryTestRepository {
     PageResult<LaboratoryTest> search(SearchLaboratoryTestsCommand command);
 
     void delete(Long id);
-
-    int reactivate(Long id, Long companyId);
 }

@@ -21,9 +21,7 @@ import com.vetsoftware.app.hospitalizationmedication.application.dto.Hospitaliza
 import com.vetsoftware.app.hospitalizationmedication.application.dto.HospitalizationSummaryDto;
 import com.vetsoftware.app.hospitalizationmedication.application.port.in.CreateHospitalizationMedicationUseCase;
 import com.vetsoftware.app.hospitalizationmedication.application.port.in.DeleteHospitalizationMedicationUseCase;
-import com.vetsoftware.app.hospitalizationmedication.application.port.in.FindHospitalizationMedicationUseCase;
 import com.vetsoftware.app.hospitalizationmedication.application.port.in.ListHospitalizationMedicationsByHospitalizationUseCase;
-import com.vetsoftware.app.hospitalizationmedication.application.port.in.ReactivateHospitalizationMedicationUseCase;
 import com.vetsoftware.app.hospitalizationmedication.application.port.in.SuspendHospitalizationMedicationUseCase;
 import com.vetsoftware.app.hospitalizationmedication.application.port.in.UpdateHospitalizationMedicationUseCase;
 import com.vetsoftware.app.shared.pagination.PageResult;
@@ -71,13 +69,9 @@ class HospitalizationMedicationControllerTest {
     @MockitoBean
     private UpdateHospitalizationMedicationUseCase updateUseCase;
     @MockitoBean
-    private FindHospitalizationMedicationUseCase findUseCase;
-    @MockitoBean
     private ListHospitalizationMedicationsByHospitalizationUseCase listByHospitalizationUseCase;
     @MockitoBean
     private DeleteHospitalizationMedicationUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateHospitalizationMedicationUseCase reactivateUseCase;
     @MockitoBean
     private SuspendHospitalizationMedicationUseCase suspendUseCase;
 
@@ -171,15 +165,6 @@ class HospitalizationMedicationControllerTest {
     class Lectura {
 
         @Test
-        @DisplayName("GET por id devuelve la medicacion acotada por la empresa del contexto")
-        void get_por_id() throws Exception {
-            when(findUseCase.findById(MEDICATION_ID, COMPANY_ID)).thenReturn(dto());
-
-            mockMvc.perform(get("/hospitalization-medications/500")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.name").value("Amoxicilina 500mg"));
-        }
-
-        @Test
         @DisplayName("GET por hospitalizacion usa los defectos de paginacion")
         void get_por_hospitalizacion_usa_los_defectos() throws Exception {
             when(listByHospitalizationUseCase.listByHospitalization(HOSPITALIZATION_ID, COMPANY_ID,
@@ -256,19 +241,8 @@ class HospitalizationMedicationControllerTest {
     }
 
     @Nested
-    @DisplayName("reactivacion y suspension")
+    @DisplayName("suspension")
     class Estado {
-
-        @Test
-        @DisplayName("PATCH enable reactiva y devuelve la medicacion habilitada")
-        void patch_enable_reactiva() throws Exception {
-            when(reactivateUseCase.execute(MEDICATION_ID, COMPANY_ID)).thenReturn(dto());
-
-            mockMvc.perform(patch("/hospitalization-medications/500/enable"))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(MEDICATION_ID, COMPANY_ID);
-        }
 
         @Test
         @DisplayName("PATCH suspend sella el empleado del contexto y devuelve quien suspendio")

@@ -77,12 +77,6 @@ public class JpaPurchaseOrderRepository implements PurchaseOrderRepository {
     }
 
     @Override
-    public List<PurchaseOrder> findAllDisabledByCompanyId(Long companyId) {
-        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain)
-                .toList();
-    }
-
-    @Override
     public PageResult<PurchaseOrder> search(SearchPurchaseOrdersCommand command) {
         Specification<PurchaseOrderJpaEntity> spec = buildSpec(command);
         Page<PurchaseOrderJpaEntity> page = jpaRepository.findAll(spec,
@@ -132,10 +126,5 @@ public class JpaPurchaseOrderRepository implements PurchaseOrderRepository {
     @Override
     public void delete(Long id, Long companyId) {
         jpaRepository.softDelete(id, companyId);
-    }
-
-    @Override
-    public int reactivate(Long id, Long companyId) {
-        return jpaRepository.reactivate(id, companyId);
     }
 }

@@ -257,63 +257,6 @@ class AnimalPersistenceIT extends AbstractDataJpaTest {
                     "Zeus");
             assertThat(pagina.totalElements()).isEqualTo(3L);
         }
-
-        @Test
-        @DisplayName("un animal deshabilitado no aparece en el listado (SQLRestriction)")
-        void un_animal_deshabilitado_no_aparece() {
-            Animal guardado = repository.save(animalNuevo("Firulais", "A-001", ownerRef(owner)));
-            releerDesdeLaBase();
-            repository.delete(guardado.getId(), COMPANY);
-            releerDesdeLaBase();
-
-            PageResult<Animal> pagina = repository.findAllByCompanyId(COMPANY, 0, 20);
-
-            assertThat(pagina.content()).isEmpty();
-        }
-    }
-
-    @Nested
-    @DisplayName("delete y reactivate")
-    class BorradoYReactivacion {
-
-        @Test
-        @DisplayName("un animal borrado desaparece de findById")
-        void animal_borrado_desaparece() {
-            Animal guardado = repository.save(animalNuevo("Firulais", "A-001", ownerRef(owner)));
-            releerDesdeLaBase();
-
-            repository.delete(guardado.getId(), COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(repository.findById(guardado.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate() vuelve a hacer visible un animal borrado")
-        void reactivate_vuelve_a_hacer_visible() {
-            Animal guardado = repository.save(animalNuevo("Firulais", "A-001", ownerRef(owner)));
-            releerDesdeLaBase();
-            repository.delete(guardado.getId(), COMPANY);
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(guardado.getId(), COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findById(guardado.getId())).isPresent();
-        }
-
-        @Test
-        @DisplayName("reactivate() sobre un id de otra empresa no afecta filas")
-        void reactivate_sobre_id_de_otra_empresa() {
-            Animal guardado = repository.save(animalNuevo("Firulais", "A-001", ownerRef(owner)));
-            releerDesdeLaBase();
-            repository.delete(guardado.getId(), COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(repository.reactivate(guardado.getId(), SchemaSeed.OTRA_COMPANY_ID))
-                    .isZero();
-        }
     }
 
     @Nested

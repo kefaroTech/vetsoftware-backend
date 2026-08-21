@@ -66,10 +66,6 @@ class PrescriptionTest {
             return new Prescription(id, date, diagnosis, observations, animal, consultation,
                     company, PrescriptionMother.CREADO, null, true);
         }
-
-        private void applyTo(Prescription prescription) {
-            prescription.update(date, diagnosis, observations, animal, consultation, company);
-        }
     }
 
     @Nested
@@ -164,52 +160,6 @@ class PrescriptionTest {
         void observations_en_el_limite_se_acepta() {
             assertThatCode(() -> valida().observations("x".repeat(2000)).build())
                     .doesNotThrowAnyException();
-        }
-    }
-
-    @Nested
-    @DisplayName("update")
-    class Update {
-
-        @Test
-        @DisplayName("reemplaza los campos mutables y conserva id y createdDate")
-        void reemplaza_los_campos_mutables_y_conserva_id_y_created_date() {
-            Prescription prescription = valida().build();
-            AnimalRef otroAnimal = new AnimalRef(999L, "Michi", "A-002");
-
-            valida().date(LocalDate.of(2026, 2, 1)).diagnosis("Dermatitis")
-                    .observations("Revisar en 15 dias").animal(otroAnimal).applyTo(prescription);
-
-            assertThat(prescription.getDate()).isEqualTo(LocalDate.of(2026, 2, 1));
-            assertThat(prescription.getDiagnosis()).isEqualTo("Dermatitis");
-            assertThat(prescription.getObservations()).isEqualTo("Revisar en 15 dias");
-            assertThat(prescription.getAnimal()).isEqualTo(otroAnimal);
-            assertThat(prescription.getId()).isEqualTo(PrescriptionMother.PRESCRIPTION_ID);
-            assertThat(prescription.getCreatedDate()).isEqualTo(PrescriptionMother.CREADO);
-        }
-
-        @Test
-        @DisplayName("un update invalido no deja el agregado a medias")
-        void un_update_invalido_no_deja_el_agregado_a_medias() {
-            Prescription prescription = valida().build();
-
-            assertThatThrownBy(
-                    () -> valida().diagnosis("Dermatitis").animal(null).applyTo(prescription))
-                    .isInstanceOf(IllegalArgumentException.class);
-
-            assertThat(prescription.getDiagnosis()).isEqualTo("Otitis externa");
-            assertThat(prescription.getAnimal()).isEqualTo(PrescriptionMother.MASCOTA);
-        }
-
-        @Test
-        @DisplayName("no toca el estado de habilitacion")
-        void no_toca_el_estado_de_habilitacion() {
-            Prescription prescription = valida().build();
-            prescription.disable();
-
-            valida().diagnosis("Dermatitis").applyTo(prescription);
-
-            assertThat(prescription.isEnabled()).isFalse();
         }
     }
 

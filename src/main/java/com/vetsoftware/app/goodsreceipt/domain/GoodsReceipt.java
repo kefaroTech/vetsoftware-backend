@@ -63,28 +63,6 @@ public class GoodsReceipt {
                 createdBy, null, null, null, true);
     }
 
-    /** Edición general: solo permitida mientras la recepción esté en DRAFT. */
-    public void update(BranchRef branch, SupplierRef supplier, Long purchaseOrderId,
-            LocalDate receiptDate, String supplierInvoiceNumber, String notes,
-            List<GoodsReceiptLine> lines, Long updatedBy, Long expectedVersion) {
-        if (status != GoodsReceiptStatus.DRAFT) {
-            throw new InvalidGoodsReceiptStatusTransitionException(
-                    "Goods receipt can only be edited while in DRAFT, current status: " + status);
-        }
-        validate(company, branch, supplier, receiptDate, supplierInvoiceNumber, notes, status,
-                lines);
-        this.branch = branch;
-        this.supplier = supplier;
-        this.purchaseOrderId = purchaseOrderId;
-        this.receiptDate = receiptDate;
-        this.supplierInvoiceNumber = supplierInvoiceNumber;
-        this.notes = notes;
-        this.lines = List.copyOf(lines);
-        this.updatedDate = LocalDateTime.now();
-        this.updatedBy = updatedBy;
-        this.version = expectedVersion;
-    }
-
     /** DRAFT → CONFIRMED. Guarda de idempotencia antes de tocar el inventario. */
     public void confirm(Long actorId) {
         if (status != GoodsReceiptStatus.DRAFT) {

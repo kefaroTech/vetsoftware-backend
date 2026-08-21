@@ -13,7 +13,6 @@ import com.vetsoftware.app.deworming.application.port.in.DeleteDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.FindDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.ListDewormingsByAnimalUseCase;
 import com.vetsoftware.app.deworming.application.port.in.ListDewormingsUseCase;
-import com.vetsoftware.app.deworming.application.port.in.ReactivateDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.UpdateDewormingUseCase;
 import com.vetsoftware.app.deworming.infrastructure.web.request.CreateDewormingRequest;
 import com.vetsoftware.app.deworming.infrastructure.web.request.UpdateDewormingRequest;
@@ -35,21 +34,18 @@ public class DewormingController {
     private final ListDewormingsUseCase listUseCase;
     private final ListDewormingsByAnimalUseCase listByAnimalUseCase;
     private final DeleteDewormingUseCase deleteUseCase;
-    private final ReactivateDewormingUseCase reactivateUseCase;
     private final Authz authz;
 
     public DewormingController(CreateDewormingUseCase createUseCase,
             UpdateDewormingUseCase updateUseCase, FindDewormingUseCase findUseCase,
             ListDewormingsUseCase listUseCase, ListDewormingsByAnimalUseCase listByAnimalUseCase,
-            DeleteDewormingUseCase deleteUseCase, ReactivateDewormingUseCase reactivateUseCase,
-            Authz authz) {
+            DeleteDewormingUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -94,11 +90,6 @@ public class DewormingController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyId());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public DewormingResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private DewormingResponse toResponse(DewormingDto dto) {

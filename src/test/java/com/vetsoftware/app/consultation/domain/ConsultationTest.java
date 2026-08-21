@@ -90,10 +90,6 @@ class ConsultationTest {
                     true);
         }
 
-        private void applyTo(Consultation consultation) {
-            consultation.update(date, consultationType, anamnesis, diagnosis, prognosis,
-                    physicalExam, nextControl, animal, company);
-        }
     }
 
     @Nested
@@ -227,67 +223,6 @@ class ConsultationTest {
         void prognosis_de_500_chars_se_acepta() {
             assertThatCode(() -> valido().prognosis("x".repeat(500)).build())
                     .doesNotThrowAnyException();
-        }
-    }
-
-    @Nested
-    @DisplayName("update")
-    class Update {
-
-        @Test
-        @DisplayName("reemplaza los campos mutables y conserva id y createdDate")
-        void reemplaza_los_campos_mutables_y_conserva_id_y_created_date() {
-            Consultation consultation = valido().build();
-
-            valido().anamnesis("Nueva anamnesis").diagnosis("Nuevo diagnostico")
-                    .prognosis("Nuevo pronostico").consultationType(ConsultationMother.VACUNACION)
-                    .animal(ConsultationMother.MICHI).company(ConsultationMother.OTRA_CLINICA)
-                    .applyTo(consultation);
-
-            assertThat(consultation.getAnamnesis()).isEqualTo("Nueva anamnesis");
-            assertThat(consultation.getDiagnosis()).isEqualTo("Nuevo diagnostico");
-            assertThat(consultation.getPrognosis()).isEqualTo("Nuevo pronostico");
-            assertThat(consultation.getConsultationType()).isEqualTo(ConsultationMother.VACUNACION);
-            assertThat(consultation.getAnimal()).isEqualTo(ConsultationMother.MICHI);
-            assertThat(consultation.getCompany()).isEqualTo(ConsultationMother.OTRA_CLINICA);
-            assertThat(consultation.getId()).isEqualTo(ConsultationMother.CONSULTATION_ID);
-            assertThat(consultation.getCreatedDate()).isEqualTo(ConsultationMother.CREADO);
-        }
-
-        @Test
-        @DisplayName("un update invalido no deja el agregado a medias")
-        void un_update_invalido_no_deja_el_agregado_a_medias() {
-            Consultation consultation = valido().build();
-
-            // La anamnesis es valida y el animal no: si validate() no corriera ANTES de
-            // asignar, la consulta se quedaria con la anamnesis nueva y el animal viejo.
-            assertThatThrownBy(
-                    () -> valido().anamnesis("Nueva anamnesis").animal(null).applyTo(consultation))
-                    .isInstanceOf(IllegalArgumentException.class);
-
-            assertThat(consultation.getAnamnesis()).isEqualTo("Anamnesis del paciente");
-            assertThat(consultation.getAnimal()).isEqualTo(ConsultationMother.FIRULAIS);
-        }
-
-        @Test
-        @DisplayName("un examen fisico null en update se normaliza a vacio, no a null")
-        void un_examen_fisico_null_en_update_se_normaliza_a_vacio() {
-            Consultation consultation = valido().build();
-
-            valido().physicalExam(null).applyTo(consultation);
-
-            assertThat(consultation.getPhysicalExam()).isEqualTo(PhysicalExam.empty());
-        }
-
-        @Test
-        @DisplayName("no toca el estado de habilitacion")
-        void no_toca_el_estado_de_habilitacion() {
-            Consultation consultation = valido().build();
-            consultation.disable();
-
-            valido().anamnesis("Otra anamnesis").applyTo(consultation);
-
-            assertThat(consultation.isEnabled()).isFalse();
         }
     }
 

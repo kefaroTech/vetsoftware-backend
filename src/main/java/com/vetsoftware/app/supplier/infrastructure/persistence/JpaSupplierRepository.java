@@ -64,12 +64,6 @@ public class JpaSupplierRepository implements SupplierRepository {
     }
 
     @Override
-    public List<Supplier> findAllDisabledByCompanyId(Long companyId) {
-        return jpaRepository.findAllDisabledByCompany_Id(companyId).stream().map(mapper::toDomain)
-                .toList();
-    }
-
-    @Override
     public PageResult<Supplier> search(SearchSuppliersCommand command) {
         Specification<SupplierJpaEntity> spec = buildSpec(command);
         Page<SupplierJpaEntity> page = jpaRepository.findAll(spec, Pages.request(command.page(),
@@ -100,10 +94,5 @@ public class JpaSupplierRepository implements SupplierRepository {
     @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
-    }
-
-    @Override
-    public int reactivate(Long id, Long companyId) {
-        return jpaRepository.reactivate(id, companyId);
     }
 }

@@ -24,15 +24,7 @@ public interface SupplierRepository {
 
     List<Supplier> findAllByCompanyId(Long companyId);
 
-    /**
-     * Proveedores PAUSADOS (enabled=false) de la empresa, para el listado de
-     * reactivación.
-     */
-    List<Supplier> findAllDisabledByCompanyId(Long companyId);
-
     PageResult<Supplier> search(SearchSuppliersCommand command);
 
     void delete(Long id);
-
-    int reactivate(Long id, Long companyId);
 }

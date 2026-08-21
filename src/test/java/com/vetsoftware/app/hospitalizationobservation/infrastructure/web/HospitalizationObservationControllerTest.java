@@ -6,24 +6,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.hospitalizationobservation.application.command.CreateHospitalizationObservationCommand;
-import com.vetsoftware.app.hospitalizationobservation.application.command.UpdateHospitalizationObservationCommand;
 import com.vetsoftware.app.hospitalizationobservation.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.hospitalizationobservation.application.dto.HospitalizationObservationDto;
 import com.vetsoftware.app.hospitalizationobservation.application.dto.HospitalizationSummaryDto;
 import com.vetsoftware.app.hospitalizationobservation.application.port.in.CreateHospitalizationObservationUseCase;
 import com.vetsoftware.app.hospitalizationobservation.application.port.in.DeleteHospitalizationObservationUseCase;
-import com.vetsoftware.app.hospitalizationobservation.application.port.in.FindHospitalizationObservationUseCase;
 import com.vetsoftware.app.hospitalizationobservation.application.port.in.ListHospitalizationObservationsByHospitalizationUseCase;
-import com.vetsoftware.app.hospitalizationobservation.application.port.in.ReactivateHospitalizationObservationUseCase;
-import com.vetsoftware.app.hospitalizationobservation.application.port.in.UpdateHospitalizationObservationUseCase;
 import com.vetsoftware.app.hospitalizationobservation.domain.HospitalizationObservationNotFoundException;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
@@ -61,15 +55,9 @@ class HospitalizationObservationControllerTest {
     @MockitoBean
     private CreateHospitalizationObservationUseCase createUseCase;
     @MockitoBean
-    private UpdateHospitalizationObservationUseCase updateUseCase;
-    @MockitoBean
-    private FindHospitalizationObservationUseCase findUseCase;
-    @MockitoBean
     private ListHospitalizationObservationsByHospitalizationUseCase listByHospitalizationUseCase;
     @MockitoBean
     private DeleteHospitalizationObservationUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateHospitalizationObservationUseCase reactivateUseCase;
 
     /**
      * El controller sella la autoria con {@code authz.currentEmployeeId()},
@@ -156,63 +144,6 @@ class HospitalizationObservationControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /hospitalization-observations/{id}")
-    class BuscarPorId {
-
-        @Test
-        @DisplayName("responde 200 con el recurso encontrado")
-        void responde_200() throws Exception {
-            when(authz.currentCompanyId()).thenReturn(WebMvcSliceConfig.COMPANY_ID);
-            when(findUseCase.findById(800L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenReturn(observacion());
-
-            mockMvc.perform(get("/hospitalization-observations/800")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.description").value("Paciente estable, sin novedades"));
-        }
-
-        @Test
-        @DisplayName("inexistente responde 404, no 500")
-        void inexistente_responde_404() throws Exception {
-            when(authz.currentCompanyId()).thenReturn(WebMvcSliceConfig.COMPANY_ID);
-            when(findUseCase.findById(99L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenThrow(new HospitalizationObservationNotFoundException(99L));
-
-            mockMvc.perform(get("/hospitalization-observations/99"))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PUT /hospitalization-observations/{id}")
-    class Update {
-
-        @Test
-        @DisplayName("responde 200 y traduce el request al command")
-        void responde_200_y_traduce_el_request() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(observacion());
-
-            mockMvc.perform(
-                    put("/hospitalization-observations/800").contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"description\":\"Nueva evolucion\"}"))
-                    .andExpect(status().isOk());
-
-            // La empresa la pone el controller desde el contexto: nunca viaja en el body.
-            verify(updateUseCase).execute(new UpdateHospitalizationObservationCommand(800L,
-                    "Nueva evolucion", WebMvcSliceConfig.COMPANY_ID));
-        }
-
-        @Test
-        @DisplayName("sin description responde 400 y no llega al caso de uso")
-        void sin_description_responde_400() throws Exception {
-            mockMvc.perform(put("/hospitalization-observations/800")
-                    .contentType(MediaType.APPLICATION_JSON).content("{}"))
-                    .andExpect(status().isBadRequest());
-
-            verify(updateUseCase, never()).execute(any());
-        }
-    }
-
-    @Nested
     @DisplayName("DELETE /hospitalization-observations/{id}")
     class Delete {
 
@@ -232,33 +163,6 @@ class HospitalizationObservationControllerTest {
                     .when(deleteUseCase).execute(99L, WebMvcSliceConfig.COMPANY_ID);
 
             mockMvc.perform(delete("/hospitalization-observations/99"))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /hospitalization-observations/{id}/enable")
-    class Reactivate {
-
-        @Test
-        @DisplayName("responde 200 con la observacion reactivada")
-        void responde_200_con_la_observacion_reactivada() throws Exception {
-            when(reactivateUseCase.execute(800L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenReturn(observacion());
-
-            mockMvc.perform(patch("/hospitalization-observations/800/enable"))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(800L, WebMvcSliceConfig.COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("inexistente responde 404, no 500")
-        void inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenThrow(new HospitalizationObservationNotFoundException(99L));
-
-            mockMvc.perform(patch("/hospitalization-observations/99/enable"))
                     .andExpect(status().isNotFound());
         }
     }

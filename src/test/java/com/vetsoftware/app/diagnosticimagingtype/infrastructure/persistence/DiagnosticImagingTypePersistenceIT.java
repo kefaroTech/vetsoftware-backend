@@ -145,7 +145,7 @@ class DiagnosticImagingTypePersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("delete y reactivate")
+    @DisplayName("delete")
     class BorradoYReactivacion {
 
         @Test
@@ -158,61 +158,6 @@ class DiagnosticImagingTypePersistenceIT extends AbstractDataJpaTest {
             releerDesdeLaBase();
 
             assertThat(repository.findById(guardado.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate() vuelve a hacer visible un tipo borrado de la empresa")
-        void reactivate_vuelve_a_hacer_visible() {
-            // El tipo tiene que ser DE LA EMPRESA: el UPDATE lleva company_id y una fila
-            // general (company_id NULL) ya no la reactiva ningun tenant.
-            DiagnosticImagingType guardado = repository.save(tipoDeEmpresaValido());
-            releerDesdeLaBase();
-            repository.delete(guardado.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(guardado.getId(), COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findById(guardado.getId())).isPresent();
-        }
-
-        @Test
-        @DisplayName("reactivate() sobre un id inexistente no afecta filas")
-        void reactivate_sobre_id_inexistente_no_afecta_filas() {
-            assertThat(repository.reactivate(999_999L, COMPANY)).isZero();
-        }
-
-        @Test
-        @DisplayName("reactivate() con el companyId de OTRA empresa afecta 0 filas")
-        void reactivate_con_la_empresa_ajena_no_afecta_filas() {
-            // El WHERE es la unica barrera de la reactivacion: no hay lectura previa que
-            // valide la propiedad.
-            DiagnosticImagingType guardado = repository.save(tipoDeEmpresaValido());
-            releerDesdeLaBase();
-            repository.delete(guardado.getId());
-            releerDesdeLaBase();
-
-            assertThat(repository.reactivate(guardado.getId(), OTRA_COMPANY)).isZero();
-            releerDesdeLaBase();
-
-            assertThat(repository.findById(guardado.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("una fila general no la reactiva ninguna empresa: company_id es NULL")
-        void una_fila_general_no_la_reactiva_ninguna_empresa() {
-            // Consecuencia deliberada de acotar la escritura: reactivar una fila general
-            // la devolveria a TODOS los tenants, asi que ninguna empresa puede hacerlo.
-            DiagnosticImagingType general = repository.save(tipoGeneralValido());
-            releerDesdeLaBase();
-            repository.delete(general.getId());
-            releerDesdeLaBase();
-
-            assertThat(repository.reactivate(general.getId(), COMPANY)).isZero();
-            releerDesdeLaBase();
-
-            assertThat(repository.findById(general.getId())).isEmpty();
         }
 
         @Test

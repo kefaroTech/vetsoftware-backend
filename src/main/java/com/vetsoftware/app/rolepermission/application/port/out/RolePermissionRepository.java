@@ -18,8 +18,6 @@ public interface RolePermissionRepository {
 
     List<RolePermission> findAllByRoleId(Long roleId);
 
-    List<RolePermission> findAllByRoleCompanyId(Long companyId);
-
     void delete(Long id);
 
     /** Sin acotar: solo el camino SYSTEM ({@code companyId == null}). */

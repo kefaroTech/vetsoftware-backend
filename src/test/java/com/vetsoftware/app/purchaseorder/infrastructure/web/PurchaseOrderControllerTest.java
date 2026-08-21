@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,9 +22,7 @@ import com.vetsoftware.app.purchaseorder.application.port.in.CancelPurchaseOrder
 import com.vetsoftware.app.purchaseorder.application.port.in.CreatePurchaseOrderUseCase;
 import com.vetsoftware.app.purchaseorder.application.port.in.DeletePurchaseOrderUseCase;
 import com.vetsoftware.app.purchaseorder.application.port.in.FindPurchaseOrderUseCase;
-import com.vetsoftware.app.purchaseorder.application.port.in.ListPurchaseOrdersUseCase;
 import com.vetsoftware.app.purchaseorder.application.port.in.PlacePurchaseOrderUseCase;
-import com.vetsoftware.app.purchaseorder.application.port.in.ReactivatePurchaseOrderUseCase;
 import com.vetsoftware.app.purchaseorder.application.port.in.SearchPurchaseOrdersUseCase;
 import com.vetsoftware.app.purchaseorder.application.port.in.UpdatePurchaseOrderUseCase;
 import com.vetsoftware.app.purchaseorder.domain.InvalidPurchaseOrderStatusTransitionException;
@@ -88,13 +85,9 @@ class PurchaseOrderControllerTest {
     @MockitoBean
     private FindPurchaseOrderUseCase findUseCase;
     @MockitoBean
-    private ListPurchaseOrdersUseCase listUseCase;
-    @MockitoBean
     private SearchPurchaseOrdersUseCase searchUseCase;
     @MockitoBean
     private DeletePurchaseOrderUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivatePurchaseOrderUseCase reactivateUseCase;
     @MockitoBean
     private PlacePurchaseOrderUseCase placeUseCase;
     @MockitoBean
@@ -106,10 +99,6 @@ class PurchaseOrderControllerTest {
 
     private static PurchaseOrderDto borradorDto() {
         return PurchaseOrderDto.from(PurchaseOrderMother.borrador());
-    }
-
-    private static PurchaseOrderDto pausadaDto() {
-        return PurchaseOrderDto.from(PurchaseOrderMother.pausada());
     }
 
     @Nested
@@ -196,35 +185,6 @@ class PurchaseOrderControllerTest {
                     .forClass(CreatePurchaseOrderCommand.class);
             verify(createUseCase).execute(captor.capture());
             org.assertj.core.api.Assertions.assertThat(captor.getValue().lines()).isEmpty();
-        }
-    }
-
-    @Nested
-    @DisplayName("GET /purchase-orders — listados")
-    class Listados {
-
-        @Test
-        @DisplayName("lista las ordenes activas de la empresa del contexto")
-        void lista_las_ordenes_activas() throws Exception {
-            when(listUseCase.listByCompany(COMPANY_ID)).thenReturn(List.of(emitidaDto()));
-
-            mockMvc.perform(get("/purchase-orders")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$[0].id").value(1))
-                    .andExpect(jsonPath("$[0].status").value("PLACED"));
-
-            verify(listUseCase).listByCompany(COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("GET /purchase-orders/disabled lista las ordenes pausadas")
-        void lista_las_ordenes_pausadas() throws Exception {
-            when(listUseCase.listDisabledByCompany(COMPANY_ID)).thenReturn(List.of(pausadaDto()));
-
-            mockMvc.perform(get("/purchase-orders/disabled")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$[0].id").value(1))
-                    .andExpect(jsonPath("$[0].enabled").value(false));
-
-            verify(listUseCase).listDisabledByCompany(COMPANY_ID);
         }
     }
 
@@ -374,30 +334,6 @@ class PurchaseOrderControllerTest {
                     .execute(AJENO_ID, COMPANY_ID);
 
             mockMvc.perform(delete("/purchase-orders/{id}", AJENO_ID))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /purchase-orders/{id}/enable — reactivacion")
-    class Reactivacion {
-
-        @Test
-        @DisplayName("reactiva una orden pausada de la empresa del contexto")
-        void reactiva_la_orden() throws Exception {
-            when(reactivateUseCase.execute(ID, COMPANY_ID)).thenReturn(borradorDto());
-
-            mockMvc.perform(patch("/purchase-orders/{id}/enable", ID)).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.enabled").value(true));
-        }
-
-        @Test
-        @DisplayName("una orden inexistente o ajena responde 404")
-        void orden_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(AJENO_ID, COMPANY_ID))
-                    .thenThrow(new PurchaseOrderNotFoundException(AJENO_ID));
-
-            mockMvc.perform(patch("/purchase-orders/{id}/enable", AJENO_ID))
                     .andExpect(status().isNotFound());
         }
     }

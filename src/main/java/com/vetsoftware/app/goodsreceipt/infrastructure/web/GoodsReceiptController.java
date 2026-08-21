@@ -4,7 +4,6 @@ import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.goodsreceipt.application.command.CreateGoodsReceiptCommand;
 import com.vetsoftware.app.goodsreceipt.application.command.GoodsReceiptLineCommand;
 import com.vetsoftware.app.goodsreceipt.application.command.SearchGoodsReceiptsCommand;
-import com.vetsoftware.app.goodsreceipt.application.command.UpdateGoodsReceiptCommand;
 import com.vetsoftware.app.goodsreceipt.application.dto.BranchSummaryDto;
 import com.vetsoftware.app.goodsreceipt.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.goodsreceipt.application.dto.GoodsReceiptDto;
@@ -15,13 +14,10 @@ import com.vetsoftware.app.goodsreceipt.application.port.in.ConfirmGoodsReceiptU
 import com.vetsoftware.app.goodsreceipt.application.port.in.CreateGoodsReceiptUseCase;
 import com.vetsoftware.app.goodsreceipt.application.port.in.DeleteGoodsReceiptUseCase;
 import com.vetsoftware.app.goodsreceipt.application.port.in.FindGoodsReceiptUseCase;
-import com.vetsoftware.app.goodsreceipt.application.port.in.ListGoodsReceiptsUseCase;
 import com.vetsoftware.app.goodsreceipt.application.port.in.SearchGoodsReceiptsUseCase;
-import com.vetsoftware.app.goodsreceipt.application.port.in.UpdateGoodsReceiptUseCase;
 import com.vetsoftware.app.goodsreceipt.domain.GoodsReceiptStatus;
 import com.vetsoftware.app.goodsreceipt.infrastructure.web.request.CreateGoodsReceiptRequest;
 import com.vetsoftware.app.goodsreceipt.infrastructure.web.request.GoodsReceiptLineRequest;
-import com.vetsoftware.app.goodsreceipt.infrastructure.web.request.UpdateGoodsReceiptRequest;
 import com.vetsoftware.app.goodsreceipt.infrastructure.web.response.BranchSummary;
 import com.vetsoftware.app.goodsreceipt.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.goodsreceipt.infrastructure.web.response.GoodsReceiptLineResponse;
@@ -40,9 +36,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/goods-receipts")
 public class GoodsReceiptController {
     private final CreateGoodsReceiptUseCase createUseCase;
-    private final UpdateGoodsReceiptUseCase updateUseCase;
     private final FindGoodsReceiptUseCase findUseCase;
-    private final ListGoodsReceiptsUseCase listUseCase;
     private final SearchGoodsReceiptsUseCase searchUseCase;
     private final DeleteGoodsReceiptUseCase deleteUseCase;
     private final ConfirmGoodsReceiptUseCase confirmUseCase;
@@ -50,14 +44,11 @@ public class GoodsReceiptController {
     private final Authz authz;
 
     public GoodsReceiptController(CreateGoodsReceiptUseCase createUseCase,
-            UpdateGoodsReceiptUseCase updateUseCase, FindGoodsReceiptUseCase findUseCase,
-            ListGoodsReceiptsUseCase listUseCase, SearchGoodsReceiptsUseCase searchUseCase,
+            FindGoodsReceiptUseCase findUseCase, SearchGoodsReceiptsUseCase searchUseCase,
             DeleteGoodsReceiptUseCase deleteUseCase, ConfirmGoodsReceiptUseCase confirmUseCase,
             CancelGoodsReceiptUseCase cancelUseCase, Authz authz) {
         this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
         this.searchUseCase = searchUseCase;
         this.deleteUseCase = deleteUseCase;
         this.confirmUseCase = confirmUseCase;
@@ -72,12 +63,6 @@ public class GoodsReceiptController {
                 request.supplierId(), request.purchaseOrderId(), request.receiptDate(),
                 request.supplierInvoiceNumber(), request.notes(), toLineCommands(request.lines()),
                 authz.currentCompanyId(), authz.currentEmployeeIdOrNull())));
-    }
-
-    @GetMapping
-    public List<GoodsReceiptResponse> listByCompany() {
-        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse)
-                .toList();
     }
 
     @GetMapping("/search")
@@ -97,16 +82,6 @@ public class GoodsReceiptController {
     @GetMapping("/{id}")
     public GoodsReceiptResponse findById(@PathVariable Long id) {
         return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
-
-    @PutMapping("/{id}")
-    public GoodsReceiptResponse update(@PathVariable Long id,
-            @Valid @RequestBody UpdateGoodsReceiptRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateGoodsReceiptCommand(id,
-                request.branchId(), request.supplierId(), request.purchaseOrderId(),
-                request.receiptDate(), request.supplierInvoiceNumber(), request.notes(),
-                toLineCommands(request.lines()), authz.currentCompanyId(),
-                authz.currentEmployeeIdOrNull(), request.version())));
     }
 
     @DeleteMapping("/{id}")

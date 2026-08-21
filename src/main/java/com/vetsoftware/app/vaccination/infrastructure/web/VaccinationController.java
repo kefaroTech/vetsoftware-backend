@@ -14,7 +14,6 @@ import com.vetsoftware.app.vaccination.application.port.in.DeleteVaccinationUseC
 import com.vetsoftware.app.vaccination.application.port.in.FindVaccinationUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.ListVaccinationsByAnimalUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.ListVaccinationsUseCase;
-import com.vetsoftware.app.vaccination.application.port.in.ReactivateVaccinationUseCase;
 import com.vetsoftware.app.vaccination.application.port.in.UpdateVaccinationUseCase;
 import com.vetsoftware.app.vaccination.infrastructure.web.request.CreateVaccinationRequest;
 import com.vetsoftware.app.vaccination.infrastructure.web.request.UpdateVaccinationRequest;
@@ -37,22 +36,19 @@ public class VaccinationController {
     private final ListVaccinationsUseCase listUseCase;
     private final ListVaccinationsByAnimalUseCase listByAnimalUseCase;
     private final DeleteVaccinationUseCase deleteUseCase;
-    private final ReactivateVaccinationUseCase reactivateUseCase;
     private final Authz authz;
 
     public VaccinationController(CreateVaccinationUseCase createUseCase,
             UpdateVaccinationUseCase updateUseCase, FindVaccinationUseCase findUseCase,
             ListVaccinationsUseCase listUseCase,
             ListVaccinationsByAnimalUseCase listByAnimalUseCase,
-            DeleteVaccinationUseCase deleteUseCase, ReactivateVaccinationUseCase reactivateUseCase,
-            Authz authz) {
+            DeleteVaccinationUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -97,11 +93,6 @@ public class VaccinationController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyId());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public VaccinationResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private VaccinationResponse toResponse(VaccinationDto dto) {

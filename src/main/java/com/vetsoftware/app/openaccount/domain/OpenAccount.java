@@ -93,12 +93,6 @@ public class OpenAccount {
         return true;
     }
 
-    public void update(OwnerRef owner) {
-        if (owner == null)
-            throw new IllegalArgumentException("owner is required");
-        this.owner = owner;
-    }
-
     /**
      * Cambia el estado de la cuenta. Reglas de negocio: - Solo desde OPEN (CLOSE y
      * CANCEL son terminales). - Solo hacia CLOSE o CANCEL. - CANCEL exige motivo

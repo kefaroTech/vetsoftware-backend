@@ -4,24 +4,17 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.consultation.application.command.CreateConsultationCommand;
-import com.vetsoftware.app.consultation.application.command.UpdateConsultationCommand;
 import com.vetsoftware.app.consultation.application.dto.ConsultationDto;
 import com.vetsoftware.app.consultation.application.port.in.CreateConsultationUseCase;
-import com.vetsoftware.app.consultation.application.port.in.DeleteConsultationUseCase;
 import com.vetsoftware.app.consultation.application.port.in.FindConsultationUseCase;
 import com.vetsoftware.app.consultation.application.port.in.ListConsultationsUseCase;
-import com.vetsoftware.app.consultation.application.port.in.ReactivateConsultationUseCase;
-import com.vetsoftware.app.consultation.application.port.in.UpdateConsultationUseCase;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultation.testsupport.ConsultationMother;
 import com.vetsoftware.app.shared.pagination.PageResult;
@@ -58,12 +51,6 @@ class ConsultationControllerTest {
              "animalId":100,"temperature":38.5,"heartRate":90}
             """;
 
-    private static final String CUERPO_ACTUALIZACION_VALIDO = """
-            {"date":"2026-03-01","consultationTypeId":6,"anamnesis":"Anamnesis nueva",
-             "diagnosis":"Diagnostico nuevo","prognosis":"Pronostico nuevo","nextControl":"2026-03-31",
-             "animalId":101}
-            """;
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -73,15 +60,9 @@ class ConsultationControllerTest {
     @MockitoBean
     private CreateConsultationUseCase createUseCase;
     @MockitoBean
-    private UpdateConsultationUseCase updateUseCase;
-    @MockitoBean
     private FindConsultationUseCase findUseCase;
     @MockitoBean
     private ListConsultationsUseCase listUseCase;
-    @MockitoBean
-    private DeleteConsultationUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateConsultationUseCase reactivateUseCase;
 
     @BeforeEach
     void companyIdOrNullDelContexto() {
@@ -188,84 +169,6 @@ class ConsultationControllerTest {
                     .thenThrow(new ConsultationNotFoundException(99L));
 
             mockMvc.perform(get("/consultations/{id}", 99L)).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PUT /consultations/{id}")
-    class Actualizacion {
-
-        @Test
-        @DisplayName("responde 200 con la consulta actualizada")
-        void responde_200_con_la_consulta_actualizada() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(dto());
-
-            mockMvc.perform(put("/consultations/{id}", ConsultationMother.CONSULTATION_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content(CUERPO_ACTUALIZACION_VALIDO))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(ConsultationMother.CONSULTATION_ID));
-        }
-
-        @Test
-        @DisplayName("traduce el request y el id de la ruta al command, con el companyId del contexto")
-        void traduce_el_request_y_el_id_de_la_ruta_al_command() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(dto());
-
-            mockMvc.perform(put("/consultations/{id}", ConsultationMother.CONSULTATION_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content(CUERPO_ACTUALIZACION_VALIDO));
-
-            verify(updateUseCase).execute(new UpdateConsultationCommand(
-                    ConsultationMother.CONSULTATION_ID, ConsultationMother.FECHA, 6L,
-                    "Anamnesis nueva", "Diagnostico nuevo", "Pronostico nuevo",
-                    ConsultationMother.FECHA.plusDays(30), 101L, COMPANY_ID, null, null, null, null,
-                    null, null, null, null, null, null));
-        }
-
-        @Test
-        @DisplayName("con anamnesis vacia responde 400 y no llega al caso de uso")
-        void con_anamnesis_vacia_responde_400() throws Exception {
-            mockMvc.perform(put("/consultations/{id}", ConsultationMother.CONSULTATION_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"date":"2026-03-01","consultationTypeId":6,"anamnesis":"",
-                             "animalId":101}
-                            """)).andExpect(status().isBadRequest());
-
-            verify(updateUseCase, never()).execute(any());
-        }
-    }
-
-    @Nested
-    @DisplayName("DELETE /consultations/{id}")
-    class Borrado {
-
-        @Test
-        @DisplayName("responde 204 sin cuerpo")
-        void responde_204_sin_cuerpo() throws Exception {
-            mockMvc.perform(delete("/consultations/{id}", ConsultationMother.CONSULTATION_ID))
-                    .andExpect(status().isNoContent());
-        }
-
-        @Test
-        @DisplayName("usa currentCompanyIdOrNull, no currentCompanyId: SYSTEM puede borrar sin empresa")
-        void usa_current_company_id_or_null() throws Exception {
-            mockMvc.perform(delete("/consultations/{id}", ConsultationMother.CONSULTATION_ID));
-
-            verify(deleteUseCase).execute(ConsultationMother.CONSULTATION_ID, COMPANY_ID);
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /consultations/{id}/enable")
-    class Reactivacion {
-
-        @Test
-        @DisplayName("responde 200 con la consulta habilitada")
-        void responde_200_con_la_consulta_habilitada() throws Exception {
-            when(reactivateUseCase.execute(ConsultationMother.CONSULTATION_ID, COMPANY_ID))
-                    .thenReturn(dto());
-
-            mockMvc.perform(patch("/consultations/{id}/enable", ConsultationMother.CONSULTATION_ID))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
         }
     }
 }

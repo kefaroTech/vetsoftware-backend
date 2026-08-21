@@ -4,25 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.vetsoftware.app.consultation.application.port.in.DeleteConsultationUseCase;
-import com.vetsoftware.app.consultation.application.port.in.UpdateConsultationUseCase;
-import com.vetsoftware.app.diagnosticimaging.application.port.in.ChangeDiagnosticImagingStatusUseCase;
-import com.vetsoftware.app.medicamentprescription.application.port.in.DeleteMedicamentPrescriptionUseCase;
-import com.vetsoftware.app.medicamentprescription.application.port.in.UpdateMedicamentPrescriptionUseCase;
-import com.vetsoftware.app.prescription.application.port.in.DeletePrescriptionUseCase;
-import com.vetsoftware.app.prescription.application.port.in.UpdatePrescriptionUseCase;
 import com.vetsoftware.app.role.application.port.in.CreateRoleUseCase;
 import com.vetsoftware.app.role.application.port.in.DeleteRoleUseCase;
 import com.vetsoftware.app.role.application.port.in.ReactivateRoleUseCase;
 import com.vetsoftware.app.role.application.port.in.UpdateRoleUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.CreateRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.DeleteRolePermissionUseCase;
-import com.vetsoftware.app.rolepermission.application.port.in.ReactivateRolePermissionUseCase;
-import com.vetsoftware.app.rolepermission.application.port.in.UpdateRolePermissionUseCase;
-import com.vetsoftware.app.spa.application.port.in.ChangeSpaStatusUseCase;
 import com.vetsoftware.app.spa.application.port.in.DeleteSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.UpdateSpaUseCase;
-import com.vetsoftware.app.surgery.application.port.in.ChangeSurgeryStatusUseCase;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -57,28 +46,14 @@ class GranularPermissionGateTest {
     @TestFactory
     Stream<DynamicTest> tenantMutationsHonorPublishedPermissionAndCompanyScope() {
         return Stream
-                .of(new Gate(UpdateConsultationUseCase.class, "consultation.update"),
-                        new Gate(DeleteConsultationUseCase.class, "consultation.delete"),
-                        new Gate(UpdatePrescriptionUseCase.class, "prescription.update"),
-                        new Gate(DeletePrescriptionUseCase.class, "prescription.delete"),
-                        new Gate(UpdateMedicamentPrescriptionUseCase.class,
-                                "medicamentPrescription.update"),
-                        new Gate(DeleteMedicamentPrescriptionUseCase.class,
-                                "medicamentPrescription.delete"),
-                        new Gate(UpdateSpaUseCase.class, "spa.update"),
+                .of(new Gate(UpdateSpaUseCase.class, "spa.update"),
                         new Gate(DeleteSpaUseCase.class, "spa.delete"),
-                        new Gate(ChangeSpaStatusUseCase.class, "spa.update"),
-                        new Gate(ChangeSurgeryStatusUseCase.class, "surgery.update"),
-                        new Gate(ChangeDiagnosticImagingStatusUseCase.class,
-                                "diagnosticimaging.update"),
                         new Gate(CreateRoleUseCase.class, "rolePermissions.create"),
                         new Gate(UpdateRoleUseCase.class, "rolePermissions.update"),
                         new Gate(DeleteRoleUseCase.class, "rolePermissions.delete"),
                         new Gate(ReactivateRoleUseCase.class, "rolePermissions.update"),
                         new Gate(CreateRolePermissionUseCase.class, "rolePermissions.create"),
-                        new Gate(UpdateRolePermissionUseCase.class, "rolePermissions.update"),
-                        new Gate(DeleteRolePermissionUseCase.class, "rolePermissions.delete"),
-                        new Gate(ReactivateRolePermissionUseCase.class, "rolePermissions.update"))
+                        new Gate(DeleteRolePermissionUseCase.class, "rolePermissions.delete"))
                 .map(gate -> DynamicTest.dynamicTest(gate.type().getSimpleName(), () -> {
                     Method method = Stream.of(gate.type().getDeclaredMethods())
                             .filter(candidate -> candidate.getName().equals("execute")).findFirst()

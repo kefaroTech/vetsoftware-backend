@@ -50,8 +50,8 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Rodaja HTTP de {@code EmployeeController}: rutas, binding, validación del
  * request, códigos de estado y forma del JSON (incluidos los companion
- * {@code CompanySummary}/{@code RoleSummary}/{@code BranchSummary}). La empresa
- * siempre viene del contexto — nunca del cliente.
+ * {@code CompanySummary}/{@code EmployeeRoleSummary}/{@code BranchSummary}). La
+ * empresa siempre viene del contexto — nunca del cliente.
  */
 @WebMvcTest(EmployeeController.class)
 @AutoConfigureMockMvc(addFilters = false)

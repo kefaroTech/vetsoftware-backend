@@ -29,8 +29,6 @@ class FindAndListRolePermissionsServiceTest {
     private FindRolePermissionService findService;
     @InjectMocks
     private ListRolePermissionsService listService;
-    @InjectMocks
-    private ListRolePermissionsByCompanyService listByCompanyService;
 
     @Nested
     @DisplayName("FindRolePermissionService")
@@ -83,31 +81,6 @@ class FindAndListRolePermissionsServiceTest {
             when(repository.findAll()).thenReturn(List.of());
 
             assertThat(listService.listAll()).isEmpty();
-        }
-    }
-
-    @Nested
-    @DisplayName("ListRolePermissionsByCompanyService")
-    class ListarPorEmpresa {
-
-        @Test
-        @DisplayName("solo devuelve lo que el repositorio acota a la empresa")
-        void solo_devuelve_lo_acotado_a_la_empresa() {
-            when(repository.findAllByRoleCompanyId(RolePermissionMother.COMPANY_ID))
-                    .thenReturn(List.of(RolePermissionMother.activa()));
-
-            List<RolePermissionDto> dtos = listByCompanyService
-                    .listByCompany(RolePermissionMother.COMPANY_ID);
-
-            assertThat(dtos).singleElement().extracting(RolePermissionDto::id).isEqualTo(1L);
-        }
-
-        @Test
-        @DisplayName("empresa sin asignaciones devuelve lista vacia")
-        void empresa_sin_asignaciones_devuelve_lista_vacia() {
-            when(repository.findAllByRoleCompanyId(404L)).thenReturn(List.of());
-
-            assertThat(listByCompanyService.listByCompany(404L)).isEmpty();
         }
     }
 }

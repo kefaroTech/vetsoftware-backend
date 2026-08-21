@@ -10,7 +10,6 @@ import com.vetsoftware.app.employeerole.application.port.in.CreateEmployeeRoleUs
 import com.vetsoftware.app.employeerole.application.port.in.DeleteEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.in.FindEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.in.ListEmployeeRolesUseCase;
-import com.vetsoftware.app.employeerole.application.port.in.ReactivateEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.application.port.in.UpdateEmployeeRoleUseCase;
 import com.vetsoftware.app.employeerole.infrastructure.web.request.CreateEmployeeRoleRequest;
 import com.vetsoftware.app.employeerole.infrastructure.web.request.UpdateEmployeeRoleRequest;
@@ -30,19 +29,17 @@ public class EmployeeRoleController {
     private final FindEmployeeRoleUseCase findUseCase;
     private final ListEmployeeRolesUseCase listUseCase;
     private final DeleteEmployeeRoleUseCase deleteUseCase;
-    private final ReactivateEmployeeRoleUseCase reactivateUseCase;
     private final Authz authz;
 
     public EmployeeRoleController(CreateEmployeeRoleUseCase createUseCase,
             UpdateEmployeeRoleUseCase updateUseCase, FindEmployeeRoleUseCase findUseCase,
             ListEmployeeRolesUseCase listUseCase, DeleteEmployeeRoleUseCase deleteUseCase,
-            ReactivateEmployeeRoleUseCase reactivateUseCase, Authz authz) {
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -78,11 +75,6 @@ public class EmployeeRoleController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public EmployeeRoleResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyIdOrNull()));
     }
 
     private EmployeeRoleResponse toResponse(EmployeeRoleDto dto) {

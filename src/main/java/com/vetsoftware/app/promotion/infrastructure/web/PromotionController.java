@@ -9,7 +9,6 @@ import com.vetsoftware.app.promotion.application.port.in.CreatePromotionUseCase;
 import com.vetsoftware.app.promotion.application.port.in.DeletePromotionUseCase;
 import com.vetsoftware.app.promotion.application.port.in.FindPromotionUseCase;
 import com.vetsoftware.app.promotion.application.port.in.ListPromotionsUseCase;
-import com.vetsoftware.app.promotion.application.port.in.ReactivatePromotionUseCase;
 import com.vetsoftware.app.promotion.application.port.in.UpdatePromotionUseCase;
 import com.vetsoftware.app.promotion.domain.ApplicationType;
 import com.vetsoftware.app.promotion.domain.PromotionStatus;
@@ -32,19 +31,16 @@ public class PromotionController {
     private final FindPromotionUseCase findUseCase;
     private final ListPromotionsUseCase listUseCase;
     private final DeletePromotionUseCase deleteUseCase;
-    private final ReactivatePromotionUseCase reactivateUseCase;
     private final Authz authz;
 
     public PromotionController(CreatePromotionUseCase createUseCase,
             UpdatePromotionUseCase updateUseCase, FindPromotionUseCase findUseCase,
-            ListPromotionsUseCase listUseCase, DeletePromotionUseCase deleteUseCase,
-            ReactivatePromotionUseCase reactivateUseCase, Authz authz) {
+            ListPromotionsUseCase listUseCase, DeletePromotionUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -87,11 +83,6 @@ public class PromotionController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public PromotionResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private static <E extends Enum<E>> E parse(Class<E> type, String value, String field) {

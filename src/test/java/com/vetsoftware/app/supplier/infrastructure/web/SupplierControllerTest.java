@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,7 +22,6 @@ import com.vetsoftware.app.supplier.application.port.in.CreateSupplierUseCase;
 import com.vetsoftware.app.supplier.application.port.in.DeleteSupplierUseCase;
 import com.vetsoftware.app.supplier.application.port.in.FindSupplierUseCase;
 import com.vetsoftware.app.supplier.application.port.in.ListSuppliersUseCase;
-import com.vetsoftware.app.supplier.application.port.in.ReactivateSupplierUseCase;
 import com.vetsoftware.app.supplier.application.port.in.SearchSuppliersUseCase;
 import com.vetsoftware.app.supplier.application.port.in.UpdateSupplierUseCase;
 import com.vetsoftware.app.supplier.domain.SupplierNameAlreadyExistsException;
@@ -89,20 +87,12 @@ class SupplierControllerTest {
     private SearchSuppliersUseCase searchUseCase;
     @MockitoBean
     private DeleteSupplierUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateSupplierUseCase reactivateUseCase;
 
     private static SupplierDto distribuidoraSur() {
         return new SupplierDto(55L, "Distribuidora Sur", "901555444-1", "Marta Gil", "3001234567",
                 "compras@sur.test", "Calle 10 # 5-20", 30, "Entrega los martes",
                 new CompanySummaryDto(COMPANY_ID, "Clinica Norte", "NIT-900"),
                 LocalDateTime.of(2026, 1, 15, 10, 30), null, null, 3L, true);
-    }
-
-    private static SupplierDto pausadoSinOpcionales() {
-        return new SupplierDto(56L, "Insumos Norte", null, null, null, null, null, null, null,
-                new CompanySummaryDto(COMPANY_ID, "Clinica Norte", "NIT-900"),
-                LocalDateTime.of(2026, 1, 15, 10, 30), null, null, 0L, false);
     }
 
     private static CreateSupplierCommand comandoDeCreacionEsperado() {
@@ -222,19 +212,6 @@ class SupplierControllerTest {
             mockMvc.perform(get("/suppliers")).andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].id").value(55))
                     .andExpect(jsonPath("$[0].company.id").value(COMPANY_ID));
-        }
-
-        @Test
-        @DisplayName("GET /suppliers/disabled devuelve el listado de pausados")
-        void get_disabled_devuelve_los_pausados() throws Exception {
-            when(listUseCase.listDisabledByCompany(COMPANY_ID))
-                    .thenReturn(List.of(pausadoSinOpcionales()));
-
-            mockMvc.perform(get("/suppliers/disabled")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$[0].id").value(56))
-                    .andExpect(jsonPath("$[0].enabled").value(false))
-                    .andExpect(jsonPath("$[0].taxId").doesNotExist())
-                    .andExpect(jsonPath("$[0].paymentTermsDays").doesNotExist());
         }
 
         @Test
@@ -368,25 +345,6 @@ class SupplierControllerTest {
                     COMPANY_ID);
 
             mockMvc.perform(delete("/suppliers/99")).andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("PATCH /suppliers/{id}/enable reactiva y responde 200")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(55L, COMPANY_ID)).thenReturn(distribuidoraSur());
-
-            mockMvc.perform(patch("/suppliers/55/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(55))
-                    .andExpect(jsonPath("$.enabled").value(true));
-        }
-
-        @Test
-        @DisplayName("PATCH enable de un proveedor inexistente responde 404")
-        void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, COMPANY_ID))
-                    .thenThrow(new SupplierNotFoundException(99L));
-
-            mockMvc.perform(patch("/suppliers/99/enable")).andExpect(status().isNotFound());
         }
     }
 }

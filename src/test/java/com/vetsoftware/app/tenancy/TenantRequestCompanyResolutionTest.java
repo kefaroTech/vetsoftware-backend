@@ -8,15 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
-import com.vetsoftware.app.consultation.application.command.UpdateConsultationCommand;
-import com.vetsoftware.app.consultation.application.port.in.CreateConsultationUseCase;
-import com.vetsoftware.app.consultation.application.port.in.DeleteConsultationUseCase;
-import com.vetsoftware.app.consultation.application.port.in.FindConsultationUseCase;
-import com.vetsoftware.app.consultation.application.port.in.ListConsultationsUseCase;
-import com.vetsoftware.app.consultation.application.port.in.ReactivateConsultationUseCase;
-import com.vetsoftware.app.consultation.application.port.in.UpdateConsultationUseCase;
-import com.vetsoftware.app.consultation.infrastructure.web.ConsultationController;
-import com.vetsoftware.app.consultation.infrastructure.web.request.UpdateConsultationRequest;
 import com.vetsoftware.app.employee.application.command.InviteEmployeeCommand;
 import com.vetsoftware.app.employee.application.port.in.ChangeMyPasswordUseCase;
 import com.vetsoftware.app.employee.application.port.in.CheckEmployeeCodeAvailabilityUseCase;
@@ -45,7 +36,6 @@ import com.vetsoftware.app.permission.application.port.in.UpdatePermissionUseCas
 import com.vetsoftware.app.permission.infrastructure.web.PermissionController;
 import com.vetsoftware.app.permission.infrastructure.web.request.CreatePermissionRequest;
 import com.vetsoftware.app.permission.infrastructure.web.request.UpdatePermissionRequest;
-import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -76,28 +66,6 @@ class TenantRequestCompanyResolutionTest {
                 .forClass(InviteEmployeeCommand.class);
         verify(inviteUseCase).execute(command.capture());
         verify(authz).requireAssignableBranches(branches);
-        assertThat(command.getValue().companyId()).isEqualTo(AUTHENTICATED_COMPANY_ID);
-    }
-
-    @Test
-    void consultationUpdateUsesAuthenticatedCompany() {
-        Authz authz = authenticatedCompany();
-        UpdateConsultationUseCase updateUseCase = mock(UpdateConsultationUseCase.class);
-        when(updateUseCase.execute(any())).thenThrow(new TestFlowStopped());
-        ConsultationController controller = new ConsultationController(
-                mock(CreateConsultationUseCase.class), updateUseCase,
-                mock(FindConsultationUseCase.class), mock(ListConsultationsUseCase.class),
-                mock(DeleteConsultationUseCase.class), mock(ReactivateConsultationUseCase.class),
-                authz);
-
-        assertThatThrownBy(() -> controller.update(8L,
-                new UpdateConsultationRequest(LocalDate.now(), 1L, "Anamnesis", null, null, null,
-                        9L, null, null, null, null, null, null, null, null, null, null)))
-                .isInstanceOf(TestFlowStopped.class);
-
-        ArgumentCaptor<UpdateConsultationCommand> command = ArgumentCaptor
-                .forClass(UpdateConsultationCommand.class);
-        verify(updateUseCase).execute(command.capture());
         assertThat(command.getValue().companyId()).isEqualTo(AUTHENTICATED_COMPANY_ID);
     }
 

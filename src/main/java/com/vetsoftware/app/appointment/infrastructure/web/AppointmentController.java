@@ -27,9 +27,9 @@ import com.vetsoftware.app.appointment.infrastructure.web.request.RescheduleAppo
 import com.vetsoftware.app.appointment.infrastructure.web.request.UpdateAppointmentRequest;
 import com.vetsoftware.app.appointment.infrastructure.web.response.AnimalSummary;
 import com.vetsoftware.app.appointment.infrastructure.web.response.AppointmentResponse;
-import com.vetsoftware.app.appointment.infrastructure.web.response.BranchSummary;
-import com.vetsoftware.app.appointment.infrastructure.web.response.EmployeeSummary;
-import com.vetsoftware.app.appointment.infrastructure.web.response.OwnerSummary;
+import com.vetsoftware.app.appointment.infrastructure.web.response.AppointmentBranchSummary;
+import com.vetsoftware.app.appointment.infrastructure.web.response.AppointmentEmployeeSummary;
+import com.vetsoftware.app.appointment.infrastructure.web.response.AppointmentOwnerSummary;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -145,9 +145,10 @@ public class AppointmentController {
         return new AppointmentResponse(dto.id(), dto.startAt(), dto.durationMinutes(), dto.type(),
                 dto.status(), dto.notes(), dto.cancellationReason(),
                 a == null ? null : new AnimalSummary(a.id(), a.name(), a.code()),
-                o == null ? null : new OwnerSummary(o.id(), o.name()), dto.clientName(),
-                dto.clientPhone(), dto.clientEmail(), new EmployeeSummary(e.id(), e.name()),
-                new BranchSummary(b.id(), b.name(), b.code()), dto.version(), dto.enabled(),
-                dto.createdDate(), dto.overlappingAppointmentIds());
+                o == null ? null : new AppointmentOwnerSummary(o.id(), o.name()), dto.clientName(),
+                dto.clientPhone(), dto.clientEmail(),
+                new AppointmentEmployeeSummary(e.id(), e.name()),
+                new AppointmentBranchSummary(b.id(), b.name(), b.code()), dto.version(),
+                dto.enabled(), dto.createdDate(), dto.overlappingAppointmentIds());
     }
 }

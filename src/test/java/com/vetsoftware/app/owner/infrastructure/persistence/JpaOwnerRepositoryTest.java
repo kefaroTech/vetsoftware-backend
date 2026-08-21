@@ -212,21 +212,4 @@ class JpaOwnerRepositoryTest {
             verify(jpaRepository, never()).delete(any());
         }
     }
-
-    @Nested
-    @DisplayName("reactivate")
-    class Reactivate {
-
-        @Test
-        @DisplayName("delega en el UPDATE nativo y devuelve las filas afectadas")
-        void delega_en_el_update_nativo() {
-            construirRepository();
-            when(jpaRepository.reactivate(OwnerMother.OWNER_ID, OwnerMother.COMPANY_ID))
-                    .thenReturn(1);
-
-            int filas = repository.reactivate(OwnerMother.OWNER_ID, OwnerMother.COMPANY_ID);
-
-            assertThat(filas).isEqualTo(1);
-        }
-    }
 }

@@ -127,10 +127,6 @@ class AnimalTest {
                     AnimalMother.CREADO, null, true);
         }
 
-        private void applyTo(Animal animal) {
-            animal.update(name, code, specie, breed, owner, gender, weightType, animalType,
-                    reproductiveState, color, bod, size, deceased, deceasedDate, company);
-        }
     }
 
     @Nested
@@ -280,62 +276,6 @@ class AnimalTest {
     }
 
     @Nested
-    @DisplayName("update")
-    class Update {
-
-        @Test
-        @DisplayName("reemplaza los campos mutables y conserva id y createdDate")
-        void reemplaza_los_campos_mutables_y_conserva_id_y_created_date() {
-            Animal animal = valido().build();
-
-            valido().name("Michi").code("A-002").specie(AnimalMother.GATO)
-                    .breed(AnimalMother.SIAMES).owner(AnimalMother.OTRO_DUENO).gender(Gender.FEMALE)
-                    .weightType(WeightType.GRAMS).animalType(AnimalType.SERVICE)
-                    .reproductiveState(ReproductiveState.NO_STERILIZED).color(AnimalMother.BLANCO)
-                    .size(12).applyTo(animal);
-
-            assertThat(animal.getName()).isEqualTo("Michi");
-            assertThat(animal.getCode()).isEqualTo("A-002");
-            assertThat(animal.getSpecie()).isEqualTo(AnimalMother.GATO);
-            assertThat(animal.getBreed()).isEqualTo(AnimalMother.SIAMES);
-            assertThat(animal.getOwner()).isEqualTo(AnimalMother.OTRO_DUENO);
-            assertThat(animal.getGender()).isEqualTo(Gender.FEMALE);
-            assertThat(animal.getWeightType()).isEqualTo(WeightType.GRAMS);
-            assertThat(animal.getAnimalType()).isEqualTo(AnimalType.SERVICE);
-            assertThat(animal.getReproductiveState()).isEqualTo(ReproductiveState.NO_STERILIZED);
-            assertThat(animal.getColor()).isEqualTo(AnimalMother.BLANCO);
-            assertThat(animal.getSize()).isEqualTo(12);
-            assertThat(animal.getId()).isEqualTo(1L);
-            assertThat(animal.getCreatedDate()).isEqualTo(AnimalMother.CREADO);
-        }
-
-        @Test
-        @DisplayName("un update invalido no deja el agregado a medias")
-        void un_update_invalido_no_deja_el_agregado_a_medias() {
-            Animal animal = valido().build();
-
-            // El nombre es valido y la especie no: si validate() no corriera ANTES de
-            // asignar, el animal se quedaria con el nombre nuevo y la especie vieja.
-            assertThatThrownBy(() -> valido().name("Michi").specie(null).applyTo(animal))
-                    .isInstanceOf(IllegalArgumentException.class);
-
-            assertThat(animal.getName()).isEqualTo("Firulais");
-            assertThat(animal.getSpecie()).isEqualTo(AnimalMother.PERRO);
-        }
-
-        @Test
-        @DisplayName("no toca el estado de habilitacion")
-        void no_toca_el_estado_de_habilitacion() {
-            Animal animal = valido().build();
-            animal.disable();
-
-            valido().name("Michi").applyTo(animal);
-
-            assertThat(animal.isEnabled()).isFalse();
-        }
-    }
-
-    @Nested
     @DisplayName("peso actual derivado")
     class PesoDerivado {
 
@@ -350,21 +290,6 @@ class AnimalTest {
             assertThat(animal.getCurrentWeight()).isEqualByComparingTo("12.50");
             assertThat(animal.getCurrentWeightUnit()).isEqualTo(WeightType.KILOGRAMS);
             assertThat(animal.getCurrentWeightMeasuredAt()).isEqualTo(LocalDate.of(2026, 2, 1));
-        }
-
-        @Test
-        @DisplayName("update no borra el peso derivado")
-        void update_no_borra_el_peso_derivado() {
-            Animal animal = valido().build();
-            animal.applyCurrentWeight(new BigDecimal("12.50"), WeightType.KILOGRAMS,
-                    LocalDate.of(2026, 2, 1));
-
-            valido().name("Michi").weightType(WeightType.GRAMS).applyTo(animal);
-
-            // El peso es serie temporal: lo unico que cambia es la unidad PREFERIDA.
-            assertThat(animal.getCurrentWeight()).isEqualByComparingTo("12.50");
-            assertThat(animal.getCurrentWeightUnit()).isEqualTo(WeightType.KILOGRAMS);
-            assertThat(animal.getWeightType()).isEqualTo(WeightType.GRAMS);
         }
 
         @Test

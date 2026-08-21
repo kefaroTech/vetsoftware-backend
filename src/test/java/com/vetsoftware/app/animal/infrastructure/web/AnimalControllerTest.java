@@ -4,24 +4,17 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.animal.application.command.CreateAnimalCommand;
-import com.vetsoftware.app.animal.application.command.UpdateAnimalCommand;
 import com.vetsoftware.app.animal.application.dto.AnimalDto;
 import com.vetsoftware.app.animal.application.port.in.CreateAnimalUseCase;
-import com.vetsoftware.app.animal.application.port.in.DeleteAnimalUseCase;
 import com.vetsoftware.app.animal.application.port.in.FindAnimalUseCase;
 import com.vetsoftware.app.animal.application.port.in.ListAnimalsByOwnerUseCase;
 import com.vetsoftware.app.animal.application.port.in.ListAnimalsUseCase;
-import com.vetsoftware.app.animal.application.port.in.ReactivateAnimalUseCase;
-import com.vetsoftware.app.animal.application.port.in.UpdateAnimalUseCase;
 import com.vetsoftware.app.animal.domain.AnimalNotFoundException;
 import com.vetsoftware.app.animal.domain.Gender;
 import com.vetsoftware.app.animal.domain.ReproductiveState;
@@ -72,17 +65,11 @@ class AnimalControllerTest {
     @MockitoBean
     private CreateAnimalUseCase createUseCase;
     @MockitoBean
-    private UpdateAnimalUseCase updateUseCase;
-    @MockitoBean
     private FindAnimalUseCase findUseCase;
     @MockitoBean
     private ListAnimalsUseCase listUseCase;
     @MockitoBean
     private ListAnimalsByOwnerUseCase listByOwnerUseCase;
-    @MockitoBean
-    private DeleteAnimalUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateAnimalUseCase reactivateUseCase;
 
     private static AnimalDto perroSano() {
         return AnimalDto.from(AnimalMother.perroSano());
@@ -212,116 +199,6 @@ class AnimalControllerTest {
                     .thenThrow(new AnimalNotFoundException(999L));
 
             mockMvc.perform(get("/animals/999")).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PUT /animals/{id}")
-    class Actualizacion {
-
-        @Test
-        @DisplayName("responde 200 con el animal actualizado")
-        void responde_200() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(perroSano());
-
-            mockMvc.perform(put("/animals/" + AnimalMother.ANIMAL_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content(ALTA_VALIDA))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Firulais"));
-        }
-
-        @Test
-        @DisplayName("el id sale de la ruta y la empresa del contexto, nunca del cuerpo")
-        void el_id_sale_de_la_ruta_y_la_empresa_del_contexto() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(perroSano());
-
-            mockMvc.perform(put("/animals/" + AnimalMother.ANIMAL_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content(ALTA_VALIDA));
-
-            verify(updateUseCase).execute(new UpdateAnimalCommand(AnimalMother.ANIMAL_ID,
-                    "Firulais", "A-001", 1L, 2L, 3L, Gender.MALE, WeightType.KILOGRAMS,
-                    com.vetsoftware.app.animal.domain.AnimalType.NONE, ReproductiveState.STERILIZED,
-                    4L, java.time.LocalDate.of(2020, 5, 10), null, 30, false, null, COMPANY_ID));
-        }
-
-        @Test
-        @DisplayName("sin nombre responde 400 y no actualiza nada")
-        void sin_nombre_responde_400() throws Exception {
-            mockMvc.perform(put("/animals/" + AnimalMother.ANIMAL_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"specieId":1,"breedId":2,"ownerId":3,"gender":"MALE",
-                             "weightType":"KILOGRAMS","animalType":"NONE",
-                             "reproductiveState":"STERILIZED","colorId":4,"deceased":false}
-                            """)).andExpect(status().isBadRequest());
-
-            verify(updateUseCase, never()).execute(any());
-        }
-
-        @Test
-        @DisplayName("actualizar un animal inexistente responde 404")
-        void actualizar_un_animal_inexistente_responde_404() throws Exception {
-            when(updateUseCase.execute(any())).thenThrow(new AnimalNotFoundException(999L));
-
-            mockMvc.perform(put("/animals/999").contentType(MediaType.APPLICATION_JSON)
-                    .content(ALTA_VALIDA)).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("DELETE /animals/{id}")
-    class Borrado {
-
-        @Test
-        @DisplayName("responde 204 sin cuerpo")
-        void responde_204() throws Exception {
-            mockMvc.perform(delete("/animals/" + AnimalMother.ANIMAL_ID))
-                    .andExpect(status().isNoContent());
-
-            verify(deleteUseCase).execute(AnimalMother.ANIMAL_ID, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("borrar un animal con hijos activos responde 409, no 500")
-        void borrar_con_hijos_activos_responde_409() throws Exception {
-            org.mockito.Mockito
-                    .doThrow(new com.vetsoftware.app.animal.domain.AnimalHasActiveChildrenException(
-                            AnimalMother.ANIMAL_ID, "consultation"))
-                    .when(deleteUseCase).execute(AnimalMother.ANIMAL_ID, COMPANY_ID);
-
-            mockMvc.perform(delete("/animals/" + AnimalMother.ANIMAL_ID))
-                    .andExpect(status().isConflict());
-        }
-
-        @Test
-        @DisplayName("borrar un animal inexistente responde 404")
-        void borrar_un_animal_inexistente_responde_404() throws Exception {
-            org.mockito.Mockito.doThrow(new AnimalNotFoundException(999L)).when(deleteUseCase)
-                    .execute(999L, COMPANY_ID);
-
-            mockMvc.perform(delete("/animals/999")).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /animals/{id}/enable")
-    class Reactivacion {
-
-        @Test
-        @DisplayName("responde 200 con el animal reactivado")
-        void responde_200() throws Exception {
-            when(reactivateUseCase.execute(AnimalMother.ANIMAL_ID, COMPANY_ID))
-                    .thenReturn(perroSano());
-
-            mockMvc.perform(patch("/animals/" + AnimalMother.ANIMAL_ID + "/enable"))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
-        }
-
-        @Test
-        @DisplayName("reactivar un animal inexistente responde 404")
-        void reactivar_un_animal_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(999L, COMPANY_ID))
-                    .thenThrow(new AnimalNotFoundException(999L));
-
-            mockMvc.perform(patch("/animals/999/enable")).andExpect(status().isNotFound());
         }
     }
 }

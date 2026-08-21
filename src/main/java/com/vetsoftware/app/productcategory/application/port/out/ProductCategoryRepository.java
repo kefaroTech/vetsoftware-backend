@@ -25,6 +25,4 @@ public interface ProductCategoryRepository {
     List<ProductCategory> findAllByCompanyId(Long companyId);
 
     void delete(Long id);
-
-    int reactivate(Long id, Long companyId);
 }

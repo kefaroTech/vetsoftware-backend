@@ -71,29 +71,6 @@ public class Animal {
                 LocalDateTime.now(), null, true);
     }
 
-    public void update(String name, String code, SpecieRef specie, BreedRef breed, OwnerRef owner,
-            Gender gender, WeightType weightType, AnimalType animalType,
-            ReproductiveState reproductiveState, AnimalColorRef color, LocalDate bod, Integer size,
-            boolean deceased, LocalDate deceasedDate, CompanyRef company) {
-        validate(name, code, specie, breed, owner, gender, weightType, animalType,
-                reproductiveState, color, size, deceased, deceasedDate, company);
-        this.name = name;
-        this.code = code;
-        this.specie = specie;
-        this.breed = breed;
-        this.owner = owner;
-        this.gender = gender;
-        this.weightType = weightType;
-        this.animalType = animalType;
-        this.reproductiveState = reproductiveState;
-        this.color = color;
-        this.bod = bod;
-        this.size = size;
-        this.deceased = deceased;
-        this.deceasedDate = deceasedDate;
-        this.company = company;
-    }
-
     /**
      * Hidrata el peso actual derivado del último registro de peso. Solo lo llama la
      * capa de persistencia.

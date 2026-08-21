@@ -10,7 +10,6 @@ import com.vetsoftware.app.diagnosticimagingtype.application.port.in.DeleteDiagn
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.FindDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ListAvailableDiagnosticImagingTypesUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ListDiagnosticImagingTypesUseCase;
-import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ReactivateDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.UpdateDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.infrastructure.web.request.CreateDiagnosticImagingTypeRequest;
 import com.vetsoftware.app.diagnosticimagingtype.infrastructure.web.request.UpdateDiagnosticImagingTypeRequest;
@@ -30,7 +29,6 @@ public class DiagnosticImagingTypeController {
     private final ListDiagnosticImagingTypesUseCase listUseCase;
     private final ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase;
     private final DeleteDiagnosticImagingTypeUseCase deleteUseCase;
-    private final ReactivateDiagnosticImagingTypeUseCase reactivateUseCase;
     private final Authz authz;
 
     public DiagnosticImagingTypeController(CreateDiagnosticImagingTypeUseCase createUseCase,
@@ -38,15 +36,13 @@ public class DiagnosticImagingTypeController {
             FindDiagnosticImagingTypeUseCase findUseCase,
             ListDiagnosticImagingTypesUseCase listUseCase,
             ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase,
-            DeleteDiagnosticImagingTypeUseCase deleteUseCase,
-            ReactivateDiagnosticImagingTypeUseCase reactivateUseCase, Authz authz) {
+            DeleteDiagnosticImagingTypeUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listAvailableUseCase = listAvailableUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -87,11 +83,6 @@ public class DiagnosticImagingTypeController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public DiagnosticImagingTypeResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private DiagnosticImagingTypeResponse toResponse(DiagnosticImagingTypeDto dto) {

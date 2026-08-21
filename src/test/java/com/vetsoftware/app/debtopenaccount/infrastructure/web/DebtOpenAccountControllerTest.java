@@ -1,37 +1,26 @@
 package com.vetsoftware.app.debtopenaccount.infrastructure.web;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.debtopenaccount.application.command.CreateDebtOpenAccountCommand;
-import com.vetsoftware.app.debtopenaccount.application.command.DeleteDebtOpenAccountCommand;
-import com.vetsoftware.app.debtopenaccount.application.command.ReactivateDebtOpenAccountCommand;
-import com.vetsoftware.app.debtopenaccount.application.command.UpdateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.VoidDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.dto.DebtOpenAccountDto;
 import com.vetsoftware.app.debtopenaccount.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.debtopenaccount.application.dto.OpenAccountSummaryDto;
 import com.vetsoftware.app.debtopenaccount.application.port.in.CreateDebtOpenAccountUseCase;
-import com.vetsoftware.app.debtopenaccount.application.port.in.DeleteDebtOpenAccountUseCase;
-import com.vetsoftware.app.debtopenaccount.application.port.in.FindDebtOpenAccountUseCase;
 import com.vetsoftware.app.debtopenaccount.application.port.in.ListDebtOpenAccountsByOpenAccountUseCase;
 import com.vetsoftware.app.debtopenaccount.application.port.in.ListDebtOpenAccountsUseCase;
-import com.vetsoftware.app.debtopenaccount.application.port.in.ReactivateDebtOpenAccountUseCase;
-import com.vetsoftware.app.debtopenaccount.application.port.in.UpdateDebtOpenAccountUseCase;
 import com.vetsoftware.app.debtopenaccount.application.port.in.VoidDebtOpenAccountUseCase;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountAlreadyVoidedException;
-import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountNotFoundException;
 import com.vetsoftware.app.debtopenaccount.domain.PaymentMethod;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
@@ -78,18 +67,6 @@ class DebtOpenAccountControllerTest {
              "clientRequestId":"8f14e45f-ea01-4d0a-9c1a-000000000001","expectedVersion":3}
             """;
 
-    private static final String EDITAR_JSON = """
-            {"amount":45000,"paymentMethod":"CARD","openAccountId":50,"expectedVersion":3}
-            """;
-
-    /**
-     * El DELETE lleva cuerpo desde los issues #110/#123: quitar un abono mueve
-     * dinero, asi que exige motivo y admite la version esperada de la cuenta.
-     */
-    private static final String BORRAR_JSON = """
-            {"reason":"Abono cargado a la cuenta equivocada","expectedVersion":3}
-            """;
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -99,17 +76,9 @@ class DebtOpenAccountControllerTest {
     @MockitoBean
     private CreateDebtOpenAccountUseCase createUseCase;
     @MockitoBean
-    private UpdateDebtOpenAccountUseCase updateUseCase;
-    @MockitoBean
-    private FindDebtOpenAccountUseCase findUseCase;
-    @MockitoBean
     private ListDebtOpenAccountsUseCase listUseCase;
     @MockitoBean
     private ListDebtOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
-    @MockitoBean
-    private DeleteDebtOpenAccountUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateDebtOpenAccountUseCase reactivateUseCase;
     @MockitoBean
     private VoidDebtOpenAccountUseCase voidUseCase;
 
@@ -306,151 +275,6 @@ class DebtOpenAccountControllerTest {
             mockMvc.perform(get("/debt-open-accounts/by-open-account/50"))
                     .andExpect(status().isOk()).andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$").isEmpty());
-        }
-    }
-
-    @Nested
-    @DisplayName("GET /debt-open-accounts/{id}")
-    class Buscar {
-
-        @Test
-        @DisplayName("acota la busqueda a la company del contexto")
-        void acota_la_busqueda_a_la_company_del_contexto() throws Exception {
-            when(findUseCase.findById(PAYMENT_ID, COMPANY_ID)).thenReturn(abono());
-
-            mockMvc.perform(get("/debt-open-accounts/100")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(100));
-
-            verify(findUseCase).findById(PAYMENT_ID, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("inexistente responde 404, no 500")
-        void inexistente_responde_404() throws Exception {
-            when(findUseCase.findById(999L, COMPANY_ID))
-                    .thenThrow(new DebtOpenAccountNotFoundException(999L));
-
-            mockMvc.perform(get("/debt-open-accounts/999")).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PUT /debt-open-accounts/{id}")
-    class Actualizar {
-
-        @Test
-        @DisplayName("responde 200 y arma el command con el id de la ruta y la company del contexto")
-        void responde_200_y_arma_el_command() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(abono(new BigDecimal("45000")));
-
-            mockMvc.perform(put("/debt-open-accounts/100").contentType(MediaType.APPLICATION_JSON)
-                    .content(EDITAR_JSON)).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.amount").value(45000));
-
-            verify(updateUseCase).execute(new UpdateDebtOpenAccountCommand(PAYMENT_ID,
-                    new BigDecimal("45000"), "CARD", OPEN_ACCOUNT_ID, COMPANY_ID, 3L));
-        }
-
-        @Test
-        @DisplayName("con request invalido responde 400 y no llega al caso de uso")
-        void request_invalido_responde_400() throws Exception {
-            mockMvc.perform(put("/debt-open-accounts/100").contentType(MediaType.APPLICATION_JSON)
-                    .content("""
-                            {"paymentMethod":"CARD","openAccountId":50}
-                            """)).andExpect(status().isBadRequest());
-
-            verify(updateUseCase, never()).execute(any());
-        }
-
-        @Test
-        @DisplayName("abono inexistente responde 404")
-        void abono_inexistente_responde_404() throws Exception {
-            when(updateUseCase.execute(any()))
-                    .thenThrow(new DebtOpenAccountNotFoundException(PAYMENT_ID));
-
-            mockMvc.perform(put("/debt-open-accounts/100").contentType(MediaType.APPLICATION_JSON)
-                    .content(EDITAR_JSON)).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("DELETE /debt-open-accounts/{id}")
-    class Borrar {
-
-        @Test
-        @DisplayName("responde 204 sin cuerpo de respuesta")
-        void responde_204_sin_cuerpo() throws Exception {
-            mockMvc.perform(delete("/debt-open-accounts/100")
-                    .contentType(MediaType.APPLICATION_JSON).content(BORRAR_JSON))
-                    .andExpect(status().isNoContent());
-
-            verify(deleteUseCase).execute(any());
-        }
-
-        @Test
-        @DisplayName("arma el command con la company, el empleado y el motivo; el id sale de la ruta")
-        void arma_el_command_con_la_company_el_empleado_y_el_motivo() throws Exception {
-            mockMvc.perform(delete("/debt-open-accounts/100")
-                    .contentType(MediaType.APPLICATION_JSON).content(BORRAR_JSON))
-                    .andExpect(status().isNoContent());
-
-            // La empresa y el empleado los sella el backend desde el contexto: el
-            // cliente no puede dar de baja el abono de otro tenant ni firmar la baja con
-            // el nombre de otro.
-            verify(deleteUseCase).execute(new DeleteDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID,
-                    EMPLOYEE_ID, "Abono cargado a la cuenta equivocada", 3L));
-        }
-
-        @Test
-        @DisplayName("sin motivo responde 400 y no llega al caso de uso")
-        void sin_motivo_responde_400() throws Exception {
-            mockMvc.perform(delete("/debt-open-accounts/100")
-                    .contentType(MediaType.APPLICATION_JSON).content("{}"))
-                    .andExpect(status().isBadRequest());
-
-            verifyNoInteractions(deleteUseCase);
-        }
-
-        @Test
-        @DisplayName("de un abono inexistente responde 404")
-        void de_un_abono_inexistente_responde_404() throws Exception {
-            org.mockito.Mockito.doThrow(new DebtOpenAccountNotFoundException(999L))
-                    .when(deleteUseCase).execute(any());
-
-            mockMvc.perform(delete("/debt-open-accounts/999")
-                    .contentType(MediaType.APPLICATION_JSON).content(BORRAR_JSON))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /debt-open-accounts/{id}/enable")
-    class Reactivar {
-
-        @Test
-        @DisplayName("responde 200 con el abono reactivado y acota a la company del contexto")
-        void responde_200_con_el_abono_reactivado() throws Exception {
-            when(reactivateUseCase.execute(
-                    new ReactivateDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID, EMPLOYEE_ID)))
-                    .thenReturn(abono());
-
-            mockMvc.perform(patch("/debt-open-accounts/100/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(100));
-
-            // El cuerpo no existe: empresa y empleado los sella el backend. El empleado
-            // importa porque el ingreso vuelve a entrar en SU caja.
-            verify(reactivateUseCase).execute(
-                    new ReactivateDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID, EMPLOYEE_ID));
-        }
-
-        @Test
-        @DisplayName("de un abono inexistente responde 404")
-        void de_un_abono_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(any(ReactivateDebtOpenAccountCommand.class)))
-                    .thenThrow(new DebtOpenAccountNotFoundException(999L));
-
-            mockMvc.perform(patch("/debt-open-accounts/999/enable"))
-                    .andExpect(status().isNotFound());
         }
     }
 

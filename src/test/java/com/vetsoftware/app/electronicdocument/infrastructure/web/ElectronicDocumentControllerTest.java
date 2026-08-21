@@ -1,6 +1,5 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.web;
 
-import static com.vetsoftware.app.electronicdocument.testsupport.ElectronicDocumentMother.facturaPendienteConId;
 import static com.vetsoftware.app.electronicdocument.testsupport.ElectronicDocumentMother.facturaValidada;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -12,7 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
-import com.vetsoftware.app.electronicdocument.application.command.BuildElectronicDocumentCommand;
 import com.vetsoftware.app.electronicdocument.application.command.ConvertPosToInvoiceCommand;
 import com.vetsoftware.app.electronicdocument.application.command.EmitElectronicDocumentCommand;
 import com.vetsoftware.app.electronicdocument.application.command.IssueCreditNoteCommand;
@@ -20,7 +18,6 @@ import com.vetsoftware.app.electronicdocument.application.command.IssueDebitNote
 import com.vetsoftware.app.electronicdocument.application.command.RegisterPosSaleCommand;
 import com.vetsoftware.app.electronicdocument.application.command.TransmitElectronicDocumentCommand;
 import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocumentDto;
-import com.vetsoftware.app.electronicdocument.application.port.in.BuildElectronicDocumentFromAccountUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.ConvertPosToInvoiceUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.EmitElectronicDocumentFromAccountUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.FindElectronicDocumentByAccountUseCase;
@@ -76,8 +73,6 @@ class ElectronicDocumentControllerTest {
     private Authz authz;
 
     @MockitoBean
-    private BuildElectronicDocumentFromAccountUseCase buildUseCase;
-    @MockitoBean
     private EmitElectronicDocumentFromAccountUseCase emitUseCase;
     @MockitoBean
     private RegisterPosSaleUseCase registerPosSaleUseCase;
@@ -104,25 +99,8 @@ class ElectronicDocumentControllerTest {
     }
 
     @Nested
-    @DisplayName("construccion y emision desde una cuenta cerrada")
-    class ConstruccionYEmision {
-
-        @Test
-        @DisplayName("POST /electronic-documents/from-account sella companyId desde el contexto")
-        void build_from_account_sella_company_id() throws Exception {
-            var dto = ElectronicDocumentDto.from(facturaPendienteConId(1L));
-            when(buildUseCase.execute(any())).thenReturn(dto);
-
-            mockMvc.perform(post("/electronic-documents/from-account")
-                    .contentType(MediaType.APPLICATION_JSON).content(
-                            """
-                                    {"openAccountId": 100, "documentType": "FE_VENTA", "finalConsumer": false}
-                                    """))
-                    .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(1));
-
-            verify(buildUseCase).execute(new BuildElectronicDocumentCommand(100L,
-                    ElectronicDocumentType.FE_VENTA, COMPANY_ID, false));
-        }
+    @DisplayName("emision desde una cuenta cerrada")
+    class Emision {
 
         @Test
         @DisplayName("POST /electronic-documents/emit sella companyId desde el contexto")

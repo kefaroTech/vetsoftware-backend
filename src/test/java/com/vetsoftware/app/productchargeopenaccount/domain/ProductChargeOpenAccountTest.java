@@ -69,10 +69,6 @@ class ProductChargeOpenAccountTest {
                     ProductChargeOpenAccountMother.EMPLEADO, ProductChargeOpenAccountMother.CREADO,
                     null, true, false, null, null, null, "req-1");
         }
-
-        private void applyTo(ProductChargeOpenAccount charge) {
-            charge.update(animal, product, openAccount);
-        }
     }
 
     @Nested
@@ -409,58 +405,6 @@ class ProductChargeOpenAccountTest {
                             ProductChargeOpenAccountMother.EMPLEADO, null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("product is required");
-        }
-    }
-
-    @Nested
-    @DisplayName("update")
-    class Update {
-
-        @Test
-        @DisplayName("reemplaza animal, producto y cuenta sin tocar el dinero congelado")
-        void reemplaza_las_referencias_sin_tocar_el_dinero() {
-            ProductChargeOpenAccount charge = valido().build();
-
-            valido().animal(ProductChargeOpenAccountMother.OTRO_ANIMAL)
-                    .product(ProductChargeOpenAccountMother.OTRO_PRODUCTO)
-                    .openAccount(ProductChargeOpenAccountMother.OTRA_CUENTA).applyTo(charge);
-
-            assertThat(charge.getAnimal()).isEqualTo(ProductChargeOpenAccountMother.OTRO_ANIMAL);
-            assertThat(charge.getProduct()).isEqualTo(ProductChargeOpenAccountMother.OTRO_PRODUCTO);
-            assertThat(charge.getOpenAccount())
-                    .isEqualTo(ProductChargeOpenAccountMother.OTRA_CUENTA);
-            // El precio se congelo al crear el cargo: cambiar de producto NO lo recalcula.
-            assertThat(charge.getUnitPrice()).isEqualByComparingTo("11900");
-            assertThat(charge.getTotalAmount()).isEqualByComparingTo("11900.00");
-            assertThat(charge.getBaseAmount()).isEqualByComparingTo("10000.00");
-            assertThat(charge.getTaxAmount()).isEqualByComparingTo("1900.00");
-        }
-
-        @Test
-        @DisplayName("un update invalido no deja el agregado a medias")
-        void un_update_invalido_no_deja_el_agregado_a_medias() {
-            ProductChargeOpenAccount charge = valido().build();
-
-            assertThatThrownBy(() -> valido().animal(ProductChargeOpenAccountMother.OTRO_ANIMAL)
-                    .product(null).applyTo(charge)).isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("product is required");
-
-            assertThat(charge.getAnimal()).isEqualTo(ProductChargeOpenAccountMother.ANIMAL);
-            assertThat(charge.getProduct()).isEqualTo(ProductChargeOpenAccountMother.PRODUCTO);
-        }
-
-        @Test
-        @DisplayName("no toca la anulacion ni la habilitacion")
-        void no_toca_la_anulacion_ni_la_habilitacion() {
-            ProductChargeOpenAccount charge = ProductChargeOpenAccountMother.cargoAnulado();
-
-            charge.update(ProductChargeOpenAccountMother.OTRO_ANIMAL,
-                    ProductChargeOpenAccountMother.OTRO_PRODUCTO,
-                    ProductChargeOpenAccountMother.OTRA_CUENTA);
-
-            assertThat(charge.isVoided()).isTrue();
-            assertThat(charge.getVoidReason()).isEqualTo("Cobrado por error");
-            assertThat(charge.isEnabled()).isTrue();
         }
     }
 

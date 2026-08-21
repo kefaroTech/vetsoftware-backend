@@ -189,7 +189,7 @@ class VaccinationTypePersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("soft delete y reactivacion")
+    @DisplayName("soft delete")
     class SoftDeleteYReactivacion {
 
         @Test
@@ -199,43 +199,6 @@ class VaccinationTypePersistenceIT extends AbstractDataJpaTest {
 
             deshabilitar(pausado.getId());
 
-            assertThat(repository.findById(pausado.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivar devuelve el tipo al listado por id")
-        void reactivar_devuelve_el_tipo_al_listado() {
-            VaccinationType pausado = guardar("Rabia");
-            deshabilitar(pausado.getId());
-
-            int filas = repository.reactivate(pausado.getId(), COMPANY_ID);
-            releerDesdeLaBase();
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findById(pausado.getId())).map(VaccinationType::getId)
-                    .contains(pausado.getId());
-        }
-
-        @Test
-        @DisplayName("reactivar un id inexistente no afecta ninguna fila")
-        void reactivar_un_id_inexistente_no_afecta_ninguna_fila() {
-            int filas = repository.reactivate(999999L, COMPANY_ID);
-
-            assertThat(filas).isZero();
-        }
-
-        @Test
-        @DisplayName("reactivar con el companyId de OTRA empresa afecta 0 filas y lo deja oculto")
-        void reactivar_con_la_empresa_ajena_no_afecta_ninguna_fila() {
-            // El WHERE es la unica barrera de la reactivacion: no hay lectura previa que
-            // valide la propiedad.
-            VaccinationType pausado = guardar("Rabia");
-            deshabilitar(pausado.getId());
-
-            int filas = repository.reactivate(pausado.getId(), OTRA_COMPANY_ID);
-            releerDesdeLaBase();
-
-            assertThat(filas).isZero();
             assertThat(repository.findById(pausado.getId())).isEmpty();
         }
 

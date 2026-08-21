@@ -14,7 +14,6 @@ import com.vetsoftware.app.hospitalization.application.port.in.FindHospitalizati
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsByAnimalUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsByCompanyUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsUseCase;
-import com.vetsoftware.app.hospitalization.application.port.in.ReactivateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.UpdateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.infrastructure.web.request.CreateHospitalizationRequest;
 import com.vetsoftware.app.hospitalization.infrastructure.web.request.UpdateHospitalizationRequest;
@@ -37,7 +36,6 @@ public class HospitalizationController {
     private final ListHospitalizationsByCompanyUseCase listByCompanyUseCase;
     private final ListHospitalizationsByAnimalUseCase listByAnimalUseCase;
     private final DeleteHospitalizationUseCase deleteUseCase;
-    private final ReactivateHospitalizationUseCase reactivateUseCase;
     private final Authz authz;
 
     public HospitalizationController(CreateHospitalizationUseCase createUseCase,
@@ -45,8 +43,7 @@ public class HospitalizationController {
             ListHospitalizationsUseCase listUseCase,
             ListHospitalizationsByAnimalUseCase listByAnimalUseCase,
             ListHospitalizationsByCompanyUseCase listByCompanyUseCase,
-            DeleteHospitalizationUseCase deleteUseCase,
-            ReactivateHospitalizationUseCase reactivateUseCase, Authz authz) {
+            DeleteHospitalizationUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
@@ -54,7 +51,6 @@ public class HospitalizationController {
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.listByCompanyUseCase = listByCompanyUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -107,11 +103,6 @@ public class HospitalizationController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyId());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public HospitalizationResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private HospitalizationResponse toResponse(HospitalizationDto dto) {

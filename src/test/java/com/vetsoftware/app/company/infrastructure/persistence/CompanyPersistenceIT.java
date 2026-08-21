@@ -190,26 +190,5 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
                     .doesNotContain(pausada.getId());
             assertThat(repository.findById(pausada.getId())).isEmpty();
         }
-
-        @Test
-        @DisplayName("reactivar devuelve la empresa al listado")
-        void reactivar_devuelve_la_empresa_al_listado() {
-            Company pausada = guardar("Clinica Norte");
-            deshabilitar(pausada.getId());
-
-            int filas = repository.reactivate(pausada.getId());
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findById(pausada.getId())).map(Company::getId)
-                    .contains(pausada.getId());
-        }
-
-        @Test
-        @DisplayName("reactivar un id inexistente no toca ninguna fila")
-        void reactivar_un_id_inexistente_no_toca_ninguna_fila() {
-            int filas = repository.reactivate(999_999_999L);
-
-            assertThat(filas).isZero();
-        }
     }
 }

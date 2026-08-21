@@ -254,7 +254,7 @@ class DewormingPersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("delete y reactivate")
+    @DisplayName("delete")
     class BorradoYReactivacion {
 
         @Test
@@ -266,48 +266,6 @@ class DewormingPersistenceIT extends AbstractDataJpaTest {
             repository.delete(guardada.getId());
             releerDesdeLaBase();
 
-            assertThat(repository.findById(guardada.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate() vuelve a hacer visible una desparasitacion borrada")
-        void reactivate_vuelve_a_hacer_visible() {
-            Deworming guardada = repository.save(desparasitacion(consultationRef()));
-            releerDesdeLaBase();
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(guardada.getId(), COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findById(guardada.getId())).isPresent();
-        }
-
-        @Test
-        @DisplayName("reactivate() sobre un id inexistente no afecta filas")
-        void reactivate_sobre_id_inexistente() {
-            assertThat(repository.reactivate(999_999L, COMPANY)).isZero();
-        }
-
-        /**
-         * BE-fix3: {@code DewormingJpaRepository.reactivate} ahora exige id + companyId
-         * en el UPDATE nativo, igual que {@code AnimalJpaRepository.reactivate}. Antes
-         * el UPDATE solo filtraba por id y reactivaba un registro de cualquier tenant
-         * que conociera el id.
-         */
-        @Test
-        @DisplayName("reactivate() con el companyId de otra empresa no reactiva nada y la fila sigue deshabilitada")
-        void reactivate_con_company_id_de_otra_empresa_no_reactiva_nada() {
-            Deworming guardada = repository.save(desparasitacion(consultationRef()));
-            releerDesdeLaBase();
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(guardada.getId(), SchemaSeed.OTRA_COMPANY_ID);
-            releerDesdeLaBase();
-
-            assertThat(filas).isZero();
             assertThat(repository.findById(guardada.getId())).isEmpty();
         }
     }

@@ -107,15 +107,4 @@ class OwnerTenantGuardTest {
         verify(animalChildrenQueryPort, never()).existsActiveByOwnerId(OWNER_ID);
         verify(ownerRepository, never()).delete(OWNER_ID, COMPANY_ID);
     }
-
-    @Test
-    void reactivateRequiresOwnerInCurrentCompany() {
-        when(ownerRepository.reactivate(OWNER_ID, COMPANY_ID)).thenReturn(0);
-
-        ReactivateOwnerService service = new ReactivateOwnerService(ownerRepository);
-
-        assertThatThrownBy(() -> service.execute(OWNER_ID, COMPANY_ID))
-                .isInstanceOf(OwnerNotFoundException.class);
-        verify(ownerRepository, never()).findByIdAndCompanyId(OWNER_ID, COMPANY_ID);
-    }
 }

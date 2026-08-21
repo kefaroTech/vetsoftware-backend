@@ -3,8 +3,6 @@ package com.vetsoftware.app.tenancy;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.animal.infrastructure.web.request.CreateAnimalRequest;
-import com.vetsoftware.app.animal.infrastructure.web.request.UpdateAnimalRequest;
-import com.vetsoftware.app.consultation.infrastructure.web.request.UpdateConsultationRequest;
 import com.vetsoftware.app.employee.infrastructure.web.request.CreateEmployeeRequest;
 import com.vetsoftware.app.owner.infrastructure.web.request.UpdateOwnerRequest;
 import com.vetsoftware.app.permission.infrastructure.web.request.CreatePermissionRequest;
@@ -17,8 +15,8 @@ import org.junit.jupiter.api.Test;
 class TenantRequestContractTest {
 
     private static final List<Class<?>> TENANT_SCOPED_REQUESTS = List.of(CreateAnimalRequest.class,
-            UpdateAnimalRequest.class, UpdateConsultationRequest.class, CreateEmployeeRequest.class,
-            UpdateOwnerRequest.class, CreatePermissionRequest.class, UpdatePermissionRequest.class);
+            CreateEmployeeRequest.class, UpdateOwnerRequest.class, CreatePermissionRequest.class,
+            UpdatePermissionRequest.class);
 
     @Test
     void tenantScopedRequestsDoNotAcceptCompanyIdFromTheClient() {

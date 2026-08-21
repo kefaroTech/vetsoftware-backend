@@ -19,7 +19,6 @@ import com.vetsoftware.app.branch.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.branch.application.port.in.ActivateBranchUseCase;
 import com.vetsoftware.app.branch.application.port.in.CreateBranchUseCase;
 import com.vetsoftware.app.branch.application.port.in.DeactivateBranchUseCase;
-import com.vetsoftware.app.branch.application.port.in.FindBranchUseCase;
 import com.vetsoftware.app.branch.application.port.in.ListBranchesUseCase;
 import com.vetsoftware.app.branch.application.port.in.UpdateBranchUseCase;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
@@ -63,8 +62,6 @@ class BranchControllerTest {
     private CreateBranchUseCase createUseCase;
     @MockitoBean
     private UpdateBranchUseCase updateUseCase;
-    @MockitoBean
-    private FindBranchUseCase findUseCase;
     @MockitoBean
     private ListBranchesUseCase listUseCase;
     @MockitoBean
@@ -126,15 +123,6 @@ class BranchControllerTest {
             mockMvc.perform(get("/branches")).andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].code").value("NORTE"))
                     .andExpect(jsonPath("$[0].city.id").value(5));
-        }
-
-        @Test
-        @DisplayName("GET /branches/{id} resuelve la empresa desde el contexto, no del cliente")
-        void get_por_id_usa_la_empresa_del_contexto() throws Exception {
-            when(findUseCase.findById(BRANCH_ID, COMPANY_ID)).thenReturn(sedeDto());
-
-            mockMvc.perform(get("/branches/1")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.name").value("Sede Norte"));
         }
     }
 

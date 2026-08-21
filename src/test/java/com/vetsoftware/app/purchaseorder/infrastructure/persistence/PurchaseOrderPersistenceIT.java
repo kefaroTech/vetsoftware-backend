@@ -190,14 +190,6 @@ class PurchaseOrderPersistenceIT extends AbstractDataJpaTest {
         entityManager.clear();
     }
 
-    // Pausa sin pasar por el remove de JPA, que ademas borra en cascada las lineas.
-    private void pausarPorSql(Long ordenId) {
-        entityManager.createNativeQuery("""
-                UPDATE purchase_orders SET enabled = false WHERE id = :id
-                """).setParameter("id", ordenId).executeUpdate();
-        entityManager.clear();
-    }
-
     private long filasDeLinea(Long ordenId) {
         entityManager.flush();
         Object total = entityManager.createNativeQuery("""
@@ -407,22 +399,10 @@ class PurchaseOrderPersistenceIT extends AbstractDataJpaTest {
             assertThat(pagina.totalElements()).isEqualTo(1);
             assertThat(pagina.content()).extracting(PurchaseOrder::getId).containsExactly(propia);
         }
-
-        @Test
-        @DisplayName("reactivar una orden de otra empresa no toca ninguna fila")
-        void reactivar_una_orden_ajena_no_toca_ninguna_fila() {
-            Long ajena = ordenAjena().getId();
-            sincronizar();
-            pausarPorSql(ajena);
-
-            assertThat(repository.reactivate(ajena, COMPANY)).isZero();
-            assertThat(repository.findAllDisabledByCompanyId(OTRA_COMPANY))
-                    .extracting(PurchaseOrder::getId).containsExactly(ajena);
-        }
     }
 
     @Nested
-    @DisplayName("pausar y reactivar")
+    @DisplayName("pausar")
     class Pausadas {
 
         @Test
@@ -468,32 +448,6 @@ class PurchaseOrderPersistenceIT extends AbstractDataJpaTest {
             sincronizar();
 
             assertThat(filasDeLinea(id)).isEqualTo(1 + 1);
-        }
-
-        @Test
-        @DisplayName("el listado de pausadas ve lo que el filtro de Hibernate esconde")
-        void el_listado_de_pausadas_ve_lo_que_el_filtro_esconde() {
-            Long pausada = ordenPropia(PurchaseOrderStatus.DRAFT, List.of(linea(amoxicilina(), 10)))
-                    .getId();
-            ordenPropia(PurchaseOrderStatus.PLACED, List.of(linea(ivermectina(), 4)));
-            sincronizar();
-            pausarPorSql(pausada);
-
-            assertThat(repository.findAllDisabledByCompanyId(COMPANY))
-                    .extracting(PurchaseOrder::getId).containsExactly(pausada);
-        }
-
-        @Test
-        @DisplayName("reactivar devuelve la orden a las consultas activas")
-        void reactivar_devuelve_la_orden_a_las_consultas_activas() {
-            Long id = ordenPropia(PurchaseOrderStatus.DRAFT, List.of(linea(amoxicilina(), 10)))
-                    .getId();
-            sincronizar();
-            pausarPorSql(id);
-
-            assertThat(repository.reactivate(id, COMPANY)).isEqualTo(1);
-            assertThat(repository.findByIdAndCompanyId(id, COMPANY)).isPresent();
-            assertThat(repository.findAllDisabledByCompanyId(COMPANY)).isEmpty();
         }
     }
 

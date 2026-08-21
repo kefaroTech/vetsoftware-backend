@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -19,9 +18,7 @@ import com.vetsoftware.app.productcategory.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.productcategory.application.dto.ProductCategoryDto;
 import com.vetsoftware.app.productcategory.application.port.in.CreateProductCategoryUseCase;
 import com.vetsoftware.app.productcategory.application.port.in.DeleteProductCategoryUseCase;
-import com.vetsoftware.app.productcategory.application.port.in.FindProductCategoryUseCase;
 import com.vetsoftware.app.productcategory.application.port.in.ListProductCategoriesUseCase;
-import com.vetsoftware.app.productcategory.application.port.in.ReactivateProductCategoryUseCase;
 import com.vetsoftware.app.productcategory.application.port.in.UpdateProductCategoryUseCase;
 import com.vetsoftware.app.productcategory.domain.ProductCategoryHasActiveChildrenException;
 import com.vetsoftware.app.productcategory.domain.ProductCategoryNameAlreadyExistsException;
@@ -78,13 +75,9 @@ class ProductCategoryControllerTest {
     @MockitoBean
     private UpdateProductCategoryUseCase updateUseCase;
     @MockitoBean
-    private FindProductCategoryUseCase findUseCase;
-    @MockitoBean
     private ListProductCategoriesUseCase listUseCase;
     @MockitoBean
     private DeleteProductCategoryUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateProductCategoryUseCase reactivateUseCase;
 
     private static ProductCategoryDto medicamentos() {
         return new ProductCategoryDto(70L, "Medicamentos", "Categoria de medicamentos",
@@ -221,26 +214,6 @@ class ProductCategoryControllerTest {
                     .andExpect(jsonPath("$[0].id").value(70))
                     .andExpect(jsonPath("$[0].company.id").value(COMPANY_ID));
         }
-
-        @Test
-        @DisplayName("GET /product-categories/{id} devuelve el recurso")
-        void get_por_id_devuelve_el_recurso() throws Exception {
-            when(findUseCase.findById(70L, COMPANY_ID)).thenReturn(medicamentos());
-
-            mockMvc.perform(get("/product-categories/70")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(70))
-                    .andExpect(jsonPath("$.description").value("Categoria de medicamentos"))
-                    .andExpect(jsonPath("$.version").value(3));
-        }
-
-        @Test
-        @DisplayName("GET /product-categories/{id} de otra empresa responde 404, no 500")
-        void get_por_id_inexistente_responde_404() throws Exception {
-            when(findUseCase.findById(99L, COMPANY_ID))
-                    .thenThrow(new ProductCategoryNotFoundException(99L));
-
-            mockMvc.perform(get("/product-categories/99")).andExpect(status().isNotFound());
-        }
     }
 
     @Nested
@@ -321,26 +294,6 @@ class ProductCategoryControllerTest {
                     .when(deleteUseCase).execute(70L, COMPANY_ID);
 
             mockMvc.perform(delete("/product-categories/70")).andExpect(status().isConflict());
-        }
-
-        @Test
-        @DisplayName("PATCH /product-categories/{id}/enable reactiva y responde 200")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(70L, COMPANY_ID)).thenReturn(medicamentos());
-
-            mockMvc.perform(patch("/product-categories/70/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(70))
-                    .andExpect(jsonPath("$.enabled").value(true));
-        }
-
-        @Test
-        @DisplayName("PATCH enable de una categoria inexistente responde 404")
-        void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, COMPANY_ID))
-                    .thenThrow(new ProductCategoryNotFoundException(99L));
-
-            mockMvc.perform(patch("/product-categories/99/enable"))
-                    .andExpect(status().isNotFound());
         }
     }
 }

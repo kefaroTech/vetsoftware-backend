@@ -30,11 +30,6 @@ public class HospitalizationObservation {
                 LocalDateTime.now(), null, true);
     }
 
-    public void update(String description) {
-        validate(description, this.hospitalization, this.createdBy);
-        this.description = description;
-    }
-
     public void enable() {
         this.enabled = true;
     }

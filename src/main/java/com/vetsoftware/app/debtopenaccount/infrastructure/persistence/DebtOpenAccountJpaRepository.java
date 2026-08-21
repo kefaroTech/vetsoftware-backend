@@ -61,30 +61,6 @@ public interface DebtOpenAccountJpaRepository
     Optional<DebtOpenAccountJpaEntity> findByOpenAccount_IdAndClientRequestId(Long openAccountId,
             String clientRequestId);
 
-    /**
-     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
-     * proposito: una consulta nativa va directa a la base de datos, asi que ni
-     * comprueba ni incrementa la version, y el candado queda ciego ante este
-     * camino. Sin el bump, un save cargado antes reescribe {@code enabled} con su
-     * valor viejo (el mapper copia la fila entera desde el dominio) y su
-     * {@code WHERE version = ?} casa igual, con lo que una edicion concurrente
-     * deshace la reactivacion en silencio. Movida la version, ese save ya no
-     * encuentra fila y salta {@code ObjectOptimisticLockingFailureException} -> 409
-     * {@code CONCURRENT_MODIFICATION}, para que el front recargue y reintente sobre
-     * datos frescos. {@code version} NO va en el {@code WHERE}: reactivar es una
-     * operacion deliberada y debe ejecutarse siempre, no competir con una edicion.
-     */
-    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
-    @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = """
-            UPDATE debt_open_accounts
-            SET enabled = true, version = version + 1
-            WHERE id = :id
-              AND EXISTS (SELECT 1 FROM open_accounts oa WHERE oa.id = debt_open_accounts.open_account_id AND oa.company_id = :companyId)
-            """, nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
-            @org.springframework.data.repository.query.Param("companyId") Long companyId);
-
     // Total payments (abonos) for an open account. enabled = true is filtered
     // explicitly
     // (do not rely on @SQLRestriction for aggregate queries).
@@ -97,54 +73,4 @@ public interface DebtOpenAccountJpaRepository
             """)
     java.math.BigDecimal sumPaymentsByOpenAccountId(
             @org.springframework.data.repository.query.Param("openAccountId") Long openAccountId);
-
-    /**
-     * Lectura de BLOQUEO sobre la fila del abono que <b>si ve las filas
-     * deshabilitadas</b>: primera sentencia del caso de uso de reactivacion.
-     *
-     * <p>
-     * Es nativa a proposito. El {@code SQLRestriction("enabled = true")} de la
-     * entidad se aplica a todo el HQL y esconderia justo la fila que hay que
-     * encontrar —la del abono apagado que se va a encender—, que es el motivo real
-     * de que la reactivacion fuera antes un UPDATE a ciegas. El SQL nativo esquiva
-     * ese filtro; el HQL no. Y por lo mismo el {@code FOR UPDATE} va escrito en el
-     * SQL: la anotacion {@code Lock} de Spring Data no llega a una consulta nativa.
-     *
-     * <p>
-     * Sin {@code EntityGraph} y sin JOIN, igual que
-     * {@link #findByIdForUpdate(Long)}: la asociacion {@code openAccount} se queda
-     * en proxy perezoso y leerle el identificador no lo inicializa, asi que la
-     * cuenta NO entra al contexto de persistencia con valores anteriores al lock. Y
-     * sin {@code companyId} porque el filtro por empresa exige un JOIN contra
-     * {@code open_accounts} cuyas filas el {@code FOR UPDATE} bloquearia tambien,
-     * fuera del orden en el que el caso de uso toma el lock de la cuenta.
-     */
-    @org.springframework.data.jpa.repository.Query(value = """
-            SELECT d.* FROM debt_open_accounts d WHERE d.id = :id FOR UPDATE
-            """, nativeQuery = true)
-    Optional<DebtOpenAccountJpaEntity> findByIdForUpdateIncludingDisabled(
-            @org.springframework.data.repository.query.Param("id") Long id);
-
-    /**
-     * Carga el abono aunque este deshabilitado, acotada por empresa. Nativa por el
-     * mismo motivo que la anterior —el {@code SQLRestriction} esconderia la fila— y
-     * con el <b>mismo predicado {@code EXISTS}</b> que
-     * {@link #reactivate(Long, Long)}, de modo que el SELECT y el UPDATE apuntan
-     * siempre a la misma fila: un {@code rows == 0} despues de esto ya solo puede
-     * significar borrado concurrente, nunca «otra empresa».
-     *
-     * <p>
-     * No toma lock: lo que hay que serializar es la CUENTA, y de eso se encarga el
-     * {@code lockForUpdate} acotado que el caso de uso ya ejecuto antes de llamar
-     * aqui.
-     */
-    @org.springframework.data.jpa.repository.Query(value = """
-            SELECT d.*
-            FROM debt_open_accounts d
-            WHERE d.id = :id
-              AND EXISTS (SELECT 1 FROM open_accounts oa WHERE oa.id = d.open_account_id AND oa.company_id = :companyId)
-            """, nativeQuery = true)
-    Optional<DebtOpenAccountJpaEntity> findByIdIncludingDisabledAndCompanyId(
-            @org.springframework.data.repository.query.Param("id") Long id,
-            @org.springframework.data.repository.query.Param("companyId") Long companyId);
 }

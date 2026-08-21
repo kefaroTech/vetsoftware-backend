@@ -216,7 +216,8 @@ class PrescriptionPersistenceIT extends AbstractDataJpaTest {
             releerDesdeLaBase();
 
             assertThat(guardada.getId()).isNotNull();
-            Prescription releida = repository.findById(guardada.getId()).orElseThrow();
+            Prescription releida = repository.findByIdAndCompanyId(guardada.getId(), COMPANY)
+                    .orElseThrow();
             assertThat(releida.getDiagnosis()).isEqualTo("Otitis externa");
             assertThat(releida.getAnimal().id()).isEqualTo(animal.getId());
             assertThat(releida.getConsultation().id()).isEqualTo(consultation.getId());
@@ -238,65 +239,6 @@ class PrescriptionPersistenceIT extends AbstractDataJpaTest {
                     repository.findByIdAndCompanyId(guardada.getId(), SchemaSeed.OTRA_COMPANY_ID))
                     .isEmpty();
             assertThat(repository.findByIdAndCompanyId(guardada.getId(), COMPANY)).isPresent();
-        }
-    }
-
-    @Nested
-    @DisplayName("delete y reactivate")
-    class BorradoYReactivacion {
-
-        @Test
-        @DisplayName("una receta borrada desaparece de findById (SQLRestriction)")
-        void receta_borrada_desaparece() {
-            Prescription guardada = repository.save(prescripcion());
-            releerDesdeLaBase();
-
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            assertThat(repository.findById(guardada.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate() vuelve a hacer visible una receta borrada")
-        void reactivate_vuelve_a_hacer_visible() {
-            Prescription guardada = repository.save(prescripcion());
-            releerDesdeLaBase();
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(guardada.getId(), COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findById(guardada.getId())).isPresent();
-        }
-
-        @Test
-        @DisplayName("reactivate() sobre un id inexistente no afecta filas")
-        void reactivate_sobre_id_inexistente() {
-            assertThat(repository.reactivate(999_999L, COMPANY)).isZero();
-        }
-
-        /**
-         * El {@code AND company_id} del UPDATE es LA defensa de la reactivacion: no hay
-         * lectura previa que valide la propiedad, el servicio decide si existe mirando
-         * las filas afectadas. Con el companyId de otra empresa el UPDATE tiene que
-         * tocar cero filas y la receta seguir anulada.
-         */
-        @Test
-        @DisplayName("reactivate() con el companyId de otra empresa afecta 0 filas")
-        void reactivate_con_otra_empresa_no_afecta_filas() {
-            Prescription guardada = repository.save(prescripcion());
-            releerDesdeLaBase();
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(guardada.getId(), SchemaSeed.OTRA_COMPANY_ID);
-            releerDesdeLaBase();
-
-            assertThat(filas).isZero();
-            assertThat(repository.findById(guardada.getId())).isEmpty();
         }
     }
 

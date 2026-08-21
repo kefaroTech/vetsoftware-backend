@@ -271,7 +271,7 @@ class SurgeryPersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("Baja y reactivacion")
+    @DisplayName("Baja")
     class BajaYReactivacion {
 
         @Test
@@ -284,43 +284,6 @@ class SurgeryPersistenceIT extends AbstractDataJpaTest {
             entityManager.clear();
 
             assertThat(repository.findById(id)).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate revive la fila")
-        void reactivate_revive_la_fila() {
-            Long id = guardar(FIRULAIS, null, CLINICA);
-            repository.delete(id);
-            entityManager.flush();
-            entityManager.clear();
-
-            int filasActualizadas = repository.reactivate(id, EMPRESA);
-            entityManager.clear();
-
-            assertThat(filasActualizadas).isOne();
-            assertThat(repository.findByIdAndCompanyId(id, EMPRESA)).isPresent();
-        }
-
-        @Test
-        @DisplayName("reactivate con el companyId de OTRA empresa no afecta ninguna fila y la deja"
-                + " borrada")
-        void reactivate_con_empresa_ajena_no_afecta_filas() {
-            Long id = guardar(FIRULAIS, null, CLINICA_AJENA);
-            repository.delete(id);
-            entityManager.flush();
-            entityManager.clear();
-
-            int filasActualizadas = repository.reactivate(id, EMPRESA);
-            entityManager.clear();
-
-            assertThat(filasActualizadas).isZero();
-            assertThat(repository.findById(id)).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate sobre un id inexistente no afecta ninguna fila")
-        void reactivate_sobre_id_inexistente_no_afecta_filas() {
-            assertThat(repository.reactivate(999_999L, EMPRESA)).isZero();
         }
     }
 }

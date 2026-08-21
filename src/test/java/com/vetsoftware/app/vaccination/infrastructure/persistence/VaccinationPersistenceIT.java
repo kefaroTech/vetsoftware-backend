@@ -299,48 +299,4 @@ class VaccinationPersistenceIT extends AbstractDataJpaTest {
             assertThat(pagina.content()).extracting(Vaccination::getId).containsExactly(propia);
         }
     }
-
-    @Nested
-    @DisplayName("Baja y reactivacion")
-    class BajaYReactivacion {
-
-        @Test
-        @DisplayName("eliminar aplica el soft delete y reactivate la revive")
-        void eliminar_y_reactivar() {
-            Long id = guardar(FIRULAIS, null, CLINICA, "L-1");
-
-            repository.delete(id);
-            entityManager.flush();
-            entityManager.clear();
-
-            assertThat(repository.findById(id)).isEmpty();
-
-            int filasActualizadas = repository.reactivate(id, EMPRESA);
-            entityManager.clear();
-
-            assertThat(filasActualizadas).isOne();
-            assertThat(repository.findById(id)).isPresent();
-        }
-
-        /**
-         * BE-fix3: {@code VaccinationJpaRepository.reactivate} ahora exige id +
-         * companyId en el UPDATE nativo. Antes el UPDATE solo filtraba por id y
-         * reactivaba un registro de cualquier tenant que conociera el id.
-         */
-        @Test
-        @DisplayName("reactivate() con el companyId de otra empresa no reactiva nada y la fila sigue deshabilitada")
-        void reactivate_con_company_id_de_otra_empresa_no_reactiva_nada() {
-            Long id = guardar(FIRULAIS, null, CLINICA, "L-1");
-
-            repository.delete(id);
-            entityManager.flush();
-            entityManager.clear();
-
-            int filasActualizadas = repository.reactivate(id, OTRA_EMPRESA);
-            entityManager.clear();
-
-            assertThat(filasActualizadas).isZero();
-            assertThat(repository.findById(id)).isEmpty();
-        }
-    }
 }

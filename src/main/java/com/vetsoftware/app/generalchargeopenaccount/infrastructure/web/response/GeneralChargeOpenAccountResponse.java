@@ -16,9 +16,10 @@ public record GeneralChargeOpenAccountResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal taxAmount,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal totalAmount,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) OpenAccountSummary openAccount,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmployeeSummary createdBy,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) GeneralChargeOpenAccountEmployeeSummary createdBy,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean voided,
-        EmployeeSummary voidedBy, LocalDateTime voidedAt, String voidReason) {
+        GeneralChargeOpenAccountEmployeeSummary voidedBy, LocalDateTime voidedAt,
+        String voidReason) {
 }

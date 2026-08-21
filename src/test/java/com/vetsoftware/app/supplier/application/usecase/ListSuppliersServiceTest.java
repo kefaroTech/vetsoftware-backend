@@ -55,20 +55,4 @@ class ListSuppliersServiceTest {
             assertThat(service.listByCompany(COMPANY_ID)).isEmpty();
         }
     }
-
-    @Nested
-    @DisplayName("listDisabledByCompany")
-    class ListaPausados {
-
-        @Test
-        @DisplayName("mapea cada proveedor pausado de la empresa a su dto")
-        void mapea_cada_proveedor_pausado_a_su_dto() {
-            Supplier norte = SupplierMother.completo("Insumos Norte", CLINICA);
-            when(repository.findAllDisabledByCompanyId(COMPANY_ID)).thenReturn(List.of(norte));
-
-            List<SupplierDto> resultado = service.listDisabledByCompany(COMPANY_ID);
-
-            assertThat(resultado).extracting(SupplierDto::name).containsExactly("Insumos Norte");
-        }
-    }
 }

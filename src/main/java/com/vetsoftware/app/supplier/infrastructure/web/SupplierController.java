@@ -11,7 +11,6 @@ import com.vetsoftware.app.supplier.application.port.in.CreateSupplierUseCase;
 import com.vetsoftware.app.supplier.application.port.in.DeleteSupplierUseCase;
 import com.vetsoftware.app.supplier.application.port.in.FindSupplierUseCase;
 import com.vetsoftware.app.supplier.application.port.in.ListSuppliersUseCase;
-import com.vetsoftware.app.supplier.application.port.in.ReactivateSupplierUseCase;
 import com.vetsoftware.app.supplier.application.port.in.SearchSuppliersUseCase;
 import com.vetsoftware.app.supplier.application.port.in.UpdateSupplierUseCase;
 import com.vetsoftware.app.supplier.infrastructure.web.request.CreateSupplierRequest;
@@ -32,21 +31,18 @@ public class SupplierController {
     private final ListSuppliersUseCase listUseCase;
     private final SearchSuppliersUseCase searchUseCase;
     private final DeleteSupplierUseCase deleteUseCase;
-    private final ReactivateSupplierUseCase reactivateUseCase;
     private final Authz authz;
 
     public SupplierController(CreateSupplierUseCase createUseCase,
             UpdateSupplierUseCase updateUseCase, FindSupplierUseCase findUseCase,
             ListSuppliersUseCase listUseCase, SearchSuppliersUseCase searchUseCase,
-            DeleteSupplierUseCase deleteUseCase, ReactivateSupplierUseCase reactivateUseCase,
-            Authz authz) {
+            DeleteSupplierUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.searchUseCase = searchUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -63,12 +59,6 @@ public class SupplierController {
     public List<SupplierResponse> listByCompany() {
         return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse)
                 .toList();
-    }
-
-    @GetMapping("/disabled")
-    public List<SupplierResponse> listDisabled() {
-        return listUseCase.listDisabledByCompany(authz.currentCompanyId()).stream()
-                .map(this::toResponse).toList();
     }
 
     @GetMapping("/search")
@@ -99,11 +89,6 @@ public class SupplierController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyId());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public SupplierResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private SupplierResponse toResponse(SupplierDto dto) {
