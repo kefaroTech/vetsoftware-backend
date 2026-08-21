@@ -54,8 +54,13 @@ public final class HospitalizationProgressNoteMother {
 
     /** Comando de creacion coherente con las refs de arriba. */
     public static CreateHospitalizationProgressNoteCommand comandoCrear() {
+        return comandoCrear(COMPANY_ID);
+    }
+
+    /** El mismo comando dirigido a otra empresa: el caso de fuga entre tenants. */
+    public static CreateHospitalizationProgressNoteCommand comandoCrear(Long companyId) {
         return new CreateHospitalizationProgressNoteCommand(DESCRIPCION, HOSPITALIZATION_ID,
-                EMPLOYEE_ID);
+                EMPLOYEE_ID, companyId);
     }
 
     public static UpdateHospitalizationProgressNoteCommand comandoActualizar() {

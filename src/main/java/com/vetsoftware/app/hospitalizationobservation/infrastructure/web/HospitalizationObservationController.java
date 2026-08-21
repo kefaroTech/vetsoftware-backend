@@ -54,7 +54,8 @@ public class HospitalizationObservationController {
     public HospitalizationObservationResponse create(
             @Valid @RequestBody CreateHospitalizationObservationRequest request) {
         return toResponse(createUseCase.execute(new CreateHospitalizationObservationCommand(
-                request.description(), request.hospitalizationId(), authz.currentEmployeeId())));
+                request.description(), request.hospitalizationId(), authz.currentEmployeeId(),
+                authz.currentCompanyId())));
     }
 
     @GetMapping("/by-hospitalization/{hospitalizationId}")

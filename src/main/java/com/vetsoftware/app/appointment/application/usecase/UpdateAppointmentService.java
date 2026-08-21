@@ -85,15 +85,20 @@ public class UpdateAppointmentService implements UpdateAppointmentUseCase {
                 throw new AppointmentOverlapException(command.employeeId(), employee.name(),
                         appointment.getStartAt(), endAt, visibleOverlapIds, overlaps.size());
             }
-            // El forzado no se persiste (es una decisión del momento, no un atributo
-            // de la cita), así que el log es el único rastro de que alguien desactivó
-            // el control de solape.
             log.warn(
                     "Appointment overlap forced on update: appointmentId={} employeeId={}"
                             + " startAt={} count={} overlappingIds={}",
                     command.id(), command.employeeId(), appointment.getStartAt(), overlaps.size(),
                     AppointmentOverlaps.allIds(overlaps));
         }
+
+        // Issue #240: el forzado se persiste para que esta cita no compita por la
+        // clave de uq_appointments_active_employee_start y pueda quedarse encima de
+        // la que ya ocupaba el hueco. En el PUT importa además el sentido contrario:
+        // si esta edición mueve una cita antes forzada a un hueco libre, el flag
+        // vuelve a false y la cita recupera su reserva frente a la carrera. Por eso
+        // se asigna siempre, no solo dentro del if.
+        appointment.markOverlapForced(!overlaps.isEmpty() && command.forceOverlap());
 
         Appointment saved = repository.save(appointment);
         // Solo puede venir no vacío si se forzó: el bloqueo ya lanzó en caso

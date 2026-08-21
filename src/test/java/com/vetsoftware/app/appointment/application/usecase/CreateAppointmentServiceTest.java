@@ -282,6 +282,44 @@ class CreateAppointmentServiceTest {
         }
 
         /**
+         * Issue #240. Este test, con el repositorio doblado, nunca vera el defecto
+         * completo —el que reventaba era el INSERT contra
+         * {@code uq_appointments_active_employee_start}, y eso se prueba en
+         * {@code AppointmentPersistenceIT}—. Lo que fija aqui es su mitad: que el
+         * service deja marcada la decision en la cita, porque es lo unico que la base
+         * puede mirar despues para distinguir este doble booking deliberado de la
+         * carrera del #114.
+         */
+        @Test
+        @DisplayName("el forzado viaja marcado en la cita que se guarda")
+        void el_forzado_viaja_marcado_en_la_cita_que_se_guarda() {
+            stubEmpleadoYSede();
+            stubSolapeCon(List.of(70L));
+            when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            service.execute(contactoLibre(null, true));
+
+            ArgumentCaptor<Appointment> guardada = ArgumentCaptor.forClass(Appointment.class);
+            verify(repository).save(guardada.capture());
+            assertThat(guardada.getValue().isOverlapForced()).isTrue();
+        }
+
+        @Test
+        @DisplayName("forzar sobre una agenda libre no marca nada: no hay de que eximir")
+        void forzar_sobre_una_agenda_libre_no_marca_nada() {
+            stubEmpleadoYSede();
+            stubGuardadoSinSolapes();
+
+            service.execute(contactoLibre(null, true));
+
+            ArgumentCaptor<Appointment> guardada = ArgumentCaptor.forClass(Appointment.class);
+            verify(repository).save(guardada.capture());
+            // Marcarla aqui la dejaria exenta del indice unico sin haber pisado a
+            // nadie, y con ella su hueco entero desprotegido frente a la carrera.
+            assertThat(guardada.getValue().isOverlapForced()).isFalse();
+        }
+
+        /**
          * El cruce se calcula por veterinario, pero solo se le puede contar al caller
          * lo de sus sedes. Bloquear y revelar son dos decisiones distintas.
          */

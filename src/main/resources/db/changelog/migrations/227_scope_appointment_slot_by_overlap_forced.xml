@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #240: el índice único uq_appointments_active_employee_start (changeset
+         226, issue #114) no distinguía una carrera accidental de un solape FORZADO a
+         sabiendas por el usuario -CreateAppointmentService lo permite explícitamente-,
+         así que forzar dos citas al mismo horario devolvía 409 APPOINTMENT_OVERLAP en
+         vez de guardarlas.
+
+         Se saca la cita forzada de la clave de unicidad: cuando overlap_forced = true,
+         el marcador generado active_slot_employee_id vale NULL y por tanto no compite
+         por el hueco (MySQL permite múltiples NULL en un índice único). Dos citas NO
+         forzadas siguen chocando exactamente igual que antes, así que la carrera que
+         cerró #114 no se reabre.
+
+         El índice se borra y se recrea porque active_slot_employee_id es una columna
+         GENERATED ALWAYS ... STORED: MySQL no permite modificar la expresión de una
+         columna generada con MODIFY/CHANGE, hay que recrearla, y el índice único
+         depende de ella (de ahí el orden: índice fuera antes que columna fuera).
+
+         overlap_forced se compara con "= 0", no "= FALSE", para no depender de cómo
+         materialice Liquibase el tipo BOOLEAN en la expresión GENERATED -mismo motivo
+         por el que 226 usa "enabled = TRUE" con el operador largo en vez de fiarse de
+         un alias corto-. El nombre del índice NO cambia: GlobalExceptionHandler.
+         mapConstraint lo mapea por nombre para traducir la violación a 409.
+
+         SIN PRECONDICIÓN DE DUPLICADOS (a diferencia de 226): la CASE nueva difiere de
+         la vieja únicamente en que añade "AND overlap_forced = 0", una condición extra
+         en el AND. Eso solo puede convertir en NULL filas que antes tenían un
+         employee_id no-NULL; nunca al revés. El conjunto de filas no-NULL después de
+         este cambio es un subconjunto estricto o igual del conjunto no-NULL de antes.
+         Como 226 garantizó (con su propia precondición HALT) que ese conjunto anterior
+         no tenía duplicados, el subconjunto tampoco puede tenerlos: no hace falta volver
+         a comprobar.
+
+         DATOS EXISTENTES: appointments es una tabla con filas reales en dev (citas de
+         prueba) y crecerá con datos reales en producción. Los cuatro ALTER TABLE de
+         este changeset son DDL online-friendly en MySQL 8 (ADD COLUMN con default,
+         DROP INDEX, DROP COLUMN de una columna generada STORED, y el ALTER combinado
+         final) pero MySQL bloquea la tabla brevemente mientras reescribe la columna
+         generada STORED en cada fila -ALGORITHM=INPLACE, no INSTANT, porque toca datos
+         almacenados, no solo metadatos-. Con el volumen actual de dev/staging el
+         bloqueo es de milisegundos; en producción, antes de aplicar, medir con
+         SELECT COUNT(*) FROM appointments y planear ventana de mantenimiento si la
+         tabla ya es grande (miles-decenas de miles de filas: bloqueo esperado en el
+         orden de segundos, no minutos). -->
+    <changeSet id="227_scope_appointment_slot_by_overlap_forced" author="orlando">
+        <!-- 1) Columna nueva, tipo espejo de `enabled` (174:42): BOOLEAN de Liquibase,
+             nunca TINYINT(1) a mano -Connector/J con tinyInt1isBit=true la reportaría
+             como BIT y ddl-auto: validate reventaría contra el boolean primitivo de
+             AppointmentJpaEntity.overlapForced (línea 97-98)-. -->
+        <addColumn tableName="appointments">
+            <column name="overlap_forced" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <!-- 2) El índice depende de la columna generada: fuera primero. -->
+        <dropIndex tableName="appointments" indexName="uq_appointments_active_employee_start"/>
+
+        <!-- 3) MySQL no permite reexpresar una columna GENERATED con MODIFY/CHANGE:
+             hay que tirarla y recrearla. -->
+        <dropColumn tableName="appointments" columnName="active_slot_employee_id"/>
+
+        <!-- 4) Recreación con la condición nueva. -->
+        <sql>
+            ALTER TABLE appointments
+                ADD COLUMN active_slot_employee_id BIGINT
+                GENERATED ALWAYS AS (
+                    CASE
+                        WHEN enabled = TRUE
+                         AND status NOT IN ('CANCELLED', 'NO_SHOW')
+                         AND overlap_forced = 0
+                        THEN employee_id
+                        ELSE NULL
+                    END
+                ) STORED,
+                ADD CONSTRAINT uq_appointments_active_employee_start
+                    UNIQUE (active_slot_employee_id, start_at)
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE appointments
+                    DROP INDEX uq_appointments_active_employee_start,
+                    DROP COLUMN active_slot_employee_id;
+
+                ALTER TABLE appointments
+                    ADD COLUMN active_slot_employee_id BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN enabled = TRUE AND status NOT IN ('CANCELLED', 'NO_SHOW')
+                            THEN employee_id
+                            ELSE NULL
+                        END
+                    ) STORED,
+                    ADD CONSTRAINT uq_appointments_active_employee_start
+                        UNIQUE (active_slot_employee_id, start_at);
+
+                ALTER TABLE appointments DROP COLUMN overlap_forced;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

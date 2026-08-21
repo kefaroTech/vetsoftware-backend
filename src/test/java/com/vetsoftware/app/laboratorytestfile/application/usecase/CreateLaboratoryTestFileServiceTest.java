@@ -49,11 +49,13 @@ class CreateLaboratoryTestFileServiceTest {
     private ArgumentCaptor<LaboratoryTestFile> fileCaptor;
 
     private void referenciasResueltas() {
-        when(laboratoryTestQueryPort.findById(LaboratoryTestFileMother.LABORATORY_TEST_ID))
+        when(laboratoryTestQueryPort.findByIdAndCompanyId(
+                LaboratoryTestFileMother.LABORATORY_TEST_ID, LaboratoryTestFileMother.COMPANY_ID))
                 .thenReturn(Optional.of(LaboratoryTestFileMother.EXAMEN));
         when(employeeQueryPort.findById(LaboratoryTestFileMother.EMPLOYEE_ID))
                 .thenReturn(Optional.of(LaboratoryTestFileMother.VETERINARIO));
-        when(laboratoryTestQueryPort.findStoragePath(LaboratoryTestFileMother.LABORATORY_TEST_ID))
+        when(laboratoryTestQueryPort.findStoragePath(LaboratoryTestFileMother.LABORATORY_TEST_ID,
+                LaboratoryTestFileMother.COMPANY_ID))
                 .thenReturn(Optional.of(LaboratoryTestFileMother.rutaAlmacenamiento()));
     }
 
@@ -128,22 +130,25 @@ class CreateLaboratoryTestFileServiceTest {
         @Test
         @DisplayName("examen inexistente: no consulta ni el empleado ni la ruta, ni sube ni persiste nada")
         void examen_inexistente() {
-            when(laboratoryTestQueryPort.findById(LaboratoryTestFileMother.LABORATORY_TEST_ID))
-                    .thenReturn(Optional.empty());
+            when(laboratoryTestQueryPort.findByIdAndCompanyId(
+                    LaboratoryTestFileMother.LABORATORY_TEST_ID,
+                    LaboratoryTestFileMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(LaboratoryTestFileMother.comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("LaboratoryTest not found: "
                             + LaboratoryTestFileMother.LABORATORY_TEST_ID);
 
-            verify(laboratoryTestQueryPort, never()).findStoragePath(any());
+            verify(laboratoryTestQueryPort, never()).findStoragePath(any(), any());
             verifyNoInteractions(employeeQueryPort, fileStoragePort, repository);
         }
 
         @Test
         @DisplayName("empleado inexistente: no calcula la ruta de almacenamiento ni sube ni persiste nada")
         void empleado_inexistente() {
-            when(laboratoryTestQueryPort.findById(LaboratoryTestFileMother.LABORATORY_TEST_ID))
+            when(laboratoryTestQueryPort.findByIdAndCompanyId(
+                    LaboratoryTestFileMother.LABORATORY_TEST_ID,
+                    LaboratoryTestFileMother.COMPANY_ID))
                     .thenReturn(Optional.of(LaboratoryTestFileMother.EXAMEN));
             when(employeeQueryPort.findById(LaboratoryTestFileMother.EMPLOYEE_ID))
                     .thenReturn(Optional.empty());
@@ -152,7 +157,7 @@ class CreateLaboratoryTestFileServiceTest {
                     .isInstanceOf(IllegalArgumentException.class).hasMessageContaining(
                             "Employee not found: " + LaboratoryTestFileMother.EMPLOYEE_ID);
 
-            verify(laboratoryTestQueryPort, never()).findStoragePath(any());
+            verify(laboratoryTestQueryPort, never()).findStoragePath(any(), any());
             verifyNoInteractions(fileStoragePort, repository);
         }
 
@@ -165,13 +170,15 @@ class CreateLaboratoryTestFileServiceTest {
         @Test
         @DisplayName("sin ruta de almacenamiento: no sube ni persiste, y el mensaje culpa a la ruta, no al examen")
         void sin_ruta_de_almacenamiento() {
-            when(laboratoryTestQueryPort.findById(LaboratoryTestFileMother.LABORATORY_TEST_ID))
+            when(laboratoryTestQueryPort.findByIdAndCompanyId(
+                    LaboratoryTestFileMother.LABORATORY_TEST_ID,
+                    LaboratoryTestFileMother.COMPANY_ID))
                     .thenReturn(Optional.of(LaboratoryTestFileMother.EXAMEN));
             when(employeeQueryPort.findById(LaboratoryTestFileMother.EMPLOYEE_ID))
                     .thenReturn(Optional.of(LaboratoryTestFileMother.VETERINARIO));
-            when(laboratoryTestQueryPort
-                    .findStoragePath(LaboratoryTestFileMother.LABORATORY_TEST_ID))
-                    .thenReturn(Optional.empty());
+            when(laboratoryTestQueryPort.findStoragePath(
+                    LaboratoryTestFileMother.LABORATORY_TEST_ID,
+                    LaboratoryTestFileMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(LaboratoryTestFileMother.comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -306,6 +313,63 @@ class CreateLaboratoryTestFileServiceTest {
 
             verify(fileStoragePort).store(any(), any(), any());
             verifyNoMoreInteractions(fileStoragePort);
+        }
+    }
+
+    /**
+     * La otra mitad del defecto de aislamiento: no se trata de apropiarse de un
+     * adjunto ajeno —la carga propia ya esta acotada— sino de colgar un adjunto
+     * PROPIO del examen de otra empresa. El adjunto de laboratorio es el caso mas
+     * caro de los cinco, porque lo que queda colgado del examen ajeno es un fichero
+     * descargable por {@code GET /laboratory-test-files/id/download}, y porque el
+     * objeto se sube a S3 <b>fuera</b> de toda transaccion: si la referencia se
+     * resolviese sin acotar, el fichero estaria en el bucket bajo el prefijo de la
+     * otra empresa aunque la fila fallase despues.
+     */
+    @Nested
+    @DisplayName("aislamiento entre empresas")
+    class AislamientoEntreEmpresas {
+
+        @Test
+        @DisplayName("un examen de otra empresa no se resuelve: nada se sube ni se persiste")
+        void examen_de_otra_empresa_no_sube_ni_persiste() {
+            when(laboratoryTestQueryPort.findByIdAndCompanyId(
+                    LaboratoryTestFileMother.LABORATORY_TEST_ID,
+                    LaboratoryTestFileMother.OTRA_COMPANY_ID)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(LaboratoryTestFileMother
+                    .comandoCrear(LaboratoryTestFileMother.OTRA_COMPANY_ID)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("LaboratoryTest not found: "
+                            + LaboratoryTestFileMother.LABORATORY_TEST_ID);
+
+            verify(laboratoryTestQueryPort, never()).findStoragePath(any(), any());
+            verifyNoInteractions(employeeQueryPort, fileStoragePort, repository);
+        }
+
+        /**
+         * La ruta lleva dentro el id de empresa, el del propietario y el nombre del
+         * animal: resolverla sin acotar seria una fuga por si misma —revelaria de quien
+         * es un examen ajeno— y ademas construiria la clave de S3 bajo el prefijo del
+         * otro tenant.
+         */
+        @Test
+        @DisplayName("la ruta de almacenamiento tambien se resuelve acotada por la empresa del comando")
+        void la_ruta_de_almacenamiento_se_resuelve_acotada() {
+            referenciasResueltas();
+            when(fileStoragePort.store(any(), any(), any()))
+                    .thenReturn(new FileStoragePort.StoredFile(LaboratoryTestFileMother.BUCKET,
+                            LaboratoryTestFileMother.STORAGE_KEY, LaboratoryTestFileMother.E_TAG));
+            when(repository.save(any())).thenReturn(LaboratoryTestFileMother.archivoValido());
+
+            service.execute(LaboratoryTestFileMother.comandoCrear());
+
+            verify(laboratoryTestQueryPort).findByIdAndCompanyId(
+                    LaboratoryTestFileMother.LABORATORY_TEST_ID,
+                    LaboratoryTestFileMother.COMPANY_ID);
+            verify(laboratoryTestQueryPort).findStoragePath(
+                    LaboratoryTestFileMother.LABORATORY_TEST_ID,
+                    LaboratoryTestFileMother.COMPANY_ID);
         }
     }
 }

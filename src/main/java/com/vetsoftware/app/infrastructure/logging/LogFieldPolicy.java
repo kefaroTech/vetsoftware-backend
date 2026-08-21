@@ -25,8 +25,16 @@ import java.util.Set;
  * <li>{@link #SCANNED} — el valor se permite pero pasa por
  * {@link LogRedactor#redact(String)}. Para campos de texto libre o semi-libre
  * donde puede colarse un correo, un teléfono o un token embebido (nombre
- * comercial, ruta HTTP, User-Agent).
+ * comercial, ruta HTTP, User-Agent) y para todo identificador <b>cuya forma la
+ * elige el usuario</b> y no el sistema: el código de acceso de un empleado es
+ * una cadena arbitraria, y en el auto-registro resulta ser su correo.
  * </ul>
+ *
+ * <p>
+ * De ahí el criterio para colocar una clave: no basta con que el campo «no sea
+ * un secreto» —{@code VERBATIM} no es la lista de lo no confidencial, es la de
+ * los valores cuya <b>forma</b> el sistema garantiza— y un valor que teclea un
+ * humano nunca la tiene.
  *
  * <p>
  * El único cruce con {@link MdcKeys} es intencional: esta clase declara la
@@ -48,14 +56,16 @@ public final class LogFieldPolicy {
      * {@code traceId}/{@code spanId}/{@code traceFlags}/{@code sampled} son
      * propiedad de Micrometer Tracing. {@code company.identifier} es el NIT de la
      * <em>empresa cliente</em> (dato mercantil público del tenant, auditado a
-     * propósito), no el documento de una persona. {@code
-     * actor.identifier} y {@code employee.identifier} son códigos de acceso de
-     * empleado, que {@code
-     * AuditLogger} documenta explícitamente como no secretos. {@code actor.id} y
-     * {@code seconds_since_revocation} son el id numérico del actor y una duración
-     * en segundos: misma forma acotada, y someterlos al enmascarado de texto solo
-     * podría mutilarlos — un id largo se confundiría con un documento personal,
-     * igual que el NIT.
+     * propósito), no el documento de una persona. {@code actor.id},
+     * {@code employee.id} y {@code seconds_since_revocation} son ids numéricos y
+     * una duración en segundos: su tipo ya acota su forma, y someterlos al
+     * enmascarado de texto solo podría mutilarlos — un id largo se confundiría con
+     * un documento personal, igual que el NIT.
+     *
+     * <p>
+     * <b>Lo que estaba aquí y dejó de estarlo:</b> {@code actor.identifier} y
+     * {@code employee.identifier} (incidencia #216). El motivo, en
+     * {@link #SCANNED}.
      */
     private static final Set<String> VERBATIM = Set.of(
             // Correlación — Micrometer Tracing
@@ -65,12 +75,43 @@ public final class LogFieldPolicy {
             MdcKeys.ACTOR_SYSTEM_USER_ID, MdcKeys.CLIENT_IP, MdcKeys.HTTP_METHOD,
             // Campos propios de los eventos AUDIT
             "event", "outcome", "reason", "code", "http.status", "http.durationMs", "company.id",
-            "company.identifier", "employee.id", "employee.identifier", "actor.identifier",
-            "actor.id", "seconds_since_revocation");
+            "company.identifier", "employee.id", "actor.id", "seconds_since_revocation");
 
-    /** Claves permitidas cuyo valor sí se somete al enmascarado de texto. */
+    /**
+     * Claves permitidas cuyo valor sí se somete al enmascarado de texto.
+     *
+     * <p>
+     * <b>{@code actor.identifier} y {@code employee.identifier} viven aquí, no en
+     * {@link #VERBATIM}</b> (incidencia #216). La premisa que los declaraba
+     * verbatim —«son códigos de acceso de empleado, y un código de acceso no es un
+     * dato personal»— es falsa en este producto: en el auto-registro el código de
+     * acceso <b>es</b> el correo del dueño ({@code RegisterUserService.register},
+     * {@code String employeeCode =
+     * command.employeeEmail().trim()}), así que cada alta de veterinaria
+     * ({@code company_registered}) y cada login ({@code login_success}) publicaban
+     * el correo del usuario en claro hasta Loki.
+     *
+     * <p>
+     * <b>Por qué el arreglo va aquí y no en cada emisor.</b> La incidencia #180 ya
+     * había tapado uno de los tres puntos —{@code GlobalExceptionHandler} redacta
+     * el identificador antes de entregárselo a {@code AuditLogger}— y los otros dos
+     * siguieron filtrando durante meses. Mientras la política diga «verbatim»,
+     * protegerse es opcional y quien escriba el cuarto emisor no tiene por qué
+     * enterarse: el defecto vuelve con la suite en verde. Escanear la clave lo
+     * cierra de una vez para todo emisor presente y futuro, y deja la redacción
+     * manual de #180 como redundante e inofensiva, porque el enmascarado es
+     * idempotente.
+     *
+     * <p>
+     * <b>No ciega la investigación.</b> El enmascarado es por patrones: un código
+     * que no sea un correo ni un documento —{@code EMP0042}, {@code OWNER01}— no
+     * casa con ninguno y sale entero, igual que antes. Un correo sale como
+     * {@code ***@clinica.com}, conservando el dominio, que es la misma forma que
+     * #180 ya dio por buena; y un código que sea una cédula queda suprimido, que es
+     * exactamente lo que debe pasarle a un documento personal.
+     */
     private static final Set<String> SCANNED = Set.of(MdcKeys.HTTP_PATH, MdcKeys.USER_AGENT,
-            "company.name");
+            "company.name", "actor.identifier", "employee.identifier");
 
     /**
      * {@code true} si el valor de {@code key} se emite sin transformación alguna.

@@ -57,11 +57,11 @@ public class HospitalizationMedicationController {
     @ResponseStatus(HttpStatus.CREATED)
     public HospitalizationMedicationResponse create(
             @Valid @RequestBody CreateHospitalizationMedicationRequest request) {
-        return toResponse(createUseCase
-                .execute(new CreateHospitalizationMedicationCommand(request.name(), request.dose(),
-                        request.frequency(), request.guidelineType(), request.durationMeasure(),
-                        request.durationQuantity(), request.startDate(), request.startTime(),
-                        request.notes(), request.hospitalizationId(), authz.currentEmployeeId())));
+        return toResponse(createUseCase.execute(new CreateHospitalizationMedicationCommand(
+                request.name(), request.dose(), request.frequency(), request.guidelineType(),
+                request.durationMeasure(), request.durationQuantity(), request.startDate(),
+                request.startTime(), request.notes(), request.hospitalizationId(),
+                authz.currentEmployeeId(), authz.currentCompanyId())));
     }
 
     @GetMapping("/by-hospitalization/{hospitalizationId}")

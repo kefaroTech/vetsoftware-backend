@@ -285,9 +285,10 @@ class HospitalizationObservationPersistenceIT extends AbstractDataJpaTest {
     class HospitalizationQuery {
 
         @Test
-        @DisplayName("findById mapea la hospitalizacion a su ref con la fecha real")
+        @DisplayName("findByIdAndCompanyId mapea la hospitalizacion a su ref con la fecha real")
         void find_by_id_mapea_la_hospitalizacion() {
-            Optional<HospitalizationRef> ref = hospitalizationQueryPort.findById(hospitalizacionId);
+            Optional<HospitalizationRef> ref = hospitalizationQueryPort
+                    .findByIdAndCompanyId(hospitalizacionId, COMPANY_ID);
 
             assertThat(ref)
                     .contains(new HospitalizationRef(hospitalizacionId, LocalDate.of(2026, 3, 1)));
@@ -296,7 +297,21 @@ class HospitalizationObservationPersistenceIT extends AbstractDataJpaTest {
         @Test
         @DisplayName("una hospitalizacion inexistente devuelve vacio")
         void hospitalizacion_inexistente_devuelve_vacio() {
-            assertThat(hospitalizationQueryPort.findById(999_999L)).isEmpty();
+            assertThat(hospitalizationQueryPort.findByIdAndCompanyId(999_999L, COMPANY_ID))
+                    .isEmpty();
+        }
+
+        /**
+         * El SQL es la barrera, no la anotacion: aqui se comprueba que el
+         * {@code WHERE company_id = ?} existe de verdad contra la base. Con el
+         * {@code findById} pelado que habia antes, la hospitalizacion de la otra
+         * empresa se resolvia y la observacion se colgaba de su expediente.
+         */
+        @Test
+        @DisplayName("la hospitalizacion de otra empresa no se resuelve")
+        void la_hospitalizacion_de_otra_empresa_no_se_resuelve() {
+            assertThat(hospitalizationQueryPort.findByIdAndCompanyId(hospitalizacionId,
+                    OTRA_COMPANY_ID)).isEmpty();
         }
     }
 

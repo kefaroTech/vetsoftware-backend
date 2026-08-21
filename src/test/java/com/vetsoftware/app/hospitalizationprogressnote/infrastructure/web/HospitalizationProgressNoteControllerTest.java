@@ -112,10 +112,11 @@ class HospitalizationProgressNoteControllerTest {
             mockMvc.perform(post("/hospitalization-progress-notes")
                     .contentType(MediaType.APPLICATION_JSON).content(CREAR_JSON));
 
-            // El createdById NO viaja en el request: lo pone el backend desde el
-            // AuthContext.
+            // Ni el createdById ni el companyId viajan en el request: los pone el
+            // backend desde el AuthContext.
             verify(createUseCase).execute(new CreateHospitalizationProgressNoteCommand(
-                    "Paciente estable, buena respuesta al tratamiento", 55L, EMPLEADO_AUTENTICADO));
+                    "Paciente estable, buena respuesta al tratamiento", 55L, EMPLEADO_AUTENTICADO,
+                    WebMvcSliceConfig.COMPANY_ID));
         }
 
         @Test

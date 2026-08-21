@@ -127,6 +127,9 @@ class LaboratoryTestFileControllerTest {
             assertThat(command.sizeBytes()).isEqualTo("contenido".getBytes().length);
             assertThat(command.content()).isEqualTo("contenido".getBytes());
             assertThat(command.uploadedById()).isEqualTo(WebMvcSliceConfig.EMPLOYEE_ID);
+            // El companyId no es un parametro del multipart: lo pone el backend desde el
+            // AuthContext, y es con el que el caso de uso acota el examen padre.
+            assertThat(command.companyId()).isEqualTo(WebMvcSliceConfig.COMPANY_ID);
         }
 
         @Test

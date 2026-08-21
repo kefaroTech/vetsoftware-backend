@@ -46,7 +46,8 @@ class CreateHospitalizationProgressNoteServiceTest {
         void crea_la_nota_con_las_referencias_resueltas() {
             CreateHospitalizationProgressNoteCommand command = HospitalizationProgressNoteMother
                     .comandoCrear();
-            when(hospitalizationQueryPort.findById(command.hospitalizationId()))
+            when(hospitalizationQueryPort.findByIdAndCompanyId(command.hospitalizationId(),
+                    command.companyId()))
                     .thenReturn(Optional.of(HospitalizationProgressNoteMother.HOSPITALIZACION));
             when(employeeQueryPort.findById(command.createdById()))
                     .thenReturn(Optional.of(HospitalizationProgressNoteMother.VETERINARIO));
@@ -75,8 +76,8 @@ class CreateHospitalizationProgressNoteServiceTest {
         void no_toca_nada_si_la_hospitalizacion_no_existe() {
             CreateHospitalizationProgressNoteCommand command = HospitalizationProgressNoteMother
                     .comandoCrear();
-            when(hospitalizationQueryPort.findById(command.hospitalizationId()))
-                    .thenReturn(Optional.empty());
+            when(hospitalizationQueryPort.findByIdAndCompanyId(command.hospitalizationId(),
+                    command.companyId())).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(command))
                     .isInstanceOf(IllegalArgumentException.class).hasMessageContaining(
@@ -90,7 +91,8 @@ class CreateHospitalizationProgressNoteServiceTest {
         void no_toca_el_repositorio_si_el_empleado_no_existe() {
             CreateHospitalizationProgressNoteCommand command = HospitalizationProgressNoteMother
                     .comandoCrear();
-            when(hospitalizationQueryPort.findById(command.hospitalizationId()))
+            when(hospitalizationQueryPort.findByIdAndCompanyId(command.hospitalizationId(),
+                    command.companyId()))
                     .thenReturn(Optional.of(HospitalizationProgressNoteMother.HOSPITALIZACION));
             when(employeeQueryPort.findById(command.createdById())).thenReturn(Optional.empty());
 
@@ -99,6 +101,54 @@ class CreateHospitalizationProgressNoteServiceTest {
                     .hasMessageContaining("Employee not found: " + command.createdById());
 
             verifyNoInteractions(repository);
+        }
+    }
+
+    /**
+     * La otra mitad del defecto de aislamiento: no se trata de apropiarse de una
+     * nota ajena —la carga propia ya esta acotada— sino de colgar una nota PROPIA
+     * de la hospitalizacion de otra empresa, que le mete texto clinico en el
+     * expediente a un paciente que no es suyo.
+     *
+     * <p>
+     * Sin el {@code findByIdAndCompanyId} del puerto, estos dos casos pasaban: el
+     * puerto resolvia la hospitalizacion ajena y el {@code save} la escribia.
+     */
+    @Nested
+    @DisplayName("Aislamiento entre empresas")
+    class AislamientoEntreEmpresas {
+
+        @Test
+        @DisplayName("una hospitalizacion de otra empresa no se resuelve y no se persiste nada")
+        void hospitalizacion_de_otra_empresa_no_se_persiste() {
+            CreateHospitalizationProgressNoteCommand command = HospitalizationProgressNoteMother
+                    .comandoCrear(HospitalizationProgressNoteMother.OTRA_COMPANY_ID);
+            when(hospitalizationQueryPort.findByIdAndCompanyId(command.hospitalizationId(),
+                    command.companyId())).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(command))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining(
+                            "Hospitalization not found: " + command.hospitalizationId());
+
+            verifyNoInteractions(employeeQueryPort, repository);
+        }
+
+        @Test
+        @DisplayName("la empresa del comando llega al puerto: la referencia nunca se resuelve sin acotar")
+        void la_empresa_del_comando_llega_al_puerto() {
+            CreateHospitalizationProgressNoteCommand command = HospitalizationProgressNoteMother
+                    .comandoCrear();
+            when(hospitalizationQueryPort.findByIdAndCompanyId(command.hospitalizationId(),
+                    command.companyId()))
+                    .thenReturn(Optional.of(HospitalizationProgressNoteMother.HOSPITALIZACION));
+            when(employeeQueryPort.findById(command.createdById()))
+                    .thenReturn(Optional.of(HospitalizationProgressNoteMother.VETERINARIO));
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.execute(command);
+
+            verify(hospitalizationQueryPort).findByIdAndCompanyId(command.hospitalizationId(),
+                    HospitalizationProgressNoteMother.COMPANY_ID);
         }
     }
 }

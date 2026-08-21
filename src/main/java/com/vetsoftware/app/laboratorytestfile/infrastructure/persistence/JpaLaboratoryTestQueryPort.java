@@ -17,15 +17,16 @@ public class JpaLaboratoryTestQueryPort implements LaboratoryTestQueryPort {
     }
 
     @Override
-    public Optional<LaboratoryTestRef> findById(Long laboratoryTestId) {
-        return laboratoryTestJpaRepository.findById(laboratoryTestId)
+    public Optional<LaboratoryTestRef> findByIdAndCompanyId(Long laboratoryTestId, Long companyId) {
+        return laboratoryTestJpaRepository.findByIdAndCompany_Id(laboratoryTestId, companyId)
                 .map(e -> new LaboratoryTestRef(e.getId(), e.getDate()));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<LaboratoryTestStoragePathRef> findStoragePath(Long laboratoryTestId) {
-        return laboratoryTestJpaRepository.findById(laboratoryTestId)
+    public Optional<LaboratoryTestStoragePathRef> findStoragePath(Long laboratoryTestId,
+            Long companyId) {
+        return laboratoryTestJpaRepository.findByIdAndCompany_Id(laboratoryTestId, companyId)
                 .map(e -> new LaboratoryTestStoragePathRef(e.getCompany().getId(),
                         e.getAnimal().getOwner().getId(), e.getAnimal().getId(),
                         e.getAnimal().getName()));

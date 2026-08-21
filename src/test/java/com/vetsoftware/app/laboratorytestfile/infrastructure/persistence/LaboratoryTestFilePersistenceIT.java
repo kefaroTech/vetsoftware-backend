@@ -145,8 +145,8 @@ class LaboratoryTestFilePersistenceIT extends AbstractDataJpaTest {
         @DisplayName("guardar y releer conserva cada campo y resuelve empleado y examen desde sus asociaciones")
         void guardar_y_releer_conserva_cada_campo() {
             EmployeeRef veterinario = employeeQueryPort.findById(EMPLOYEE_ID).orElseThrow();
-            LaboratoryTestRef examen = laboratoryTestQueryPort.findById(LABORATORY_TEST_ID)
-                    .orElseThrow();
+            LaboratoryTestRef examen = laboratoryTestQueryPort
+                    .findByIdAndCompanyId(LABORATORY_TEST_ID, COMPANY_ID).orElseThrow();
 
             LaboratoryTestFile guardado = repository.save(archivoNuevo(veterinario, examen));
             entityManager.flush();
@@ -170,8 +170,8 @@ class LaboratoryTestFilePersistenceIT extends AbstractDataJpaTest {
         @DisplayName("findByIdAndCompanyId no devuelve un archivo de otra empresa")
         void find_by_id_and_company_id_no_devuelve_el_de_otra_empresa() {
             EmployeeRef veterinario = employeeQueryPort.findById(EMPLOYEE_ID).orElseThrow();
-            LaboratoryTestRef examen = laboratoryTestQueryPort.findById(LABORATORY_TEST_ID)
-                    .orElseThrow();
+            LaboratoryTestRef examen = laboratoryTestQueryPort
+                    .findByIdAndCompanyId(LABORATORY_TEST_ID, COMPANY_ID).orElseThrow();
             LaboratoryTestFile guardado = repository.save(archivoNuevo(veterinario, examen));
             entityManager.flush();
             entityManager.clear();
@@ -190,10 +190,10 @@ class LaboratoryTestFilePersistenceIT extends AbstractDataJpaTest {
         @DisplayName("devuelve solo los archivos del examen pedido, dentro de su empresa")
         void devuelve_solo_los_archivos_del_examen_pedido() {
             EmployeeRef veterinario = employeeQueryPort.findById(EMPLOYEE_ID).orElseThrow();
-            LaboratoryTestRef examen = laboratoryTestQueryPort.findById(LABORATORY_TEST_ID)
-                    .orElseThrow();
-            LaboratoryTestRef otroExamen = laboratoryTestQueryPort.findById(OTRO_LABORATORY_TEST_ID)
-                    .orElseThrow();
+            LaboratoryTestRef examen = laboratoryTestQueryPort
+                    .findByIdAndCompanyId(LABORATORY_TEST_ID, COMPANY_ID).orElseThrow();
+            LaboratoryTestRef otroExamen = laboratoryTestQueryPort
+                    .findByIdAndCompanyId(OTRO_LABORATORY_TEST_ID, COMPANY_ID).orElseThrow();
             LaboratoryTestFile delExamen = repository.save(archivoNuevo(veterinario, examen));
             repository.save(archivoNuevo(veterinario, otroExamen));
             entityManager.flush();
@@ -222,8 +222,8 @@ class LaboratoryTestFilePersistenceIT extends AbstractDataJpaTest {
         @DisplayName("borrar quita la fila definitivamente: no hay soft delete aqui")
         void borrar_quita_la_fila() {
             EmployeeRef veterinario = employeeQueryPort.findById(EMPLOYEE_ID).orElseThrow();
-            LaboratoryTestRef examen = laboratoryTestQueryPort.findById(LABORATORY_TEST_ID)
-                    .orElseThrow();
+            LaboratoryTestRef examen = laboratoryTestQueryPort
+                    .findByIdAndCompanyId(LABORATORY_TEST_ID, COMPANY_ID).orElseThrow();
             LaboratoryTestFile guardado = repository.save(archivoNuevo(veterinario, examen));
             entityManager.flush();
             entityManager.clear();
@@ -243,7 +243,8 @@ class LaboratoryTestFilePersistenceIT extends AbstractDataJpaTest {
         @Test
         @DisplayName("findById mapea el examen a su ref con la fecha real")
         void find_by_id_mapea_el_examen() {
-            Optional<LaboratoryTestRef> ref = laboratoryTestQueryPort.findById(LABORATORY_TEST_ID);
+            Optional<LaboratoryTestRef> ref = laboratoryTestQueryPort
+                    .findByIdAndCompanyId(LABORATORY_TEST_ID, COMPANY_ID);
 
             assertThat(ref)
                     .contains(new LaboratoryTestRef(LABORATORY_TEST_ID, LocalDate.of(2026, 1, 15)));
@@ -252,14 +253,14 @@ class LaboratoryTestFilePersistenceIT extends AbstractDataJpaTest {
         @Test
         @DisplayName("un examen inexistente devuelve vacio")
         void examen_inexistente_devuelve_vacio() {
-            assertThat(laboratoryTestQueryPort.findById(999999L)).isEmpty();
+            assertThat(laboratoryTestQueryPort.findByIdAndCompanyId(999999L, COMPANY_ID)).isEmpty();
         }
 
         @Test
         @DisplayName("findStoragePath navega laboratoryTest -> animal -> owner en una sola consulta")
         void find_storage_path_navega_las_tres_asociaciones() {
             Optional<LaboratoryTestStoragePathRef> ruta = laboratoryTestQueryPort
-                    .findStoragePath(LABORATORY_TEST_ID);
+                    .findStoragePath(LABORATORY_TEST_ID, COMPANY_ID);
 
             assertThat(ruta).contains(
                     new LaboratoryTestStoragePathRef(COMPANY_ID, OWNER_ID, ANIMAL_ID, "Firulais"));
@@ -268,7 +269,22 @@ class LaboratoryTestFilePersistenceIT extends AbstractDataJpaTest {
         @Test
         @DisplayName("findStoragePath de un examen inexistente devuelve vacio")
         void find_storage_path_de_examen_inexistente_devuelve_vacio() {
-            assertThat(laboratoryTestQueryPort.findStoragePath(999999L)).isEmpty();
+            assertThat(laboratoryTestQueryPort.findStoragePath(999999L, COMPANY_ID)).isEmpty();
+        }
+
+        /**
+         * El SQL es la barrera, no la anotacion: aqui se comprueba que el
+         * {@code WHERE company_id = ?} existe de verdad contra la base. Con el
+         * {@code findById} pelado que habia antes, las dos consultas devolvian el
+         * examen de la otra empresa y la subida seguia adelante.
+         */
+        @Test
+        @DisplayName("el examen de otra empresa no se resuelve, ni por id ni por ruta de almacenamiento")
+        void el_examen_de_otra_empresa_no_se_resuelve() {
+            assertThat(laboratoryTestQueryPort.findByIdAndCompanyId(LABORATORY_TEST_ID,
+                    OTRA_COMPANY_ID)).isEmpty();
+            assertThat(laboratoryTestQueryPort.findStoragePath(LABORATORY_TEST_ID, OTRA_COMPANY_ID))
+                    .isEmpty();
         }
     }
 

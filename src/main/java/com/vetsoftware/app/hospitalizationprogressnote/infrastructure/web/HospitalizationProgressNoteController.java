@@ -54,7 +54,8 @@ public class HospitalizationProgressNoteController {
     public HospitalizationProgressNoteResponse create(
             @Valid @RequestBody CreateHospitalizationProgressNoteRequest request) {
         return toResponse(createUseCase.execute(new CreateHospitalizationProgressNoteCommand(
-                request.description(), request.hospitalizationId(), authz.currentEmployeeId())));
+                request.description(), request.hospitalizationId(), authz.currentEmployeeId(),
+                authz.currentCompanyId())));
     }
 
     @GetMapping("/by-hospitalization/{hospitalizationId}")

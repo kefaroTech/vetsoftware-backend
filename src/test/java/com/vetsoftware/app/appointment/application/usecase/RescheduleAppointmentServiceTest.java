@@ -125,6 +125,49 @@ class RescheduleAppointmentServiceTest {
         verify(repository).save(any());
     }
 
+    /**
+     * Issue #240. Reprogramar encima de otra cita es la operacion mas comun de una
+     * recepcion que encaja una urgencia, y era la que moria contra
+     * {@code uq_appointments_active_employee_start}. Aqui se fija que el service
+     * deja la marca; que la fila marcada si entre en la base lo prueba
+     * {@code AppointmentPersistenceIT}.
+     */
+    @Test
+    @DisplayName("el forzado viaja marcado en la cita reprogramada")
+    void el_forzado_viaja_marcado_en_la_cita_reprogramada() {
+        when(repository.findByIdAndCompanyId(ID, COMPANY))
+                .thenReturn(Optional.of(AppointmentMother.solicitada()));
+        when(employeeQueryPort.findByIdAndCompanyId(OTRO_EMPLEADO, COMPANY))
+                .thenReturn(Optional.of(AppointmentMother.OTRO_VETERINARIO));
+        stubSolapeCon(List.of(90L));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.execute(AppointmentMother.comandoDeReprogramacion(null, true));
+
+        ArgumentCaptor<Appointment> guardada = ArgumentCaptor.forClass(Appointment.class);
+        verify(repository).save(guardada.capture());
+        assertThat(guardada.getValue().isOverlapForced()).isTrue();
+    }
+
+    @Test
+    @DisplayName("mover la cita a un hueco libre le devuelve la reserva")
+    void mover_la_cita_a_un_hueco_libre_le_devuelve_la_reserva() {
+        when(repository.findByIdAndCompanyId(ID, COMPANY))
+                .thenReturn(Optional.of(AppointmentMother.solicitada()));
+        when(employeeQueryPort.findByIdAndCompanyId(OTRO_EMPLEADO, COMPANY))
+                .thenReturn(Optional.of(AppointmentMother.OTRO_VETERINARIO));
+        stubSinSolapes();
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Sacar una cita de un hueco compartido la devuelve a competir por el suyo:
+        // la exencion del indice dura lo que dura el solape, no para siempre.
+        service.execute(AppointmentMother.comandoDeReprogramacion(null, true));
+
+        ArgumentCaptor<Appointment> guardada = ArgumentCaptor.forClass(Appointment.class);
+        verify(repository).save(guardada.capture());
+        assertThat(guardada.getValue().isOverlapForced()).isFalse();
+    }
+
     @Test
     @DisplayName("el PATCH sin duracion CONSERVA la que la cita ya tenia")
     void el_patch_sin_duracion_conserva_la_actual() {

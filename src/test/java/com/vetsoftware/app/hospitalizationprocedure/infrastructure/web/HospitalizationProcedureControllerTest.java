@@ -139,10 +139,13 @@ class HospitalizationProcedureControllerTest {
                     .andExpect(jsonPath("$.createdBy.employeeCode").value("EMP-001"))
                     .andExpect(jsonPath("$.suspensionBy").doesNotExist());
 
+            // Ni el createdById ni el companyId viajan en el request: los pone el
+            // backend desde el AuthContext. El JSON de arriba no los trae, y el command
+            // esperado si.
             verify(createUseCase).execute(new CreateHospitalizationProcedureCommand(
                     "Curacion de herida", "Solucion salina 0.9%", "EVERY_8H", "INTERVAL", "DAYS", 5,
                     LocalDate.of(2026, 3, 1), LocalTime.of(8, 0), "Notas", HOSPITALIZATION_ID,
-                    EMPLOYEE_ID));
+                    EMPLOYEE_ID, COMPANY_ID));
         }
 
         @Test

@@ -37,6 +37,22 @@ public class Appointment {
     private BranchRef branch; // requerido (sede de la cita)
     private long version;
     private boolean enabled;
+    /**
+     * Esta cita se agendó <em>a sabiendas</em> de que pisaba a otra: alguien con el
+     * permiso {@code appointment.overlap.force} decidió meterla encima (BE-17).
+     *
+     * <p>
+     * No es decoración ni auditoría: es lo que separa el doble booking deliberado
+     * —la urgencia que la clínica encaja a las 10:00 aunque las 10:00 estén
+     * ocupadas— de la carrera de dos peticiones concurrentes que el índice único
+     * {@code uq_appointments_active_employee_start} tiene que seguir rechazando
+     * (issue #114). Una cita forzada renuncia a reservar su hueco en la base: el
+     * marcador generado {@code active_slot_employee_id} vale NULL para ella, así
+     * que no compite por la clave y el 409 de la carrera no le cae encima (issue
+     * #240). El cruce sigue existiendo y sigue viéndose en {@code findOverlapping}:
+     * lo que cambia es quién arbitra, la base o el usuario.
+     */
+    private boolean overlapForced;
     private final LocalDateTime createdDate;
 
     public Appointment(Long id, LocalDateTime startAt, Integer durationMinutes,
@@ -44,6 +60,16 @@ public class Appointment {
             AnimalRef animal, OwnerRef owner, String clientName, String clientPhone,
             String clientEmail, EmployeeRef employee, CompanyRef company, BranchRef branch,
             long version, boolean enabled, LocalDateTime createdDate) {
+        this(id, startAt, durationMinutes, type, status, notes, cancellationReason, animal, owner,
+                clientName, clientPhone, clientEmail, employee, company, branch, version, enabled,
+                createdDate, false);
+    }
+
+    public Appointment(Long id, LocalDateTime startAt, Integer durationMinutes,
+            AppointmentType type, AppointmentStatus status, String notes, String cancellationReason,
+            AnimalRef animal, OwnerRef owner, String clientName, String clientPhone,
+            String clientEmail, EmployeeRef employee, CompanyRef company, BranchRef branch,
+            long version, boolean enabled, LocalDateTime createdDate, boolean overlapForced) {
         validate(startAt, type, employee, company, branch, animal, owner, clientName, notes,
                 clientPhone, clientEmail, cancellationReason);
         validateDuration(durationMinutes);
@@ -64,6 +90,7 @@ public class Appointment {
         this.branch = branch;
         this.version = version;
         this.enabled = enabled;
+        this.overlapForced = overlapForced;
         this.createdDate = createdDate;
     }
 
@@ -291,6 +318,30 @@ public class Appointment {
 
     public LocalDateTime getCreatedDate() {
         return createdDate;
+    }
+
+    /**
+     * {@code true} si esta cita ocupa su hueco a sabiendas de que ya había otra
+     * cruzada. Ver el campo {@link #overlapForced}.
+     */
+    public boolean isOverlapForced() {
+        return overlapForced;
+    }
+
+    /**
+     * Deja constancia de la decisión de solape <strong>de esta escritura</strong>.
+     * Se llama en cada alta, edición y reprogramación con el resultado de
+     * {@code hay cruce && el caller lo forzó}, nunca solo con la bandera del
+     * request: forzar sobre una agenda libre no exime de nada y no debe marcarse.
+     *
+     * <p>
+     * Es un {@code boolean} en los dos sentidos a propósito. Si una cita forzada se
+     * mueve después a un hueco vacío deja de estar forzada, y con ello vuelve a
+     * reservar su hueco frente a la carrera; si se quedara pegada a {@code true}
+     * para siempre, esa cita quedaría exenta del índice único sin motivo.
+     */
+    public void markOverlapForced(boolean forced) {
+        this.overlapForced = forced;
     }
 
     public void enable() {

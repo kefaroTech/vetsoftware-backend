@@ -15,8 +15,9 @@ public class JpaHospitalizationQueryPort implements HospitalizationQueryPort {
     }
 
     @Override
-    public Optional<HospitalizationRef> findById(Long hospitalizationId) {
-        return hospitalizationJpaRepository.findById(hospitalizationId)
+    public Optional<HospitalizationRef> findByIdAndCompanyId(Long hospitalizationId,
+            Long companyId) {
+        return hospitalizationJpaRepository.findByIdAndCompany_Id(hospitalizationId, companyId)
                 .map(e -> new HospitalizationRef(e.getId(), e.getDate()));
     }
 }

@@ -119,4 +119,9 @@ public class JpaServiceChargeOpenAccountRepository implements ServiceChargeOpenA
     public int reactivate(Long id, Long companyId) {
         return jpaRepository.reactivate(id, companyId);
     }
+
+    @Override
+    public Optional<Long> findOpenAccountIdIncludingDisabled(Long id, Long companyId) {
+        return jpaRepository.findOpenAccountIdIncludingDisabled(id, companyId);
+    }
 }

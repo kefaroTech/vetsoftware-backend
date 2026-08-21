@@ -1,5 +1,6 @@
 package com.vetsoftware.app.company.infrastructure.web;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.command.UpdateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CitySummaryDto;
@@ -30,16 +31,19 @@ public class CompanyController {
     private final ListCompaniesUseCase listUseCase;
     private final DeleteCompanyUseCase deleteUseCase;
     private final ReactivateCompanyUseCase reactivateUseCase;
+    private final Authz authz;
 
     public CompanyController(CreateCompanyUseCase createUseCase, UpdateCompanyUseCase updateUseCase,
             FindCompanyUseCase findUseCase, ListCompaniesUseCase listUseCase,
-            DeleteCompanyUseCase deleteUseCase, ReactivateCompanyUseCase reactivateUseCase) {
+            DeleteCompanyUseCase deleteUseCase, ReactivateCompanyUseCase reactivateUseCase,
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
         this.reactivateUseCase = reactivateUseCase;
+        this.authz = authz;
     }
 
     @PostMapping
@@ -50,9 +54,16 @@ public class CompanyController {
                         request.contactNumber(), request.cityId(), request.membershipId())));
     }
 
+    /**
+     * El alcance lo pone el servidor, nunca el cliente:
+     * {@code currentCompanyIdOrNull()} devuelve la empresa del empleado —y entonces
+     * sale una sola fila, la suya— o {@code null} para un principal de plataforma,
+     * que es el único que ve el registro completo.
+     */
     @GetMapping
     public List<CompanyResponse> listAll() {
-        return listUseCase.listAll().stream().map(this::toResponse).toList();
+        return listUseCase.listAll(authz.currentCompanyIdOrNull()).stream().map(this::toResponse)
+                .toList();
     }
 
     @GetMapping("/{id}")

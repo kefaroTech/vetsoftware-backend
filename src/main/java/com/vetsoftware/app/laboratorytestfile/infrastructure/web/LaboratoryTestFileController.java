@@ -66,9 +66,9 @@ public class LaboratoryTestFileController {
         String contentType = file.getContentType() == null
                 ? MediaType.APPLICATION_OCTET_STREAM_VALUE
                 : file.getContentType();
-        return toResponse(createUseCase.execute(
-                new CreateLaboratoryTestFileCommand(laboratoryTestId, file.getOriginalFilename(),
-                        contentType, file.getSize(), content, authz.currentEmployeeId())));
+        return toResponse(createUseCase.execute(new CreateLaboratoryTestFileCommand(
+                laboratoryTestId, file.getOriginalFilename(), contentType, file.getSize(), content,
+                authz.currentEmployeeId(), authz.currentCompanyId())));
     }
 
     @GetMapping("/by-laboratory-test/{laboratoryTestId}")

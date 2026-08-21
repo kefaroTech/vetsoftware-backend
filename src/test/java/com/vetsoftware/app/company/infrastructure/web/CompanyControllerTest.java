@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.command.UpdateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CitySummaryDto;
@@ -59,6 +60,14 @@ class CompanyControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    /**
+     * El doble que {@link WebMvcSliceConfig} publica: aqui se re-stubea para
+     * distinguir los dos actores de {@code GET /companies} —el principal de
+     * plataforma, que no tiene empresa, y el empleado, que si—.
+     */
+    @Autowired
+    private Authz authz;
 
     @MockitoBean
     private CreateCompanyUseCase createUseCase;
@@ -173,12 +182,34 @@ class CompanyControllerTest {
     class Lecturas {
 
         @Test
-        @DisplayName("GET /companies lista todas las empresas")
+        @DisplayName("GET /companies lista todas las empresas para un principal de plataforma")
         void get_lista_todas_las_empresas() throws Exception {
-            when(listUseCase.listAll()).thenReturn(List.of(clinicaNorte()));
+            when(authz.currentCompanyIdOrNull()).thenReturn(null);
+            when(listUseCase.listAll(null)).thenReturn(List.of(clinicaNorte()));
 
             mockMvc.perform(get("/companies")).andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].id").value(9));
+        }
+
+        /**
+         * El alcance no viaja en la peticion ni se puede falsear desde fuera: el
+         * controller lo toma de {@code currentCompanyIdOrNull()}. Este test fija
+         * justamente eso —que el {@code companyId} que llega al puerto es el del
+         * principal—, que es lo que impedia que un empleado de una veterinaria listara
+         * el registro de todas.
+         */
+        @Test
+        @DisplayName("GET /companies acota al principal: pasa su companyId, no null")
+        void get_acota_al_company_id_del_principal() throws Exception {
+            when(authz.currentCompanyIdOrNull()).thenReturn(9L);
+            when(listUseCase.listAll(9L)).thenReturn(List.of(clinicaNorte()));
+
+            mockMvc.perform(get("/companies")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value(9))
+                    .andExpect(jsonPath("$[1]").doesNotExist());
+
+            verify(listUseCase).listAll(9L);
+            verify(listUseCase, never()).listAll(null);
         }
 
         @Test

@@ -16,8 +16,22 @@ public class ListCompaniesService implements ListCompaniesUseCase {
         this.repository = repository;
     }
 
+    /**
+     * {@code companyId == null} solo lo produce un principal de plataforma
+     * —{@code Authz.currentCompanyIdOrNull()} devuelve la empresa del empleado y
+     * {@code null} para SYSTEM—, y es el único caso en que se lee el registro
+     * completo. Un empleado llega siempre con su empresa, y entonces «listar
+     * empresas» es exactamente una fila: la suya. Se devuelve como lista, y no como
+     * recurso único, para no cambiar la forma del JSON que ya consumen los dos
+     * fronts.
+     *
+     * <p>
+     * Una empresa que no existe (o que se borró entre la autenticación y esta
+     * lectura) devuelve lista vacía y no un 404: es un listado, y un listado sin
+     * resultados no es un error.
+     */
     @Override
-    public List<CompanyDto> listAll() {
-        return repository.findAll().stream().map(CompanyDto::from).toList();
+    public List<CompanyDto> listAll(Long companyId) {
+        return repository.findAllVisibleTo(companyId).stream().map(CompanyDto::from).toList();
     }
 }

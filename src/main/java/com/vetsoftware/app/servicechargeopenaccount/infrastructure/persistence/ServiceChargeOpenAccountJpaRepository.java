@@ -77,4 +77,27 @@ public interface ServiceChargeOpenAccountJpaRepository
             """)
     java.math.BigDecimal sumChargesByOpenAccountId(
             @org.springframework.data.repository.query.Param("openAccountId") Long openAccountId);
+
+    /**
+     * Consulta NATIVA a proposito: el {@code @SQLRestriction("enabled = true")} de
+     * la entidad se aplica a todo el HQL y esconderia justo la fila que hay que
+     * encontrar, la del cargo deshabilitado que se va a reactivar. El predicado de
+     * empresa es el MISMO {@code EXISTS} que usa {@link #reactivate(Long, Long)},
+     * asi que las dos sentencias apuntan siempre a la misma fila.
+     *
+     * <p>
+     * No toma ningun lock: lo que hay que serializar es la CUENTA, y de eso se
+     * encarga el {@code lockForUpdate} acotado del caso de uso con el id que
+     * devuelve esto. Un {@code FOR UPDATE} aqui con el JOIN a {@code open_accounts}
+     * bloquearia filas de las dos tablas fuera de ese orden.
+     */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT c.open_account_id
+            FROM service_charge_open_accounts c
+            WHERE c.id = :id
+              AND EXISTS (SELECT 1 FROM open_accounts oa WHERE oa.id = c.open_account_id AND oa.company_id = :companyId)
+            """, nativeQuery = true)
+    Optional<Long> findOpenAccountIdIncludingDisabled(
+            @org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("companyId") Long companyId);
 }

@@ -154,6 +154,45 @@ class UpdateAppointmentServiceTest {
         verify(repository).save(any());
     }
 
+    /**
+     * Issue #240. Con el repositorio doblado este caso no llega al indice unico
+     * —eso lo prueba {@code AppointmentPersistenceIT}—; fija la mitad que le toca
+     * al service: dejar la decision marcada en la cita para que la fila resultante
+     * no compita por el hueco.
+     */
+    @Test
+    @DisplayName("el forzado viaja marcado en la cita editada")
+    void el_forzado_viaja_marcado_en_la_cita_editada() {
+        stubCitaExistente();
+        stubReferenciasCompletas();
+        stubSolapeCon(List.of(81L));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.execute(AppointmentMother.comandoDeActualizacion(null, true));
+
+        ArgumentCaptor<Appointment> guardada = ArgumentCaptor.forClass(Appointment.class);
+        verify(repository).save(guardada.capture());
+        assertThat(guardada.getValue().isOverlapForced()).isTrue();
+    }
+
+    @Test
+    @DisplayName("editar hacia un hueco libre le devuelve la reserva a la cita")
+    void editar_hacia_un_hueco_libre_le_devuelve_la_reserva() {
+        stubCitaExistente();
+        stubReferenciasCompletas();
+        stubSinSolapes();
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // El PUT llega con forceOverlap, pero ya no hay nada que pisar. Si la marca
+        // se quedara pegada, esta cita quedaria exenta del indice para siempre y su
+        // hueco nuevo admitiria la carrera que el #114 cerro.
+        service.execute(AppointmentMother.comandoDeActualizacion(null, true));
+
+        ArgumentCaptor<Appointment> guardada = ArgumentCaptor.forClass(Appointment.class);
+        verify(repository).save(guardada.capture());
+        assertThat(guardada.getValue().isOverlapForced()).isFalse();
+    }
+
     @Test
     @DisplayName("la cita editada se excluye de su propia consulta de solapes")
     void la_cita_editada_se_excluye_de_su_propia_consulta() {

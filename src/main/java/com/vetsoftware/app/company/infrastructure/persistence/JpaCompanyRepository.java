@@ -39,9 +39,20 @@ public class JpaCompanyRepository implements CompanyRepository {
         return jpaRepository.findById(id).map(mapper::toDomain);
     }
 
+    /**
+     * La rama sin acotar vive aqui y no en el caso de uso a proposito: asi el
+     * puerto no ofrece ninguna forma de pedir el registro completo sin declarar el
+     * alcance, y un futuro caso de uso no puede tropezar con un {@code findAll()}
+     * disponible. Con la empresa informada, «listar empresas» es exactamente una
+     * fila —la suya—, que es la unica que el empleado tiene derecho a ver.
+     */
     @Override
-    public List<Company> findAll() {
-        return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+    public List<Company> findAllVisibleTo(Long companyId) {
+        if (companyId == null) {
+            return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+        }
+        return jpaRepository.findById(companyId).map(mapper::toDomain).map(List::of)
+                .orElseGet(List::of);
     }
 
     @Override

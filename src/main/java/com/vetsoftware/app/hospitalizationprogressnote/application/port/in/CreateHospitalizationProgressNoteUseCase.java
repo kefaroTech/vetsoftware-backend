@@ -5,6 +5,6 @@ import com.vetsoftware.app.hospitalizationprogressnote.application.dto.Hospitali
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateHospitalizationProgressNoteUseCase {
-    @PreAuthorize("hasRole('SYSTEM') or hasAuthority('hospitalization.create')")
+    @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('hospitalization.create') and @authz.isMyCompany(#command.companyId))")
     HospitalizationProgressNoteDto execute(CreateHospitalizationProgressNoteCommand command);
 }
