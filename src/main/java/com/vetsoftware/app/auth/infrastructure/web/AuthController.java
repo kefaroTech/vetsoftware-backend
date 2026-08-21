@@ -49,6 +49,15 @@ public class AuthController {
         this.refreshTokenCookie = refreshTokenCookie;
     }
 
+    /**
+     * El {@code employeeCode} que se audita <b>puede ser un correo</b>: en el
+     * auto-registro el código de acceso del dueño se deriva de su email
+     * ({@code RegisterUserService.register}). No se redacta aquí a propósito —
+     * {@code actor.identifier} está declarado {@code SCANNED} en
+     * {@code LogFieldPolicy} (#216) y el pipeline lo enmascara a
+     * {@code ***@dominio} antes de salir del proceso, para todo emisor y no solo
+     * para el que se acordó.
+     */
     @PostMapping("/login/employee")
     public ResponseEntity<TokenResponse> loginEmployee(
             @Valid @RequestBody LoginEmployeeRequest request) {

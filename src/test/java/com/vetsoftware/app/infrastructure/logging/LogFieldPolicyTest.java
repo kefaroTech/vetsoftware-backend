@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class LogFieldPolicyTest {
 
@@ -29,6 +31,21 @@ class LogFieldPolicyTest {
         void una_clave_nula_no_es_verbatim() {
             assertThat(LogFieldPolicy.isVerbatim(null)).isFalse();
         }
+
+        /**
+         * Incidencia #216. Un código de acceso lo teclea un humano, así que el sistema
+         * no garantiza su forma: en el auto-registro <b>es</b> el correo del dueño.
+         * Devolver estas dos claves a {@code VERBATIM} republica ese correo en claro en
+         * {@code company_registered} y en cada {@code login_success}, y esta aserción
+         * es lo que lo impide en el momento de escribirlo, sin esperar a que alguien
+         * lea Loki.
+         */
+        @ParameterizedTest
+        @ValueSource(strings = {"actor.identifier", "employee.identifier"})
+        @DisplayName("un identificador cuya forma elige el usuario nunca es verbatim")
+        void un_identificador_elegido_por_el_usuario_no_es_verbatim(String key) {
+            assertThat(LogFieldPolicy.isVerbatim(key)).isFalse();
+        }
     }
 
     @Nested
@@ -51,6 +68,19 @@ class LogFieldPolicyTest {
         @DisplayName("una clave nula no es escaneada")
         void una_clave_nula_no_es_escaneada() {
             assertThat(LogFieldPolicy.isScanned(null)).isFalse();
+        }
+
+        /**
+         * La otra mitad de #216: no basta con sacarlas de {@code VERBATIM}. Si quedaran
+         * fuera de los dos niveles saldrían como {@code ***} enteras —el campo se
+         * pierde y la investigación se queda sin actor, que es justo lo que el arreglo
+         * no debía hacer—.
+         */
+        @ParameterizedTest
+        @ValueSource(strings = {"actor.identifier", "employee.identifier"})
+        @DisplayName("un identificador cuya forma elige el usuario se escanea, no se suprime")
+        void un_identificador_elegido_por_el_usuario_se_escanea(String key) {
+            assertThat(LogFieldPolicy.isScanned(key)).isTrue();
         }
     }
 

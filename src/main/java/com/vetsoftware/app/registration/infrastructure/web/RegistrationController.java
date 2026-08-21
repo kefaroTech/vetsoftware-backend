@@ -39,9 +39,19 @@ public class RegistrationController {
                 request.employeeName(), request.employeeEmail(), request.password(),
                 request.taxRegime(), request.fiscalEmail(), request.recaptchaToken(),
                 httpRequest.getRemoteAddr()));
-        // Auditoría: alta de nueva veterinaria (empresa) por auto-registro. El usuario
-        // de acceso es el
-        // correo.
+        // Auditoría: alta de nueva veterinaria (empresa) por auto-registro.
+        //
+        // El identificador que se entrega ES el correo del dueño: en el auto-registro
+        // el código de acceso se deriva de él (RegisterUserService.register). Que no
+        // salga en claro a los logs no depende de esta línea sino de la política:
+        // 'actor.identifier' está declarado SCANNED en LogFieldPolicy (#216), así que
+        // el pipeline lo enmascara a '***@dominio' antes de que el evento salga del
+        // proceso. Pasarlo aquí redactado sería redundante y, sobre todo, volvería a
+        // hacer opcional una protección que debe ser de la política — que es
+        // exactamente cómo se coló este defecto.
+        //
+        // La trazabilidad la sostiene 'actor.employeeId', que va al lado y es un id
+        // numérico: quien investigue el alta sigue teniendo al actor exacto.
         auditLogger.companyRegistered(dto.companyId(), request.companyName(),
                 request.companyIdentifier(), dto.employeeId(), dto.email());
         return new RegistrationResponse(dto.companyId(), dto.employeeId(), dto.email(),

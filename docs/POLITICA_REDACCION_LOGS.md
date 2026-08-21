@@ -42,12 +42,26 @@ Dos niveles:
 
 | Nivel | Comportamiento | Para qué |
 |---|---|---|
-| `VERBATIM` | El valor sale intacto, sin enmascarado de texto. | Identificadores técnicos y códigos de negocio de forma conocida: `traceId`, `actor.*`, `client.ip`, `http.status`, `company.id`, `company.identifier`, `actor.identifier`… |
-| `SCANNED` | El valor se permite pero pasa por el enmascarado de texto. | Texto libre o semi-libre donde puede colarse algo: `http.path`, `user_agent.original`, `company.name`. |
+| `VERBATIM` | El valor sale intacto, sin enmascarado de texto. | Identificadores **cuya forma la fija el sistema**: `traceId`, `actor.type`, `actor.id`, `actor.employeeId`, `actor.companyId`, `client.ip`, `http.status`, `company.id`, `company.identifier`… |
+| `SCANNED` | El valor se permite pero pasa por el enmascarado de texto. | Texto libre o semi-libre donde puede colarse algo (`http.path`, `user_agent.original`, `company.name`) **y todo identificador que teclea un humano**: `actor.identifier`, `employee.identifier`. |
 
 `VERBATIM` existe porque el enmascarado dañaría estos valores: el NIT del tenant
 (`company.identifier`) tiene 10 dígitos y la regla de documentos personales lo suprimiría, cegando
 la auditoría precisamente en el campo con el que se investiga un incidente.
+
+**El criterio es la forma, no la confidencialidad** (incidencia #216). `actor.identifier` y
+`employee.identifier` estuvieron en `VERBATIM` porque «un código de acceso de empleado no es un
+secreto», y la premisa la rompe el propio producto: en el auto-registro el código de acceso **es** el
+correo del dueño (`RegisterUserService.register` hace `String employeeCode =
+command.employeeEmail().trim()`), así que cada alta de veterinaria y cada login publicaban el correo
+en claro hasta Loki. Un valor que escribe un humano no tiene forma garantizada y no puede ir en
+`VERBATIM`, por muy «no secreto» que sea el concepto que representa.
+
+Escanearlas **no ciega la investigación**: el enmascarado es por patrones, y `EMP0042` u `OWNER01` no
+casan con ninguno, así que salen enteros. Un correo sale como `***@clinica.com` —se conserva el
+dominio— y un código que sea una cédula queda suprimido, que es lo que le corresponde a un documento
+personal. La decisión está fijada por `LogFieldPolicyTest` y por
+`AuditFieldsSurviveRedactionTest.el_correo_usado_como_codigo_de_acceso_no_sale_en_claro`.
 
 ### 2.2 Texto libre — patrones (defensa en profundidad, de mejor esfuerzo)
 

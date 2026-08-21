@@ -15,11 +15,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -113,6 +115,31 @@ class AuditFieldsSurviveRedactionTest {
                 new AuditCase("loginRateLimited", "rate_limited", AuditLogger::loginRateLimited),
                 new AuditCase("rateLimited", "rate_limited",
                         audit -> audit.rateLimited("REGISTER_RATE_LIMITED")));
+    }
+
+    /**
+     * El correo de un dueño de veterinaria tal como llega hoy a la auditoría: en el
+     * auto-registro el código de acceso se deriva del email, así que este mismo
+     * valor viaja como {@code actor.identifier}. No es un literal decorativo — es
+     * la forma exacta del dato que se filtraba.
+     */
+    private static final String CORREO_DEL_DUENO = "ana.perez@clinica.com";
+
+    /**
+     * Los tres emisores reales de {@code actor.identifier}, con el correo dentro.
+     */
+    private static Stream<Arguments> emisoresDelIdentificadorDeActor() {
+        return Stream.of(
+                Arguments.of(
+                        (Consumer<AuditLogger>) audit -> audit.companyRegistered(3L,
+                                "Clinica Vetrina", "900123456", 77L, CORREO_DEL_DUENO),
+                        "company_registered"),
+                Arguments.of((Consumer<AuditLogger>) audit -> audit.loginSuccess("EMPLOYEE",
+                        CORREO_DEL_DUENO), "login_success"),
+                Arguments.of(
+                        (Consumer<AuditLogger>) audit -> audit
+                                .loginBlockedEmailNotVerified(CORREO_DEL_DUENO),
+                        "login_blocked_email_not_verified"));
     }
 
     private final AuditLogger auditLogger = new AuditLogger();
@@ -234,6 +261,62 @@ class AuditFieldsSurviveRedactionTest {
         ILoggingEvent emitted = sink.list.get(0);
         assertThat(emitted.getKeyValuePairs()).extracting(pair -> pair.key + "=" + pair.value)
                 .contains("company.identifier=900123456", "actor.identifier=OWNER01");
+    }
+
+    /**
+     * La contra-prueba de la contra-prueba (#216).
+     *
+     * <p>
+     * El resto de esta clase vigila que la allowlist no se pase de estrecha. Esto
+     * vigila lo contrario, que es como nació el defecto: {@code actor.identifier}
+     * estaba declarado {@code VERBATIM} bajo la premisa de que un código de acceso
+     * de empleado no es un dato personal, y esa premisa la rompe el propio producto
+     * — en el auto-registro el código de acceso <b>es</b> el correo
+     * ({@code RegisterUserService.register}). Con la clave en {@code VERBATIM},
+     * {@code POST /register} y cada {@code POST /auth/login/employee} publicaban el
+     * correo del usuario en claro hasta Loki (Grafana Cloud, EE. UU.).
+     *
+     * <p>
+     * Los tres casos son los tres emisores reales de la clave. El de
+     * {@code loginBlockedEmailNotVerified} llega redactado desde
+     * {@code GlobalExceptionHandler} (#180) y aquí se pasa <b>en claro</b> a
+     * propósito: lo que se afirma es que el pipeline protege por sí solo, sin
+     * depender de que el emisor se acuerde.
+     */
+    @ParameterizedTest(name = "{1}")
+    @MethodSource("emisoresDelIdentificadorDeActor")
+    @DisplayName("el correo usado como código de acceso no sale en claro en ningún campo")
+    void el_correo_usado_como_codigo_de_acceso_no_sale_en_claro(Consumer<AuditLogger> emit,
+            String event) {
+        sink.list.clear();
+        emit.accept(auditLogger);
+
+        ILoggingEvent emitted = sink.list.get(0);
+
+        assertThat(emitted.getKeyValuePairs())
+                .as("el evento '%s' publicó el correo en claro en un campo estructurado", event)
+                .noneMatch(pair -> CORREO_DEL_DUENO.equals(pair.value));
+        assertThat(emitted.getFormattedMessage())
+                .as("el evento '%s' publicó el correo en claro en el texto del mensaje", event)
+                .doesNotContain(CORREO_DEL_DUENO);
+    }
+
+    /**
+     * Y la mitad que impide que el arreglo se convierta en «borrar el campo»: se
+     * conserva el dominio —diagnóstico de entregas, y no es dato personal— y, en el
+     * alta, el id numérico del actor que va al lado. Quien investigue el incidente
+     * sigue teniendo a quién señalar.
+     */
+    @Test
+    @DisplayName("enmascarar el correo no ciega la auditoría: quedan el dominio y el id del actor")
+    void enmascarar_el_correo_no_ciega_la_auditoria() {
+        sink.list.clear();
+        auditLogger.companyRegistered(3L, "Clinica Vetrina", "900123456", 77L, CORREO_DEL_DUENO);
+
+        assertThat(sink.list.get(0).getKeyValuePairs())
+                .extracting(pair -> pair.key + "=" + pair.value)
+                .contains("actor.identifier=" + LogRedactor.MASK + "@clinica.com",
+                        "actor.employeeId=77");
     }
 
     @Test
