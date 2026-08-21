@@ -24,8 +24,68 @@ En paralelo: la sección *Autorización* del `CLAUDE.md`, `auth/infrastructure/s
 - **Si dispones de subagentes**, particiona por bloque de features (alfabético o por riesgo:
   facturación electrónica, caja, inventario y cuenta abierta primero) y funde los informes.
   Nunca partas por tipo de hallazgo: obligarías a releer los mismos archivos siete veces.
-- Ejecuta `mvn test -Dtest=HexagonalArchitectureTest` **una sola vez**, al final, y contrasta
-  con lo que encontraste a mano.
+- Ejecuta `mvn test -Dtest=HexagonalArchitectureTest` **una sola vez** —una, no una por
+  bloque—, en segundo plano y en cuanto los barridos estén emitidos: su salida se contrasta con
+  lo que encontraste a mano, así que no bloquea nada mientras corre.
+
+## Esperas largas — prohibido quedarse mirando la barra
+
+**Regla dura, sin excepciones.** Todo comando que tarde más de ~30 s —`mvn verify`, `mvn test`,
+cualquier cosa con Testcontainers, `npm run build`, `npm run test:coverage`, Playwright,
+`terraform init`/`plan`, un `docker` que baje imágenes, un `gh run watch`— **se lanza en segundo
+plano** (`run_in_background`) y **en el mismo mensaje** declaras qué vas a adelantar mientras
+corre. Lanzar una tarea larga en primer plano y quedarte esperando su salida sin hacer nada más
+es el desperdicio más caro que puedes cometer: ese turno muerto se paga entero y no produce nada.
+
+**El orden importa tanto como el paralelismo.** Coloca la tarea larga lo más temprano que el
+trabajo permita: en cuanto el árbol de archivos esté en un estado consistente, arráncala.
+Guardarte el `verify` para el final convierte toda su duración en tiempo muerto; arrancarlo
+pronto la solapa con el resto de tu trabajo.
+
+**Mientras corre, lo que SIEMPRE adelantas** (nada de esto toca lo que el comando está leyendo):
+
+- **Todo lo de solo lectura**: `codegraph explore` por shell (no tienes el tool MCP), luego
+  `Read`/`Grep`/`Glob` e IntelliJ MCP. No interfieren con nada y son lo más barato que tienes.
+- **Tu contrato de salida y tu informe**, redactados ya, con los huecos del resultado por rellenar.
+- **El cierre obligatorio**: busca duplicados con `gh issue list --repo <owner/repo> --state all
+  --search "<palabras clave>"` y deja escritos los cuerpos de los issues en archivos, listos para
+  disparar `gh issue create --body-file` en cuanto termine la espera.
+- **El siguiente eslabón, servido a quien tenga que arreglarlo** —como especificación, no como
+  parche: tú no escribes código—. Deja redactado el arreglo exacto (el caso de uso hermano
+  `listByCompany(companyId)`, el `#param` correcto del `@PreAuthorize`, de dónde debe salir el
+  `companyId`) para que `backend-feature` lo aplique sin volver a auditar nada.
+- **Lectura del diff que auditas**: `git status`, `git diff` y `git log` no escriben nada y son
+  seguros durante un build; te dicen qué archivos toca el PR, que es justo lo que decide si una
+  deuda ya registrada en el `violation-store` deja de ser tolerada.
+- **Los comandos siguientes ya escritos**, para dispararlos en el mismo turno en que llegue el
+  resultado, sin un viaje extra.
+- **Arranca el ArchUnit temprano, no al final.** La pasada única de
+  `mvn test -Dtest=HexagonalArchitectureTest` es tu única espera cara y su papel es
+  *contrastar* lo que encuentres a mano, no habilitarlo: lánzala en segundo plano en cuanto
+  hayas emitido los siete barridos y sigue leyendo los archivos con señal mientras corre.
+- **Redacta el informe mientras esperas** — la ficha de cada hallazgo (archivo, línea, la señal
+  exacta que lo delata, el arreglo propuesto) y su gravedad, ordenados, con los cuerpos de los
+  issues ya escritos.
+- **Sigue barriendo en solo lectura**: `codegraph explore`/`query`, los `grep` restantes y
+  `analyze_calls` de IntelliJ no tocan `target/` y no interfieren con la ejecución de Maven.
+
+**Lo que NUNCA haces mientras una tarea larga corre:**
+
+- **Editar archivos que el comando está compilando, leyendo o sirviendo.** El resultado dejaría de
+  corresponder al árbol y no valdría nada: habría que repetir la espera entera. Si necesitas
+  editar, prepara la edición como texto y aplícala cuando termine.
+- **Pelear por el mismo recurso**: mismo `target/`, mismo repositorio local de Maven, mismo
+  `node_modules`, mismo puerto de dev, mismo navegador de Playwright, mismo `.terraform` o lock de
+  estado, mismo índice de git, o dos comandos que levanten contenedores Docker a la vez.
+- **Cualquier escritura de git** (`commit`, `checkout`, `switch`, `stash`, `rebase`, `merge`,
+  `push`): es competencia exclusiva de `gitflow-release`, y además mover la rama bajo un build en
+  curso invalida su resultado.
+- **Dormir o encuestar en bucle.** Nada de `sleep`, nada de repetir el mismo `status` cada pocos
+  segundos. Se espera a la notificación de fin o se lee la salida cuando ya está.
+
+**Al terminar la espera, reconcilia.** Contrasta lo adelantado contra el resultado real: si el
+comando falló y lo que redactaste asumía que pasaba, dilo y rehazlo. Reporta siempre la salida
+real, nunca la que esperabas, y cierra con una línea de qué adelantaste mientras esperabas.
 
 ## Qué buscas, en orden de gravedad
 
