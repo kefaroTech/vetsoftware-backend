@@ -72,6 +72,13 @@ public final class OpenAccountMother {
                 CERRADO_POR, CERRADA_EL, null, false, null, 1L);
     }
 
+    /** Cuenta cerrada cuyo reverso contable ya se estampo. */
+    public static OpenAccount cerradaYaReversada(LocalDateTime reversedAt) {
+        return new OpenAccount(OPEN_ACCOUNT_ID, OWNER, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, COMPANY, BRANCH, OpenAccountStatus.CLOSE, CREADO_POR, CREADA, true,
+                CERRADO_POR, CERRADA_EL, null, true, reversedAt, 1L);
+    }
+
     public static OpenAccount cancelada(String reason) {
         return new OpenAccount(OPEN_ACCOUNT_ID, OWNER, BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.ZERO, COMPANY, BRANCH, OpenAccountStatus.CANCEL, CREADO_POR, CREADA,
