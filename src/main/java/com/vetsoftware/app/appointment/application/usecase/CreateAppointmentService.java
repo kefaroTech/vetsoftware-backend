@@ -128,15 +128,24 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
                 throw new AppointmentOverlapException(command.employeeId(), employee.name(),
                         appointment.getStartAt(), endAt, visibleOverlapIds, overlaps.size());
             }
-            // El forzado no se persiste (es una decisión del momento, no un atributo
-            // de la cita), así que el log es el único rastro de que alguien desactivó
-            // el control de solape.
             log.warn(
                     "Appointment overlap forced on create: employeeId={} startAt={} count={}"
                             + " overlappingIds={}",
                     command.employeeId(), appointment.getStartAt(), overlaps.size(),
                     AppointmentOverlaps.allIds(overlaps));
         }
+
+        // Issue #240: el forzado SÍ se persiste. No como auditoría —eso es el #101—
+        // sino porque es lo único que distingue, ya dentro de la base, el doble
+        // booking deliberado de la carrera de dos peticiones concurrentes. Una cita
+        // marcada aquí deja de reservar su hueco en
+        // uq_appointments_active_employee_start (el marcador generado vale NULL) y
+        // por eso puede convivir con la que estaba a la misma hora; sin este flag el
+        // save de la línea siguiente reventaba contra la constraint y salía un 409
+        // con el texto de la carrera, justo después de que el usuario hubiera pedido
+        // forzar. Se marca con la CONJUNCIÓN de las dos cosas: forzar sobre una
+        // agenda libre no exime de nada.
+        appointment.markOverlapForced(!overlaps.isEmpty() && command.forceOverlap());
 
         Appointment saved = repository.save(appointment);
 

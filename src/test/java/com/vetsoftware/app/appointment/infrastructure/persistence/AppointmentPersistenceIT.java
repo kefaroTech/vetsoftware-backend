@@ -131,20 +131,41 @@ class AppointmentPersistenceIT extends AbstractDataJpaTest {
 
     private Long cita(String inicio, Integer duracion, AppointmentStatus estado, Long empresa,
             Long empleado, Long sede) {
+        return cita(inicio, duracion, estado, empresa, empleado, sede, false);
+    }
+
+    /**
+     * @param forzada
+     *            la cita se agendo sabiendo que pisaba a otra (issue #240). Es lo
+     *            que el marcador generado mira para decidir si esta fila reserva su
+     *            hueco.
+     */
+    private Long cita(String inicio, Integer duracion, AppointmentStatus estado, Long empresa,
+            Long empleado, Long sede, boolean forzada) {
         Long id = siguienteId++;
         entityManager.createNativeQuery("""
                 INSERT INTO appointments (id, start_at, duration_minutes, type, status, notes,
                                           employee_id, company_id, branch_id, version, enabled,
-                                          created_date)
+                                          overlap_forced, created_date)
                 VALUES (:id, :inicio, :duracion, 'CONSULTATION', :estado, 'Sembrada', :empleado,
-                        :empresa, :sede, 0, true, :creada)
+                        :empresa, :sede, 0, true, :forzada, :creada)
                 """).setParameter("id", id).setParameter("inicio", hora(inicio))
                 .setParameter("duracion", duracion).setParameter("estado", estado.name())
                 .setParameter("empleado", empleado).setParameter("empresa", empresa)
-                .setParameter("sede", sede).setParameter("creada", CREADA).executeUpdate();
+                .setParameter("sede", sede).setParameter("forzada", forzada)
+                .setParameter("creada", CREADA).executeUpdate();
         entityManager.flush();
         entityManager.clear();
         return id;
+    }
+
+    /** Cuenta las filas de una condicion sobre appointments, sin leer el valor. */
+    private long citasQue(String condicion, Long id) {
+        Number total = (Number) entityManager
+                .createNativeQuery(
+                        "SELECT COUNT(*) FROM appointments WHERE id = :id AND " + condicion)
+                .setParameter("id", id).getSingleResult();
+        return total.longValue();
     }
 
     /** Busca cruces para el intervalo dado, con la empresa y el vet por defecto. */
@@ -553,6 +574,174 @@ class AppointmentPersistenceIT extends AbstractDataJpaTest {
 
             assertThat(filas("appointments", parcial)).isOne();
             assertThat(solapes("10:15", 30)).isNotEmpty();
+        }
+    }
+
+    /**
+     * Issue #240. La regresion que nadie veia: el indice del #114 no distingue una
+     * carrera accidental de un doble booking deliberado, asi que forzar dos citas a
+     * la misma hora —la urgencia que la recepcion encaja a diario— moria contra la
+     * constraint y salia por la web como un 409 con el texto de la carrera.
+     *
+     * <p>
+     * <b>Por que estos casos van aqui y no arriba con los mocks.</b> Los tres tests
+     * de forzado que ya existian ({@code CreateAppointmentServiceTest},
+     * {@code UpdateAppointmentServiceTest},
+     * {@code RescheduleAppointmentServiceTest}) doblan el repositorio: su
+     * {@code save} devuelve el argumento y nunca toca una base, asi que daban verde
+     * con el defecto vivo delante. La unica prueba que puede ver esto es una que
+     * llegue al INSERT real.
+     *
+     * <p>
+     * El mecanismo es {@code overlap_forced}: una cita forzada renuncia a reservar
+     * su hueco —su {@code active_slot_employee_id} vale NULL— y por eso convive con
+     * la que ya lo ocupaba. Lo que NO cambia es la carrera: dos citas normales a la
+     * misma hora se siguen rechazando, y el ultimo caso de esta clase esta aqui
+     * justamente para que nadie "arregle" el #240 borrando el indice.
+     */
+    @Nested
+    @DisplayName("Doble booking deliberado (issue #240)")
+    class SlotForzado {
+
+        /** Cita de dominio lista para guardar por el camino de escritura real. */
+        private Appointment nueva(String inicio, boolean forzada) {
+            Appointment cita = new Appointment(null, hora(inicio), 30, AppointmentType.CONSULTATION,
+                    AppointmentStatus.REQUESTED, "Urgencia", null, null, null, "Walk-in",
+                    "3001234567", null, new EmployeeRef(VETERINARIA, "Ana Ruiz"),
+                    CompanyRef.of(EMPRESA), new BranchRef(SEDE, "Sede Centro", "CENTRO"), 0L, true,
+                    CREADA);
+            cita.markOverlapForced(forzada);
+            return cita;
+        }
+
+        @Test
+        @DisplayName("una cita forzada cabe encima de la que ya ocupaba el hueco")
+        void una_cita_forzada_cabe_encima_de_la_que_ocupaba_el_hueco() {
+            cita("10:00", 30);
+
+            // ESTE es el defecto del #240. Antes de persistir la decision, este INSERT
+            // violaba uq_appointments_active_employee_start y el usuario recibia un 409
+            // diciendole que el veterinario "acaba de quedar ocupado" — un segundo
+            // despues de haber pedido explicitamente forzar ese mismo hueco.
+            Long forzada = cita("10:00", 30, AppointmentStatus.CONFIRMED, EMPRESA, VETERINARIA,
+                    SEDE, true);
+
+            assertThat(filas("appointments", forzada)).isOne();
+        }
+
+        @Test
+        @DisplayName("varias citas forzadas conviven en el mismo hueco, no solo dos")
+        void varias_citas_forzadas_conviven_en_el_mismo_hueco() {
+            cita("10:00", 30);
+            Long primeraForzada = cita("10:00", 30, AppointmentStatus.CONFIRMED, EMPRESA,
+                    VETERINARIA, SEDE, true);
+
+            Long segundaForzada = cita("10:00", 30, AppointmentStatus.CONFIRMED, EMPRESA,
+                    VETERINARIA, SEDE, true);
+
+            // Si el arreglo hubiera sido meter overlap_forced DENTRO de la clave unica
+            // en vez de anular el marcador, cabrian exactamente dos citas —una normal y
+            // una forzada— y la tercera volveria a dar 409. La agenda de una urgencia no
+            // tiene ese tope.
+            assertThat(filas("appointments", primeraForzada)).isOne();
+            assertThat(filas("appointments", segundaForzada)).isOne();
+        }
+
+        @Test
+        @DisplayName("forzar no reabre la carrera: dos citas normales siguen sin caber")
+        void forzar_no_reabre_la_carrera() {
+            cita("10:00", 30);
+
+            // La red de seguridad del #114 sigue puesta. Sin este caso, el #240 se
+            // "arregla" borrando el indice y las dos peticiones concurrentes que nadie
+            // forzo vuelven a guardarse las dos, con sus dos correos de confirmacion.
+            assertThatThrownBy(() -> cita("10:00", 30))
+                    .hasStackTraceContaining("uq_appointments_active_employee_start");
+        }
+
+        @Test
+        @DisplayName("la cita forzada no reserva su hueco; la normal si lo reserva")
+        void la_cita_forzada_no_reserva_su_hueco() {
+            Long normal = cita("11:00", 30);
+            Long forzada = cita("11:00", 30, AppointmentStatus.CONFIRMED, EMPRESA, VETERINARIA,
+                    SEDE, true);
+
+            // El mecanismo, dicho sin rodeos: quien arbitra el hueco de una cita forzada
+            // ya no es la base, es el check de findOverlapping del service. La base solo
+            // arbitra lo que nadie decidio a mano.
+            assertThat(citasQue("active_slot_employee_id IS NOT NULL", normal))
+                    .as("la cita normal reserva el hueco").isOne();
+            assertThat(citasQue("active_slot_employee_id IS NULL", forzada))
+                    .as("la cita forzada renuncia a reservarlo").isOne();
+            // Y el cruce se sigue viendo: la forzada NO desaparece de la agenda, asi que
+            // una tercera cita sin forzar se topa con las dos y el service la bloqueara.
+            assertThat(solapes("11:00", 30)).containsExactlyInAnyOrder(normal, forzada);
+        }
+
+        @Test
+        @DisplayName("el camino de escritura real persiste el forzado y lo devuelve al releer")
+        void el_camino_de_escritura_persiste_el_forzado() {
+            repository.save(nueva("12:00", false));
+            entityManager.flush();
+            entityManager.clear();
+
+            Appointment guardada = repository.save(nueva("12:00", true));
+            entityManager.flush();
+            entityManager.clear();
+
+            // La mitad del arreglo vive en el mapper: si toJpa no bajara el flag, este
+            // save reventaria igual que antes aunque el dominio lo supiera.
+            assertThat(citasQue("overlap_forced = TRUE", guardada.getId())).isOne();
+            assertThat(repository.findByIdAndCompanyId(guardada.getId(), EMPRESA).orElseThrow()
+                    .isOverlapForced()).isTrue();
+        }
+
+        @Test
+        @DisplayName("reescribir una cita forzada no la hace pelear por el hueco otra vez")
+        void reescribir_una_cita_forzada_no_la_hace_pelear_por_el_hueco() {
+            repository.save(nueva("13:00", false));
+            entityManager.flush();
+            entityManager.clear();
+            Long forzada = repository.save(nueva("13:00", true)).getId();
+            entityManager.flush();
+            entityManager.clear();
+
+            // Cualquier escritura posterior sobre esa cita —cambiarle el estado,
+            // cancelarla— la lee y la vuelve a guardar. Si el flag no viajara de vuelta
+            // en toDomain, el UPDATE recalcularia el marcador, chocaria con la cita
+            // normal de las 13:00 y una cita forzada quedaria imposible de tocar.
+            Appointment releida = repository.findByIdAndCompanyId(forzada, EMPRESA).orElseThrow();
+            releida.transitionTo(AppointmentStatus.CONFIRMED);
+
+            assertThatCode(() -> {
+                repository.save(releida);
+                entityManager.flush();
+            }).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("sacar una cita de un hueco compartido le devuelve la reserva")
+        void sacar_una_cita_de_un_hueco_compartido_le_devuelve_la_reserva() {
+            repository.save(nueva("14:00", false));
+            entityManager.flush();
+            entityManager.clear();
+            Long forzada = repository.save(nueva("14:00", true)).getId();
+            entityManager.flush();
+            entityManager.clear();
+
+            // La reprogramacion la mueve a un hueco libre y ya no fuerza nada, asi que
+            // vuelve a reservar: si el flag se quedara pegado a true, esa cita quedaria
+            // exenta del indice para siempre y su hueco nuevo si admitiria la carrera.
+            Appointment releida = repository.findByIdAndCompanyId(forzada, EMPRESA).orElseThrow();
+            releida.reschedule(hora("15:00"), 30, new EmployeeRef(VETERINARIA, "Ana Ruiz"));
+            releida.markOverlapForced(false);
+            repository.save(releida);
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(citasQue("active_slot_employee_id IS NOT NULL", forzada)).isOne();
+            assertThatThrownBy(() -> cita("15:00", 30))
+                    .hasStackTraceContaining("uq_appointments_active_employee_start");
         }
     }
 }

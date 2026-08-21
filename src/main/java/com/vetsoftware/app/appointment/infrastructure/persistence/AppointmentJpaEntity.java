@@ -11,12 +11,19 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 /**
- * Cita. La columna generada {@code active_slot_employee_id} (changeset 226; =
- * employee_id solo cuando enabled=true y status no está en CANCELLED/NO_SHOW,
+ * Cita. La columna generada {@code active_slot_employee_id} (changeset 226,
+ * reexpresada por el changeset de la issue #240; = employee_id solo cuando
+ * enabled=true, status no está en CANCELLED/NO_SHOW y overlap_forced=false,
  * NULL en otro caso) vive en la BD para el índice único
  * {@code uq_appointments_active_employee_start} -issue #114, el solape EXACTO
  * de horario-; no se mapea aquí (ddl-auto: validate ignora columnas no
  * mapeadas), mismo patrón que {@code CashSessionJpaEntity.open_marker}.
+ *
+ * <p>
+ * {@code overlap_forced} SÍ se mapea, y es la única entrada que tiene el código
+ * a esa columna generada: poniéndolo a true la fila deja de reservar su hueco y
+ * puede convivir con otra a la misma hora. Es lo que distingue el doble booking
+ * deliberado de la carrera concurrente (issue #240).
  */
 @Entity
 @Table(name = "appointments")
@@ -83,6 +90,12 @@ public class AppointmentJpaEntity {
 
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
+
+    // Mismo tipo de columna que `enabled` (BOOLEAN de Liquibase, 174:42): con
+    // ddl-auto validate un TINYINT(1) escrito a mano se reporta como BIT y no casa
+    // con el boolean de Hibernate.
+    @Column(name = "overlap_forced", nullable = false)
+    private boolean overlapForced;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
@@ -224,6 +237,14 @@ public class AppointmentJpaEntity {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public boolean isOverlapForced() {
+        return overlapForced;
+    }
+
+    public void setOverlapForced(boolean overlapForced) {
+        this.overlapForced = overlapForced;
     }
 
     public LocalDateTime getCreatedDate() {

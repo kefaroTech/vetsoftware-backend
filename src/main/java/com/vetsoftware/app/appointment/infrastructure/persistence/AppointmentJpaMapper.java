@@ -39,6 +39,12 @@ public class AppointmentJpaMapper {
         entity.setBranch(branch);
         entity.setVersion(appointment.getVersion());
         entity.setEnabled(appointment.isEnabled());
+        // Issue #240: sin esto la columna generada volvería a reservar el hueco en
+        // cada escritura posterior -un cambio de estado, una cancelación-, y el
+        // UPDATE de una cita forzada moriría contra el índice único con el 409 de la
+        // carrera. El viaje de ida y vuelta del flag es parte del arreglo, no un
+        // extra.
+        entity.setOverlapForced(appointment.isOverlapForced());
         entity.setCreatedDate(appointment.getCreatedDate());
         return entity;
     }
@@ -65,6 +71,7 @@ public class AppointmentJpaMapper {
                 AppointmentStatus.valueOf(entity.getStatus()), entity.getNotes(),
                 entity.getCancellationReason(), animalRef, ownerRef, entity.getClientName(),
                 entity.getClientPhone(), entity.getClientEmail(), employeeRef, companyRef,
-                branchRef, entity.getVersion(), entity.isEnabled(), entity.getCreatedDate());
+                branchRef, entity.getVersion(), entity.isEnabled(), entity.getCreatedDate(),
+                entity.isOverlapForced());
     }
 }

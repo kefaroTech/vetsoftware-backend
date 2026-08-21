@@ -63,15 +63,20 @@ public class RescheduleAppointmentService implements RescheduleAppointmentUseCas
                 throw new AppointmentOverlapException(command.employeeId(), employee.name(),
                         appointment.getStartAt(), endAt, visibleOverlapIds, overlaps.size());
             }
-            // El forzado no se persiste (es una decisión del momento, no un atributo
-            // de la cita), así que el log es el único rastro de que alguien desactivó
-            // el control de solape.
             log.warn(
                     "Appointment overlap forced on reschedule: appointmentId={} employeeId={}"
                             + " startAt={} count={} overlappingIds={}",
                     command.id(), command.employeeId(), appointment.getStartAt(), overlaps.size(),
                     AppointmentOverlaps.allIds(overlaps));
         }
+
+        // Issue #240: mismo criterio que en el alta y la edición. Reprogramar es el
+        // verbo donde más se nota: mover una cita al hueco de otra es exactamente lo
+        // que la recepción hace cuando encaja una urgencia, y sin este flag el save
+        // moría contra uq_appointments_active_employee_start. Y al revés: sacar de un
+        // hueco compartido una cita antes forzada la devuelve a false, con lo que
+        // vuelve a reservar su nuevo hueco.
+        appointment.markOverlapForced(!overlaps.isEmpty() && command.forceOverlap());
 
         Appointment saved = repository.save(appointment);
         // Solo puede venir no vacío si se forzó: el bloqueo ya lanzó en caso
