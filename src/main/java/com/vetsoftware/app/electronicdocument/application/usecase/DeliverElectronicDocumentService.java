@@ -107,33 +107,95 @@ public class DeliverElectronicDocumentService {
         sendEmail(document, number, pdf);
     }
 
+    /**
+     * Dispara el correo y cuenta el desenlace <b>cuando se conoce</b>, no cuando se
+     * encola (issue #242).
+     *
+     * <p>
+     * Lo que había aquí era un {@code try/catch} alrededor de la llamada, y era
+     * código muerto: {@code InvoiceMailPort} lo implementa un adaptador
+     * {@code @Async} que por contrato no lanza, así que el {@code catch} no veía
+     * ninguno de los fallos reales —403 de Resend, 429, timeout, dominio no
+     * verificado—. El contador de fallidas era una serie plana en cero <i>por
+     * construcción</i> y el de éxitos contaba encolados. Una alerta sobre esa serie
+     * habría sido permanentemente muda, que es el peor tipo de alerta: su silencio
+     * se lee como salud.
+     *
+     * <p>
+     * Ahora el contador se alimenta desde la continuación del futuro, que corre en
+     * el hilo del pool de correo ya con el desenlace en la mano. Es asíncrono
+     * respecto a la petición del usuario, y tiene que serlo: la alternativa es
+     * bloquear la respuesta HTTP hasta que Resend conteste.
+     */
     private void sendEmail(ElectronicDocument document, String number, byte[] pdf) {
         String to = document.getCustomer().email();
         String cc = document.getIssuer().email();
+        // Se captura el id AHORA, fuera del callback: la continuación corre en otro
+        // hilo y no debe tocar la entidad, que para entonces puede estar siendo
+        // reusada por el llamador.
+        Long documentId = document.getId();
         try {
             mail.send(to, cc, "Factura electrónica " + number,
                     "<p>Adjuntamos su factura electrónica <strong>" + number + "</strong>.</p>",
-                    number + ".pdf", pdf);
-            deliveryMetrics.delivered();
-        } catch (Exception e) {
-            // ERROR y no WARN: no existe camino de recuperación. No hay reintento ni
-            // outbox, y el guard de idempotencia de deliverIfValidated dará el documento
-            // por entregado en la siguiente pasada porque el PDF ya quedó adjunto. El
-            // correo se pierde de forma definitiva aunque la petición del usuario
-            // responda 200 — la severidad codifica la accionabilidad, no el código de
-            // estado. Cuando exista la cola de reintento (issue del outbox) esto pasará a
-            // ser WARN, porque entonces sí habrá recuperación.
-            //
-            // La excepción va como último argumento y NO como e.getMessage(): así
-            // conserva tipo, causa y stacktrace, pasa por la redacción de
-            // RedactedThrowable en RedactingAppender y llega entera a Loki. Con
-            // getMessage() una NullPointerException escribía literalmente ": null".
-            log.error("No se pudo enviar el correo de la factura {}", document.getId(), e);
-            // El contador es lo que hace la pérdida contable y alertable: el log
-            // diagnostica un caso, la métrica responde «¿a cuántos clientes no les llegó
-            // su factura la semana pasada?».
-            deliveryMetrics.deliveryFailed();
+                    number + ".pdf", pdf).thenAccept(outcome -> record(documentId, outcome))
+                    .exceptionally(error -> {
+                        // Defensa, no camino esperado: el contrato del puerto dice que el
+                        // futuro nunca se completa excepcionalmente. Si algún día lo hace,
+                        // el fallo se cuenta igual en vez de desaparecer en un futuro que
+                        // nadie observa.
+                        recordFailure(documentId, error);
+                        return null;
+                    });
+        } catch (RuntimeException e) {
+            // Este catch SÍ es alcanzable, y solo cubre esto: que el envío ni siquiera
+            // se pueda encolar (RejectedExecutionException del emailTaskExecutor con la
+            // cola llena, o el pool ya cerrado durante el apagado). Los fallos del
+            // proveedor no pasan por aquí — llegan por el futuro.
+            recordFailure(documentId, e);
         }
+    }
+
+    private void record(Long documentId, InvoiceMailPort.DeliveryOutcome outcome) {
+        switch (outcome) {
+            case ACCEPTED -> deliveryMetrics.delivered();
+            // Ni éxito ni fallo: el entorno no manda correos (dev). Contarlo como
+            // entregado es la mentira que este issue arregla, y como fallido llenaría
+            // de falsos positivos cualquier alerta de tasa.
+            case SKIPPED ->
+                log.info("No se envió el correo de la factura {}: el correo está deshabilitado"
+                        + " en este entorno", documentId);
+            case FAILED -> recordFailure(documentId, null);
+        }
+    }
+
+    /**
+     * ERROR y no WARN: no existe camino de recuperación para el correo. El job de
+     * re-entrega ({@code DeliveryRetryJob}) recupera al documento que se quedó sin
+     * PDF, pero el guard de idempotencia de {@link #deliverIfValidated} da por
+     * entregado al que sí tiene PDF aunque su correo se haya perdido. La severidad
+     * codifica la accionabilidad, no el código de estado: la petición del usuario
+     * ya respondió 200.
+     *
+     * <p>
+     * La causa va como último argumento y NO como {@code getMessage()}: así
+     * conserva tipo, causa y stacktrace, pasa por la redacción de
+     * {@code RedactedThrowable} en {@code RedactingAppender} y llega entera a Loki.
+     * Cuando el fallo viene del proveedor no hay excepción que adjuntar —el
+     * adaptador ya la registró con su traza en {@code email.send}—, así que se
+     * registra sin ella y el enlace entre ambos logs es el timestamp y el
+     * destinatario.
+     */
+    private void recordFailure(Long documentId, Throwable cause) {
+        if (cause == null) {
+            log.error("No se pudo enviar el correo de la factura {}; el detalle del rechazo"
+                    + " está en el registro de email.send", documentId);
+        } else {
+            log.error("No se pudo enviar el correo de la factura {}", documentId, cause);
+        }
+        // El contador es lo que hace la pérdida contable y alertable: el log
+        // diagnostica un caso, la métrica responde «¿a cuántos clientes no les llegó
+        // su factura la semana pasada?».
+        deliveryMetrics.deliveryFailed();
     }
 
     /**
