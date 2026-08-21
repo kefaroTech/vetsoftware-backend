@@ -8,6 +8,8 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +39,17 @@ import org.springframework.web.client.RestClientResponseException;
  * emailTaskExecutor}) y NUNCA lanzan: si el envío está deshabilitado, falta el
  * destinatario o la API key, o Resend/la red fallan, se registra el fallo y se
  * continúa. Aplica a todos los usos.
+ *
+ * <p>
+ * <b>El desenlace sí vuelve al llamador (issue #242).</b> Que no lance no
+ * significa que no informe: {@link #send} devuelve un
+ * {@code CompletableFuture<EmailDispatchOutcome>} que se completa —siempre de
+ * forma normal, nunca excepcional— con el resultado real del envío, ya en el
+ * hilo del pool. Ignorar el retorno deja el comportamiento fire-and-forget
+ * exacto de antes, que es lo que hacen cuatro de los cinco flujos; componerlo
+ * con {@code thenAccept} es la única forma de contar entregas en vez de
+ * encolados. Antes de esto, un {@code try/catch} alrededor de la llamada era
+ * código muerto: se ejecutaba solo si el executor rechazaba la tarea.
  *
  * <p>
  * <b>Aquí se pierde el correo, y por eso el fallo se ramifica.</b> Al cruzar el
@@ -111,13 +124,18 @@ public class ResendEmailClient {
     /**
      * Envía un correo con HTML propio y adjuntos opcionales. Ver contrato en el
      * javadoc de la clase.
+     *
+     * @return futuro que se completa con el desenlace real del envío, ya en el hilo
+     *         del pool. Nunca se completa excepcionalmente. Ignorarlo es válido y
+     *         deja el comportamiento fire-and-forget de siempre.
      */
     @Async("emailTaskExecutor")
     @Observed(name = "email.send", contextualName = "send email")
-    public void send(String to, String cc, String subject, String html,
-            List<Attachment> attachments) {
-        if (!ready(to, subject))
-            return;
+    public CompletableFuture<EmailDispatchOutcome> send(String to, String cc, String subject,
+            String html, List<Attachment> attachments) {
+        Optional<EmailDispatchOutcome> early = notReady(to, subject);
+        if (early.isPresent())
+            return CompletableFuture.completedFuture(early.get());
 
         Map<String, Object> body = baseBody(to, cc, subject);
         body.put("html", html);
@@ -129,7 +147,7 @@ public class ResendEmailClient {
             }
             body.put("attachments", atts);
         }
-        dispatch(to, body);
+        return CompletableFuture.completedFuture(dispatch(to, body));
     }
 
     /**
@@ -142,7 +160,10 @@ public class ResendEmailClient {
     @Observed(name = "email.send.template", contextualName = "send email template")
     public void sendTemplate(String to, String cc, String subject, String templateId,
             Map<String, Object> variables) {
-        if (!ready(to, subject))
+        // Sigue siendo void: ningún flujo de plantilla tiene hoy contador de negocio
+        // que alimentar, y cambiarle la firma movería cuatro adaptadores sin ganar
+        // nada. Si alguno lo necesita, se replica lo hecho en send().
+        if (notReady(to, subject).isPresent())
             return;
         if (templateId == null || templateId.isBlank()) {
             recordOutcome("invalid");
@@ -158,26 +179,35 @@ public class ResendEmailClient {
         dispatch(to, body);
     }
 
-    private boolean ready(String to, String subject) {
+    /**
+     * Comprueba las tres condiciones que abortan el envío antes de tocar la red.
+     *
+     * @return vacío si hay que seguir adelante; si no, el desenlace con el que se
+     *         cierra el envío. El correo deshabilitado es {@code SKIPPED} —dev
+     *         normal, no un fallo—; destinatario vacío y API key ausente son
+     *         {@code FAILED}, porque para el destinatario son indistinguibles de
+     *         una caída del proveedor: no le llegó y nadie lo va a reintentar.
+     */
+    private Optional<EmailDispatchOutcome> notReady(String to, String subject) {
         if (!enabled) {
             recordOutcome("skipped");
             log.info(
                     "Email deshabilitado (vetsoftware.email.enabled=false); se omite el envío a {}",
                     to);
-            return false;
+            return Optional.of(EmailDispatchOutcome.SKIPPED);
         }
         if (to == null || to.isBlank()) {
             recordOutcome("invalid");
             log.warn("No se envía correo: destinatario vacío (asunto '{}')", subject);
-            return false;
+            return Optional.of(EmailDispatchOutcome.FAILED);
         }
         if (apiKey == null || apiKey.isBlank()) {
             recordOutcome("misconfigured");
             log.warn("No se envía correo a {}: RESEND_API_KEY no configurada (asunto '{}')", to,
                     subject);
-            return false;
+            return Optional.of(EmailDispatchOutcome.FAILED);
         }
-        return true;
+        return Optional.empty();
     }
 
     private Map<String, Object> baseBody(String to, String cc, String subject) {
@@ -193,12 +223,13 @@ public class ResendEmailClient {
         return body;
     }
 
-    private void dispatch(String to, Map<String, Object> body) {
+    private EmailDispatchOutcome dispatch(String to, Map<String, Object> body) {
         try {
             restClient.post().uri("/emails").header("Authorization", "Bearer " + apiKey)
                     .contentType(MediaType.APPLICATION_JSON).body(body).retrieve()
                     .toBodilessEntity();
             recordOutcome("success");
+            return EmailDispatchOutcome.ACCEPTED;
         } catch (RestClientResponseException exception) {
             EmailErrorType errorType = EmailErrorType.of(exception);
             recordFailure(exception, errorType);
@@ -227,6 +258,10 @@ public class ResendEmailClient {
                         + " EmailErrorType.", to, errorType.tag(), exception);
             }
         }
+        // Un único return para las dos familias de fallo: el llamador no distingue
+        // transitorio de determinista porque ninguno de los dos se reintenta aquí.
+        // Esa distinción vive en el nivel del log y en error.type de la observación.
+        return EmailDispatchOutcome.FAILED;
     }
 
     /**

@@ -17,10 +17,13 @@ import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDoc
 import com.vetsoftware.app.electronicdocument.application.port.out.InvoiceFileStoragePort;
 import com.vetsoftware.app.electronicdocument.application.port.out.DocumentDeliveryMetrics;
 import com.vetsoftware.app.electronicdocument.application.port.out.InvoiceMailPort;
+import com.vetsoftware.app.electronicdocument.application.port.out.InvoiceMailPort.DeliveryOutcome;
 import com.vetsoftware.app.electronicdocument.application.port.out.InvoicePdfPort;
 import com.vetsoftware.app.electronicdocument.application.port.out.QrGeneratorPort;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import java.time.LocalDateTime;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.RejectedExecutionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -54,6 +57,16 @@ class DeliverElectronicDocumentServiceTest {
         service = new DeliverElectronicDocumentService(repository, qrGenerator, invoicePdf,
                 fileStorage, mail, deliveryMetrics,
                 "https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=");
+    }
+
+    /**
+     * El puerto de correo devuelve un futuro, nunca lanza y nunca devuelve
+     * {@code null}: sin este stub el mock devolveria {@code null} y el caso de uso
+     * fallaria por un motivo que no es el que el test mide.
+     */
+    private void stubEnvio(DeliveryOutcome outcome) {
+        when(mail.send(anyString(), anyString(), anyString(), anyString(), anyString(),
+                any(byte[].class))).thenReturn(CompletableFuture.completedFuture(outcome));
     }
 
     @Nested
@@ -92,6 +105,7 @@ class DeliverElectronicDocumentServiceTest {
             ElectronicDocument validada = facturaValidada(62L);
             when(qrGenerator.generatePngBase64(anyString())).thenReturn("QR_BASE64");
             when(invoicePdf.render(validada, "QR_BASE64")).thenReturn("pdf-bytes".getBytes());
+            stubEnvio(DeliveryOutcome.ACCEPTED);
 
             service.deliverIfValidated(validada);
 
@@ -109,6 +123,7 @@ class DeliverElectronicDocumentServiceTest {
             ElectronicDocument validada = facturaValidada(63L);
             when(qrGenerator.generatePngBase64(anyString())).thenReturn("QR_BASE64");
             when(invoicePdf.render(any(), any())).thenReturn("pdf-bytes".getBytes());
+            stubEnvio(DeliveryOutcome.ACCEPTED);
 
             service.deliverIfValidated(validada);
 
@@ -123,8 +138,7 @@ class DeliverElectronicDocumentServiceTest {
             ElectronicDocument validada = facturaValidada(64L);
             when(qrGenerator.generatePngBase64(anyString())).thenReturn("QR_BASE64");
             when(invoicePdf.render(any(), any())).thenReturn("pdf-bytes".getBytes());
-            doThrow(new RuntimeException("SMTP caido")).when(mail).send(anyString(), anyString(),
-                    anyString(), anyString(), anyString(), any(byte[].class));
+            stubEnvio(DeliveryOutcome.FAILED);
 
             service.deliverIfValidated(validada);
 
@@ -140,6 +154,7 @@ class DeliverElectronicDocumentServiceTest {
                     "QR-OFICIAL-DEL-PROVEEDOR", "https://qr", null, LocalDateTime.now());
             when(qrGenerator.generatePngBase64(anyString())).thenReturn("QR_BASE64");
             when(invoicePdf.render(any(), any())).thenReturn("pdf-bytes".getBytes());
+            stubEnvio(DeliveryOutcome.ACCEPTED);
 
             service.deliverIfValidated(validada);
 
@@ -154,6 +169,7 @@ class DeliverElectronicDocumentServiceTest {
                     LocalDateTime.now());
             when(qrGenerator.generatePngBase64(anyString())).thenReturn("QR_BASE64");
             when(invoicePdf.render(any(), any())).thenReturn("pdf-bytes".getBytes());
+            stubEnvio(DeliveryOutcome.ACCEPTED);
 
             service.deliverIfValidated(validada);
 
@@ -169,6 +185,7 @@ class DeliverElectronicDocumentServiceTest {
                     LocalDateTime.now());
             when(qrGenerator.generatePngBase64(anyString())).thenReturn("QR_BASE64");
             when(invoicePdf.render(any(), any())).thenReturn("pdf-bytes".getBytes());
+            stubEnvio(DeliveryOutcome.ACCEPTED);
 
             service.deliverIfValidated(validada);
 
@@ -248,8 +265,7 @@ class DeliverElectronicDocumentServiceTest {
         @DisplayName("con la referencia ya grabada no se borra nada, ni siquiera si el correo falla")
         void con_la_referencia_grabada_no_se_borra_nada() {
             ElectronicDocument validada = stubHastaLaSubida(70L);
-            doThrow(new IllegalStateException("SMTP caido")).when(mail).send(anyString(),
-                    anyString(), anyString(), anyString(), anyString(), any(byte[].class));
+            stubEnvio(DeliveryOutcome.FAILED);
 
             service.deliverIfValidated(validada);
 
@@ -257,6 +273,112 @@ class DeliverElectronicDocumentServiceTest {
             // borrarlo dejaria la fila apuntando a un objeto inexistente.
             verify(fileStorage, never()).delete(anyString());
             verify(deliveryMetrics).deliveryFailed();
+        }
+    }
+
+    /**
+     * Issue #242. El contador de entregas fallidas era una serie plana en cero
+     * <b>por construccion</b>: su {@code catch} estaba detras de un adaptador
+     * {@code @Async} que por contrato no lanza, asi que no veia ninguno de los
+     * fallos reales del proveedor. La prueba que lo cubria mockeaba el puerto con
+     * {@code doThrow} y pasaba en verde sobre codigo muerto.
+     *
+     * <p>
+     * Estos casos son los que impiden que eso vuelva: todos entran por el
+     * <b>desenlace</b> del futuro, que es la unica via por la que llega un fallo
+     * real. Ninguno usa {@code doThrow}, porque el adaptador de produccion no lanza
+     * — salvo el ultimo, que cubre el unico caso en el que si lo hace.
+     */
+    @Nested
+    @DisplayName("el contador refleja el desenlace real del envio, no el encolado")
+    class ContadorDeEntrega {
+
+        private ElectronicDocument stubHastaElCorreo(Long id) {
+            ElectronicDocument validada = facturaValidada(id);
+            when(qrGenerator.generatePngBase64(anyString())).thenReturn("QR_BASE64");
+            when(invoicePdf.render(any(), any())).thenReturn("pdf-bytes".getBytes());
+            return validada;
+        }
+
+        @Test
+        @DisplayName("un rechazo del proveedor incrementa el contador de fallidas")
+        void un_rechazo_del_proveedor_cuenta_como_fallo() {
+            ElectronicDocument validada = stubHastaElCorreo(80L);
+            stubEnvio(DeliveryOutcome.FAILED);
+
+            service.deliverIfValidated(validada);
+
+            // Antes del arreglo esto era inalcanzable: el adaptador devolvia sin lanzar
+            // y el caso de uso contaba una entrega exitosa que nunca ocurrio.
+            verify(deliveryMetrics).deliveryFailed();
+            verify(deliveryMetrics, never()).delivered();
+        }
+
+        @Test
+        @DisplayName("solo un envio aceptado por el proveedor cuenta como entregado")
+        void solo_un_envio_aceptado_cuenta_como_entregado() {
+            ElectronicDocument validada = stubHastaElCorreo(81L);
+            stubEnvio(DeliveryOutcome.ACCEPTED);
+
+            service.deliverIfValidated(validada);
+
+            verify(deliveryMetrics).delivered();
+            verify(deliveryMetrics, never()).deliveryFailed();
+        }
+
+        /**
+         * Sin este caso, la forma barata de "arreglar" el issue seria contar como fallo
+         * todo lo que no se envie — y dev, que corre con el correo apagado, publicaria
+         * una tasa de error del 100 % permanente.
+         */
+        @Test
+        @DisplayName("con el correo deshabilitado no se cuenta ni entrega ni fallo")
+        void con_el_correo_deshabilitado_no_se_cuenta_nada() {
+            ElectronicDocument validada = stubHastaElCorreo(82L);
+            stubEnvio(DeliveryOutcome.SKIPPED);
+
+            service.deliverIfValidated(validada);
+
+            verifyNoInteractions(deliveryMetrics);
+        }
+
+        /**
+         * El contrato del puerto dice que el futuro nunca se completa excepcionalmente.
+         * Si algun dia se rompiera, el fallo no puede evaporarse en un futuro que nadie
+         * observa.
+         */
+        @Test
+        @DisplayName("un futuro completado excepcionalmente tambien cuenta como fallo")
+        void un_futuro_fallido_cuenta_como_fallo() {
+            ElectronicDocument validada = stubHastaElCorreo(83L);
+            when(mail.send(anyString(), anyString(), anyString(), anyString(), anyString(),
+                    any(byte[].class)))
+                    .thenReturn(CompletableFuture
+                            .failedFuture(new IllegalStateException("el pool murio a mitad")));
+
+            service.deliverIfValidated(validada);
+
+            verify(deliveryMetrics).deliveryFailed();
+        }
+
+        /**
+         * El unico fallo que el {@code catch} sincrono si veia y sigue viendo: que la
+         * tarea no se pueda ni encolar. Se conserva a proposito — es la razon por la
+         * que ese {@code catch} no se borro entero.
+         */
+        @Test
+        @DisplayName("si el envio no se puede ni encolar, se cuenta como fallo y la entrega no se rompe")
+        void si_el_envio_no_se_puede_encolar_cuenta_como_fallo() {
+            ElectronicDocument validada = stubHastaElCorreo(84L);
+            doThrow(new RejectedExecutionException("emailTaskExecutor saturado")).when(mail).send(
+                    anyString(), anyString(), anyString(), anyString(), anyString(),
+                    any(byte[].class));
+
+            service.deliverIfValidated(validada);
+
+            verify(deliveryMetrics).deliveryFailed();
+            // El PDF ya quedo inventariado: el fallo del correo no puede deshacerlo.
+            verify(repository).updateDianResult(validada);
         }
     }
 }
