@@ -104,4 +104,20 @@ public class JpaDebtOpenAccountRepository implements DebtOpenAccountRepository {
     public int reactivate(Long id, Long companyId) {
         return jpaRepository.reactivate(id, companyId);
     }
+
+    @Override
+    public Optional<Long> lockAndFindOpenAccountIdIncludingDisabled(Long id) {
+        // Mismo criterio que lockAndFindOpenAccountId: getOpenAccount() devuelve el
+        // proxy perezoso y getId() lee su identificador sin inicializarlo, asi que la
+        // cuenta NO entra al contexto de persistencia con valores anteriores al lock.
+        return jpaRepository.findByIdForUpdateIncludingDisabled(id)
+                .map(e -> e.getOpenAccount().getId());
+    }
+
+    @Override
+    public Optional<DebtOpenAccount> findByIdIncludingDisabledAndCompanyId(Long id,
+            Long companyId) {
+        return jpaRepository.findByIdIncludingDisabledAndCompanyId(id, companyId)
+                .map(mapper::toDomain);
+    }
 }
