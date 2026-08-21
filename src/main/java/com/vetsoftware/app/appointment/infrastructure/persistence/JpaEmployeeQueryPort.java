@@ -41,10 +41,10 @@ public class JpaEmployeeQueryPort implements EmployeeQueryPort {
      * Granularidad: por empleado, no por (empleado, día). Bloquear solo el día
      * exigiría una fila propia por día -una tabla de agenda que hoy no existe en el
      * esquema-; bloquear la fila del empleado entero usa lo que ya existe y sigue
-     * siendo correcto -serializa TODAS las creaciones de cita de ese empleado,
-     * cualquier día, mientras dura la transacción-, aunque es más ancho de lo
-     * estrictamente necesario. Documentado como decisión abierta en el issue de
-     * seguimiento.
+     * siendo correcto -serializa TODAS las escrituras de agenda de ese empleado
+     * -alta, edición y reprogramación desde el issue #241-, cualquier día, mientras
+     * dura la transacción-, aunque es más ancho de lo estrictamente necesario.
+     * Documentado como decisión abierta en el issue de seguimiento.
      */
     @Override
     public void lockForOverlapCheck(Long employeeId, Long companyId) {
