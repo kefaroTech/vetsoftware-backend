@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,7 @@ import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetric
 import com.vetsoftware.app.electronicdocument.application.port.out.DianJobLeasePort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionLogPort;
+import com.vetsoftware.app.electronicdocument.application.usecase.DeliverElectronicDocumentService;
 import com.vetsoftware.app.electronicdocument.application.usecase.DocumentTransmitter;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
@@ -19,7 +21,9 @@ import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationHandler;
 import io.micrometer.observation.ObservationRegistry;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -84,6 +88,47 @@ class ScheduledJobsObservationTest {
         assertThat(tag(context, "job.name")).isEqualTo("dian.pending.reconciliation");
         assertThat(tag(context, "job.outcome")).isEqualTo("no_work");
         verifyNoInteractions(transmitter);
+    }
+
+    /**
+     * Issue #204. El job de re-entrega trabaja sobre documentos identificados por
+     * id: publicarlos como etiqueta seria una serie por factura. Se fija ademas su
+     * {@code job.name}, que es la unica via por la que un tablero puede distinguir
+     * esta poblacion de la de contingencia.
+     */
+    @Test
+    void deliveryRetryReportsPartialFailureWithoutHighCardinalityTags() throws Exception {
+        ElectronicDocumentRepository repository = mock(ElectronicDocumentRepository.class);
+        DianJobLeasePort leasePort = mock(DianJobLeasePort.class);
+        DeliverElectronicDocumentService deliverService = mock(
+                DeliverElectronicDocumentService.class);
+        ElectronicDocument entregado = recentDocument();
+        ElectronicDocument fallido = recentDocument();
+        when(leasePort.leaseUndeliveredValidated(anyInt(), any())).thenReturn(List.of(101L, 202L));
+        when(repository.findById(101L)).thenReturn(Optional.of(entregado));
+        when(repository.findById(202L)).thenReturn(Optional.of(fallido));
+        doThrow(new IllegalStateException("S3 no responde")).when(deliverService)
+                .deliverIfValidated(fallido);
+        ObservationCapture capture = new ObservationCapture();
+
+        DeliveryRetryJob job = new DeliveryRetryJob(repository, leasePort, deliverService,
+                capture.telemetry(), Clock.systemDefaultZone(), 72, 25, Duration.ofMinutes(15));
+
+        runAsSpringScheduledTask(job, "retryDeliveries", capture.registry());
+
+        Observation.Context context = capture.onlyContext();
+        assertThat(context.getName()).isEqualTo("tasks.scheduled.execution");
+        assertThat(tag(context, "job.name")).isEqualTo("dian.delivery.retry");
+        assertThat(tag(context, "job.outcome")).isEqualTo("partial_failure");
+        assertThat(context.getLowCardinalityKeyValues())
+                .noneMatch(keyValue -> keyValue.getKey().contains("document")
+                        || keyValue.getValue().equals("101") || keyValue.getValue().equals("202"));
+    }
+
+    private static ElectronicDocument recentDocument() {
+        ElectronicDocument document = mock(ElectronicDocument.class);
+        when(document.getCreatedDate()).thenReturn(LocalDateTime.now());
+        return document;
     }
 
     private static void runAsSpringScheduledTask(Object target, String methodName,

@@ -102,4 +102,72 @@ public class JdbcDianJobLeasePort implements DianJobLeasePort {
                 """.formatted(placeholders), arguments);
         return ids;
     }
+
+    /**
+     * Mismo arriendo, otro predicado: VALIDADO <b>sin</b>
+     * {@code pdf_representation} (issue #204).
+     *
+     * <p>
+     * El {@code OR pdf_representation = ''} no es defensivo de más: el guard de
+     * {@code DeliverElectronicDocumentService} trata la cadena vacía igual que el
+     * {@code NULL}, y si la sentencia solo mirase el {@code NULL} habría documentos
+     * que el caso de uso considera pendientes de entregar y este job no llegaría a
+     * arrendar jamás — un hueco silencioso dentro del arreglo del hueco.
+     *
+     * <p>
+     * <b>Sin índice dedicado.</b> El plan cae sobre el índice de
+     * {@code dian_status} y descarta por PDF; con VALIDADO siendo el estado más
+     * poblado de la tabla, esto es un escaneo del rango entero en cada pasada. A
+     * volumen bajo es irrelevante y cada 12 h más, pero es la primera cosa que hay
+     * que mirar si el job empieza a tardar: la solución es un índice parcial (o
+     * compuesto con {@code pdf_representation}) que aísle una población que en
+     * condiciones normales tiene cero filas.
+     *
+     * <p>
+     * La exención de bloqueo optimista {@code E6_YA_PROTEGIDO} razonada arriba
+     * aplica igual aquí: es el mismo {@code UPDATE} de {@code dian_leased_until}
+     * sobre filas ya serializadas por {@code FOR UPDATE SKIP LOCKED}.
+     *
+     * <p>
+     * <b>El instante lo pone la base, no la JVM</b>, a diferencia de
+     * {@link #leaseByDianStatus}. Dos motivos, y el primero basta: el arriendo
+     * reparte trabajo <em>entre réplicas</em>, y comparar la marca de una réplica
+     * con el reloj de otra hace que un desfase de relojes se traduzca en lotes
+     * solapados o en lotes que nadie reclama; con {@code CURRENT_TIMESTAMP} la
+     * única referencia es la del servidor que guarda la marca. El segundo es que
+     * asi no hay {@code Instant.now()} que leer del reloj de la máquina, que es
+     * justo lo que la regla {@code RELOJ_DEL_SISTEMA} de
+     * {@code HexagonalArchitectureTest} persigue. Que la hermana de arriba siga
+     * usando la JVM es deuda conocida y con issue propio: migrarla toca una
+     * violación congelada y dos rodajas de integración, y no cabía en este arreglo.
+     */
+    @Override
+    @Transactional
+    public List<Long> leaseUndeliveredValidated(int limit, Duration lease) {
+        List<Long> ids = jdbcTemplate.queryForList("""
+                SELECT id
+                  FROM electronic_documents
+                 WHERE dian_status = ?
+                   AND (pdf_representation IS NULL OR pdf_representation = '')
+                   AND (dian_leased_until IS NULL OR dian_leased_until < CURRENT_TIMESTAMP)
+                 ORDER BY issue_date
+                 LIMIT ?
+                 FOR UPDATE SKIP LOCKED
+                """, Long.class, DianStatus.VALIDADO.name(), limit);
+
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+
+        String placeholders = ids.stream().map(id -> "?").collect(Collectors.joining(","));
+        Object[] arguments = Stream
+                .concat(Stream.of(lease.toSeconds()), ids.stream().map(Object.class::cast))
+                .toArray();
+        jdbcTemplate.update("""
+                UPDATE electronic_documents
+                   SET dian_leased_until = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL ? SECOND)
+                 WHERE id IN (%s)
+                """.formatted(placeholders), arguments);
+        return ids;
+    }
 }
