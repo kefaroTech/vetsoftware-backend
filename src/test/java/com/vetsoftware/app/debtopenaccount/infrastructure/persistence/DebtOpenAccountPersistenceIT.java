@@ -10,6 +10,7 @@ import com.vetsoftware.app.debtopenaccount.domain.OpenAccountRef;
 import com.vetsoftware.app.debtopenaccount.domain.PaymentMethod;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -40,8 +41,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * Con un doble del repositorio ninguna de las dos se puede falsear: el doble
  * responderia lo que el propio test le hubiera dicho.
  */
-@Import({JpaDebtOpenAccountRepository.class, DebtOpenAccountJpaMapper.class,
-        JpaOpenAccountQueryPort.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaDebtOpenAccountRepository — scope por cuenta e idempotencia contra MySQL real")
 class DebtOpenAccountPersistenceIT extends AbstractDataJpaTest {
 

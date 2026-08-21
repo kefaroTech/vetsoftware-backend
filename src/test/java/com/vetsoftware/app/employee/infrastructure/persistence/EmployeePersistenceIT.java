@@ -8,6 +8,7 @@ import com.vetsoftware.app.employee.domain.CompanyRef;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -33,7 +34,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
  * la sesión, y que la búsqueda paginada filtra por empresa y por texto contra
  * la base real.
  */
-@Import({JpaEmployeeRepository.class, EmployeeJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaEmployeeRepository — empleados contra MySQL real")
 class EmployeePersistenceIT extends AbstractDataJpaTest {
 

@@ -7,6 +7,7 @@ import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestFile;
 import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestRef;
 import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestStoragePathRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -44,8 +45,7 @@ import org.springframework.context.annotation.Import;
  * con sus propias filas (ids 970+, fuera del rango de {@link SchemaSeed}).</li>
  * </ul>
  */
-@Import({JpaLaboratoryTestFileRepository.class, LaboratoryTestFileJpaMapper.class,
-        JpaLaboratoryTestQueryPort.class, JpaEmployeeQueryPort.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("Adaptadores JPA de laboratorytestfile contra MySQL real")
 class LaboratoryTestFilePersistenceIT extends AbstractDataJpaTest {
 

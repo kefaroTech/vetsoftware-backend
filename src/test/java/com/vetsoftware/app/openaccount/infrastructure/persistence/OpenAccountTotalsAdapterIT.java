@@ -3,6 +3,7 @@ package com.vetsoftware.app.openaccount.infrastructure.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -32,7 +33,7 @@ import org.springframework.context.annotation.Import;
  * consulta contra la tabla, no el camino de escritura de cada feature hija (que
  * tiene su propia rodaja).
  */
-@Import(JpaOpenAccountTotalsAdapter.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaOpenAccountTotalsAdapter — la suma de cargos y abonos contra MySQL real")
 class OpenAccountTotalsAdapterIT extends AbstractDataJpaTest {
 

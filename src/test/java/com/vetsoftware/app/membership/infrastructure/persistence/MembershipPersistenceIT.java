@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.vetsoftware.app.membership.domain.Membership;
 import com.vetsoftware.app.membership.domain.MembershipStatus;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
@@ -20,7 +21,7 @@ import org.springframework.context.annotation.Import;
  * {@code reactivate()} y el {@code @SQLRestriction} de soft-delete, que ningun
  * test con dobles puede ver.
  */
-@Import({JpaMembershipRepository.class, MembershipJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaMembershipRepository — membresias contra MySQL real")
 class MembershipPersistenceIT extends AbstractDataJpaTest {
 

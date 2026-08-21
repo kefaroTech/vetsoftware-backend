@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.country.domain.Country;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +23,7 @@ import org.springframework.context.annotation.Import;
  * {@code @SQLDelete}/{@code @SQLRestriction} y que {@code reactivate} es un
  * UPDATE nativo que solo el motor ejecuta de verdad.
  */
-@Import({JpaCountryRepository.class, CountryJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaCountryRepository — catalogo de paises contra MySQL real")
 class CountryPersistenceIT extends AbstractDataJpaTest {
 

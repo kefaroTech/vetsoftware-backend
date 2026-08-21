@@ -12,6 +12,7 @@ import com.vetsoftware.app.petshopcatalog.application.PetshopCatalogUseCase.Pres
 import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
 import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogNotFoundException;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -34,7 +35,7 @@ import org.springframework.context.annotation.Import;
  * desmarcar la anterior y marcar la nueva) y el borrado de codigos de barras
  * antes de borrar su dueño. Con dobles, todo eso da verde sin probar nada.
  */
-@Import(PetshopCatalogService.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("PetshopCatalogService — presentaciones, combos y codigos de barras")
 class PetshopCatalogServiceIT extends AbstractDataJpaTest {
 

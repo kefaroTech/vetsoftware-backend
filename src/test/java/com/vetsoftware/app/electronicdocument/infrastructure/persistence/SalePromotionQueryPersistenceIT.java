@@ -7,6 +7,7 @@ import com.vetsoftware.app.electronicdocument.application.port.out.SalePromotion
 import com.vetsoftware.app.electronicdocument.application.port.out.SalePromotionQueryPort.SalePromotion;
 import com.vetsoftware.app.electronicdocument.application.port.out.SalePromotionQueryPort.ValueType;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -41,7 +42,7 @@ import org.springframework.context.annotation.Import;
  * {@code promotion}: el vertical slicing tambien aplica en {@code src/test}, y
  * asi la rodaja no depende de que el otro adaptador este bien.
  */
-@Import(JpaSalePromotionQueryPort.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSalePromotionQueryPort — promociones vigentes contra MySQL real")
 class SalePromotionQueryPersistenceIT extends AbstractDataJpaTest {
 

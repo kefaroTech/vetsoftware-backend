@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.vetsoftware.app.city.domain.City;
 import com.vetsoftware.app.city.domain.StateRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.LocalDateTime;
@@ -50,7 +51,7 @@ import org.springframework.context.annotation.Import;
  * eso este test siembra su propio pais y sus propios departamentos dejando que
  * el motor asigne el id — cero coincidencias posibles.
  */
-@Import({JpaCityRepository.class, CityJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaCityRepository — catalogo global, soft delete y aislamiento por departamento contra MySQL real")
 class CityPersistenceIT extends AbstractDataJpaTest {
 

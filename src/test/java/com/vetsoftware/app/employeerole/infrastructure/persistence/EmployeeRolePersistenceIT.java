@@ -6,6 +6,7 @@ import com.vetsoftware.app.employeerole.domain.EmployeeRef;
 import com.vetsoftware.app.employeerole.domain.EmployeeRole;
 import com.vetsoftware.app.employeerole.domain.RoleRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -28,7 +29,7 @@ import org.springframework.context.annotation.Import;
  * mismo aplica a {@code findDisabledIdByEmployeeAndRole} y {@code reactivate},
  * que son consultas/UPDATE nativos que solo el motor real ejercita de verdad.
  */
-@Import({JpaEmployeeRoleRepository.class, EmployeeRoleJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaEmployeeRoleRepository — CRUD y soft delete de la asignacion contra MySQL real")
 class EmployeeRolePersistenceIT extends AbstractDataJpaTest {
 

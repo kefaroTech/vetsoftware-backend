@@ -12,6 +12,7 @@ import com.vetsoftware.app.appointment.domain.BranchRef;
 import com.vetsoftware.app.appointment.domain.CompanyRef;
 import com.vetsoftware.app.appointment.domain.EmployeeRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -54,7 +55,7 @@ import org.springframework.context.annotation.Import;
  * la tabla, no el camino de escritura (que tiene su propio caso en
  * {@link Escritura}).
  */
-@Import({JpaAppointmentRepository.class, AppointmentJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaAppointmentRepository — solapes y citas contra MySQL real")
 class AppointmentPersistenceIT extends AbstractDataJpaTest {
 

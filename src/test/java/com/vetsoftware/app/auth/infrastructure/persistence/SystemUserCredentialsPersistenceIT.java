@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.auth.application.port.out.SystemUserCredentialsRepository.SystemUserCredentials;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.Optional;
@@ -28,7 +29,7 @@ import org.springframework.context.annotation.Import;
  * nada mas se queje. No se puede probar con un doble del repositorio, porque un
  * mock devolveria lo que se le diga; por eso va contra MySQL real.
  */
-@Import(JpaSystemUserCredentialsRepository.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSystemUserCredentialsRepository — una cuenta desactivada no autentica")
 class SystemUserCredentialsPersistenceIT extends AbstractDataJpaTest {
 

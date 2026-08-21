@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.vetsoftware.app.laboratorytesttype.domain.CompanyRef;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestType;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -34,7 +35,7 @@ import org.springframework.context.annotation.Import;
  * logica Java.</li>
  * </ul>
  */
-@Import({JpaLaboratoryTestTypeRepository.class, LaboratoryTestTypeJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaLaboratoryTestTypeRepository — disponibilidad general/propia y soft delete contra MySQL real")
 class LaboratoryTestTypePersistenceIT extends AbstractDataJpaTest {
 

@@ -10,6 +10,7 @@ import com.vetsoftware.app.generalchargeopenaccount.domain.OpenAccountRef;
 import com.vetsoftware.app.generalchargeopenaccount.domain.TaxRef;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -39,8 +40,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * de idempotencia y el {@code @SQLDelete} que convierte el borrado en un
  * {@code UPDATE}.
  */
-@Import({JpaGeneralChargeOpenAccountRepository.class, GeneralChargeOpenAccountJpaMapper.class,
-        JpaOpenAccountQueryPort.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaGeneralChargeOpenAccountRepository — impuesto congelado y scope contra MySQL real")
 class GeneralChargeOpenAccountPersistenceIT extends AbstractDataJpaTest {
 

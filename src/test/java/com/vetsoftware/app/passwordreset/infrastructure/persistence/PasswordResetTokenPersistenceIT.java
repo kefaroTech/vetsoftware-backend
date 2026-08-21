@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.passwordreset.domain.PasswordResetToken;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -33,7 +34,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * {@code employee_id} — con un doble del repositorio esa fuga (invalidar
  * sesiones de restablecimiento de otro empleado) daria verde siempre.
  */
-@Import({JpaPasswordResetTokenRepository.class, PasswordResetTokenJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaPasswordResetTokenRepository — token de un solo uso contra MySQL real")
 class PasswordResetTokenPersistenceIT extends AbstractDataJpaTest {
 

@@ -7,6 +7,7 @@ import com.vetsoftware.app.membershipsubmodule.domain.MembershipRef;
 import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModule;
 import com.vetsoftware.app.membershipsubmodule.domain.SubModuleRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -39,7 +40,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * que evita el N+1 al listar y al leer por id.</li>
  * </ul>
  */
-@Import({JpaMembershipSubModuleRepository.class, MembershipSubModuleJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaMembershipSubModuleRepository — enlace, soft delete y reactivacion contra MySQL real")
 class MembershipSubModulePersistenceIT extends AbstractDataJpaTest {
 

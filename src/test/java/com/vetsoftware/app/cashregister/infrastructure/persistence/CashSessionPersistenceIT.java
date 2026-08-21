@@ -12,6 +12,7 @@ import com.vetsoftware.app.cashregister.domain.CashSession;
 import com.vetsoftware.app.cashregister.domain.CashSessionCount;
 import com.vetsoftware.app.cashregister.domain.CashSessionStatus;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -44,7 +45,7 @@ import org.springframework.context.annotation.Import;
  * subconsulta de totales de cierre: los nombres que salen ahi no existen en
  * ningun objeto Java.
  */
-@Import(JpaCashSessionRepository.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaCashSessionRepository — sesion, movimientos y resumenes contra MySQL real")
 class CashSessionPersistenceIT extends AbstractDataJpaTest {
 

@@ -9,6 +9,7 @@ import com.vetsoftware.app.inventory.domain.StockMovement;
 import com.vetsoftware.app.inventory.domain.StockMovementType;
 import com.vetsoftware.app.inventory.domain.StockReferenceType;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -35,7 +36,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
  * compara MySQL un {@code NULL} contra un parametro. Justo el tipo de detalle
  * donde vivio BE-01.
  */
-@Import({JpaStockLotRepository.class, JpaStockMovementRepository.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaStockLotRepository — FEFO e identidad de lote contra MySQL real")
 class StockLotPersistenceIT extends AbstractDataJpaTest {
 

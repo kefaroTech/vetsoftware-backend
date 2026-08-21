@@ -8,6 +8,7 @@ import com.vetsoftware.app.spa.domain.Spa;
 import com.vetsoftware.app.spa.domain.SpaStatus;
 import com.vetsoftware.app.spa.domain.SpaTypeRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -32,7 +33,7 @@ import org.springframework.context.annotation.Import;
  * 980+, fuera del rango de {@link SchemaSeed} y del resto de features que ya
  * usan el rango 960-979).
  */
-@Import({JpaSpaRepository.class, SpaJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSpaRepository — citas de spa contra MySQL real")
 class SpaPersistenceIT extends AbstractDataJpaTest {
 

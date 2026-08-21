@@ -8,6 +8,7 @@ import com.vetsoftware.app.animalalert.domain.AnimalAlert;
 import com.vetsoftware.app.animalalert.domain.AnimalRef;
 import com.vetsoftware.app.animalalert.domain.CompanyRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -31,7 +32,7 @@ import org.springframework.context.annotation.Import;
  * completa la cadena con sus propias filas (ids 960+, fuera del rango de
  * {@link SchemaSeed}) para poder guardar una alerta real.
  */
-@Import({JpaAnimalAlertRepository.class, AnimalAlertJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaAnimalAlertRepository — alertas clinicas contra MySQL real")
 class AnimalAlertPersistenceIT extends AbstractDataJpaTest {
 

@@ -20,7 +20,6 @@ import com.vetsoftware.app.consultationtype.infrastructure.persistence.Consultat
 import com.vetsoftware.app.consultationtype.infrastructure.persistence.ConsultationTypeJpaRepository;
 import com.vetsoftware.app.medicament.domain.Medicament;
 import com.vetsoftware.app.medicament.infrastructure.persistence.JpaMedicamentRepository;
-import com.vetsoftware.app.medicament.infrastructure.persistence.MedicamentJpaMapper;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescription;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentRef;
 import com.vetsoftware.app.medicamentprescription.domain.PrescriptionRef;
@@ -32,11 +31,11 @@ import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaEntity;
 import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaRepository;
 import com.vetsoftware.app.prescription.domain.Prescription;
 import com.vetsoftware.app.prescription.infrastructure.persistence.JpaPrescriptionRepository;
-import com.vetsoftware.app.prescription.infrastructure.persistence.PrescriptionJpaMapper;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaEntity;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaRepository;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -61,9 +60,7 @@ import org.springframework.context.annotation.Import;
  * {@code prescription} y {@code medicament} para no duplicar sus invariantes
  * dentro de un test que solo quiere una linea de receta.
  */
-@Import({JpaMedicamentPrescriptionRepository.class, MedicamentPrescriptionJpaMapper.class,
-        JpaPrescriptionRepository.class, PrescriptionJpaMapper.class, JpaMedicamentRepository.class,
-        MedicamentJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaMedicamentPrescriptionRepository — lineas de receta contra MySQL real")
 class MedicamentPrescriptionPersistenceIT extends AbstractDataJpaTest {
 

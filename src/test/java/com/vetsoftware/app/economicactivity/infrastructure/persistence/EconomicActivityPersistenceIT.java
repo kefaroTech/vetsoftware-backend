@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.vetsoftware.app.economicactivity.domain.EconomicActivity;
 import com.vetsoftware.app.economicactivity.testsupport.EconomicActivityMother;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
@@ -27,7 +28,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * {@code reactivate}. Ese contraste, y el choque con el indice unico de
  * {@code code} que sobrevive al soft delete, solo se ve pasando por el motor.
  */
-@Import({JpaEconomicActivityRepository.class, EconomicActivityJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaEconomicActivityRepository — soft delete y unicidad de codigo contra MySQL real")
 class EconomicActivityPersistenceIT extends AbstractDataJpaTest {
 

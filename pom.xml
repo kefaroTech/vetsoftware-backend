@@ -410,26 +410,61 @@
 
                          -Xmx explicito por lo mismo que en surefire, pero aqui ya medido: el fork
                          moria con OutOfMemoryError tras 314 s y solo 203 de las ~1.130 pruebas.
-                         maxSize baja a 2 porque en integracion la cache de contextos NO acierta
-                         nunca: cada *IT declara su propio @Import y ningun contexto se reutiliza, asi
-                         que los 32 por defecto -cada uno arrastrando los metadatos Hibernate de las
-                         104 *JpaEntity- son memoria retenida a cambio de cero reutilizacion. -->
-                    <argLine>@{failsafeArgLine} -Xmx4g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath="${project.build.directory}/heapdump.hprof" -Dspring.test.context.cache.maxSize=2 -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
+
+                         maxSize=4 son los 3 contextos que sobreviven al colapso de las rodajas
+                         mas uno de margen, y es un ajuste de FIABILIDAD, no de velocidad (#284).
+                         Los tres estan medidos, no estimados: (1) @DataJpaTest +
+                         PersistenceSliceConfig, la clave que comparten las 90 rodajas de
+                         persistencia; (2) @DataJpaTest pelado, que es solo SchemaMigrationsIT y
+                         se deja fuera del bloque A PROPOSITO -es el canario de "las migraciones
+                         aplican sobre un contexto minimo", y meterlo dentro lo pondria rojo por
+                         cualquier bean ajeno, perdiendo justo esa senal-; y (3) @SpringBootTest,
+                         que comparten OpenApiContractIT y TraceparentPropagationIT.
+
+                         Por que NO puede quedarse en 2: con 2 la LRU no puede retener las tres.
+                         Expulsa una segun el orden de ejecucion y, si la expulsada resulta ser la
+                         de las 90 rodajas, son ~85 s que reaparecen de forma intermitente y EN
+                         VERDE. Ese es justo el coste que nadie llega a diagnosticar, porque no
+                         rompe nada: comportamiento variable disfrazado de build correcto.
+
+                         El argumento de memoria que justificaba el 2 sigue siendo valido en su
+                         forma pero ya no en su numero. Se escribio cuando cada *IT declaraba su
+                         propio @Import y la cache no acertaba NUNCA -92 contextos pedidos de uno
+                         en uno, cada uno arrastrando los metadatos Hibernate de las 104
+                         *JpaEntity-. Hoy acierta 87 de 90 veces, y con 3 contextos vivos en vez
+                         de 92 retener 4 es barato. Si vuelves a leer esto y las rodajas han
+                         dejado de compartir PersistenceSliceConfig, el numero de aqui es lo
+                         primero que hay que recalcular.
+
+                         SIN <executions> PROPIAS, A PROPOSITO. spring-boot-starter-parent:4.1.0
+                         ya declara en su pluginManagement (lineas 118-130 de su POM) una
+                         ejecucion (default) de failsafe con los goals integration-test + verify.
+                         Esta <configuration> esta a nivel de PLUGIN, no de ejecucion, asi que se
+                         le aplica igual; la prueba es que target/jacoco-it.exec pesa ~2,9 MB, y
+                         el agente de JaCoCo solo pudo engancharse al fork por el argLine de aqui.
+
+                         Aqui vivio ademas una segunda ejecucion, <id>integration-tests</id>, con
+                         esos mismos dos goals. NO se ejecutaba dos veces, pero solo por accidente:
+                         surefire cachea por configuracion efectiva y las dos claves coincidian
+                         ("Skipping execution of surefire because it has already been run for this
+                         configuration", dos banners T E S T S, 93 TEST-*.xml en failsafe-reports y
+                         no 186). El dia que una de las dos hubiera recibido un <includes>, un
+                         <groups> o un <systemPropertyVariables>, las claves habrian dejado de
+                         coincidir y las 93 rodajas *IT se habrian ejecutado DOS VECES en silencio:
+                         +14 min, y una segunda pasada sobre una base ya usada, que es justo como
+                         se inventan o se enmascaran las dependencias de orden entre pruebas.
+
+                         Tampoco se pone <skip> en la del padre: esa es la que arbitra el build
+                         -cuando fallo, fallo con "Failed to execute goal ...failsafe...:verify
+                         (default)"-. Si algun dia hacen falta parametros distintos para las *IT,
+                         van en esta <configuration> de plugin, nunca en una ejecucion gemela. -->
+                    <argLine>@{failsafeArgLine} -Xmx4g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath="${project.build.directory}/heapdump.hprof" -Dspring.test.context.cache.maxSize=4 -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
                     <environmentVariables>
                         <!-- Mismo motivo que en surefire: EncryptedStringConverter lo
                              instancia Hibernate y lee la clave del entorno sin default. -->
                         <DIAN_ENC_KEY>cvPOiufeDsByvGdw71gg8XxS880Xf7S6lH9WvdfiwQY=</DIAN_ENC_KEY>
                     </environmentVariables>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>integration-tests</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -606,6 +641,29 @@
                         <removeUnusedImports/>
                         <formatAnnotations/>
                     </java>
+                    <!-- El indice de up-to-date fuera de target/. Por defecto vive en
+                         target/spotless-index, asi que `mvn clean` lo borra y spotless vuelve a
+                         leer y formatear los 5.596 ficheros desde cero en cada pasada local
+                         ("Index file does not exist. Fallback to an empty index" en el log;
+                         17,7 s medidos en CI). En .build-cache/ sobrevive al clean.
+
+                         <enabled>true</enabled> es OBLIGATORIO aunque el defecto del plugin sea
+                         "activado": AbstractSpotlessMojo inicializa el campo con
+                         UpToDateChecking.enabled(), pero en cuanto el POM declara el elemento,
+                         Plexus construye un objeto NUEVO con el constructor por defecto
+                         (enabled = false) y solo rellena los hijos listados. Poner solo
+                         <indexFile> apagaria la comprobacion entera en vez de moverla.
+
+                         Esto NO relaja ningun control: el indice guarda una huella del plugin
+                         -version + configuracion + los formatters- y si cambia descarta el indice
+                         completo ("Index file corresponds to a different configuration of the
+                         plugin"), asi que tocar config/spotless/* obliga a reformatear todo.
+                         Por fichero compara la fecha de modificacion. En CI el runner es efimero
+                         y sigue pagando la pasada fria entera. -->
+                    <upToDateChecking>
+                        <enabled>true</enabled>
+                        <indexFile>${project.basedir}/.build-cache/spotless-index</indexFile>
+                    </upToDateChecking>
                 </configuration>
                 <executions>
                     <execution>
@@ -622,6 +680,18 @@
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>${maven-checkstyle-plugin.version}</version>
                 <configuration>
+                    <!-- Mismo motivo que el indice de spotless: el defecto es
+                         target/checkstyle-cachefile, que `mvn clean` borra, y checkstyle vuelve a
+                         analizar los 5.596 ficheros desde cero (15,8 s medidos en CI). En
+                         .build-cache/ sobrevive al clean.
+
+                         Tampoco relaja el control: PropertyCacheFile guarda un SHA-1 del objeto
+                         Configuration efectivo bajo la clave "configuration" y, si no coincide al
+                         cargar, hace reset() y tira la cache entera; ademas invalida por los
+                         recursos externos que la configuracion referencia. Es decir, tocar
+                         config/checkstyle/* obliga a reanalizarlo todo. Por fichero compara la
+                         fecha de modificacion. -->
+                    <cacheFile>${project.basedir}/.build-cache/checkstyle-cachefile</cacheFile>
                     <configLocation>config/checkstyle/checkstyle.xml</configLocation>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
                     <includeResources>false</includeResources>

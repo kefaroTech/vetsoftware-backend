@@ -3,6 +3,7 @@ package com.vetsoftware.app.employeebranch.infrastructure.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -22,7 +23,7 @@ import org.springframework.context.annotation.Import;
  * {@code EmployeeBranchRepository} no puede exigir sin definir el mismo
  * contrato que dice verificar.
  */
-@Import(JpaEmployeeBranchRepository.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaEmployeeBranchRepository — set atomico de sedes contra MySQL real")
 class EmployeeBranchPersistenceIT extends AbstractDataJpaTest {
 

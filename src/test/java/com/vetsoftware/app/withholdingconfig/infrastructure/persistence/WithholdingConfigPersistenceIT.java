@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import com.vetsoftware.app.withholdingconfig.domain.CompanyRef;
 import com.vetsoftware.app.withholdingconfig.domain.WithholdingConfig;
@@ -27,7 +28,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * el {@code @EntityGraph} de {@code findByCompany_Id} es lo que evita el N+1 al
  * hidratar el {@code CompanyRef}.
  */
-@Import({JpaWithholdingConfigRepository.class, WithholdingConfigJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaWithholdingConfigRepository — upsert 0-o-1 por company contra MySQL real")
 class WithholdingConfigPersistenceIT extends AbstractDataJpaTest {
 

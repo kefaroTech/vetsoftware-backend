@@ -19,6 +19,7 @@ import com.vetsoftware.app.electronicdocument.domain.TaxRegime;
 import com.vetsoftware.app.electronicdocument.domain.TaxScheme;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -65,8 +66,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * la paginacion siempre parece correcta.</li>
  * </ul>
  */
-@Import({JpaElectronicDocumentRepository.class, ElectronicDocumentJpaMapper.class,
-        JdbcDianJobLeasePort.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaElectronicDocumentRepository — inmutabilidad, idempotencia y detalle contra MySQL real")
 class ElectronicDocumentPersistenceIT extends AbstractDataJpaTest {
 

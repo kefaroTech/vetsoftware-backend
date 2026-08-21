@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.basepermission.domain.BasePermission;
 import com.vetsoftware.app.basepermission.domain.SubModuleRef;
-import com.vetsoftware.app.submodule.infrastructure.persistence.SubModuleJpaMapper;
 import com.vetsoftware.app.submodule.infrastructure.persistence.SubModuleJpaRepository;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
@@ -28,8 +28,7 @@ import org.springframework.context.annotation.Import;
  * maestros sin fila raiz comun a otras features), asi que este test los inserta
  * por su cuenta.
  */
-@Import({JpaBasePermissionRepository.class, BasePermissionJpaMapper.class,
-        SubModuleJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaBasePermissionRepository — persistencia de permisos base contra MySQL real")
 class BasePermissionPersistenceIT extends AbstractDataJpaTest {
 

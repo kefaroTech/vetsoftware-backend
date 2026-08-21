@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.systemconfiguration.domain.SystemConfiguration;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
@@ -34,7 +35,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * el test dice probar. Descubierto escribiendo esta rodaja: no hay Clock ni
  * Random involucrados, es puramente el seed de produccion.
  */
-@Import({JpaSystemConfigurationRepository.class, SystemConfigurationJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSystemConfigurationRepository — configuracion global contra MySQL real")
 class SystemConfigurationPersistenceIT extends AbstractDataJpaTest {
 

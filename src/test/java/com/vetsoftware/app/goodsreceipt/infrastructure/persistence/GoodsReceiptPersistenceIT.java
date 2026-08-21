@@ -13,6 +13,7 @@ import com.vetsoftware.app.goodsreceipt.domain.ProductRef;
 import com.vetsoftware.app.goodsreceipt.domain.SupplierRef;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -50,7 +51,7 @@ import org.springframework.context.annotation.Import;
  * {@code suppliers}, asi que los proveedores (y la sede del tenant ajeno) se
  * insertan aqui por SQL nativo con ids propios que no chocan con los suyos.
  */
-@Import({JpaGoodsReceiptRepository.class, GoodsReceiptJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaGoodsReceiptRepository — recepciones, lineas y busqueda contra MySQL real")
 class GoodsReceiptPersistenceIT extends AbstractDataJpaTest {
 

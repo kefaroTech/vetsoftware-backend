@@ -7,6 +7,7 @@ import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationPro
 import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationRef;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -27,8 +28,7 @@ import org.springframework.context.annotation.Import;
  * lo que se prueba aqui es la consulta de esta tabla, no el camino de escritura
  * de las features de las que cuelga.
  */
-@Import({JpaHospitalizationProgressNoteRepository.class,
-        HospitalizationProgressNoteJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaHospitalizationProgressNoteRepository — notas de evolucion contra MySQL real")
 class HospitalizationProgressNotePersistenceIT extends AbstractDataJpaTest {
 

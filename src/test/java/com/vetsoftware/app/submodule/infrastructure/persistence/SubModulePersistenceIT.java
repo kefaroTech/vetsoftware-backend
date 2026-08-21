@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.vetsoftware.app.submodule.domain.ModuleRef;
 import com.vetsoftware.app.submodule.domain.SubModule;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
@@ -25,7 +26,7 @@ import org.springframework.context.annotation.Import;
  * no lo siembra {@code SchemaSeed} (es un catalogo maestro sin fila raiz comun
  * a otras features), asi que este test lo inserta por su cuenta.
  */
-@Import({JpaSubModuleRepository.class, SubModuleJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSubModuleRepository — persistencia de submodulos contra MySQL real")
 class SubModulePersistenceIT extends AbstractDataJpaTest {
 

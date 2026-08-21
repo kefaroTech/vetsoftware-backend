@@ -6,13 +6,13 @@ import com.vetsoftware.app.hospitalization.domain.AnimalRef;
 import com.vetsoftware.app.hospitalization.domain.CompanyRef;
 import com.vetsoftware.app.hospitalization.domain.Hospitalization;
 import com.vetsoftware.app.hospitalization.domain.HospitalizationType;
-import com.vetsoftware.app.hospitalization.infrastructure.persistence.HospitalizationJpaMapper;
 import com.vetsoftware.app.hospitalization.infrastructure.persistence.JpaHospitalizationRepository;
 import com.vetsoftware.app.hospitalizationobservation.domain.EmployeeRef;
 import com.vetsoftware.app.hospitalizationobservation.domain.HospitalizationObservation;
 import com.vetsoftware.app.hospitalizationobservation.domain.HospitalizationRef;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -51,9 +51,7 @@ import org.springframework.context.annotation.Import;
  * (importado aqui) en vez de por SQL nativo: lo que se prueba es la FK contra
  * una fila valida, no el camino de escritura de esa feature vecina.
  */
-@Import({JpaHospitalizationObservationRepository.class, HospitalizationObservationJpaMapper.class,
-        JpaHospitalizationQueryPort.class, JpaEmployeeQueryPort.class,
-        JpaHospitalizationRepository.class, HospitalizationJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("Adaptadores JPA de hospitalizationobservation contra MySQL real")
 class HospitalizationObservationPersistenceIT extends AbstractDataJpaTest {
 

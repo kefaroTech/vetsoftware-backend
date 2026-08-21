@@ -9,6 +9,7 @@ import com.vetsoftware.app.surgery.domain.ConsultationRef;
 import com.vetsoftware.app.surgery.domain.Surgery;
 import com.vetsoftware.app.surgery.domain.SurgeryTypeRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -29,7 +30,7 @@ import org.springframework.context.annotation.Import;
  * contra la tabla {@code surgeries}, no el camino de escritura de esas features
  * hermanas.
  */
-@Import({JpaSurgeryRepository.class, SurgeryJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSurgeryRepository — consultas contra MySQL real")
 class SurgeryPersistenceIT extends AbstractDataJpaTest {
 

@@ -6,22 +6,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.vetsoftware.app.VetSoftwareApplication;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
 
 /**
  * Exporta el contrato OpenAPI del backend y falla si el fichero versionado se
@@ -37,46 +28,19 @@ import org.testcontainers.containers.MySQLContainer;
  * <p>
  * <b>Por que arranca la aplicacion entera.</b> springdoc construye el esquema
  * inspeccionando los handlers registrados y los tipos que devuelven; sin el
- * contexto web real no hay 564 endpoints que inspeccionar. Se reutiliza el
- * contenedor MySQL de {@link AbstractDataJpaTest} por la misma razon que aquel:
- * el schema real es parte de lo que se prueba.
+ * contexto web real no hay 564 endpoints que inspeccionar. El MySQL y el Redis
+ * los pone {@link AbstractFullApplicationIT} —el schema real es parte de lo que
+ * se prueba, y el limitador de rutas publicas se conecta a Redis al crear su
+ * bean—, compartidos con las demas pruebas de aplicacion completa.
  *
  * <p>
  * <b>Para regenerar</b> tras un cambio de API deliberado:
  * {@code ./mvnw verify -Dit.test=OpenApiContractIT -Dopenapi.write=true}.
  */
-@SpringBootTest(classes = VetSoftwareApplication.class)
-@AutoConfigureMockMvc
-@ActiveProfiles({"test", "openapi"})
-class OpenApiContractIT {
+class OpenApiContractIT extends AbstractFullApplicationIT {
 
     /** Ruta versionada del contrato. La consumen los dos frontends. */
     private static final Path SPEC = Path.of("api", "openapi.json");
-
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
-
-    /**
-     * El limitador de las rutas publicas guarda sus cubos en Redis y se conecta al
-     * crear el bean, asi que sin Redis no hay contexto que levantar. Es una imagen
-     * de 15 MB: mas barato que fingir el bean y quedarse con un arranque que no es
-     * el de produccion.
-     */
-    static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7.4.8-alpine")
-            .withExposedPorts(6379);
-
-    static {
-        MYSQL.start();
-        REDIS.start();
-    }
-
-    @DynamicPropertySource
-    static void redisConnection(DynamicPropertyRegistry registry) {
-        // RateLimitConfig lee la url completa, no host/puerto, asi que
-        // @ServiceConnection no basta.
-        registry.add("spring.data.redis.url",
-                () -> "redis://" + REDIS.getHost() + ":" + REDIS.getFirstMappedPort());
-    }
 
     @Autowired
     private MockMvc mockMvc;

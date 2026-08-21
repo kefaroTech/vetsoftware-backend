@@ -31,6 +31,7 @@ import com.vetsoftware.app.owner.infrastructure.persistence.OwnerJpaRepository;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaEntity;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaRepository;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -51,8 +52,7 @@ import org.springframework.context.annotation.Import;
  * id) y el scoping por animal y empresa a la vez, que ningun test con dobles
  * puede ver.
  */
-@Import({JpaWeightRecordRepository.class, WeightRecordJpaMapper.class, JpaAnimalRepository.class,
-        AnimalJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaWeightRecordRepository — serie de peso contra MySQL real")
 class WeightRecordPersistenceIT extends AbstractDataJpaTest {
 

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.vetsoftware.app.servicecategory.domain.CompanyRef;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategory;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -36,7 +37,7 @@ import org.springframework.context.annotation.Import;
  * al listar: solo se ve pasando por Hibernate.</li>
  * </ul>
  */
-@Import({JpaServiceCategoryRepository.class, ServiceCategoryJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaServiceCategoryRepository — nombre unico, tenencia y soft delete contra MySQL real")
 class ServiceCategoryPersistenceIT extends AbstractDataJpaTest {
 

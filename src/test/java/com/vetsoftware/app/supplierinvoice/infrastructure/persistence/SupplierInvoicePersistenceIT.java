@@ -14,6 +14,7 @@ import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceStatus;
 import com.vetsoftware.app.supplierinvoice.domain.SupplierRef;
 import com.vetsoftware.app.supplierinvoice.testsupport.SupplierInvoiceMother;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -64,7 +65,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * FK a {@code suppliers}, asi que este test siembra los suyos por SQL nativo
  * con ids propios (960-963) que no chocan con los del seed comun.
  */
-@Import({JpaSupplierInvoiceRepository.class, SupplierInvoiceJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSupplierInvoiceRepository — abonos, cartera y unicidad contra MySQL real")
 class SupplierInvoicePersistenceIT extends AbstractDataJpaTest {
 

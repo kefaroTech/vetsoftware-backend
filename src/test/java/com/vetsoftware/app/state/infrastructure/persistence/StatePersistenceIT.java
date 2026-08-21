@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.vetsoftware.app.state.domain.CountryRef;
 import com.vetsoftware.app.state.domain.State;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -29,7 +30,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * fuera de Hibernate. Un stub del repositorio definiria el contrato en el
  * propio test — justo donde vivio BE-01.
  */
-@Import({JpaStateRepository.class, StateJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaStateRepository — ida y vuelta, filtro por pais y baja logica contra MySQL real")
 class StatePersistenceIT extends AbstractDataJpaTest {
 

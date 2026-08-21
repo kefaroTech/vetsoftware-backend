@@ -6,6 +6,7 @@ import com.vetsoftware.app.baserolepermission.domain.BasePermissionRef;
 import com.vetsoftware.app.baserolepermission.domain.BaseRolePermission;
 import com.vetsoftware.app.baserolepermission.domain.BaseRoleRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
@@ -30,7 +31,7 @@ import org.springframework.context.annotation.Import;
  * produccion. Ni el modulo, ni el submodulo, ni el permiso base, ni el rol base
  * los siembra {@code SchemaSeed}, asi que este test los inserta por su cuenta.
  */
-@Import({JpaBaseRolePermissionRepository.class, BaseRolePermissionJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaBaseRolePermissionRepository — persistencia de vinculos rol-permiso contra MySQL real")
 class BaseRolePermissionPersistenceIT extends AbstractDataJpaTest {
 

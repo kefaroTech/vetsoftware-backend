@@ -7,6 +7,7 @@ import com.vetsoftware.app.company.domain.CityRef;
 import com.vetsoftware.app.company.domain.Company;
 import com.vetsoftware.app.company.domain.MembershipRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.LocalDateTime;
@@ -34,7 +35,7 @@ import org.springframework.context.annotation.Import;
  * {@code membership} que evita el N+1 al listar, y que la unicidad del NIT
  * ({@code identifier}) la exige un indice UNIQUE real, no el codigo Java.
  */
-@Import({JpaCompanyRepository.class, CompanyJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaCompanyRepository — tenant raiz, soft delete y unicidad del NIT contra MySQL real")
 class CompanyPersistenceIT extends AbstractDataJpaTest {
 

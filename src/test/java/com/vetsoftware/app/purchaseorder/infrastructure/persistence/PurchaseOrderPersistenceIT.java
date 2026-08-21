@@ -12,6 +12,7 @@ import com.vetsoftware.app.purchaseorder.domain.PurchaseOrderStatus;
 import com.vetsoftware.app.purchaseorder.domain.SupplierRef;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -43,7 +44,7 @@ import org.springframework.context.annotation.Import;
  * <p>
  * Lo mismo vale para el soft-delete, las pausadas y el conteo paginado.
  */
-@Import({JpaPurchaseOrderRepository.class, PurchaseOrderJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaPurchaseOrderRepository — agregado, tenant y pagina contra MySQL real")
 class PurchaseOrderPersistenceIT extends AbstractDataJpaTest {
 

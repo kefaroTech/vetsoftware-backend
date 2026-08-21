@@ -9,6 +9,7 @@ import com.vetsoftware.app.clinicalhistory.domain.ClinicalEvent;
 import com.vetsoftware.app.clinicalhistory.domain.ClinicalEventType;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -38,7 +39,7 @@ import org.springframework.context.annotation.Import;
  * verifica es que la vista y el puente JPA funcionan de verdad, no que las
  * nueve ramas estén repetidas.
  */
-@Import({JpaClinicalEventRepository.class, ClinicalEventJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaClinicalEventRepository — la historia clínica contra la vista real")
 class ClinicalEventPersistenceIT extends AbstractDataJpaTest {
 

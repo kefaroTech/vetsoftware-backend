@@ -12,6 +12,7 @@ import com.vetsoftware.app.inventory.application.dto.PurchaseView;
 import com.vetsoftware.app.inventory.application.dto.StockLotView;
 import com.vetsoftware.app.inventory.application.dto.StockView;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -47,7 +48,7 @@ import org.springframework.context.annotation.Import;
  * porque exige decidir el huso canonico de la aplicacion; queda anotado y las
  * aserciones se escriben sin depender del huso.
  */
-@Import(StockQueryAdapter.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("StockQueryAdapter — el read model de inventario contra MySQL real")
 class StockQueryAdapterIT extends AbstractDataJpaTest {
 

@@ -11,6 +11,7 @@ import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceRef;
 import com.vetsoftware.app.servicechargeopenaccount.domain.TaxRef;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -35,8 +36,7 @@ import org.springframework.context.annotation.Import;
  * {@code reactivate} contra {@code open_accounts}. Con un doble del repositorio
  * ninguna de las cuatro se puede falsear.
  */
-@Import({JpaServiceChargeOpenAccountRepository.class, ServiceChargeOpenAccountJpaMapper.class,
-        JpaOpenAccountQueryPort.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaServiceChargeOpenAccountRepository — impuesto congelado y scope contra MySQL real")
 class ServiceChargeOpenAccountPersistenceIT extends AbstractDataJpaTest {
 

@@ -8,6 +8,7 @@ import com.vetsoftware.app.medicament.domain.CompanyRef;
 import com.vetsoftware.app.medicament.domain.Medicament;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -25,7 +26,7 @@ import org.springframework.context.annotation.Import;
  * el catalogo global (general = true) frente al propio de empresa, el
  * soft-delete y el nativo que ve los pausados.
  */
-@Import({JpaMedicamentRepository.class, MedicamentJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaMedicamentRepository — catalogo de medicamentos contra MySQL real")
 class MedicamentPersistenceIT extends AbstractDataJpaTest {
 
