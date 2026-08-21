@@ -47,6 +47,29 @@ public class UpdateAppointmentService implements UpdateAppointmentUseCase {
     @Override
     @Transactional
     public AppointmentDto execute(UpdateAppointmentCommand command) {
+        // Issue #241: el mismo lock del alta (#114), el mismo puerto y el mismo
+        // punto del metodo —PRIMERA sentencia, antes de leer la cita y antes de
+        // resolver al veterinario—. Editar repetia el leer-y-escribir que el #114
+        // cerro solo en la creacion: dos ediciones concurrentes sobre la agenda del
+        // mismo profesional leian las dos un hueco libre y guardaban las dos.
+        //
+        // Desde el #240 esto ya no tiene red debajo: una cita forzada deja su
+        // active_slot_employee_id a NULL, no compite por
+        // uq_appointments_active_employee_start y la base deja de arbitrar incluso
+        // el solape EXACTO. El unico arbitro que queda es el findOverlapping de
+        // abajo, y solo sirve serializado.
+        //
+        // Se bloquea al veterinario DESTINO —command.employeeId()—, y solo a el,
+        // aunque el PUT pueda cambiar de profesional. Motivo: una agenda solo gana
+        // solapes por las escrituras que meten una cita EN ella, y todas —alta,
+        // edicion y reprogramacion— pasan por este mismo lock; sacar una cita de la
+        // agenda de origen no puede crear un cruce alli. Bloquear ademas el origen
+        // exigiria leer la cita ANTES del lock —justo el patron que se esta
+        // arreglando— y meteria un segundo lock por transaccion, con el
+        // interbloqueo cruzado que documenta el #229. Con un unico lock por
+        // transaccion no hay ciclo de espera posible y el orden total sobra.
+        employeeQueryPort.lockForOverlapCheck(command.employeeId(), command.companyId());
+
         Appointment appointment = repository.findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new AppointmentNotFoundException(command.id()));
 

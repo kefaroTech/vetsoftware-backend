@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -30,6 +32,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -295,7 +298,12 @@ class UpdateAppointmentServiceTest {
                 .hasMessageContaining("Appointment not found: 55");
 
         verify(repository, never()).save(any());
-        verifyNoInteractions(employeeQueryPort, animalQueryPort, ownerQueryPort);
+        // El lock del #241 se toma antes de saber si la cita existe -es la primera
+        // sentencia-, asi que aqui el puerto del empleado SI se toca; lo que no
+        // puede haber es lectura del veterinario ni escritura de nada.
+        verify(employeeQueryPort).lockForOverlapCheck(EMPLOYEE, COMPANY);
+        verify(employeeQueryPort, never()).findByIdAndCompanyId(any(), any());
+        verifyNoInteractions(animalQueryPort, ownerQueryPort);
     }
 
     @Test
@@ -362,6 +370,81 @@ class UpdateAppointmentServiceTest {
                 .hasMessageContaining("at least one of");
 
         verify(repository, never()).save(any());
+    }
+
+    /**
+     * Issue #241. El lock del #114 cerro la carrera solo en el alta; editar seguia
+     * leyendo la agenda y guardando sin serializar, asi que dos ediciones
+     * concurrentes sobre el mismo veterinario podian dejar dos duenos a la misma
+     * hora. Y sin senal ninguna: 200 en las dos peticiones, sin excepcion y con
+     * {@code overlappingAppointmentIds} vacio en las dos, que es justo lo que el
+     * front lee como "no habia cruce".
+     *
+     * <p>
+     * Desde el #240 la base tampoco lo tapa: una cita forzada renuncia a su hueco
+     * en {@code uq_appointments_active_employee_start}, asi que ni el solape exacto
+     * contra ella se frena abajo. Quien arbitra es el {@code findOverlapping} de
+     * este servicio, y solo vale serializado.
+     *
+     * <p>
+     * Aqui se fija el ORDEN de las sentencias, que es lo unico que un refactor
+     * puede romper en silencio —las llamadas siguen todas ahi, solo cambian de
+     * sitio—. Que el lock bloquee de verdad lo prueba la base en
+     * {@code AppointmentPersistenceIT}; la carrera con dos hilos reales es el #225.
+     */
+    @Nested
+    @DisplayName("Serializacion contra la carrera (issue #241)")
+    class Serializacion {
+
+        @Test
+        @DisplayName("toma el lock del veterinario antes de leer los solapes y de guardar")
+        void toma_el_lock_antes_de_leer_los_solapes() {
+            stubCitaExistente();
+            stubReferenciasCompletas();
+            when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+            stubSinSolapes();
+
+            service.execute(AppointmentMother.comandoDeActualizacion());
+
+            InOrder orden = inOrder(employeeQueryPort, repository);
+            orden.verify(employeeQueryPort).lockForOverlapCheck(EMPLOYEE, COMPANY);
+            orden.verify(repository).findOverlapping(eq(COMPANY), eq(EMPLOYEE), any(), any(),
+                    eq(DEFECTO), eq(ID));
+            orden.verify(repository).save(any());
+        }
+
+        @Test
+        @DisplayName("el lock es la primera sentencia: se toma incluso antes de leer la cita")
+        void el_lock_se_toma_antes_de_leer_la_cita() {
+            when(repository.findByIdAndCompanyId(ID, COMPANY)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.execute(AppointmentMother.comandoDeActualizacion()))
+                    .isInstanceOf(AppointmentNotFoundException.class);
+
+            // Detras de la lectura la ventana vuelve a abrirse entera: la transaccion
+            // rival ya habria leido la agenda antes de ponerse a esperar a nadie.
+            InOrder orden = inOrder(employeeQueryPort, repository);
+            orden.verify(employeeQueryPort).lockForOverlapCheck(EMPLOYEE, COMPANY);
+            orden.verify(repository).findByIdAndCompanyId(ID, COMPANY);
+        }
+
+        @Test
+        @DisplayName("bloquea al veterinario destino del PUT, y solo a ese")
+        void bloquea_solo_al_veterinario_destino() {
+            stubCitaExistente();
+            stubReferenciasCompletas();
+            when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+            stubSinSolapes();
+
+            service.execute(AppointmentMother.comandoDeActualizacion());
+
+            // Un unico lock por transaccion. Es lo que hace imposible el interbloqueo
+            // cruzado del #229: una transaccion que solo toma un lock nunca espera
+            // teniendo cogido otro, asi que no puede formar parte de un ciclo. Si
+            // alguien anade el lock del veterinario de origen, hara falta leer la cita
+            // antes del primer lock y un orden total sobre los dos ids.
+            verify(employeeQueryPort, times(1)).lockForOverlapCheck(any(), any());
+        }
     }
 
     /**

@@ -744,4 +744,118 @@ class AppointmentPersistenceIT extends AbstractDataJpaTest {
                     .hasStackTraceContaining("uq_appointments_active_employee_start");
         }
     }
+
+    /**
+     * Issue #241. Que parte del solape frena la base cuando la cita se MUEVE, y
+     * cual no. El lock pesimista por veterinario existe justamente para lo que aqui
+     * queda sin frenar: hasta este arreglo lo tomaba solo el alta, y editar y
+     * reprogramar hacian el mismo leer-y-escribir a pelo.
+     *
+     * <p>
+     * <b>Que prueban estos casos y que no.</b> Prueban, contra MySQL real y por el
+     * camino de escritura de verdad, que el UPDATE de una cita no esta protegido
+     * por {@code uq_appointments_active_employee_start} salvo en el caso exacto y
+     * contra una cita que no este forzada — o sea, que el arbitro del cruce en
+     * estos dos verbos es el {@code findOverlapping} del servicio y nada mas. NO
+     * prueban el bloqueo: eso exige dos transacciones a la vez y este arnes es
+     * {@code @DataJpaTest}, una transaccion por prueba que ademas revierte al
+     * final, asi que la siembra ni siquiera es visible desde otra conexion. La
+     * carrera con dos hilos reales sigue pendiente en el issue #225 y cubrira los
+     * tres verbos de golpe. El orden de las sentencias —el lock ANTES de leer— lo
+     * fijan {@code UpdateAppointmentServiceTest} y
+     * {@code RescheduleAppointmentServiceTest}.
+     */
+    @Nested
+    @DisplayName("Lo que la base NO arbitra al mover una cita (issue #241)")
+    class MoverLaCita {
+
+        /**
+         * Siembra una cita por el <b>camino de escritura real</b> y devuelve su id.
+         *
+         * <p>
+         * <b>Por que no sirve aqui el helper nativo {@code cita(...)} de la clase
+         * externa.</b> Ese inserta por SQL directo y deja la fila sin animal, sin dueno
+         * y sin nombre de cliente, y el agregado exige al menos uno de los tres
+         * ({@code Appointment.validate}). Da igual mientras la fila solo se
+         * <i>consulte</i> —{@code findOverlapping} devuelve proyecciones
+         * {@code Overlap(id, sede)}, y {@code filas} y {@code citasQue} son COUNT—, que
+         * es todo lo que hacian {@link Semiabierto}, {@link Alcance} o
+         * {@link SlotUnico}. En cuanto la fila se <i>relee como agregado</i> por
+         * {@code findByIdAndCompanyId}, el mapper la reconstruye y el constructor la
+         * rechaza. Los casos de esta clase son los primeros del fichero que releen lo
+         * que sembraron, asi que siembran por el mismo camino por el que van a leer —
+         * igual que {@link SlotForzado}, que ya lo hacia por el mismo motivo.
+         */
+        private Long sembrar(String inicio, boolean forzada) {
+            Appointment cita = new Appointment(null, hora(inicio), 30, AppointmentType.CONSULTATION,
+                    AppointmentStatus.REQUESTED, "Sembrada", null, null, null, "Walk-in",
+                    "3001234567", null, new EmployeeRef(VETERINARIA, "Ana Ruiz"),
+                    CompanyRef.of(EMPRESA), new BranchRef(SEDE, "Sede Centro", "CENTRO"), 0L, true,
+                    CREADA);
+            cita.markOverlapForced(forzada);
+            Long id = repository.save(cita).getId();
+            entityManager.flush();
+            entityManager.clear();
+            return id;
+        }
+
+        /**
+         * Mueve la cita por el camino de escritura real —leer, reprogramar, guardar—,
+         * que es lo que hacen {@code UpdateAppointmentService} y
+         * {@code RescheduleAppointmentService} despues de decidir el cruce.
+         */
+        private void moverA(Long id, String inicio) {
+            Appointment cita = repository.findByIdAndCompanyId(id, EMPRESA).orElseThrow();
+            cita.reschedule(hora(inicio), 30, new EmployeeRef(VETERINARIA, "Ana Ruiz"));
+            repository.save(cita);
+            entityManager.flush();
+            entityManager.clear();
+        }
+
+        @Test
+        @DisplayName("mover una cita a un minuto distinto sobre un hueco ocupado no lo frena la base")
+        void mover_a_un_minuto_distinto_no_lo_frena_la_base() {
+            Long ocupada = sembrar("10:00", false);
+            Long movida = sembrar("09:00", false);
+
+            // 10:15 se pisa con 10:00-10:30 pero tiene otro start_at, asi que el marcador
+            // generado no colisiona y el UPDATE pasa limpio. Este es el agujero entero
+            // del #241: si el servicio no serializa, dos reprogramaciones concurrentes
+            // llegan las dos hasta aqui y la base no dice ni una palabra.
+            assertThatCode(() -> moverA(movida, "10:15")).doesNotThrowAnyException();
+
+            assertThat(solapes("10:15", 30)).as("las dos citas se pisan en la agenda")
+                    .containsExactlyInAnyOrder(ocupada, movida);
+        }
+
+        @Test
+        @DisplayName("mover una cita a la hora exacta de otra si lo frena la base")
+        void mover_a_la_hora_exacta_si_lo_frena_la_base() {
+            sembrar("10:00", false);
+            Long movida = sembrar("09:00", false);
+
+            // La otra mitad, la que si esta cubierta: la columna generada es STORED y se
+            // recalcula en el UPDATE, no solo en el INSERT. Sin este caso nadie sabria
+            // que el indice tambien vigila el camino de la edicion.
+            assertThatThrownBy(() -> moverA(movida, "10:00"))
+                    .hasStackTraceContaining("uq_appointments_active_employee_start");
+        }
+
+        @Test
+        @DisplayName("mover una cita encima de una forzada no lo frena nada, ni en la hora exacta")
+        void mover_encima_de_una_forzada_no_lo_frena_nada() {
+            Long forzada = sembrar("10:00", true);
+            Long movida = sembrar("09:00", false);
+
+            // La consecuencia del #240 que el #241 hereda: la cita forzada dejo su
+            // active_slot_employee_id a NULL, asi que ya no reserva su hueco y hasta el
+            // solape EXACTO pasa por debajo del indice. Quien tiene que rechazar esta
+            // escritura —o pedir que se fuerce— es el findOverlapping del servicio, y
+            // por eso ese leer-y-escribir tiene que ir serializado.
+            assertThatCode(() -> moverA(movida, "10:00")).doesNotThrowAnyException();
+
+            assertThat(solapes("10:00", 30)).as("el cruce existe y solo el servicio lo ve")
+                    .containsExactlyInAnyOrder(forzada, movida);
+        }
+    }
 }

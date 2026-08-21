@@ -38,6 +38,26 @@ public class RescheduleAppointmentService implements RescheduleAppointmentUseCas
     @Override
     @Transactional
     public AppointmentDto execute(RescheduleAppointmentCommand command) {
+        // Issue #241: identico al alta (#114) y a la edicion —mismo puerto, misma
+        // primera sentencia, antes de leer la cita y antes de resolver al
+        // veterinario—. Reprogramar es el verbo mas expuesto de los tres: mover
+        // citas es lo que hace una recepcion con la agenda llena, y hasta aqui lo
+        // hacia con el mismo leer-y-escribir sin serializar que el #114 corrigio
+        // solo en la creacion.
+        //
+        // Y desde el #240 la base ya no cubre la espalda: una cita forzada renuncia
+        // a su hueco en uq_appointments_active_employee_start, asi que dos
+        // reprogramaciones pueden apilarse encima de ella sin que nada las frene
+        // salvo el findOverlapping de abajo.
+        //
+        // Solo se bloquea al veterinario DESTINO —command.employeeId()— aunque el
+        // PATCH pueda cambiar de profesional: la agenda de origen no gana solapes
+        // por perder una cita, conocer su id obligaria a leer la cita antes del
+        // lock y un segundo lock por transaccion abriria el interbloqueo cruzado
+        // del #229. El razonamiento completo esta en UpdateAppointmentService y en
+        // el javadoc de EmployeeQueryPort.lockForOverlapCheck.
+        employeeQueryPort.lockForOverlapCheck(command.employeeId(), command.companyId());
+
         Appointment appointment = repository.findByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new AppointmentNotFoundException(command.id()));
         EmployeeRef employee = employeeQueryPort
