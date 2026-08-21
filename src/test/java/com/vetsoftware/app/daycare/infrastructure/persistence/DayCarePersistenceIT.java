@@ -7,6 +7,7 @@ import com.vetsoftware.app.daycare.domain.CompanyRef;
 import com.vetsoftware.app.daycare.domain.DayCare;
 import com.vetsoftware.app.daycare.domain.DayCareType;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -30,7 +31,7 @@ import org.springframework.context.annotation.Import;
  * completa la cadena con sus propias filas (ids 970+, fuera del rango de
  * {@link SchemaSeed} y del resto de features que ya usan el rango 960-969).
  */
-@Import({JpaDayCareRepository.class, DayCareJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaDayCareRepository — guarderia/hotel contra MySQL real")
 class DayCarePersistenceIT extends AbstractDataJpaTest {
 

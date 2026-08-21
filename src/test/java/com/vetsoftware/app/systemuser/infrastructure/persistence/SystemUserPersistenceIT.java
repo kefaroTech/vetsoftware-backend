@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.systemuser.domain.SystemUser;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
@@ -21,7 +22,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
  * {@code reactivate()} nativo — ambos rotan {@code auth_version}, y eso ningun
  * test con dobles puede verlo.
  */
-@Import({JpaSystemUserRepository.class, SystemUserJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSystemUserRepository — usuarios de sistema contra MySQL real")
 class SystemUserPersistenceIT extends AbstractDataJpaTest {
 

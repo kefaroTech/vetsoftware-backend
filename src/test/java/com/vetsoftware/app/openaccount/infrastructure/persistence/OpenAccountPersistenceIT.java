@@ -13,6 +13,7 @@ import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import com.vetsoftware.app.openaccount.domain.OwnerRef;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -48,7 +49,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * modo que una fuga de tenant se ve como una fila de mas, no como un id que
  * coincide por casualidad.
  */
-@Import({JpaOpenAccountRepository.class, OpenAccountJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaOpenAccountRepository — scope de empresa, unicidad y totales contra MySQL real")
 class OpenAccountPersistenceIT extends AbstractDataJpaTest {
 

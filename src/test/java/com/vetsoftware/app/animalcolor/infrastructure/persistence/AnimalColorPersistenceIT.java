@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.vetsoftware.app.animalcolor.domain.AnimalColor;
 import com.vetsoftware.app.animalcolor.domain.SpecieRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
@@ -25,7 +26,7 @@ import org.springframework.context.annotation.Import;
  * La especie no la siembra {@code SchemaSeed} (es un catalogo maestro sin fila
  * raiz comun a otras features), asi que este test la inserta por su cuenta.
  */
-@Import({JpaAnimalColorRepository.class, AnimalColorJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaAnimalColorRepository — persistencia de colores contra MySQL real")
 class AnimalColorPersistenceIT extends AbstractDataJpaTest {
 

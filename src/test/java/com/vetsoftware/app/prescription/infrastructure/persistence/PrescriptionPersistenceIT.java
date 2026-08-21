@@ -29,6 +29,7 @@ import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaRepository
 import com.vetsoftware.app.prescription.domain.Prescription;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -47,7 +48,7 @@ import org.springframework.context.annotation.Import;
  * consulta, empresa) y el {@code @SQLRestriction} de soft-delete, que ningun
  * test en memoria puede ver.
  */
-@Import({JpaPrescriptionRepository.class, PrescriptionJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaPrescriptionRepository — recetas contra MySQL real")
 class PrescriptionPersistenceIT extends AbstractDataJpaTest {
 

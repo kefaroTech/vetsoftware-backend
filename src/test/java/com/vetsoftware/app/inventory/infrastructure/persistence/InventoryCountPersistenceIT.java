@@ -9,6 +9,7 @@ import com.vetsoftware.app.inventory.domain.InventoryCount;
 import com.vetsoftware.app.inventory.domain.InventoryCountLine;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -44,7 +45,7 @@ import org.springframework.context.annotation.Import;
  * nada que ejercitarlo.</li>
  * </ul>
  */
-@Import(JpaInventoryCountRepository.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaInventoryCountRepository — los conteos fisicos contra MySQL real")
 class InventoryCountPersistenceIT extends AbstractDataJpaTest {
 

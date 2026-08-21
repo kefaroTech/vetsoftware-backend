@@ -33,6 +33,7 @@ import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaEntity;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaRepository;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -51,7 +52,7 @@ import org.springframework.context.annotation.Import;
  * consulta, empresa), el {@code @SQLRestriction} de soft-delete y el filtro de
  * texto sobre producto/observaciones, que ningun test en memoria puede ver.
  */
-@Import({JpaDewormingRepository.class, DewormingJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaDewormingRepository — desparasitaciones contra MySQL real")
 class DewormingPersistenceIT extends AbstractDataJpaTest {
 

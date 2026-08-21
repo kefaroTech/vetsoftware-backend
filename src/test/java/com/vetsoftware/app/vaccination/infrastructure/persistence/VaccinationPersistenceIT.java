@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import com.vetsoftware.app.vaccination.domain.AnimalRef;
 import com.vetsoftware.app.vaccination.domain.CompanyRef;
@@ -36,7 +37,7 @@ import org.springframework.context.annotation.Import;
  * lo que se prueba es la consulta contra la tabla de vacunas, no el camino de
  * escritura de esas features hermanas.
  */
-@Import({JpaVaccinationRepository.class, VaccinationJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaVaccinationRepository — vacunas contra MySQL real")
 class VaccinationPersistenceIT extends AbstractDataJpaTest {
 

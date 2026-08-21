@@ -3,6 +3,7 @@ package com.vetsoftware.app.vaccinationtype.infrastructure.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import com.vetsoftware.app.vaccinationtype.domain.CompanyRef;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationType;
@@ -37,7 +38,7 @@ import org.springframework.context.annotation.Import;
  * al listar.</li>
  * </ul>
  */
-@Import({JpaVaccinationTypeRepository.class, VaccinationTypeJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaVaccinationTypeRepository — catalogo general/por empresa y soft delete contra MySQL real")
 class VaccinationTypePersistenceIT extends AbstractDataJpaTest {
 

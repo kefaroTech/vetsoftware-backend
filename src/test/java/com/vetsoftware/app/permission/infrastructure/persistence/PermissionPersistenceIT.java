@@ -6,6 +6,7 @@ import com.vetsoftware.app.permission.domain.CompanyRef;
 import com.vetsoftware.app.permission.domain.Permission;
 import com.vetsoftware.app.permission.domain.SubModuleRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -27,7 +28,7 @@ import org.springframework.context.annotation.Import;
  * siembra ese catalogo, asi que este test completa la cadena con sus propias
  * filas (ids 970+, fuera del rango de {@link SchemaSeed}).
  */
-@Import({JpaPermissionRepository.class, PermissionJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaPermissionRepository — permisos contra MySQL real")
 class PermissionPersistenceIT extends AbstractDataJpaTest {
 

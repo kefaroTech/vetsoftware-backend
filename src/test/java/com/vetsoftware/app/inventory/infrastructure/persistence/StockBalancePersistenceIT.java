@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.inventory.domain.StockBalance;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -26,7 +27,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * lock optimista la mueve Hibernate al hacer flush. Con un doble del
  * repositorio las dos cosas darian verde siempre.
  */
-@Import(JpaStockBalanceRepository.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaStockBalanceRepository — saldo, unicidad y lock contra MySQL real")
 class StockBalancePersistenceIT extends AbstractDataJpaTest {
 

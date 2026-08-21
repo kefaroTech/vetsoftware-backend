@@ -7,7 +7,6 @@ import com.vetsoftware.app.hospitalization.domain.AnimalRef;
 import com.vetsoftware.app.hospitalization.domain.CompanyRef;
 import com.vetsoftware.app.hospitalization.domain.Hospitalization;
 import com.vetsoftware.app.hospitalization.domain.HospitalizationType;
-import com.vetsoftware.app.hospitalization.infrastructure.persistence.HospitalizationJpaMapper;
 import com.vetsoftware.app.hospitalization.infrastructure.persistence.JpaHospitalizationRepository;
 import com.vetsoftware.app.hospitalizationprocedure.domain.DurationMeasure;
 import com.vetsoftware.app.hospitalizationprocedure.domain.EmployeeRef;
@@ -17,6 +16,7 @@ import com.vetsoftware.app.hospitalizationprocedure.domain.HospitalizationProced
 import com.vetsoftware.app.hospitalizationprocedure.domain.HospitalizationRef;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -50,8 +50,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
  * por SQL nativo: lo que se prueba es la FK contra una fila valida, no el
  * camino de escritura de esa feature vecina.
  */
-@Import({JpaHospitalizationProcedureRepository.class, HospitalizationProcedureJpaMapper.class,
-        JpaHospitalizationRepository.class, HospitalizationJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaHospitalizationProcedureRepository — ordenes de procedimiento contra MySQL real")
 class HospitalizationProcedurePersistenceIT extends AbstractDataJpaTest {
 

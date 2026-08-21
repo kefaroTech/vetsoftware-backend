@@ -6,6 +6,7 @@ import com.vetsoftware.app.inventory.domain.StockMovement;
 import com.vetsoftware.app.inventory.domain.StockMovementType;
 import com.vetsoftware.app.inventory.domain.StockReferenceType;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -52,7 +53,7 @@ import org.springframework.context.annotation.Import;
  * {@code StockMovementRepository}: guardar, la idempotencia por referencia y la
  * recuperacion para compensar.
  */
-@Import(JpaStockMovementRepository.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaStockMovementRepository — el libro de movimientos contra MySQL real")
 class StockMovementPersistenceIT extends AbstractDataJpaTest {
 

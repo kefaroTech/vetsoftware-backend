@@ -9,6 +9,7 @@ import com.vetsoftware.app.consultation.domain.ConsultationTypeRef;
 import com.vetsoftware.app.consultation.domain.PhysicalExam;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -29,7 +30,7 @@ import org.springframework.context.annotation.Import;
  * siembran por SQL nativo: lo que se prueba es la consulta contra la tabla
  * {@code consultations}, no el camino de escritura de esas features hermanas.
  */
-@Import({JpaConsultationRepository.class, ConsultationJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaConsultationRepository — consultas contra MySQL real")
 class ConsultationPersistenceIT extends AbstractDataJpaTest {
 

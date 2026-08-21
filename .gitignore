@@ -5,6 +5,14 @@ target/
 # Maven
 .mvn/wrapper/maven-wrapper.jar
 
+# Caches incrementales de spotless y checkstyle. Viven FUERA de target/ a proposito: ahi
+# `mvn clean` los borraba y las dos herramientas reprocesaban los 5.596 ficheros desde cero
+# en cada pasada (17,7 s + 15,8 s). No relajan nada -las dos invalidan su cache entera si
+# cambia su configuracion-, asi que son puro estado local derivado y no se versionan.
+# Anclado a la raiz: solo existe este directorio y no hay razon para ignorar otro homonimo
+# a cualquier profundidad (misma leccion que /logs/ mas abajo).
+/.build-cache/
+
 # Spring Boot
 *.jar
 *.war

@@ -10,6 +10,7 @@ import com.vetsoftware.app.hospitalization.domain.HospitalizationType;
 import com.vetsoftware.app.hospitalization.domain.ReasonLeaving;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -39,7 +40,7 @@ import org.springframework.context.annotation.Import;
  * prueba es la consulta contra la tabla, no el camino de escritura de esas
  * features hijas.
  */
-@Import({JpaHospitalizationRepository.class, HospitalizationJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaHospitalizationRepository — hospitalizaciones contra MySQL real")
 class HospitalizationPersistenceIT extends AbstractDataJpaTest {
 

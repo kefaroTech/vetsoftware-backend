@@ -6,6 +6,7 @@ import com.vetsoftware.app.branch.domain.Branch;
 import com.vetsoftware.app.branch.domain.CityRef;
 import com.vetsoftware.app.branch.domain.CompanyRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -27,7 +28,7 @@ import org.springframework.context.annotation.Import;
  * es {@code (company_id, code)}, no {@code code} a secas), y que
  * {@code existsOtherActiveByCompanyId} lee el estado real de otras filas.
  */
-@Import({JpaBranchRepository.class, BranchJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaBranchRepository — sucursales contra MySQL real")
 class BranchPersistenceIT extends AbstractDataJpaTest {
 

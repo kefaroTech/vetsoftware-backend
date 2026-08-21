@@ -35,6 +35,7 @@ import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaEntity;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaRepository;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -54,7 +55,7 @@ import org.springframework.context.annotation.Import;
  * {@code @EntityGraph} + filtro de texto del listado por animal, que ningun
  * test en memoria puede ver.
  */
-@Import({JpaDiagnosticImagingRepository.class, DiagnosticImagingJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaDiagnosticImagingRepository — imagenes diagnosticas contra MySQL real")
 class DiagnosticImagingPersistenceIT extends AbstractDataJpaTest {
 

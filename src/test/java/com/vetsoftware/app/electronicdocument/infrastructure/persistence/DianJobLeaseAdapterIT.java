@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -42,7 +43,7 @@ import org.springframework.context.annotation.Import;
  * con rollback. Lo que si queda cubierto es el filtro de exclusion, que es el
  * que evita el trabajo repetido entre ciclos.
  */
-@Import(JdbcDianJobLeasePort.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JdbcDianJobLeasePort — reparto de lotes entre replicas contra MySQL real")
 class DianJobLeaseAdapterIT extends AbstractDataJpaTest {
 

@@ -11,6 +11,7 @@ import com.vetsoftware.app.product.domain.TaxRef;
 import com.vetsoftware.app.product.domain.TaxTreatment;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -35,7 +36,7 @@ import org.springframework.context.annotation.Import;
  * de conteo. Ese SQL real, la query nativa de deshabilitados y el UPDATE nativo
  * de reactivacion no los ejercita un mock de {@code ProductJpaRepository}.
  */
-@Import({JpaProductRepository.class, ProductJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaProductRepository — productos, existencia, busqueda y reactivacion contra MySQL real")
 class ProductPersistenceIT extends AbstractDataJpaTest {
 

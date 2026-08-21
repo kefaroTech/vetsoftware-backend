@@ -7,6 +7,7 @@ import com.vetsoftware.app.rolepermission.domain.PermissionRef;
 import com.vetsoftware.app.rolepermission.domain.RolePermission;
 import com.vetsoftware.app.rolepermission.domain.RoleRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -32,7 +33,7 @@ import org.springframework.context.annotation.Import;
  * vez de borrarla (ver {@code Bajas}), que es lo que permite reactivarla
  * despues conservando su id.
  */
-@Import({JpaRolePermissionRepository.class, RolePermissionJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaRolePermissionRepository — CRUD, tenencia por rol y soft delete contra MySQL real")
 class RolePermissionPersistenceIT extends AbstractDataJpaTest {
 

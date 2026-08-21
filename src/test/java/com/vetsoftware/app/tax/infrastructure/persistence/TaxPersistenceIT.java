@@ -6,6 +6,7 @@ import com.vetsoftware.app.tax.domain.CompanyRef;
 import com.vetsoftware.app.tax.domain.Tax;
 import com.vetsoftware.app.tax.domain.TaxScheme;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -30,7 +31,7 @@ import org.springframework.context.annotation.Import;
  * {@code name} + constraint) los verifica el motor, no el mapper. Con un doble
  * el contrato lo definiria el propio test.
  */
-@Import({JpaTaxRepository.class, TaxJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaTaxRepository — impuestos contra MySQL real")
 class TaxPersistenceIT extends AbstractDataJpaTest {
 

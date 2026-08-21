@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.vetsoftware.app.role.domain.CompanyRef;
 import com.vetsoftware.app.role.domain.Role;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -25,7 +26,7 @@ import org.springframework.context.annotation.Import;
  * verdad acota por {@code company_id} en el UPDATE —no solo por id— y que
  * {@code findAllByCompanyId} no arrastra filas de otra empresa.
  */
-@Import({JpaRoleRepository.class, RoleJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaRoleRepository — roles contra MySQL real")
 class RolePersistenceIT extends AbstractDataJpaTest {
 

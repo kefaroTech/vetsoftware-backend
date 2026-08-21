@@ -8,6 +8,7 @@ import com.vetsoftware.app.supplier.domain.CompanyRef;
 import com.vetsoftware.app.supplier.domain.Supplier;
 import com.vetsoftware.app.supplier.testsupport.SupplierMother;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -44,7 +45,7 @@ import org.springframework.context.annotation.Import;
  * al deshabilitar. No hay ningun campo Java que la represente.</li>
  * </ul>
  */
-@Import({JpaSupplierRepository.class, SupplierJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSupplierRepository — nombre unico, tenencia y soft delete contra MySQL real")
 class SupplierPersistenceIT extends AbstractDataJpaTest {
 

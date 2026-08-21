@@ -31,6 +31,7 @@ import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaEntity;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaRepository;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -51,8 +52,7 @@ import org.springframework.context.annotation.Import;
  * {@code WeightRecord} (una sola query por lote, sin N+1) y el
  * {@code @SQLRestriction} de soft-delete, que ningun test con dobles puede ver.
  */
-@Import({JpaAnimalRepository.class, AnimalJpaMapper.class, JpaWeightRecordRepository.class,
-        WeightRecordJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaAnimalRepository — animales contra MySQL real")
 class AnimalPersistenceIT extends AbstractDataJpaTest {
 

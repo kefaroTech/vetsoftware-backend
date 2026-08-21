@@ -11,6 +11,7 @@ import com.vetsoftware.app.companytaxprofile.domain.EconomicActivityRef;
 import com.vetsoftware.app.companytaxprofile.domain.TaxRegime;
 import com.vetsoftware.app.companytaxprofile.testsupport.CompanyTaxProfileMother;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -69,7 +70,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * empresa sembrada: la del mother apunta a una empresa que no existe en la
  * base.
  */
-@Import({JpaCompanyTaxProfileRepository.class, CompanyTaxProfileJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaCompanyTaxProfileRepository — perfil fiscal, responsabilidades y baja contra MySQL real")
 class CompanyTaxProfilePersistenceIT extends AbstractDataJpaTest {
 

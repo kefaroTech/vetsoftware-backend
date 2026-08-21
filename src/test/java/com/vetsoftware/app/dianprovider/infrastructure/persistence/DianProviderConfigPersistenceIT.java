@@ -7,6 +7,7 @@ import com.vetsoftware.app.dianprovider.domain.CompanyRef;
 import com.vetsoftware.app.dianprovider.domain.DianProviderConfig;
 import com.vetsoftware.app.dianprovider.domain.ProviderType;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -28,7 +29,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * hacer flush a traves de {@code EncryptedStringConverter}. Con un doble del
  * repositorio las dos cosas darian verde siempre.
  */
-@Import({JpaDianProviderConfigRepository.class, DianProviderConfigJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaDianProviderConfigRepository — persistencia, unicidad y cifrado contra MySQL real")
 class DianProviderConfigPersistenceIT extends AbstractDataJpaTest {
 

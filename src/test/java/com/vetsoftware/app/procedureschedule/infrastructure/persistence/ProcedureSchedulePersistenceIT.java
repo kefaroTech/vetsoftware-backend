@@ -7,6 +7,7 @@ import com.vetsoftware.app.procedureschedule.domain.EmployeeRef;
 import com.vetsoftware.app.procedureschedule.domain.HospitalizationProcedureRef;
 import com.vetsoftware.app.procedureschedule.domain.ProcedureSchedule;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -28,7 +29,7 @@ import org.springframework.context.annotation.Import;
  * que se prueba es la tabla {@code procedure_schedules}, no el camino de
  * escritura de esas features padre.
  */
-@Import({JpaProcedureScheduleRepository.class, ProcedureScheduleJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaProcedureScheduleRepository — plan de ejecuciones contra MySQL real")
 class ProcedureSchedulePersistenceIT extends AbstractDataJpaTest {
 

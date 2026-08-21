@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.baserole.domain.BaseRole;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -12,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 
-@Import({JpaBaseRoleRepository.class, BaseRoleJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaBaseRoleRepository — persistencia real contra MySQL")
 class BaseRolePersistenceIT extends AbstractDataJpaTest {
 

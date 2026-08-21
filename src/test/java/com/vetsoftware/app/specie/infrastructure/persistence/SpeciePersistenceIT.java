@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.specie.domain.Specie;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
@@ -25,7 +26,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
  * {@code Specie} es la raiz del catalogo (no tiene FK a otra feature), asi que
  * a diferencia de {@code BreedPersistenceIT} no hace falta sembrar nada antes.
  */
-@Import({JpaSpecieRepository.class, SpecieJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSpecieRepository — persistencia de especies contra MySQL real")
 class SpeciePersistenceIT extends AbstractDataJpaTest {
 

@@ -3,21 +3,13 @@ package com.vetsoftware.app.infrastructure.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-import com.vetsoftware.app.VetSoftwareApplication;
+import com.vetsoftware.app.testsupport.AbstractFullApplicationIT;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
 
 /**
  * TR-05: el navegador manda {@code traceparent} y este backend tiene que
@@ -30,34 +22,23 @@ import org.testcontainers.containers.MySQLContainer;
  * cambiara el formato de propagacion, el sintoma seria silencioso: cada lado
  * seguiria teniendo su identificador y nadie notaria que dejaron de ser el
  * mismo, hasta que soporte buscara una traza y no la encontrara.
+ *
+ * <p>
+ * <b>Comparte contexto —y por tanto base de datos y Redis— con las demas
+ * {@link AbstractFullApplicationIT}.</b> Es seguro porque estos tres casos no
+ * escriben nada observable: el login con un codigo inexistente muere en el
+ * {@code findByCode} de {@code LoginEmployeeService} y su
+ * {@code @Transactional} revierte una transaccion vacia, y los cubos del
+ * {@code LoginRateLimitFilter} llevan el prefijo {@code login-rl:}, que ninguna
+ * otra ruta bajo prueba toca.
  */
-@SpringBootTest(classes = VetSoftwareApplication.class)
-@AutoConfigureMockMvc
-@ActiveProfiles({"test", "openapi"})
-class TraceparentPropagationIT {
+class TraceparentPropagationIT extends AbstractFullApplicationIT {
 
     /**
      * Un trace-id valido: 32 hex, como el que genera el interceptor de los fronts.
      */
     private static final String TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736";
     private static final String TRACEPARENT = "00-" + TRACE_ID + "-00f067aa0ba902b7-01";
-
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
-
-    static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7.4.8-alpine")
-            .withExposedPorts(6379);
-
-    static {
-        MYSQL.start();
-        REDIS.start();
-    }
-
-    @DynamicPropertySource
-    static void redisConnection(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.redis.url",
-                () -> "redis://" + REDIS.getHost() + ":" + REDIS.getFirstMappedPort());
-    }
 
     @Autowired
     private MockMvc mockMvc;

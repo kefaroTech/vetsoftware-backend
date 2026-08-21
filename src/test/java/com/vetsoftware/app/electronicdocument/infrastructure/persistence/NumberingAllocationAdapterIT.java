@@ -8,6 +8,7 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionNotEffectiveException;
 import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionRangeExhaustedException;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -49,7 +50,7 @@ import org.springframework.context.annotation.Import;
  * adaptador compara contra {@code LocalDate.now()} (deuda registrada: el codigo
  * nuevo inyecta {@code Clock}); asi el caso no depende del dia en que corra.
  */
-@Import(JpaNumberingAllocationPort.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaNumberingAllocationPort — el consecutivo fiscal contra MySQL real")
 class NumberingAllocationAdapterIT extends AbstractDataJpaTest {
 

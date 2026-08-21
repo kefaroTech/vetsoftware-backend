@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.vetsoftware.app.surgerytype.domain.CompanyRef;
 import com.vetsoftware.app.surgerytype.domain.SurgeryType;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -25,7 +26,7 @@ import org.springframework.context.annotation.Import;
  * consulta {@code findAvailableById} que mezcla filas generales y de la empresa
  * con un {@code LEFT JOIN} las verifica el motor, no el mapper.
  */
-@Import({JpaSurgeryTypeRepository.class, SurgeryTypeJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSurgeryTypeRepository — tipos de cirugia contra MySQL real")
 class SurgeryTypePersistenceIT extends AbstractDataJpaTest {
 

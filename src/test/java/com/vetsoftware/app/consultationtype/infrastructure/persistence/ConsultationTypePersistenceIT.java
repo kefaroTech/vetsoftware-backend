@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.consultationtype.domain.ConsultationType;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * {@code @SQLDelete} + {@code @SQLRestriction}) lo aplica Hibernate sobre el
  * SQL real. Con un doble del repositorio las dos cosas darian verde siempre.
  */
-@Import({JpaConsultationTypeRepository.class, ConsultationTypeJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaConsultationTypeRepository — contra MySQL real")
 class ConsultationTypePersistenceIT extends AbstractDataJpaTest {
 

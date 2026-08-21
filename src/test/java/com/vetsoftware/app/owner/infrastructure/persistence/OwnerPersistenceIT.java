@@ -11,6 +11,7 @@ import com.vetsoftware.app.owner.domain.PersonType;
 import com.vetsoftware.app.owner.domain.TaxRegime;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -44,7 +45,7 @@ import org.springframework.context.annotation.Import;
  * parsea al crear el bean: si estuviera mal, el contexto no levantaria.</li>
  * </ul>
  */
-@Import({JpaOwnerRepository.class, OwnerJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaOwnerRepository — aislamiento por empresa, soft delete y busqueda contra MySQL real")
 class OwnerPersistenceIT extends AbstractDataJpaTest {
 

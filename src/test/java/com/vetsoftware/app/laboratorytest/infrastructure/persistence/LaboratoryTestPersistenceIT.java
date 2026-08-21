@@ -41,6 +41,7 @@ import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaEntity;
 import com.vetsoftware.app.specie.infrastructure.persistence.SpecieJpaRepository;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -61,7 +62,7 @@ import org.springframework.context.annotation.Import;
  * {@code @EntityGraph} del listado por animal y el {@code Specification}
  * dinamico de {@code search} — nada de eso lo ve un test con dobles.
  */
-@Import({JpaLaboratoryTestRepository.class, LaboratoryTestJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaLaboratoryTestRepository — muestras de laboratorio contra MySQL real")
 class LaboratoryTestPersistenceIT extends AbstractDataJpaTest {
 

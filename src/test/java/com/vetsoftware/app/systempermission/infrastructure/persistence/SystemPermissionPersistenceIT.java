@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.systempermission.domain.SystemPermission;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -17,7 +18,7 @@ import org.springframework.context.annotation.Import;
  * MySQL real. {@code SystemPermissionJpaEntity} no tiene FKs: no hace falta
  * {@code SchemaSeed}.
  */
-@Import({JpaSystemPermissionRepository.class, SystemPermissionJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSystemPermissionRepository — catalogo de permisos contra MySQL real")
 class SystemPermissionPersistenceIT extends AbstractDataJpaTest {
 

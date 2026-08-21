@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.companysettings.domain.CompanySetting;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -25,7 +26,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
  * {@code (company_id, property_name)} la impone un indice de la base, y la FK a
  * {@code companies} la impone el schema real.
  */
-@Import(JpaCompanySettingRepository.class)
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaCompanySettingRepository — ajustes por empresa contra MySQL real")
 class CompanySettingPersistenceIT extends AbstractDataJpaTest {
 

@@ -7,6 +7,7 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaReposito
 import com.vetsoftware.app.diagnosticimagingtype.domain.CompanyRef;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingType;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -25,7 +26,7 @@ import org.springframework.context.annotation.Import;
  * mezclan filas globales y privadas por empresa — nada de eso lo ve un test en
  * memoria.
  */
-@Import({JpaDiagnosticImagingTypeRepository.class, DiagnosticImagingTypeJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaDiagnosticImagingTypeRepository — catalogo de tipos de imagen diagnostica contra MySQL real")
 class DiagnosticImagingTypePersistenceIT extends AbstractDataJpaTest {
 

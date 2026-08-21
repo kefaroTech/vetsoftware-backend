@@ -8,6 +8,7 @@ import com.vetsoftware.app.medicationschedule.domain.EmployeeRef;
 import com.vetsoftware.app.medicationschedule.domain.HospitalizationMedicationRef;
 import com.vetsoftware.app.medicationschedule.domain.MedicationSchedule;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -29,7 +30,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
  * SQL nativo — lo que se prueba es la tabla {@code medication_schedules}, no el
  * camino de escritura de esas features padre.
  */
-@Import({JpaMedicationScheduleRepository.class, MedicationScheduleJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaMedicationScheduleRepository — plan de tomas contra MySQL real")
 class MedicationSchedulePersistenceIT extends AbstractDataJpaTest {
 

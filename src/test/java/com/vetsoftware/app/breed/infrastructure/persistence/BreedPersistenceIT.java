@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.vetsoftware.app.breed.domain.Breed;
 import com.vetsoftware.app.breed.domain.SpecieRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
@@ -25,7 +26,7 @@ import org.springframework.context.annotation.Import;
  * la siembra {@code SchemaSeed} (es un catalogo maestro sin fila raiz comun a
  * otras features), asi que este test la inserta por su cuenta.
  */
-@Import({JpaBreedRepository.class, BreedJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaBreedRepository — persistencia de razas contra MySQL real")
 class BreedPersistenceIT extends AbstractDataJpaTest {
 

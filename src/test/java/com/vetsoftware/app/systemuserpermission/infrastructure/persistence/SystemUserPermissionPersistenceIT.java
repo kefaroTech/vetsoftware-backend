@@ -7,6 +7,7 @@ import com.vetsoftware.app.systemuserpermission.domain.SystemPermissionRef;
 import com.vetsoftware.app.systemuserpermission.domain.SystemUserPermission;
 import com.vetsoftware.app.systemuserpermission.domain.SystemUserRef;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
@@ -31,7 +32,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * borrado y el filtro "deshabilitado" en comportamiento del motor, no de este
  * codigo Java.
  */
-@Import({JpaSystemUserPermissionRepository.class, SystemUserPermissionJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaSystemUserPermissionRepository — asignaciones contra MySQL real")
 class SystemUserPermissionPersistenceIT extends AbstractDataJpaTest {
 

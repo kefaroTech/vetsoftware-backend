@@ -8,6 +8,7 @@ import com.vetsoftware.app.problem.domain.Problem;
 import com.vetsoftware.app.problem.domain.ProblemStatus;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -32,7 +33,7 @@ import org.springframework.context.annotation.Import;
  * completa la cadena con sus propias filas (ids 960+, fuera del rango de
  * {@link SchemaSeed}) para poder guardar un problema real.
  */
-@Import({JpaProblemRepository.class, ProblemJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaProblemRepository — problemas clinicos contra MySQL real")
 class ProblemPersistenceIT extends AbstractDataJpaTest {
 

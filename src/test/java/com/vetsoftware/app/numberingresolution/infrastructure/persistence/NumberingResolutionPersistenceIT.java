@@ -7,6 +7,7 @@ import com.vetsoftware.app.numberingresolution.domain.CompanyRef;
 import com.vetsoftware.app.numberingresolution.domain.ElectronicDocumentType;
 import com.vetsoftware.app.numberingresolution.domain.NumberingResolution;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -45,7 +46,7 @@ import org.springframework.dao.DataIntegrityViolationException;
  * check-then-act.</li>
  * </ul>
  */
-@Import({JpaNumberingResolutionRepository.class, NumberingResolutionJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaNumberingResolutionRepository — baja logica, reactivacion y unicidad contra MySQL real")
 class NumberingResolutionPersistenceIT extends AbstractDataJpaTest {
 

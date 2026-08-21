@@ -10,6 +10,7 @@ import com.vetsoftware.app.service.domain.TaxRef;
 import com.vetsoftware.app.service.domain.TaxTreatment;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -34,7 +35,7 @@ import org.springframework.context.annotation.Import;
  * {@code @SQLRestriction("enabled = true")} —que SI aplica al resto de queries
  * derivadas— y que {@code reactivate} solo toca filas de la empresa correcta.
  */
-@Import({JpaServiceRepository.class, ServiceJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaServiceRepository — catalogo de servicios contra MySQL real")
 class ServicePersistenceIT extends AbstractDataJpaTest {
 

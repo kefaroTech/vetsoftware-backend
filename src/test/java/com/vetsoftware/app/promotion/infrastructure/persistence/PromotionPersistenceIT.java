@@ -9,6 +9,7 @@ import com.vetsoftware.app.promotion.domain.PromotionStatus;
 import com.vetsoftware.app.promotion.domain.PromotionType;
 import com.vetsoftware.app.promotion.domain.ValueType;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -53,7 +54,7 @@ import org.springframework.context.annotation.Import;
  * {@code start_date}/{@code end_date}. El filtro por fecha que consume el POS
  * vive en {@code JpaSalePromotionQueryPort} y tiene su propia rodaja.
  */
-@Import({JpaPromotionRepository.class, PromotionJpaMapper.class})
+@Import(PersistenceSliceConfig.class)
 @DisplayName("JpaPromotionRepository — promociones contra MySQL real")
 class PromotionPersistenceIT extends AbstractDataJpaTest {
 
