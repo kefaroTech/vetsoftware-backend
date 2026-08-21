@@ -2,9 +2,11 @@ package com.vetsoftware.app.infrastructure.logging;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
-import ch.qos.logback.core.AppenderBase;
+import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import ch.qos.logback.core.spi.AppenderAttachable;
 import ch.qos.logback.core.spi.AppenderAttachableImpl;
+import ch.qos.logback.core.util.ReentryGuard;
+import ch.qos.logback.core.util.ReentryGuardFactory;
 import java.util.Iterator;
 
 /**
@@ -44,10 +46,44 @@ import java.util.Iterator;
  * y no casa dentro de un {@code <springProfile>}. El gating por perfil se hace
  * en {@code <root>}, referenciando este appender.
  *
+ * <p>
+ * <b>Por qué {@link UnsynchronizedAppenderBase} y no {@code AppenderBase}
+ * (incidencia #92):</b> {@code AppenderBase.doAppend} es {@code synchronized}
+ * sobre la instancia del appender. Como todo lo que emite el proceso atraviesa
+ * este decorador, cada hilo de request competía por ese monitor en cada línea
+ * de log, y el monitor no cubría solo la redacción: al ser el
+ * {@code ConsoleAppender} anidado un {@code OutputStreamAppender} —que codifica
+ * <em>fuera</em> de su propio {@code streamWriteLock}, por diseño— la
+ * serialización se tragaba también el encoding JSON, que es la parte cara. El
+ * cuello de botella aparecía justo en el peor momento: en una tormenta de
+ * errores, con la cadena de causas y varias líneas por request, el incidente
+ * amplificaba su propia latencia.
+ *
+ * <p>
+ * Quitar la exclusión mutua es seguro porque este appender <b>no tiene estado
+ * mutable propio</b>: su único campo es {@link #nested}, un
+ * {@link AppenderAttachableImpl} cuya lista interna es una {@code COWArrayList}
+ * —la misma que usa {@code Logger} para repartir cada evento entre sus
+ * appenders, en concurrencia y sin lock—. El motor de redacción
+ * ({@link LogRedactor}) es estático y sin estado: sus {@code Pattern} son
+ * inmutables y todo {@code Matcher} y {@code StringBuilder} es local a la
+ * llamada. {@link RedactedLoggingEvent} y {@link RedactedThrowable} se
+ * construyen por evento, y cada evento está confinado al hilo que lo emitió.
+ *
+ * <p>
+ * <b>Lo que se conserva del comportamiento anterior:</b> el {@code guard} de
+ * {@code AppenderBase} —que descartaba las invocaciones reentrantes— se
+ * sustituye por un {@code ReentryGuard} de tipo {@code THREAD_LOCAL} en
+ * {@link #buildReentryGuard()}, porque el guard por defecto de
+ * {@code UnsynchronizedAppenderBase} es {@code NOP}. Es la misma decisión que
+ * toma {@code ConsoleAppender}, y en un appender por el que pasa todo el log
+ * del proceso no conviene dejar abierta la vía a una recursión: cuesta un
+ * {@code ThreadLocal} por hilo, sin memoria compartida ni contención.
+ *
  * @see LogRedactor
  * @see RedactedLoggingEvent
  */
-public final class RedactingAppender extends AppenderBase<ILoggingEvent>
+public final class RedactingAppender extends UnsynchronizedAppenderBase<ILoggingEvent>
         implements
             AppenderAttachable<ILoggingEvent> {
 
@@ -59,6 +95,16 @@ public final class RedactingAppender extends AppenderBase<ILoggingEvent>
             addWarn("No hay appenders anidados en [" + name + "]; sus eventos se descartan.");
         }
         super.start();
+    }
+
+    /**
+     * Protección contra reentrada por hilo, equivalente a la que daba el
+     * {@code guard} de {@code AppenderBase} y sin el monitor que lo acompañaba. El
+     * valor por defecto de {@link UnsynchronizedAppenderBase} es {@code NOP}.
+     */
+    @Override
+    protected ReentryGuard buildReentryGuard() {
+        return ReentryGuardFactory.makeGuard(ReentryGuardFactory.GuardType.THREAD_LOCAL);
     }
 
     @Override
