@@ -2,6 +2,7 @@ package com.vetsoftware.app.debtopenaccount.testsupport;
 
 import com.vetsoftware.app.debtopenaccount.application.command.CreateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.DeleteDebtOpenAccountCommand;
+import com.vetsoftware.app.debtopenaccount.application.command.ReactivateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.UpdateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.VoidDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccount;
@@ -167,5 +168,30 @@ public final class DebtOpenAccountMother {
     public static DeleteDebtOpenAccountCommand comandoBorrarDesdeOtraEmpresa() {
         return new DeleteDebtOpenAccountCommand(PAYMENT_ID, OTRA_COMPANY_ID, OTRO_EMPLEADO.id(),
                 MOTIVO_BAJA, null);
+    }
+
+    /**
+     * Abono dado de baja Y anulado. Es el estado en el que deja las filas el
+     * {@code DeleteDebtOpenAccountService} de hoy —anula y luego esconde—, y no
+     * aporta a la suma de abonos ni tiene ingreso vivo en caja: reactivarlo solo lo
+     * devuelve a la vista.
+     */
+    public static DebtOpenAccount abonoDeshabilitadoYAnulado() {
+        return new DebtOpenAccount(PAYMENT_ID, MONTO, PaymentMethod.CASH, CUENTA, EMPLEADO, CREADO,
+                null, false, true, OTRO_EMPLEADO, ANULADO, MOTIVO_BAJA, null);
+    }
+
+    /**
+     * Reactivacion de un abono dado de baja. Sin version esperada: el
+     * {@code PATCH /{id}/enable} no lleva cuerpo (#248).
+     */
+    public static ReactivateDebtOpenAccountCommand comandoReactivar() {
+        return new ReactivateDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID, OTRO_EMPLEADO.id());
+    }
+
+    /** Reactivacion pedida desde OTRA empresa sobre el mismo id de abono. */
+    public static ReactivateDebtOpenAccountCommand comandoReactivarDesdeOtraEmpresa() {
+        return new ReactivateDebtOpenAccountCommand(PAYMENT_ID, OTRA_COMPANY_ID,
+                OTRO_EMPLEADO.id());
     }
 }

@@ -3,6 +3,7 @@ package com.vetsoftware.app.debtopenaccount.infrastructure.web;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.debtopenaccount.application.command.CreateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.DeleteDebtOpenAccountCommand;
+import com.vetsoftware.app.debtopenaccount.application.command.ReactivateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.UpdateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.VoidDebtOpenAccountCommand;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
@@ -108,9 +109,16 @@ public class DebtOpenAccountController {
                 authz.currentEmployeeId(), request.reason(), request.expectedVersion()));
     }
 
+    /**
+     * Devuelve a la vista un abono dado de baja. No lleva cuerpo —y por eso tampoco
+     * version esperada, misma decision que en #239 (ver #248)—, pero si mueve
+     * dinero: el backend sella empresa y empleado, porque el ingreso vuelve a
+     * entrar en la caja del que reactiva.
+     */
     @PatchMapping("/{id}/enable")
     public DebtOpenAccountResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
+        return toResponse(reactivateUseCase.execute(new ReactivateDebtOpenAccountCommand(id,
+                authz.currentCompanyId(), authz.currentEmployeeId())));
     }
 
     @PatchMapping("/{id}/void")

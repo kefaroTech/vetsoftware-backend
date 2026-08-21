@@ -386,6 +386,53 @@ class DebtOpenAccountPersistenceIT extends AbstractDataJpaTest {
                     .extracting(DebtOpenAccount::getId).containsExactly(visible.getId());
         }
 
+        @Test
+        @DisplayName("la cuenta del abono apagado se resuelve con la lectura de bloqueo nativa")
+        void la_cuenta_del_abono_apagado_se_resuelve() {
+            DebtOpenAccount guardado = abonoEnEfectivo();
+            entityManager.flush();
+            repository.delete(guardado.getId(), COMPANY);
+            entityManager.flush();
+            entityManager.clear();
+
+            // Esto es lo que la reactivacion necesita saber ANTES de encender la fila
+            // (#218): que cuenta hay que bloquear, y cuanto vale el abono para el guard
+            // de sobrepago y para devolver el ingreso a la caja. El @SQLRestriction de
+            // la entidad esconde el abono apagado de TODO el HQL —la primera asercion lo
+            // demuestra—, asi que las dos consultas son nativas a proposito, y la de
+            // bloqueo lleva su FOR UPDATE escrito a mano porque la anotacion @Lock de
+            // Spring Data no llega a una consulta nativa. Con un doble esto no probaria
+            // nada: lo que hay que ver es que el SQL esquiva el filtro contra MySQL real.
+            assertThat(repository.findByIdAndCompanyId(guardado.getId(), COMPANY)).isEmpty();
+            assertThat(repository.lockAndFindOpenAccountIdIncludingDisabled(guardado.getId()))
+                    .contains(CUENTA);
+
+            DebtOpenAccount apagado = repository
+                    .findByIdIncludingDisabledAndCompanyId(guardado.getId(), COMPANY).orElseThrow();
+            assertThat(apagado.getAmount()).isEqualByComparingTo("25000.00");
+            assertThat(apagado.isEnabled()).isFalse();
+            // La baja logica no anula: es el estado que SI exige devolver el ingreso a
+            // la caja al reactivar.
+            assertThat(apagado.isVoided()).isFalse();
+        }
+
+        @Test
+        @DisplayName("el abono apagado de otra empresa no se carga")
+        void el_abono_apagado_de_otra_empresa_no_se_carga() {
+            DebtOpenAccount guardado = abonoEnEfectivo();
+            entityManager.flush();
+            repository.delete(guardado.getId(), COMPANY);
+            entityManager.flush();
+            entityManager.clear();
+
+            // Mismo EXISTS que el UPDATE de reactivar. Si esto cargara con la empresa
+            // ajena, el caso de uso leeria estado de otro tenant antes de rechazar nada
+            // —y un rows == 0 posterior ya no podria distinguirse de un borrado
+            // concurrente.
+            assertThat(repository.findByIdIncludingDisabledAndCompanyId(guardado.getId(),
+                    OTRA_COMPANY)).isEmpty();
+        }
+
         private long filasCrudas(Long id) {
             Number filas = (Number) entityManager
                     .createNativeQuery("SELECT COUNT(*) FROM debt_open_accounts WHERE id = :id")

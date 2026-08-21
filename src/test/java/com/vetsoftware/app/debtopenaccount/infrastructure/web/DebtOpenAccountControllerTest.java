@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.debtopenaccount.application.command.CreateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.DeleteDebtOpenAccountCommand;
+import com.vetsoftware.app.debtopenaccount.application.command.ReactivateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.UpdateDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.command.VoidDebtOpenAccountCommand;
 import com.vetsoftware.app.debtopenaccount.application.dto.DebtOpenAccountDto;
@@ -429,18 +430,23 @@ class DebtOpenAccountControllerTest {
         @Test
         @DisplayName("responde 200 con el abono reactivado y acota a la company del contexto")
         void responde_200_con_el_abono_reactivado() throws Exception {
-            when(reactivateUseCase.execute(PAYMENT_ID, COMPANY_ID)).thenReturn(abono());
+            when(reactivateUseCase.execute(
+                    new ReactivateDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID, EMPLOYEE_ID)))
+                    .thenReturn(abono());
 
             mockMvc.perform(patch("/debt-open-accounts/100/enable")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(100));
 
-            verify(reactivateUseCase).execute(PAYMENT_ID, COMPANY_ID);
+            // El cuerpo no existe: empresa y empleado los sella el backend. El empleado
+            // importa porque el ingreso vuelve a entrar en SU caja.
+            verify(reactivateUseCase).execute(
+                    new ReactivateDebtOpenAccountCommand(PAYMENT_ID, COMPANY_ID, EMPLOYEE_ID));
         }
 
         @Test
         @DisplayName("de un abono inexistente responde 404")
         void de_un_abono_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(999L, COMPANY_ID))
+            when(reactivateUseCase.execute(any(ReactivateDebtOpenAccountCommand.class)))
                     .thenThrow(new DebtOpenAccountNotFoundException(999L));
 
             mockMvc.perform(patch("/debt-open-accounts/999/enable"))

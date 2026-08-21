@@ -75,4 +75,46 @@ public interface DebtOpenAccountRepository {
     void delete(Long id, Long companyId);
 
     int reactivate(Long id, Long companyId);
+
+    /**
+     * Gemelo de {@link #lockAndFindOpenAccountId(Long)} para la <b>ruta de
+     * reactivacion</b>, y existe porque alli el mecanismo estandar no sirve: el
+     * abono que se va a encender esta deshabilitado, y el
+     * {@code @SQLRestriction("enabled = true")} de la entidad lo esconde de TODOS
+     * los finders JPA —incluido el propio {@code lockAndFindOpenAccountId}, cuyo
+     * javadoc lo admite—. Ese era el motivo real de que reactivar fuera un UPDATE a
+     * ciegas que preguntaba despues (#218).
+     *
+     * <p>
+     * Sigue siendo una <b>lectura de bloqueo</b> y va como PRIMERA sentencia por lo
+     * mismo que su gemelo: bajo REPEATABLE READ el snapshot lo abre la primera
+     * lectura PLANA, asi que resolver la cuenta con un {@code SELECT} corriente
+     * —como hace el arreglo de los cargos (#239)— dejaria al {@code isOpen} y al
+     * saldo posteriores leyendo lo de antes de esperar al lock. Tampoco va acotado
+     * por empresa, y por el mismo motivo: el filtro exige un JOIN contra
+     * {@code open_accounts} y el {@code FOR UPDATE} bloquearia tambien esa fila,
+     * fuera del orden en el que el caso de uso toma el lock de la cuenta. La
+     * propiedad la remata la sentencia siguiente,
+     * {@link #findByIdIncludingDisabledAndCompanyId(Long, Long)}, con 404 y
+     * rollback antes de leer ningun estado y antes de mutar nada.
+     *
+     * @return el id de la cuenta del abono aunque este deshabilitado, o vacio si la
+     *         fila no existe
+     */
+    Optional<Long> lockAndFindOpenAccountIdIncludingDisabled(Long id);
+
+    /**
+     * Carga el abono <b>aunque este deshabilitado</b>, acotada por empresa. Es la
+     * unica forma de conocer importe, medio de pago y estado de anulacion antes de
+     * encender la fila, que es lo que necesitan el guard de sobrepago y la
+     * compensacion en caja.
+     *
+     * <p>
+     * Usa el <b>mismo predicado de empresa</b> que {@link #reactivate(Long, Long)}
+     * —un {@code EXISTS} contra {@code open_accounts}, que es donde vive el tenant
+     * porque la fila del abono no guarda empresa—, asi que las dos sentencias
+     * apuntan siempre a la misma fila y un {@code rows == 0} posterior ya solo
+     * puede significar borrado concurrente, nunca «otra empresa».
+     */
+    Optional<DebtOpenAccount> findByIdIncludingDisabledAndCompanyId(Long id, Long companyId);
 }
