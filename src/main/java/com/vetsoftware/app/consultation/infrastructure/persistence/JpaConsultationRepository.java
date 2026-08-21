@@ -74,14 +74,4 @@ public class JpaConsultationRepository implements ConsultationRepository {
                 Pages.request(page, pageSize, Sort.by(Sort.Direction.DESC, "id")));
         return Pages.result(result, mapper::toDomain);
     }
-
-    @Override
-    public void delete(Long id, Long companyId) {
-        jpaRepository.findByIdAndCompany_Id(id, companyId).ifPresent(jpaRepository::delete);
-    }
-
-    @Override
-    public int reactivate(Long id, Long companyId) {
-        return jpaRepository.reactivate(id, companyId);
-    }
 }

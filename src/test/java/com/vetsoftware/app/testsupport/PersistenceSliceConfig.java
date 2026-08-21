@@ -4,8 +4,6 @@ import com.vetsoftware.app.animal.infrastructure.persistence.AnimalJpaMapper;
 import com.vetsoftware.app.animal.infrastructure.persistence.JpaAnimalRepository;
 import com.vetsoftware.app.animal.infrastructure.persistence.JpaWeightRecordRepository;
 import com.vetsoftware.app.animal.infrastructure.persistence.WeightRecordJpaMapper;
-import com.vetsoftware.app.animalalert.infrastructure.persistence.AnimalAlertJpaMapper;
-import com.vetsoftware.app.animalalert.infrastructure.persistence.JpaAnimalAlertRepository;
 import com.vetsoftware.app.animalcolor.infrastructure.persistence.AnimalColorJpaMapper;
 import com.vetsoftware.app.animalcolor.infrastructure.persistence.JpaAnimalColorRepository;
 import com.vetsoftware.app.appointment.infrastructure.persistence.AppointmentJpaMapper;
@@ -111,11 +109,8 @@ import com.vetsoftware.app.passwordreset.infrastructure.persistence.JpaPasswordR
 import com.vetsoftware.app.passwordreset.infrastructure.persistence.PasswordResetTokenJpaMapper;
 import com.vetsoftware.app.permission.infrastructure.persistence.JpaPermissionRepository;
 import com.vetsoftware.app.permission.infrastructure.persistence.PermissionJpaMapper;
-import com.vetsoftware.app.petshopcatalog.application.PetshopCatalogService;
 import com.vetsoftware.app.prescription.infrastructure.persistence.JpaPrescriptionRepository;
 import com.vetsoftware.app.prescription.infrastructure.persistence.PrescriptionJpaMapper;
-import com.vetsoftware.app.problem.infrastructure.persistence.JpaProblemRepository;
-import com.vetsoftware.app.problem.infrastructure.persistence.ProblemJpaMapper;
 import com.vetsoftware.app.procedureschedule.infrastructure.persistence.JpaProcedureScheduleRepository;
 import com.vetsoftware.app.procedureschedule.infrastructure.persistence.ProcedureScheduleJpaMapper;
 import com.vetsoftware.app.product.infrastructure.persistence.JpaProductRepository;
@@ -210,21 +205,20 @@ import org.springframework.context.annotation.Import;
  * se paga otro arranque de contexto entero.
  */
 @TestConfiguration
-@Import({AnimalAlertJpaMapper.class, AnimalColorJpaMapper.class, AnimalJpaMapper.class,
-        AppointmentJpaMapper.class, BasePermissionJpaMapper.class, BaseRoleJpaMapper.class,
-        BaseRolePermissionJpaMapper.class, BranchJpaMapper.class, BreedJpaMapper.class,
-        CityJpaMapper.class, ClinicalEventJpaMapper.class, CompanyJpaMapper.class,
-        CompanyTaxProfileJpaMapper.class, ConsultationJpaMapper.class,
-        ConsultationTypeJpaMapper.class, CountryJpaMapper.class, DayCareJpaMapper.class,
-        DebtOpenAccountJpaMapper.class, DewormingJpaMapper.class, DiagnosticImagingJpaMapper.class,
-        DiagnosticImagingTypeJpaMapper.class, DianProviderConfigJpaMapper.class,
-        EconomicActivityJpaMapper.class, ElectronicDocumentJpaMapper.class, EmployeeJpaMapper.class,
-        EmployeeRoleJpaMapper.class, GeneralChargeOpenAccountJpaMapper.class,
-        GoodsReceiptJpaMapper.class, HospitalizationJpaMapper.class,
-        HospitalizationMedicationJpaMapper.class, HospitalizationObservationJpaMapper.class,
-        HospitalizationProcedureJpaMapper.class, HospitalizationProgressNoteJpaMapper.class,
-        JdbcDianJobLeasePort.class, JpaAnimalAlertRepository.class, JpaAnimalColorRepository.class,
-        JpaAnimalRepository.class, JpaAppointmentRepository.class,
+@Import({AnimalColorJpaMapper.class, AnimalJpaMapper.class, AppointmentJpaMapper.class,
+        BasePermissionJpaMapper.class, BaseRoleJpaMapper.class, BaseRolePermissionJpaMapper.class,
+        BranchJpaMapper.class, BreedJpaMapper.class, CityJpaMapper.class,
+        ClinicalEventJpaMapper.class, CompanyJpaMapper.class, CompanyTaxProfileJpaMapper.class,
+        ConsultationJpaMapper.class, ConsultationTypeJpaMapper.class, CountryJpaMapper.class,
+        DayCareJpaMapper.class, DebtOpenAccountJpaMapper.class, DewormingJpaMapper.class,
+        DiagnosticImagingJpaMapper.class, DiagnosticImagingTypeJpaMapper.class,
+        DianProviderConfigJpaMapper.class, EconomicActivityJpaMapper.class,
+        ElectronicDocumentJpaMapper.class, EmployeeJpaMapper.class, EmployeeRoleJpaMapper.class,
+        GeneralChargeOpenAccountJpaMapper.class, GoodsReceiptJpaMapper.class,
+        HospitalizationJpaMapper.class, HospitalizationMedicationJpaMapper.class,
+        HospitalizationObservationJpaMapper.class, HospitalizationProcedureJpaMapper.class,
+        HospitalizationProgressNoteJpaMapper.class, JdbcDianJobLeasePort.class,
+        JpaAnimalColorRepository.class, JpaAnimalRepository.class, JpaAppointmentRepository.class,
         JpaBasePermissionRepository.class, JpaBaseRolePermissionRepository.class,
         JpaBaseRoleRepository.class, JpaBranchRepository.class, JpaBreedRepository.class,
         JpaCashSessionRepository.class, JpaCityRepository.class, JpaClinicalEventRepository.class,
@@ -249,9 +243,9 @@ import org.springframework.context.annotation.Import;
         JpaNumberingResolutionRepository.class, JpaOpenAccountRepository.class,
         JpaOpenAccountTotalsAdapter.class, JpaOwnerRepository.class,
         JpaPasswordResetTokenRepository.class, JpaPermissionRepository.class,
-        JpaPrescriptionRepository.class, JpaProblemRepository.class,
-        JpaProcedureScheduleRepository.class, JpaProductCategoryRepository.class,
-        JpaProductRepository.class, JpaPromotionRepository.class, JpaPurchaseOrderRepository.class,
+        JpaPrescriptionRepository.class, JpaProcedureScheduleRepository.class,
+        JpaProductCategoryRepository.class, JpaProductRepository.class,
+        JpaPromotionRepository.class, JpaPurchaseOrderRepository.class,
         JpaRolePermissionRepository.class, JpaRoleRepository.class, JpaSalePromotionQueryPort.class,
         JpaServiceCategoryRepository.class, JpaServiceChargeOpenAccountRepository.class,
         JpaServiceRepository.class, JpaSpaRepository.class, JpaSpecieRepository.class,
@@ -268,17 +262,17 @@ import org.springframework.context.annotation.Import;
         MedicamentPrescriptionJpaMapper.class, MedicationScheduleJpaMapper.class,
         MembershipJpaMapper.class, MembershipSubModuleJpaMapper.class, ModuleJpaMapper.class,
         NumberingResolutionJpaMapper.class, OpenAccountJpaMapper.class, OwnerJpaMapper.class,
-        PasswordResetTokenJpaMapper.class, PermissionJpaMapper.class, PetshopCatalogService.class,
-        PrescriptionJpaMapper.class, ProblemJpaMapper.class, ProcedureScheduleJpaMapper.class,
-        ProductCategoryJpaMapper.class, ProductJpaMapper.class, PromotionJpaMapper.class,
-        PurchaseOrderJpaMapper.class, RoleJpaMapper.class, RolePermissionJpaMapper.class,
-        ServiceCategoryJpaMapper.class, ServiceChargeOpenAccountJpaMapper.class,
-        ServiceJpaMapper.class, SpaJpaMapper.class, SpecieJpaMapper.class, StateJpaMapper.class,
-        StockQueryAdapter.class, SubModuleJpaMapper.class, SupplierInvoiceJpaMapper.class,
-        SupplierJpaMapper.class, SurgeryJpaMapper.class, SurgeryTypeJpaMapper.class,
-        SystemConfigurationJpaMapper.class, SystemPermissionJpaMapper.class,
-        SystemUserJpaMapper.class, SystemUserPermissionJpaMapper.class, TaxJpaMapper.class,
-        VaccinationJpaMapper.class, VaccinationTypeJpaMapper.class, WeightRecordJpaMapper.class,
+        PasswordResetTokenJpaMapper.class, PermissionJpaMapper.class, PrescriptionJpaMapper.class,
+        ProcedureScheduleJpaMapper.class, ProductCategoryJpaMapper.class, ProductJpaMapper.class,
+        PromotionJpaMapper.class, PurchaseOrderJpaMapper.class, RoleJpaMapper.class,
+        RolePermissionJpaMapper.class, ServiceCategoryJpaMapper.class,
+        ServiceChargeOpenAccountJpaMapper.class, ServiceJpaMapper.class, SpaJpaMapper.class,
+        SpecieJpaMapper.class, StateJpaMapper.class, StockQueryAdapter.class,
+        SubModuleJpaMapper.class, SupplierInvoiceJpaMapper.class, SupplierJpaMapper.class,
+        SurgeryJpaMapper.class, SurgeryTypeJpaMapper.class, SystemConfigurationJpaMapper.class,
+        SystemPermissionJpaMapper.class, SystemUserJpaMapper.class,
+        SystemUserPermissionJpaMapper.class, TaxJpaMapper.class, VaccinationJpaMapper.class,
+        VaccinationTypeJpaMapper.class, WeightRecordJpaMapper.class,
         WithholdingConfigJpaMapper.class,
         com.vetsoftware.app.debtopenaccount.infrastructure.persistence.JpaOpenAccountQueryPort.class,
         com.vetsoftware.app.generalchargeopenaccount.infrastructure.persistence.JpaOpenAccountQueryPort.class,

@@ -49,11 +49,6 @@ public class JpaPrescriptionRepository implements PrescriptionRepository {
     }
 
     @Override
-    public Optional<Prescription> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
-
-    @Override
     public Optional<Prescription> findByIdAndCompanyId(Long id, Long companyId) {
         return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
     }
@@ -63,20 +58,5 @@ public class JpaPrescriptionRepository implements PrescriptionRepository {
         Page<PrescriptionJpaEntity> result = jpaRepository
                 .findAll(Pages.request(page, pageSize, Sort.by(Sort.Direction.DESC, "id")));
         return Pages.result(result, mapper::toDomain);
-    }
-
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
-
-    @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
-    }
-
-    @Override
-    public int reactivate(Long id, Long companyId) {
-        return jpaRepository.reactivate(id, companyId);
     }
 }

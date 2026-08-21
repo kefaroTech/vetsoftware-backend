@@ -69,9 +69,4 @@ public class JpaOwnerRepository implements OwnerRepository {
     public void delete(Long id, Long companyId) {
         jpaRepository.findByIdAndCompanyId(id, companyId).ifPresent(jpaRepository::delete);
     }
-
-    @Override
-    public int reactivate(Long id, Long companyId) {
-        return jpaRepository.reactivate(id, companyId);
-    }
 }

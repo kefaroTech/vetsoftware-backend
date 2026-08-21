@@ -17,71 +17,7 @@ public interface MedicamentPrescriptionJpaRepository
     @EntityGraph(attributePaths = {"prescription", "medicament"})
     Optional<MedicamentPrescriptionJpaEntity> findById(Long id);
 
-    @EntityGraph(attributePaths = {"prescription", "medicament"})
-    Optional<MedicamentPrescriptionJpaEntity> findByIdAndPrescription_Company_Id(Long id,
-            Long companyId);
-
     List<MedicamentPrescriptionJpaEntity> findByPrescriptionId(Long prescriptionId);
 
     boolean existsByMedicament_Id(Long medicamentId);
-
-    /**
-     * Camino SYSTEM: sin empresa que acotar. Nunca desde un empleado.
-     *
-     * <p>
-     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
-     * proposito: una consulta nativa no la comprueba ni la incrementa, asi que un
-     * save cargado antes de la reactivacion reescribia la fila entera desde el
-     * dominio —el mapper la copia— y su {@code WHERE version = ?} casaba igual,
-     * deshaciendo en silencio el {@code enabled = true}. Movida la version, ese
-     * save ya no encuentra fila y salta
-     * {@code ObjectOptimisticLockingFailureException} -> 409
-     * {@code CONCURRENT_MODIFICATION}. {@code version} NO va en el {@code WHERE}:
-     * reactivar es deliberado y debe ejecutarse siempre, no competir con una
-     * edicion.
-     */
-    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
-    @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = """
-            UPDATE medicament_prescriptions
-            SET enabled = true, version = version + 1
-            WHERE id = :id
-            """, nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
-
-    /**
-     * La linea de receta no tiene {@code company_id} propio: su empresa es la de la
-     * receta, y por eso el filtro es un EXISTS que sube hasta ella. No es defensa
-     * en profundidad: en la reactivacion no hay lectura previa que valide la
-     * propiedad —el servicio decide si existe mirando las filas afectadas—, asi que
-     * un UPDATE por id a secas resucitaba la linea anulada de la receta de
-     * cualquier tenant para quien conociera el id.
-     *
-     * <p>
-     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
-     * proposito: una consulta nativa no la comprueba ni la incrementa, asi que un
-     * save cargado antes de la reactivacion reescribia la fila entera desde el
-     * dominio —el mapper la copia— y su {@code WHERE version = ?} casaba igual,
-     * deshaciendo en silencio el {@code enabled = true}. Movida la version, ese
-     * save ya no encuentra fila y salta
-     * {@code ObjectOptimisticLockingFailureException} -> 409
-     * {@code CONCURRENT_MODIFICATION}. {@code version} NO va en el {@code WHERE}:
-     * reactivar es deliberado y debe ejecutarse siempre, no competir con una
-     * edicion. La version que sube es la de la linea, no la de la receta padre, que
-     * el EXISTS solo lee.
-     */
-    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
-    @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = """
-            UPDATE medicament_prescriptions
-            SET enabled = true, version = version + 1
-            WHERE id = :id
-              AND EXISTS (SELECT 1 FROM prescriptions p
-                          WHERE p.id = medicament_prescriptions.prescription_id
-                            AND p.company_id = :companyId)
-            """, nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
-            @org.springframework.data.repository.query.Param("companyId") Long companyId);
-
-    boolean existsByPrescription_Id(Long prescriptionId);
 }

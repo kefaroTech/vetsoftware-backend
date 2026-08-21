@@ -29,7 +29,7 @@ import com.vetsoftware.app.employee.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.employee.infrastructure.web.response.EmployeeCodeAvailabilityResponse;
 import com.vetsoftware.app.employee.infrastructure.web.response.EmployeeCodeSuggestionResponse;
 import com.vetsoftware.app.employee.infrastructure.web.response.EmployeeResponse;
-import com.vetsoftware.app.employee.infrastructure.web.response.RoleSummary;
+import com.vetsoftware.app.employee.infrastructure.web.response.EmployeeRoleSummary;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import jakarta.validation.Valid;
@@ -195,8 +195,9 @@ public class EmployeeController {
 
     private EmployeeResponse toResponse(EmployeeDto dto) {
         CompanySummaryDto c = dto.company();
-        List<RoleSummary> roles = dto.roles().stream()
-                .map(r -> new RoleSummary(r.employeeRoleId(), r.id(), r.name(), r.code())).toList();
+        List<EmployeeRoleSummary> roles = dto.roles().stream()
+                .map(r -> new EmployeeRoleSummary(r.employeeRoleId(), r.id(), r.name(), r.code()))
+                .toList();
         List<BranchSummary> branches = dto.branches().stream()
                 .map(b -> new BranchSummary(b.id(), b.name())).toList();
         return new EmployeeResponse(dto.id(), dto.employeeCode(), dto.name(), dto.email(),

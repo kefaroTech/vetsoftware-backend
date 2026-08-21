@@ -1,30 +1,23 @@
 package com.vetsoftware.app.hospitalizationprogressnote.infrastructure.web;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.hospitalizationprogressnote.application.command.CreateHospitalizationProgressNoteCommand;
-import com.vetsoftware.app.hospitalizationprogressnote.application.command.UpdateHospitalizationProgressNoteCommand;
 import com.vetsoftware.app.hospitalizationprogressnote.application.dto.EmployeeSummaryDto;
 import com.vetsoftware.app.hospitalizationprogressnote.application.dto.HospitalizationProgressNoteDto;
 import com.vetsoftware.app.hospitalizationprogressnote.application.dto.HospitalizationSummaryDto;
 import com.vetsoftware.app.hospitalizationprogressnote.application.port.in.CreateHospitalizationProgressNoteUseCase;
 import com.vetsoftware.app.hospitalizationprogressnote.application.port.in.DeleteHospitalizationProgressNoteUseCase;
-import com.vetsoftware.app.hospitalizationprogressnote.application.port.in.FindHospitalizationProgressNoteUseCase;
 import com.vetsoftware.app.hospitalizationprogressnote.application.port.in.ListHospitalizationProgressNotesByHospitalizationUseCase;
-import com.vetsoftware.app.hospitalizationprogressnote.application.port.in.ReactivateHospitalizationProgressNoteUseCase;
-import com.vetsoftware.app.hospitalizationprogressnote.application.port.in.UpdateHospitalizationProgressNoteUseCase;
 import com.vetsoftware.app.hospitalizationprogressnote.domain.HospitalizationProgressNoteNotFoundException;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
@@ -65,15 +58,9 @@ class HospitalizationProgressNoteControllerTest {
     @MockitoBean
     private CreateHospitalizationProgressNoteUseCase createUseCase;
     @MockitoBean
-    private UpdateHospitalizationProgressNoteUseCase updateUseCase;
-    @MockitoBean
-    private FindHospitalizationProgressNoteUseCase findUseCase;
-    @MockitoBean
     private ListHospitalizationProgressNotesByHospitalizationUseCase listByHospitalizationUseCase;
     @MockitoBean
     private DeleteHospitalizationProgressNoteUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateHospitalizationProgressNoteUseCase reactivateUseCase;
 
     private static HospitalizationProgressNoteDto notaEvolucion() {
         return new HospitalizationProgressNoteDto(500L,
@@ -200,78 +187,8 @@ class HospitalizationProgressNoteControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /hospitalization-progress-notes/{id}")
-    class Buscar {
-
-        @Test
-        @DisplayName("acota la busqueda a la company del contexto")
-        void acota_la_busqueda_a_la_company_del_contexto() throws Exception {
-            when(findUseCase.findById(500L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenReturn(notaEvolucion());
-
-            mockMvc.perform(get("/hospitalization-progress-notes/500")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(500));
-
-            verify(findUseCase).findById(500L, WebMvcSliceConfig.COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("inexistente responde 404, no 500")
-        void inexistente_responde_404() throws Exception {
-            when(findUseCase.findById(99L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenThrow(new HospitalizationProgressNoteNotFoundException(99L));
-
-            mockMvc.perform(get("/hospitalization-progress-notes/99"))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PUT /hospitalization-progress-notes/{id}")
-    class Actualizar {
-
-        @Test
-        @DisplayName("responde 200 y arma el command con el id de la ruta")
-        void responde_200_y_arma_el_command_con_el_id_de_la_ruta() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(notaEvolucion());
-
-            mockMvc.perform(put("/hospitalization-progress-notes/500")
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"description":"Evolucion favorable, se ajusta analgesia"}
-                            """)).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(500));
-
-            // La empresa la pone el controller desde el contexto: nunca viaja en el body.
-            verify(updateUseCase).execute(new UpdateHospitalizationProgressNoteCommand(500L,
-                    "Evolucion favorable, se ajusta analgesia", WebMvcSliceConfig.COMPANY_ID));
-        }
-
-        @Test
-        @DisplayName("con descripcion vacia responde 400 y no llega al caso de uso")
-        void con_descripcion_vacia_responde_400() throws Exception {
-            mockMvc.perform(put("/hospitalization-progress-notes/500")
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"description":"   "}
-                            """)).andExpect(status().isBadRequest());
-
-            verify(updateUseCase, never()).execute(any());
-        }
-
-        @Test
-        @DisplayName("nota inexistente responde 404")
-        void nota_inexistente_responde_404() throws Exception {
-            when(updateUseCase.execute(any()))
-                    .thenThrow(new HospitalizationProgressNoteNotFoundException(500L));
-
-            mockMvc.perform(put("/hospitalization-progress-notes/500")
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"description":"Evolucion favorable, se ajusta analgesia"}
-                            """)).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("DELETE y PATCH")
-    class BorrarYReactivar {
+    @DisplayName("DELETE /hospitalization-progress-notes/{id}")
+    class Borrar {
 
         @Test
         @DisplayName("DELETE responde 204 sin cuerpo")
@@ -289,29 +206,6 @@ class HospitalizationProgressNoteControllerTest {
                     .when(deleteUseCase).execute(99L, WebMvcSliceConfig.COMPANY_ID);
 
             mockMvc.perform(delete("/hospitalization-progress-notes/99"))
-                    .andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("PATCH /enable responde 200 con el recurso reactivado")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(500L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenReturn(notaEvolucion());
-
-            mockMvc.perform(patch("/hospitalization-progress-notes/500/enable"))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(500))
-                    .andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(500L, WebMvcSliceConfig.COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("PATCH /enable de una nota inexistente responde 404")
-        void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenThrow(new HospitalizationProgressNoteNotFoundException(99L));
-
-            mockMvc.perform(patch("/hospitalization-progress-notes/99/enable"))
                     .andExpect(status().isNotFound());
         }
     }

@@ -7,9 +7,7 @@ import com.vetsoftware.app.servicecategory.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.servicecategory.application.dto.ServiceCategoryDto;
 import com.vetsoftware.app.servicecategory.application.port.in.CreateServiceCategoryUseCase;
 import com.vetsoftware.app.servicecategory.application.port.in.DeleteServiceCategoryUseCase;
-import com.vetsoftware.app.servicecategory.application.port.in.FindServiceCategoryUseCase;
 import com.vetsoftware.app.servicecategory.application.port.in.ListServiceCategoriesUseCase;
-import com.vetsoftware.app.servicecategory.application.port.in.ReactivateServiceCategoryUseCase;
 import com.vetsoftware.app.servicecategory.application.port.in.UpdateServiceCategoryUseCase;
 import com.vetsoftware.app.servicecategory.infrastructure.web.request.CreateServiceCategoryRequest;
 import com.vetsoftware.app.servicecategory.infrastructure.web.request.UpdateServiceCategoryRequest;
@@ -25,22 +23,17 @@ import org.springframework.web.bind.annotation.*;
 public class ServiceCategoryController {
     private final CreateServiceCategoryUseCase createUseCase;
     private final UpdateServiceCategoryUseCase updateUseCase;
-    private final FindServiceCategoryUseCase findUseCase;
     private final ListServiceCategoriesUseCase listUseCase;
     private final DeleteServiceCategoryUseCase deleteUseCase;
-    private final ReactivateServiceCategoryUseCase reactivateUseCase;
     private final Authz authz;
 
     public ServiceCategoryController(CreateServiceCategoryUseCase createUseCase,
-            UpdateServiceCategoryUseCase updateUseCase, FindServiceCategoryUseCase findUseCase,
-            ListServiceCategoriesUseCase listUseCase, DeleteServiceCategoryUseCase deleteUseCase,
-            ReactivateServiceCategoryUseCase reactivateUseCase, Authz authz) {
+            UpdateServiceCategoryUseCase updateUseCase, ListServiceCategoriesUseCase listUseCase,
+            DeleteServiceCategoryUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -58,11 +51,6 @@ public class ServiceCategoryController {
                 .toList();
     }
 
-    @GetMapping("/{id}")
-    public ServiceCategoryResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
-
     @PutMapping("/{id}")
     public ServiceCategoryResponse update(@PathVariable Long id,
             @Valid @RequestBody UpdateServiceCategoryRequest request) {
@@ -75,11 +63,6 @@ public class ServiceCategoryController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyId());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public ServiceCategoryResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private ServiceCategoryResponse toResponse(ServiceCategoryDto dto) {

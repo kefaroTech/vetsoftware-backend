@@ -10,7 +10,6 @@ import com.vetsoftware.app.surgerytype.application.port.in.DeleteSurgeryTypeUseC
 import com.vetsoftware.app.surgerytype.application.port.in.FindSurgeryTypeUseCase;
 import com.vetsoftware.app.surgerytype.application.port.in.ListAvailableSurgeryTypesUseCase;
 import com.vetsoftware.app.surgerytype.application.port.in.ListSurgeryTypesUseCase;
-import com.vetsoftware.app.surgerytype.application.port.in.ReactivateSurgeryTypeUseCase;
 import com.vetsoftware.app.surgerytype.application.port.in.UpdateSurgeryTypeUseCase;
 import com.vetsoftware.app.surgerytype.infrastructure.web.request.CreateSurgeryTypeRequest;
 import com.vetsoftware.app.surgerytype.infrastructure.web.request.UpdateSurgeryTypeRequest;
@@ -30,22 +29,19 @@ public class SurgeryTypeController {
     private final ListSurgeryTypesUseCase listUseCase;
     private final ListAvailableSurgeryTypesUseCase listAvailableUseCase;
     private final DeleteSurgeryTypeUseCase deleteUseCase;
-    private final ReactivateSurgeryTypeUseCase reactivateUseCase;
     private final Authz authz;
 
     public SurgeryTypeController(CreateSurgeryTypeUseCase createUseCase,
             UpdateSurgeryTypeUseCase updateUseCase, FindSurgeryTypeUseCase findUseCase,
             ListSurgeryTypesUseCase listUseCase,
             ListAvailableSurgeryTypesUseCase listAvailableUseCase,
-            DeleteSurgeryTypeUseCase deleteUseCase, ReactivateSurgeryTypeUseCase reactivateUseCase,
-            Authz authz) {
+            DeleteSurgeryTypeUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listAvailableUseCase = listAvailableUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -83,11 +79,6 @@ public class SurgeryTypeController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public SurgeryTypeResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private SurgeryTypeResponse toResponse(SurgeryTypeDto dto) {

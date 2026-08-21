@@ -35,29 +35,6 @@ public interface GeneralChargeOpenAccountJpaRepository
     Optional<GeneralChargeOpenAccountJpaEntity> findByOpenAccount_IdAndClientRequestId(
             Long openAccountId, String clientRequestId);
 
-    /**
-     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
-     * proposito: una consulta nativa no la comprueba ni la incrementa, asi que un
-     * save cargado antes de la reactivacion reescribia la fila entera desde el
-     * dominio —el mapper la copia— y su {@code WHERE version = ?} casaba igual,
-     * deshaciendo en silencio el {@code enabled = true}. Movida la version, ese
-     * save ya no encuentra fila y salta
-     * {@code ObjectOptimisticLockingFailureException} -> 409
-     * {@code CONCURRENT_MODIFICATION}. {@code version} NO va en el {@code WHERE}:
-     * reactivar es deliberado y debe ejecutarse siempre, no competir con una
-     * edicion.
-     */
-    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
-    @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Query(value = """
-            UPDATE general_charge_open_accounts
-            SET enabled = true, version = version + 1
-            WHERE id = :id
-              AND EXISTS (SELECT 1 FROM open_accounts oa WHERE oa.id = general_charge_open_accounts.open_account_id AND oa.company_id = :companyId)
-            """, nativeQuery = true)
-    int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
-            @org.springframework.data.repository.query.Param("companyId") Long companyId);
-
     // Total general charges for an open account = SUM(total_amount), the per-line
     // gross already
     // computed and frozen at create/update (base + tax). No tax math here: the
@@ -73,27 +50,4 @@ public interface GeneralChargeOpenAccountJpaRepository
             """)
     java.math.BigDecimal sumChargesByOpenAccountId(
             @org.springframework.data.repository.query.Param("openAccountId") Long openAccountId);
-
-    /**
-     * Consulta NATIVA a proposito: el {@code @SQLRestriction("enabled = true")} de
-     * la entidad se aplica a todo el HQL y esconderia justo la fila que hay que
-     * encontrar, la del cargo deshabilitado que se va a reactivar. El predicado de
-     * empresa es el MISMO {@code EXISTS} que usa {@link #reactivate(Long, Long)},
-     * asi que las dos sentencias apuntan siempre a la misma fila.
-     *
-     * <p>
-     * No toma ningun lock: lo que hay que serializar es la CUENTA, y de eso se
-     * encarga el {@code lockForUpdate} acotado del caso de uso con el id que
-     * devuelve esto. Un {@code FOR UPDATE} aqui con el JOIN a {@code open_accounts}
-     * bloquearia filas de las dos tablas fuera de ese orden.
-     */
-    @org.springframework.data.jpa.repository.Query(value = """
-            SELECT c.open_account_id
-            FROM general_charge_open_accounts c
-            WHERE c.id = :id
-              AND EXISTS (SELECT 1 FROM open_accounts oa WHERE oa.id = c.open_account_id AND oa.company_id = :companyId)
-            """, nativeQuery = true)
-    Optional<Long> findOpenAccountIdIncludingDisabled(
-            @org.springframework.data.repository.query.Param("id") Long id,
-            @org.springframework.data.repository.query.Param("companyId") Long companyId);
 }

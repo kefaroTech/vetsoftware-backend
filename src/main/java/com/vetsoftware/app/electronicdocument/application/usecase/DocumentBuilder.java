@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Núcleo de construcción del documento PENDIENTE desde una cuenta cerrada.
- * Reutilizable y SIN control de acceso (lo usan el caso de uso de construcción
- * manual y el de emisión end-to-end de F4).
+ * Reutilizable y SIN control de acceso (lo usan la emisión end-to-end de F4, la
+ * conversión de POS a factura y la emisión al cerrar la cuenta).
  */
 @Component
 public class DocumentBuilder {
@@ -64,12 +64,8 @@ public class DocumentBuilder {
         // exige FE_VENTA (el front ya lo fuerza, esto es el enforcement de backend).
         posTicketLimitValidator.validate(document);
         // El documento nace SIN numerar (PENDIENTE). La numeración fiscal (consecutivo)
-        // se asigna en la
-        // EMISIÓN (justo antes de transmitir), no aquí: así el endpoint provisional
-        // /from-account no
-        // quema
-        // consecutivos (un consecutivo sin transmitir dejaría un hueco que la DIAN
-        // penaliza).
+        // se asigna en la EMISIÓN (justo antes de transmitir), no aquí: un consecutivo
+        // sin transmitir dejaría un hueco que la DIAN penaliza.
         return repository.save(document);
     }
 }

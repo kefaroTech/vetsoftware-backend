@@ -10,7 +10,6 @@ import com.vetsoftware.app.vaccinationtype.application.port.in.DeleteVaccination
 import com.vetsoftware.app.vaccinationtype.application.port.in.FindVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.ListAvailableVaccinationTypesUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.ListVaccinationTypesUseCase;
-import com.vetsoftware.app.vaccinationtype.application.port.in.ReactivateVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.UpdateVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.infrastructure.web.request.CreateVaccinationTypeRequest;
 import com.vetsoftware.app.vaccinationtype.infrastructure.web.request.UpdateVaccinationTypeRequest;
@@ -30,22 +29,19 @@ public class VaccinationTypeController {
     private final ListVaccinationTypesUseCase listUseCase;
     private final ListAvailableVaccinationTypesUseCase listAvailableUseCase;
     private final DeleteVaccinationTypeUseCase deleteUseCase;
-    private final ReactivateVaccinationTypeUseCase reactivateUseCase;
     private final Authz authz;
 
     public VaccinationTypeController(CreateVaccinationTypeUseCase createUseCase,
             UpdateVaccinationTypeUseCase updateUseCase, FindVaccinationTypeUseCase findUseCase,
             ListVaccinationTypesUseCase listUseCase,
             ListAvailableVaccinationTypesUseCase listAvailableUseCase,
-            DeleteVaccinationTypeUseCase deleteUseCase,
-            ReactivateVaccinationTypeUseCase reactivateUseCase, Authz authz) {
+            DeleteVaccinationTypeUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listAvailableUseCase = listAvailableUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -84,11 +80,6 @@ public class VaccinationTypeController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public VaccinationTypeResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private VaccinationTypeResponse toResponse(VaccinationTypeDto dto) {

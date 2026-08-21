@@ -9,23 +9,17 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.generalchargeopenaccount.application.command.CreateGeneralChargeOpenAccountCommand;
-import com.vetsoftware.app.generalchargeopenaccount.application.command.UpdateGeneralChargeOpenAccountCommand;
 import com.vetsoftware.app.generalchargeopenaccount.application.command.VoidGeneralChargeOpenAccountCommand;
 import com.vetsoftware.app.generalchargeopenaccount.application.dto.GeneralChargeOpenAccountDto;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.CreateGeneralChargeOpenAccountUseCase;
-import com.vetsoftware.app.generalchargeopenaccount.application.port.in.FindGeneralChargeOpenAccountUseCase;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ListGeneralChargeOpenAccountsByOpenAccountUseCase;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ListGeneralChargeOpenAccountsUseCase;
-import com.vetsoftware.app.generalchargeopenaccount.application.port.in.ReactivateGeneralChargeOpenAccountUseCase;
-import com.vetsoftware.app.generalchargeopenaccount.application.port.in.UpdateGeneralChargeOpenAccountUseCase;
 import com.vetsoftware.app.generalchargeopenaccount.application.port.in.VoidGeneralChargeOpenAccountUseCase;
-import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.generalchargeopenaccount.testsupport.GeneralChargeOpenAccountMother;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
@@ -51,9 +45,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * <p>
  * Lo que esta rodaja protege y ninguna otra capa cubre: que ni
  * {@code companyId} ni {@code createdById}/{@code voidedById} viajan en el
- * cuerpo (los pone {@code Authz}), y que
- * {@code GeneralChargeOpenAccountNotFoundException} llega al cliente como 404,
- * no como 500.
+ * cuerpo (los pone {@code Authz}).
  */
 @WebMvcTest(GeneralChargeOpenAccountController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -75,15 +67,9 @@ class GeneralChargeOpenAccountControllerTest {
     @MockitoBean
     private CreateGeneralChargeOpenAccountUseCase createUseCase;
     @MockitoBean
-    private UpdateGeneralChargeOpenAccountUseCase updateUseCase;
-    @MockitoBean
-    private FindGeneralChargeOpenAccountUseCase findUseCase;
-    @MockitoBean
     private ListGeneralChargeOpenAccountsUseCase listUseCase;
     @MockitoBean
     private ListGeneralChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
-    @MockitoBean
-    private ReactivateGeneralChargeOpenAccountUseCase reactivateUseCase;
     @MockitoBean
     private VoidGeneralChargeOpenAccountUseCase voidUseCase;
 
@@ -100,10 +86,6 @@ class GeneralChargeOpenAccountControllerTest {
 
     private static GeneralChargeOpenAccountDto cargo() {
         return GeneralChargeOpenAccountDto.from(GeneralChargeOpenAccountMother.cargo());
-    }
-
-    private static GeneralChargeOpenAccountDto cargoSinImpuesto() {
-        return GeneralChargeOpenAccountDto.from(GeneralChargeOpenAccountMother.cargoSinImpuesto());
     }
 
     private static GeneralChargeOpenAccountDto cargoAnulado() {
@@ -218,87 +200,6 @@ class GeneralChargeOpenAccountControllerTest {
             mockMvc.perform(
                     get("/general-charge-open-accounts/by-open-account/{id}", OPEN_ACCOUNT_ID))
                     .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(CHARGE_ID));
-        }
-    }
-
-    @Nested
-    @DisplayName("GET /general-charge-open-accounts/{id}")
-    class Detalle {
-
-        @Test
-        @DisplayName("responde con el cargo de la empresa, sin impuesto: la rama sin tax")
-        void responde_con_el_cargo_sin_impuesto() throws Exception {
-            when(findUseCase.findById(CHARGE_ID, COMPANY_ID)).thenReturn(cargoSinImpuesto());
-
-            mockMvc.perform(get("/general-charge-open-accounts/{id}", CHARGE_ID))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(CHARGE_ID))
-                    .andExpect(jsonPath("$.hasTax").value(false))
-                    .andExpect(jsonPath("$.tax").value(nullValue()));
-        }
-
-        @Test
-        @DisplayName("un cargo inexistente responde 404, no 500")
-        void cargo_inexistente_responde_404() throws Exception {
-            when(findUseCase.findById(999L, COMPANY_ID))
-                    .thenThrow(new GeneralChargeOpenAccountNotFoundException(999L));
-
-            mockMvc.perform(get("/general-charge-open-accounts/999"))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PUT /general-charge-open-accounts/{id}")
-    class Actualizacion {
-
-        @Test
-        @DisplayName("actualiza el cargo y responde 200 con el command sellado por la empresa")
-        void actualiza_y_responde_200() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(cargo());
-
-            mockMvc.perform(put("/general-charge-open-accounts/{id}", CHARGE_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"name":"Traslado nocturno","unitAmount":1000,"quantity":3,
-                             "taxId":4,"openAccountId":50,"expectedVersion":2}
-                            """)).andExpect(status().isOk());
-
-            ArgumentCaptor<UpdateGeneralChargeOpenAccountCommand> captor = ArgumentCaptor
-                    .forClass(UpdateGeneralChargeOpenAccountCommand.class);
-            verify(updateUseCase).execute(captor.capture());
-            UpdateGeneralChargeOpenAccountCommand command = captor.getValue();
-            assertThat(command.id()).isEqualTo(CHARGE_ID);
-            assertThat(command.name()).isEqualTo("Traslado nocturno");
-            assertThat(command.unitAmount()).isEqualByComparingTo("1000");
-            assertThat(command.quantity()).isEqualByComparingTo("3");
-            assertThat(command.taxId()).isEqualTo(4L);
-            assertThat(command.openAccountId()).isEqualTo(50L);
-            assertThat(command.companyId()).isEqualTo(COMPANY_ID);
-            assertThat(command.expectedVersion()).isEqualTo(2L);
-        }
-
-        @Test
-        @DisplayName("sin name responde 400 y no actualiza nada")
-        void sin_name_responde_400() throws Exception {
-            mockMvc.perform(put("/general-charge-open-accounts/{id}", CHARGE_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"unitAmount":1000,"quantity":3,"openAccountId":50}
-                            """)).andExpect(status().isBadRequest());
-
-            verify(updateUseCase, never()).execute(any());
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /general-charge-open-accounts/{id}/enable")
-    class Reactivacion {
-
-        @Test
-        @DisplayName("responde 200 con el cargo reactivado")
-        void responde_200_con_el_cargo_reactivado() throws Exception {
-            when(reactivateUseCase.execute(CHARGE_ID, COMPANY_ID)).thenReturn(cargo());
-
-            mockMvc.perform(patch("/general-charge-open-accounts/{id}/enable", CHARGE_ID))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(CHARGE_ID));
         }
     }
 

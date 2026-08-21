@@ -1,7 +1,6 @@
 package com.vetsoftware.app.generalchargeopenaccount.testsupport;
 
 import com.vetsoftware.app.generalchargeopenaccount.application.command.CreateGeneralChargeOpenAccountCommand;
-import com.vetsoftware.app.generalchargeopenaccount.application.command.UpdateGeneralChargeOpenAccountCommand;
 import com.vetsoftware.app.generalchargeopenaccount.application.command.VoidGeneralChargeOpenAccountCommand;
 import com.vetsoftware.app.generalchargeopenaccount.domain.EmployeeRef;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccount;
@@ -107,30 +106,6 @@ public final class GeneralChargeOpenAccountMother {
     public static CreateGeneralChargeOpenAccountCommand comandoCrearSinImpuesto() {
         return new CreateGeneralChargeOpenAccountCommand(NOMBRE, UNITARIO, CANTIDAD, null,
                 OPEN_ACCOUNT_ID, COMPANY_ID, EMPLEADO.id(), null, null);
-    }
-
-    /**
-     * Correccion del cargo: 1.000 x 3 = 3.000, que con IVA 19 % incluido da
-     * 2.521,01 de base + 478,99 de impuesto. Cambia el total a proposito, para que
-     * se vea que el cargo general SI recalcula (a diferencia del cargo de
-     * servicio).
-     */
-    public static UpdateGeneralChargeOpenAccountCommand comandoActualizar() {
-        return new UpdateGeneralChargeOpenAccountCommand(CHARGE_ID, "Traslado nocturno",
-                new BigDecimal("1000"), new BigDecimal("3"), IVA_19.id(), OPEN_ACCOUNT_ID,
-                COMPANY_ID, null);
-    }
-
-    /** Actualizacion que traslada el cargo a OTRA cuenta de la misma empresa. */
-    public static UpdateGeneralChargeOpenAccountCommand comandoTrasladar() {
-        return new UpdateGeneralChargeOpenAccountCommand(CHARGE_ID, NOMBRE, UNITARIO, CANTIDAD,
-                IVA_19.id(), OTRA_CUENTA_ID, COMPANY_ID, null);
-    }
-
-    /** Actualizacion que quita el impuesto del cargo. */
-    public static UpdateGeneralChargeOpenAccountCommand comandoActualizarSinImpuesto() {
-        return new UpdateGeneralChargeOpenAccountCommand(CHARGE_ID, NOMBRE, UNITARIO, CANTIDAD,
-                null, OPEN_ACCOUNT_ID, COMPANY_ID, null);
     }
 
     public static VoidGeneralChargeOpenAccountCommand comandoAnular() {

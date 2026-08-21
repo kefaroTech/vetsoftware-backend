@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -26,7 +25,6 @@ import com.vetsoftware.app.hospitalization.application.port.in.FindHospitalizati
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsByAnimalUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsByCompanyUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.ListHospitalizationsUseCase;
-import com.vetsoftware.app.hospitalization.application.port.in.ReactivateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.application.port.in.UpdateHospitalizationUseCase;
 import com.vetsoftware.app.hospitalization.domain.HospitalizationNotFoundException;
 import com.vetsoftware.app.hospitalization.domain.HospitalizationType;
@@ -81,8 +79,6 @@ class HospitalizationControllerTest {
     private ListHospitalizationsByCompanyUseCase listByCompanyUseCase;
     @MockitoBean
     private DeleteHospitalizationUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateHospitalizationUseCase reactivateUseCase;
 
     private static HospitalizationDto internado() {
         return new HospitalizationDto(55L, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 1),
@@ -357,8 +353,8 @@ class HospitalizationControllerTest {
     }
 
     @Nested
-    @DisplayName("DELETE y PATCH")
-    class BorrarYReactivar {
+    @DisplayName("DELETE /hospitalizations/{id}")
+    class Borrar {
 
         @Test
         @DisplayName("DELETE responde 204 sin cuerpo")
@@ -376,28 +372,6 @@ class HospitalizationControllerTest {
                     .when(deleteUseCase).execute(99L, WebMvcSliceConfig.COMPANY_ID);
 
             mockMvc.perform(delete("/hospitalizations/99")).andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("PATCH /enable responde 200 con el recurso reactivado")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(55L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenReturn(internado());
-
-            mockMvc.perform(patch("/hospitalizations/55/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(55))
-                    .andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(55L, WebMvcSliceConfig.COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("PATCH /enable de una hospitalizacion inexistente responde 404")
-        void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenThrow(new HospitalizationNotFoundException(99L));
-
-            mockMvc.perform(patch("/hospitalizations/99/enable")).andExpect(status().isNotFound());
         }
     }
 }

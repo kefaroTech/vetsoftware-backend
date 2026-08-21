@@ -1,7 +1,6 @@
 package com.vetsoftware.app.spa.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
-import com.vetsoftware.app.spa.application.command.ChangeSpaStatusCommand;
 import com.vetsoftware.app.spa.application.command.CreateSpaCommand;
 import com.vetsoftware.app.spa.application.command.UpdateSpaCommand;
 import com.vetsoftware.app.spa.application.dto.AnimalSummaryDto;
@@ -9,15 +8,12 @@ import com.vetsoftware.app.spa.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.spa.application.dto.SpaDto;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.spa.application.dto.SpaTypeSummaryDto;
-import com.vetsoftware.app.spa.application.port.in.ChangeSpaStatusUseCase;
 import com.vetsoftware.app.spa.application.port.in.CreateSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.DeleteSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.FindSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.ListSpasByAnimalUseCase;
 import com.vetsoftware.app.spa.application.port.in.ListSpasUseCase;
-import com.vetsoftware.app.spa.application.port.in.ReactivateSpaUseCase;
 import com.vetsoftware.app.spa.application.port.in.UpdateSpaUseCase;
-import com.vetsoftware.app.spa.infrastructure.web.request.ChangeSpaStatusRequest;
 import com.vetsoftware.app.spa.infrastructure.web.request.CreateSpaRequest;
 import com.vetsoftware.app.spa.infrastructure.web.request.UpdateSpaRequest;
 import com.vetsoftware.app.spa.infrastructure.web.response.AnimalSummary;
@@ -38,14 +34,11 @@ public class SpaController {
     private final ListSpasUseCase listUseCase;
     private final ListSpasByAnimalUseCase listByAnimalUseCase;
     private final DeleteSpaUseCase deleteUseCase;
-    private final ReactivateSpaUseCase reactivateUseCase;
-    private final ChangeSpaStatusUseCase changeStatusUseCase;
     private final Authz authz;
 
     public SpaController(CreateSpaUseCase createUseCase, UpdateSpaUseCase updateUseCase,
             FindSpaUseCase findUseCase, ListSpasUseCase listUseCase,
             ListSpasByAnimalUseCase listByAnimalUseCase, DeleteSpaUseCase deleteUseCase,
-            ReactivateSpaUseCase reactivateUseCase, ChangeSpaStatusUseCase changeStatusUseCase,
             Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
@@ -53,8 +46,6 @@ public class SpaController {
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
-        this.changeStatusUseCase = changeStatusUseCase;
         this.authz = authz;
     }
 
@@ -96,18 +87,6 @@ public class SpaController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public SpaResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
-    }
-
-    @PatchMapping("/{id}/status")
-    public SpaResponse changeStatus(@PathVariable Long id,
-            @Valid @RequestBody ChangeSpaStatusRequest request) {
-        return toResponse(changeStatusUseCase.execute(
-                new ChangeSpaStatusCommand(id, request.status(), authz.currentCompanyIdOrNull())));
     }
 
     private SpaResponse toResponse(SpaDto dto) {

@@ -2,30 +2,22 @@ package com.vetsoftware.app.prescription.infrastructure.web;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.prescription.application.command.CreatePrescriptionCommand;
-import com.vetsoftware.app.prescription.application.command.UpdatePrescriptionCommand;
 import com.vetsoftware.app.prescription.application.dto.PrescriptionDto;
 import com.vetsoftware.app.prescription.application.port.in.CreatePrescriptionUseCase;
-import com.vetsoftware.app.prescription.application.port.in.DeletePrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.ExportPrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.FindPrescriptionUseCase;
 import com.vetsoftware.app.prescription.application.port.in.ListPrescriptionsUseCase;
-import com.vetsoftware.app.prescription.application.port.in.ReactivatePrescriptionUseCase;
-import com.vetsoftware.app.prescription.application.port.in.UpdatePrescriptionUseCase;
 import com.vetsoftware.app.prescription.domain.PrescriptionNotFoundException;
 import com.vetsoftware.app.prescription.testsupport.PrescriptionMother;
 import com.vetsoftware.app.shared.pagination.PageResult;
@@ -66,15 +58,9 @@ class PrescriptionControllerTest {
     @MockitoBean
     private CreatePrescriptionUseCase createUseCase;
     @MockitoBean
-    private UpdatePrescriptionUseCase updateUseCase;
-    @MockitoBean
     private FindPrescriptionUseCase findUseCase;
     @MockitoBean
     private ListPrescriptionsUseCase listUseCase;
-    @MockitoBean
-    private DeletePrescriptionUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivatePrescriptionUseCase reactivateUseCase;
     @MockitoBean
     private ExportPrescriptionUseCase exportUseCase;
 
@@ -168,74 +154,6 @@ class PrescriptionControllerTest {
                     .thenThrow(new PrescriptionNotFoundException(999L));
 
             mockMvc.perform(get("/prescriptions/{id}", 999L)).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PUT /prescriptions/{id}")
-    class Actualizacion {
-
-        @Test
-        @DisplayName("arma el comando con el id de la ruta y responde 200")
-        void arma_el_comando_y_responde_200() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(dto());
-
-            mockMvc.perform(put("/prescriptions/{id}", PrescriptionMother.PRESCRIPTION_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content(CUERPO_VALIDO))
-                    .andExpect(status().isOk());
-
-            verify(updateUseCase).execute(new UpdatePrescriptionCommand(
-                    PrescriptionMother.PRESCRIPTION_ID, java.time.LocalDate.of(2026, 1, 10),
-                    "Otitis externa", "Control en 7 dias", 501L, 502L, COMPANY_ID));
-        }
-
-        @Test
-        @DisplayName("una receta que ya no existe responde 404")
-        void receta_inexistente_responde_404() throws Exception {
-            when(updateUseCase.execute(any())).thenThrow(
-                    new PrescriptionNotFoundException(PrescriptionMother.PRESCRIPTION_ID));
-
-            mockMvc.perform(put("/prescriptions/{id}", PrescriptionMother.PRESCRIPTION_ID)
-                    .contentType(MediaType.APPLICATION_JSON).content(CUERPO_VALIDO))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("DELETE y PATCH /prescriptions/{id}")
-    class BorradoYReactivacion {
-
-        @Test
-        @DisplayName("DELETE responde 204 y usa el companyId (o null) del contexto")
-        void delete_responde_204() throws Exception {
-            mockMvc.perform(delete("/prescriptions/{id}", PrescriptionMother.PRESCRIPTION_ID))
-                    .andExpect(status().isNoContent());
-
-            verify(deleteUseCase).execute(PrescriptionMother.PRESCRIPTION_ID, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("borrar con medicamentos activos responde 409")
-        void borrar_con_medicamentos_activos_responde_409() throws Exception {
-            org.mockito.Mockito.doThrow(
-                    new com.vetsoftware.app.prescription.domain.PrescriptionHasActiveChildrenException(
-                            PrescriptionMother.PRESCRIPTION_ID, "medicamentPrescription"))
-                    .when(deleteUseCase).execute(anyLong(), any());
-
-            mockMvc.perform(delete("/prescriptions/{id}", PrescriptionMother.PRESCRIPTION_ID))
-                    .andExpect(status().isConflict());
-        }
-
-        @Test
-        @DisplayName("PATCH /enable reactiva y responde 200 usando el companyId del contexto")
-        void patch_enable_reactiva() throws Exception {
-            when(reactivateUseCase.execute(PrescriptionMother.PRESCRIPTION_ID, COMPANY_ID))
-                    .thenReturn(dto());
-
-            mockMvc.perform(patch("/prescriptions/{id}/enable", PrescriptionMother.PRESCRIPTION_ID))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(PrescriptionMother.PRESCRIPTION_ID, COMPANY_ID);
         }
     }
 

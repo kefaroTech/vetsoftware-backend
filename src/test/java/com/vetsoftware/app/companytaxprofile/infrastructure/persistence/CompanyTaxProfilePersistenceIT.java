@@ -35,14 +35,6 @@ import org.springframework.dao.DataIntegrityViolationException;
  * es codigo Java:
  *
  * <ul>
- * <li>La baja logica es un {@code @Modifying} nativo
- * ({@code deleteByCompanyId}) y no un {@code em.remove}. Esa diferencia es todo
- * el arreglo: la entidad combina {@code @SQLDelete} en la cabecera con un
- * {@code orphanRemoval} sobre {@code responsibilities}, y dar la baja por JPA
- * hace que Hibernate arrastre las responsabilidades DIAN antes de aplicar el
- * UPDATE de la raiz. Aqui el bug nunca se manifesto porque el adaptador ya iba
- * por SQL nativo; este test fija esa conducta para que nadie la «simplifique» a
- * un {@code deleteById}.
  * <li>El {@code company_id} es UNIQUE y la unicidad <em>no</em> mira
  * {@code enabled}: quien ya tiene perfil dado de baja no puede crear otro,
  * tiene que reactivarlo. Eso lo decide el indice, no el caso de uso.
@@ -76,7 +68,6 @@ class CompanyTaxProfilePersistenceIT extends AbstractDataJpaTest {
 
     private static final Long COMPANY = SchemaSeed.COMPANY_ID;
     private static final Long OTRA_COMPANY = SchemaSeed.OTRA_COMPANY_ID;
-    private static final Long SIN_PERFIL = 999L;
 
     private static final Long ACTIVIDAD_ID = 960L;
     private static final Long OTRA_ACTIVIDAD_ID = 961L;
@@ -204,14 +195,6 @@ class CompanyTaxProfilePersistenceIT extends AbstractDataJpaTest {
         return ((Number) total).longValue();
     }
 
-    private long perfilesDeshabilitados(Long perfilId) {
-        entityManager.flush();
-        Object total = entityManager.createNativeQuery("""
-                SELECT COUNT(*) FROM company_tax_profiles WHERE id = :id AND enabled = false
-                """).setParameter("id", perfilId).getSingleResult();
-        return ((Number) total).longValue();
-    }
-
     // --- casos ---------------------------------------------------------------
 
     @Nested
@@ -334,24 +317,6 @@ class CompanyTaxProfilePersistenceIT extends AbstractDataJpaTest {
                     .isInstanceOf(DataIntegrityViolationException.class)
                     .hasMessageContaining("Duplicate entry");
         }
-
-        @Test
-        @DisplayName("el unico no mira enabled: con el perfil dado de baja hay que reactivarlo")
-        void el_unico_no_mira_enabled() {
-            // A diferencia del numero de factura del proveedor, este indice cuelga de la
-            // columna pelada y no de una generada que solo vale con enabled = TRUE. Es la
-            // razon de que exista reactivate: dar de baja y volver a crear no es un camino
-            // posible.
-            guardarPerfilPropio();
-            releerDesdeLaBase();
-            repository.delete(COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(repository.existsByCompanyId(COMPANY)).isFalse();
-            assertThatThrownBy(() -> guardarPerfilPropio())
-                    .isInstanceOf(DataIntegrityViolationException.class)
-                    .hasMessageContaining("Duplicate entry");
-        }
     }
 
     @Nested
@@ -387,104 +352,6 @@ class CompanyTaxProfilePersistenceIT extends AbstractDataJpaTest {
             assertThat(ajeno.getEconomicActivity()).isEqualTo(COMERCIO);
             assertThat(ajeno.getResponsibilities())
                     .extracting(CompanyTaxProfileResponsibility::code).containsExactly("O-23");
-        }
-
-        @Test
-        @DisplayName("dar de baja el perfil de una empresa no toca el de la otra")
-        void dar_de_baja_una_empresa_no_toca_la_otra() {
-            guardarPerfilPropio();
-            Long ajeno = guardarPerfilAjeno().getId();
-            releerDesdeLaBase();
-
-            repository.delete(COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(repository.findByCompanyId(OTRA_COMPANY)).isPresent();
-            assertThat(responsabilidadesVigentesEnLaBase(ajeno)).isEqualTo(1L);
-            assertThat(perfilesDeshabilitados(ajeno)).isZero();
-        }
-
-        @Test
-        @DisplayName("reactivar una empresa sin perfil no toca ninguna fila")
-        void reactivar_una_empresa_sin_perfil_no_toca_nada() {
-            guardarPerfilPropio();
-            releerDesdeLaBase();
-
-            assertThat(repository.reactivate(SIN_PERFIL)).isZero();
-            assertThat(repository.findByCompanyId(COMPANY)).isPresent();
-        }
-    }
-
-    @Nested
-    @DisplayName("baja logica: la conducta que el bug del cascade rompia")
-    class BajaLogica {
-
-        @Test
-        @DisplayName("dar de baja conserva el detalle: las responsabilidades siguen en la base")
-        void dar_de_baja_conserva_las_responsabilidades() {
-            // El adaptador da la baja por un UPDATE nativo (deleteByCompanyId) y no por
-            // em.remove. Con un deleteById, el orphanRemoval de la coleccion arrastraria
-            // las responsabilidades ANTES de que el @SQLDelete deshabilitara la cabecera
-            // —aqui no arrancando la fila, porque la hija tiene su propio @SQLDelete, pero
-            // si dejandola enabled = false—, y el perfil volveria de la reactivacion sin
-            // sus responsabilidades DIAN. La cuenta que lo distingue es la de vigentes.
-            Long id = guardarPerfilPropio().getId();
-            releerDesdeLaBase();
-
-            repository.delete(COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(responsabilidadesVigentesEnLaBase(id)).isEqualTo(2L);
-            assertThat(responsabilidadesEnLaBase(id)).isEqualTo(2L);
-            assertThat(perfilesDeshabilitados(id)).isEqualTo(1L);
-        }
-
-        @Test
-        @DisplayName("el perfil dado de baja deja de encontrarse por empresa")
-        void el_perfil_dado_de_baja_deja_de_encontrarse() {
-            guardarPerfilPropio();
-            releerDesdeLaBase();
-
-            repository.delete(COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(repository.findByCompanyId(COMPANY)).isEmpty();
-            assertThat(repository.existsByCompanyId(COMPANY)).isFalse();
-        }
-
-        @Test
-        @DisplayName("reactivar devuelve el perfil con sus responsabilidades intactas")
-        void reactivar_devuelve_el_perfil_con_sus_responsabilidades() {
-            // Este es el escenario que el bug volvia irreversible: sin detalle en la base,
-            // reactivar devolvia una cabecera fiscal vacia.
-            guardarPerfilPropio();
-            releerDesdeLaBase();
-            repository.delete(COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(repository.reactivate(COMPANY)).isEqualTo(1);
-            releerDesdeLaBase();
-
-            CompanyTaxProfile reactivado = repository.findByCompanyId(COMPANY).orElseThrow();
-            assertThat(reactivado.isEnabled()).isTrue();
-            assertThat(reactivado.getResponsibilities())
-                    .extracting(CompanyTaxProfileResponsibility::code)
-                    .containsExactlyInAnyOrder("O-13", "O-15");
-            assertThat(reactivado.getEconomicActivity()).isEqualTo(VETERINARIA);
-        }
-
-        @Test
-        @DisplayName("dar de baja dos veces seguidas es idempotente y sigue sin borrar detalle")
-        void dar_de_baja_dos_veces_es_idempotente() {
-            Long id = guardarPerfilPropio().getId();
-            releerDesdeLaBase();
-
-            repository.delete(COMPANY);
-            repository.delete(COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(responsabilidadesVigentesEnLaBase(id)).isEqualTo(2L);
-            assertThat(perfilesDeshabilitados(id)).isEqualTo(1L);
         }
     }
 }

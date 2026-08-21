@@ -10,13 +10,12 @@ import com.vetsoftware.app.company.application.port.in.CreateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.DeleteCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.FindCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.ListCompaniesUseCase;
-import com.vetsoftware.app.company.application.port.in.ReactivateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.UpdateCompanyUseCase;
 import com.vetsoftware.app.company.infrastructure.web.request.CreateCompanyRequest;
 import com.vetsoftware.app.company.infrastructure.web.request.UpdateCompanyRequest;
 import com.vetsoftware.app.company.infrastructure.web.response.CitySummary;
 import com.vetsoftware.app.company.infrastructure.web.response.CompanyResponse;
-import com.vetsoftware.app.company.infrastructure.web.response.MembershipSummary;
+import com.vetsoftware.app.company.infrastructure.web.response.CompanyMembershipSummary;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -30,19 +29,16 @@ public class CompanyController {
     private final FindCompanyUseCase findUseCase;
     private final ListCompaniesUseCase listUseCase;
     private final DeleteCompanyUseCase deleteUseCase;
-    private final ReactivateCompanyUseCase reactivateUseCase;
     private final Authz authz;
 
     public CompanyController(CreateCompanyUseCase createUseCase, UpdateCompanyUseCase updateUseCase,
             FindCompanyUseCase findUseCase, ListCompaniesUseCase listUseCase,
-            DeleteCompanyUseCase deleteUseCase, ReactivateCompanyUseCase reactivateUseCase,
-            Authz authz) {
+            DeleteCompanyUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -85,17 +81,12 @@ public class CompanyController {
         deleteUseCase.execute(id);
     }
 
-    @PatchMapping("/{id}/enable")
-    public CompanyResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id));
-    }
-
     private CompanyResponse toResponse(CompanyDto dto) {
         CitySummaryDto c = dto.city();
         MembershipSummaryDto m = dto.membership();
         return new CompanyResponse(dto.id(), dto.name(), dto.identifier(), dto.address(),
                 dto.contactNumber(), new CitySummary(c.id(), c.name()),
-                new MembershipSummary(m.id(), m.name(), m.status()), dto.createdDate(),
+                new CompanyMembershipSummary(m.id(), m.name(), m.status()), dto.createdDate(),
                 dto.enabled());
     }
 }

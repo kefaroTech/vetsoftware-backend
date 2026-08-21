@@ -164,16 +164,6 @@ class RolePermissionPersistenceIT extends AbstractDataJpaTest {
             assertThat(repository.findAllByRoleId(ROLE_ID)).extracting(RolePermission::getId)
                     .containsExactly(propia.getId());
         }
-
-        @Test
-        @DisplayName("findAllByRoleCompanyId agrega por la empresa del rol, no por una FK propia")
-        void find_all_by_role_company_id_filtra_por_la_empresa_del_rol() {
-            RolePermission propia = guardar(ROL, PERMISO);
-            guardar(ROL_AJENO, PERMISO_2);
-
-            assertThat(repository.findAllByRoleCompanyId(SchemaSeed.COMPANY_ID))
-                    .extracting(RolePermission::getId).containsExactly(propia.getId());
-        }
     }
 
     @Nested

@@ -355,7 +355,7 @@ class LaboratoryTestPersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("delete y reactivate")
+    @DisplayName("delete")
     class BorradoYReactivacion {
 
         @Test
@@ -368,42 +368,6 @@ class LaboratoryTestPersistenceIT extends AbstractDataJpaTest {
             releerDesdeLaBase();
 
             assertThat(repository.findById(guardada.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate() vuelve a hacer visible una muestra borrada")
-        void reactivate_vuelve_a_hacer_visible() {
-            LaboratoryTest guardada = repository.save(muestraValida());
-            releerDesdeLaBase();
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(guardada.getId(), COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findByIdAndCompanyId(guardada.getId(), COMPANY)).isPresent();
-        }
-
-        @Test
-        @DisplayName("reactivate() con el companyId de OTRA empresa no afecta ninguna fila")
-        void reactivate_con_empresa_ajena_no_afecta_filas() {
-            LaboratoryTest guardada = repository.save(muestraValida());
-            releerDesdeLaBase();
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(guardada.getId(), SchemaSeed.OTRA_COMPANY_ID);
-            releerDesdeLaBase();
-
-            assertThat(filas).isZero();
-            assertThat(repository.findById(guardada.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate() sobre un id inexistente no afecta filas")
-        void reactivate_sobre_id_inexistente() {
-            assertThat(repository.reactivate(999_999L, COMPANY)).isZero();
         }
     }
 

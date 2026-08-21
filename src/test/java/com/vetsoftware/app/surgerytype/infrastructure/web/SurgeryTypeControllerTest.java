@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,7 +21,6 @@ import com.vetsoftware.app.surgerytype.application.port.in.DeleteSurgeryTypeUseC
 import com.vetsoftware.app.surgerytype.application.port.in.FindSurgeryTypeUseCase;
 import com.vetsoftware.app.surgerytype.application.port.in.ListAvailableSurgeryTypesUseCase;
 import com.vetsoftware.app.surgerytype.application.port.in.ListSurgeryTypesUseCase;
-import com.vetsoftware.app.surgerytype.application.port.in.ReactivateSurgeryTypeUseCase;
 import com.vetsoftware.app.surgerytype.application.port.in.UpdateSurgeryTypeUseCase;
 import com.vetsoftware.app.surgerytype.domain.SurgeryTypeHasActiveChildrenException;
 import com.vetsoftware.app.surgerytype.domain.SurgeryTypeNotFoundException;
@@ -46,9 +44,9 @@ import org.springframework.test.web.servlet.MockMvc;
  * <p>
  * Lo que decide el controller por su cuenta y que por eso se afirma aqui: la
  * empresa nunca viaja en el cuerpo de la peticion —la pone {@code Authz}— ni en
- * create/update ni en borrado/reactivacion. Los cuatro casos de uso reciben el
- * companyId del contexto y lo revalidan con {@code @authz.isMyCompany(...)}
- * (ver {@code DeleteSurgeryTypeUseCase}/{@code ReactivateSurgeryTypeUseCase}).
+ * create/update ni en borrado. Los casos de uso reciben el companyId del
+ * contexto y lo revalidan con {@code @authz.isMyCompany(...)} (ver
+ * {@code DeleteSurgeryTypeUseCase}).
  */
 @WebMvcTest(SurgeryTypeController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -78,8 +76,6 @@ class SurgeryTypeControllerTest {
     private ListAvailableSurgeryTypesUseCase listAvailableUseCase;
     @MockitoBean
     private DeleteSurgeryTypeUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateSurgeryTypeUseCase reactivateUseCase;
 
     /**
      * El doble de {@code Authz} lo aporta {@link WebMvcSliceConfig}; se inyecta
@@ -276,26 +272,6 @@ class SurgeryTypeControllerTest {
                     .when(deleteUseCase).execute(SURGERY_TYPE_ID, COMPANY_ID);
 
             mockMvc.perform(delete("/surgery-types/700")).andExpect(status().isConflict());
-        }
-
-        @Test
-        @DisplayName("PATCH /surgery-types/{id}/enable responde 200 y propaga la empresa del contexto")
-        void enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(SURGERY_TYPE_ID, COMPANY_ID)).thenReturn(propio());
-
-            mockMvc.perform(patch("/surgery-types/700/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(SURGERY_TYPE_ID, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("PATCH enable de un tipo inexistente responde 404")
-        void enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, COMPANY_ID))
-                    .thenThrow(new SurgeryTypeNotFoundException(99L));
-
-            mockMvc.perform(patch("/surgery-types/99/enable")).andExpect(status().isNotFound());
         }
     }
 }

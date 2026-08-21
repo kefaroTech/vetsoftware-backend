@@ -9,8 +9,4 @@ public interface CompanyTaxProfileRepository {
     Optional<CompanyTaxProfile> findByCompanyId(Long companyId);
 
     boolean existsByCompanyId(Long companyId);
-
-    void delete(Long companyId);
-
-    int reactivate(Long companyId);
 }

@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -20,7 +19,6 @@ import com.vetsoftware.app.owner.application.port.in.CreateOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.DeleteOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.FindOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.ListOwnersUseCase;
-import com.vetsoftware.app.owner.application.port.in.ReactivateOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.SearchOwnersUseCase;
 import com.vetsoftware.app.owner.application.port.in.UpdateOwnerUseCase;
 import com.vetsoftware.app.owner.domain.OwnerDocumentType;
@@ -77,8 +75,6 @@ class OwnerControllerTest {
     private SearchOwnersUseCase searchUseCase;
     @MockitoBean
     private DeleteOwnerUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateOwnerUseCase reactivateUseCase;
 
     private static OwnerDto anaRuiz() {
         return OwnerDto.from(OwnerMother.personaNatural());
@@ -291,27 +287,6 @@ class OwnerControllerTest {
 
             mockMvc.perform(delete("/owners/" + OwnerMother.OWNER_ID))
                     .andExpect(status().isConflict());
-        }
-
-        @Test
-        @DisplayName("PATCH /owners/{id}/enable reactiva y responde 200")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(OwnerMother.OWNER_ID, WebMvcSliceConfig.COMPANY_ID))
-                    .thenReturn(anaRuiz());
-
-            mockMvc.perform(patch("/owners/" + OwnerMother.OWNER_ID + "/enable"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(OwnerMother.OWNER_ID))
-                    .andExpect(jsonPath("$.enabled").value(true));
-        }
-
-        @Test
-        @DisplayName("PATCH enable de un owner inexistente responde 404")
-        void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenThrow(new OwnerNotFoundException(99L));
-
-            mockMvc.perform(patch("/owners/99/enable")).andExpect(status().isNotFound());
         }
     }
 }

@@ -6,7 +6,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -20,7 +19,6 @@ import com.vetsoftware.app.deworming.application.port.in.DeleteDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.FindDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.ListDewormingsByAnimalUseCase;
 import com.vetsoftware.app.deworming.application.port.in.ListDewormingsUseCase;
-import com.vetsoftware.app.deworming.application.port.in.ReactivateDewormingUseCase;
 import com.vetsoftware.app.deworming.application.port.in.UpdateDewormingUseCase;
 import com.vetsoftware.app.deworming.domain.DewormingNotFoundException;
 import com.vetsoftware.app.deworming.domain.DewormingType;
@@ -80,8 +78,6 @@ class DewormingControllerTest {
     private ListDewormingsByAnimalUseCase listByAnimalUseCase;
     @MockitoBean
     private DeleteDewormingUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateDewormingUseCase reactivateUseCase;
 
     private static DewormingDto dto() {
         return DewormingDto.from(DewormingMother.desparasitacionValida());
@@ -256,41 +252,6 @@ class DewormingControllerTest {
 
             verify(deleteUseCase).execute(DewormingMother.DEWORMING_ID,
                     WebMvcSliceConfig.COMPANY_ID);
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /dewormings/{id}/enable")
-    class Reactivacion {
-
-        @Test
-        @DisplayName("responde 200 con la desparasitacion habilitada")
-        void responde_200_con_la_desparasitacion_habilitada() throws Exception {
-            when(reactivateUseCase.execute(DewormingMother.DEWORMING_ID, COMPANY_ID))
-                    .thenReturn(dto());
-
-            mockMvc.perform(patch("/dewormings/{id}/enable", DewormingMother.DEWORMING_ID))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
-        }
-
-        @Test
-        @DisplayName("delega en el caso de uso con el id de la ruta y el companyId del contexto")
-        void delega_en_el_caso_de_uso_con_el_company_id_del_contexto() throws Exception {
-            when(reactivateUseCase.execute(DewormingMother.DEWORMING_ID, COMPANY_ID))
-                    .thenReturn(dto());
-
-            mockMvc.perform(patch("/dewormings/{id}/enable", DewormingMother.DEWORMING_ID));
-
-            verify(reactivateUseCase).execute(DewormingMother.DEWORMING_ID, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("una desparasitacion inexistente en la empresa responde 404, no 500")
-        void una_desparasitacion_inexistente_en_la_empresa_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, COMPANY_ID))
-                    .thenThrow(new DewormingNotFoundException(99L));
-
-            mockMvc.perform(patch("/dewormings/{id}/enable", 99L)).andExpect(status().isNotFound());
         }
     }
 }

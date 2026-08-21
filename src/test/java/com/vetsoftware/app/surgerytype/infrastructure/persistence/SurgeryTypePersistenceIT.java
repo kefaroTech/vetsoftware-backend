@@ -158,7 +158,7 @@ class SurgeryTypePersistenceIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("borrado y reactivacion")
+    @DisplayName("borrado")
     class BorradoYReactivacion {
 
         @Test
@@ -171,63 +171,6 @@ class SurgeryTypePersistenceIT extends AbstractDataJpaTest {
             releerDesdeLaBase();
 
             assertThat(repository.findById(borrado.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate vuelve a habilitar la fila y devuelve 1 fila afectada")
-        void reactivate_vuelve_a_habilitar_la_fila() {
-            SurgeryType pausado = guardarPropio("Castracion");
-            releerDesdeLaBase();
-            repository.delete(pausado.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(pausado.getId(), SchemaSeed.COMPANY_ID);
-            releerDesdeLaBase();
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findById(pausado.getId())).map(SurgeryType::isEnabled)
-                    .contains(true);
-        }
-
-        @Test
-        @DisplayName("reactivate de un id inexistente no afecta ninguna fila")
-        void reactivate_de_un_id_inexistente_no_afecta_filas() {
-            int filas = repository.reactivate(999999L, SchemaSeed.COMPANY_ID);
-
-            assertThat(filas).isZero();
-        }
-
-        @Test
-        @DisplayName("reactivate con el companyId de OTRA empresa afecta 0 filas y lo deja oculto")
-        void reactivate_con_la_empresa_ajena_no_afecta_filas() {
-            // El WHERE es la unica barrera de la reactivacion: no hay lectura previa que
-            // valide la propiedad.
-            SurgeryType pausado = guardarPropio("Castracion");
-            releerDesdeLaBase();
-            repository.delete(pausado.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(pausado.getId(), SchemaSeed.OTRA_COMPANY_ID);
-            releerDesdeLaBase();
-
-            assertThat(filas).isZero();
-            assertThat(repository.findById(pausado.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("una fila general no la reactiva ninguna empresa: company_id es NULL")
-        void una_fila_general_no_la_reactiva_ninguna_empresa() {
-            // Consecuencia deliberada de acotar la escritura: reactivar una fila general
-            // la devolveria a TODOS los tenants, asi que ninguna empresa puede hacerlo.
-            SurgeryType general = guardarGeneral("Cirugia general");
-            releerDesdeLaBase();
-            repository.delete(general.getId());
-            releerDesdeLaBase();
-
-            assertThat(repository.reactivate(general.getId(), SchemaSeed.COMPANY_ID)).isZero();
-            releerDesdeLaBase();
-
-            assertThat(repository.findById(general.getId())).isEmpty();
         }
 
         @Test

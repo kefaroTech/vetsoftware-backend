@@ -264,46 +264,6 @@ class SupplierPersistenceIT extends AbstractDataJpaTest {
             assertThat(repository.findAllByCompanyId(COMPANY_ID)).extracting(Supplier::getId)
                     .containsExactly(activo.getId());
         }
-
-        @Test
-        @DisplayName("el listado de pausados si lo ve: la query nativa esquiva el @SQLRestriction")
-        void el_listado_de_pausados_si_lo_ve() {
-            guardar(NORTE);
-            Supplier pausado = guardar(SUR);
-
-            deshabilitar(pausado.getId());
-
-            assertThat(repository.findAllDisabledByCompanyId(COMPANY_ID))
-                    .extracting(Supplier::getId).containsExactly(pausado.getId());
-        }
-
-        @Test
-        @DisplayName("reactivar devuelve el proveedor al listado activo")
-        void reactivar_devuelve_el_proveedor_al_listado_activo() {
-            Supplier pausado = guardar(SUR);
-            deshabilitar(pausado.getId());
-
-            int filas = repository.reactivate(pausado.getId(), COMPANY_ID);
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findAllByCompanyId(COMPANY_ID)).extracting(Supplier::getId)
-                    .containsExactly(pausado.getId());
-        }
-
-        @Test
-        @DisplayName("reactivar desde otra empresa no toca ninguna fila")
-        void reactivar_desde_otra_empresa_no_toca_ninguna_fila() {
-            Supplier pausado = guardar(SUR);
-            deshabilitar(pausado.getId());
-
-            int filas = repository.reactivate(pausado.getId(), OTRA_COMPANY_ID);
-
-            // El UPDATE nativo lleva el company_id en el WHERE: sin el, una empresa
-            // resucitaria el proveedor de otra y ese proveedor volveria a su catalogo.
-            assertThat(filas).isZero();
-            assertThat(repository.findAllDisabledByCompanyId(COMPANY_ID))
-                    .extracting(Supplier::getId).containsExactly(pausado.getId());
-        }
     }
 
     @Nested

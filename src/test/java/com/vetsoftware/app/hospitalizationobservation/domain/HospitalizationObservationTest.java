@@ -65,37 +65,6 @@ class HospitalizationObservationTest {
     }
 
     @Nested
-    @DisplayName("update()")
-    class Update {
-
-        @Test
-        @DisplayName("reemplaza la descripcion sin tocar las demas propiedades")
-        void reemplaza_la_descripcion() {
-            HospitalizationObservation observation = HospitalizationObservationMother
-                    .observacionValida();
-
-            observation.update("Nueva evolucion clinica");
-
-            assertThat(observation.getDescription()).isEqualTo("Nueva evolucion clinica");
-            assertThat(observation.getHospitalization()).isEqualTo(HOSPITALIZACION);
-            assertThat(observation.getCreatedBy()).isEqualTo(VETERINARIO);
-        }
-
-        @ParameterizedTest
-        @NullAndEmptySource
-        @ValueSource(strings = {"   "})
-        @DisplayName("con una descripcion nula o en blanco se rechaza")
-        void con_descripcion_nula_o_en_blanco_se_rechaza(String valor) {
-            HospitalizationObservation observation = HospitalizationObservationMother
-                    .observacionValida();
-
-            assertThatThrownBy(() -> observation.update(valor))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("description is required");
-        }
-    }
-
-    @Nested
     @DisplayName("enable() / disable()")
     class EnableDisable {
 

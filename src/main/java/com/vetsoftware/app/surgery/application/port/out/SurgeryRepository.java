@@ -18,6 +18,4 @@ public interface SurgeryRepository {
             int page, int pageSize);
 
     void delete(Long id);
-
-    int reactivate(Long id, Long companyId);
 }

@@ -11,7 +11,6 @@ import com.vetsoftware.app.owner.application.port.in.CreateOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.DeleteOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.FindOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.ListOwnersUseCase;
-import com.vetsoftware.app.owner.application.port.in.ReactivateOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.in.SearchOwnersUseCase;
 import com.vetsoftware.app.owner.application.port.in.UpdateOwnerUseCase;
 import com.vetsoftware.app.owner.infrastructure.web.request.CreateOwnerRequest;
@@ -32,20 +31,17 @@ public class OwnerController {
     private final ListOwnersUseCase listUseCase;
     private final SearchOwnersUseCase searchUseCase;
     private final DeleteOwnerUseCase deleteUseCase;
-    private final ReactivateOwnerUseCase reactivateUseCase;
     private final Authz authz;
 
     public OwnerController(CreateOwnerUseCase createUseCase, UpdateOwnerUseCase updateUseCase,
             FindOwnerUseCase findUseCase, ListOwnersUseCase listUseCase,
-            SearchOwnersUseCase searchUseCase, DeleteOwnerUseCase deleteUseCase,
-            ReactivateOwnerUseCase reactivateUseCase, Authz authz) {
+            SearchOwnersUseCase searchUseCase, DeleteOwnerUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.searchUseCase = searchUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -99,11 +95,6 @@ public class OwnerController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyId());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public OwnerResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private OwnerResponse toResponse(OwnerDto dto) {

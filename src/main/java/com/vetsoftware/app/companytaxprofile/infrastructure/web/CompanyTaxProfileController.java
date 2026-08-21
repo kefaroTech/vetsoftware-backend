@@ -7,9 +7,7 @@ import com.vetsoftware.app.companytaxprofile.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.companytaxprofile.application.dto.CompanyTaxProfileDto;
 import com.vetsoftware.app.companytaxprofile.application.dto.EconomicActivitySummaryDto;
 import com.vetsoftware.app.companytaxprofile.application.port.in.CreateCompanyTaxProfileUseCase;
-import com.vetsoftware.app.companytaxprofile.application.port.in.DeleteCompanyTaxProfileUseCase;
 import com.vetsoftware.app.companytaxprofile.application.port.in.FindCompanyTaxProfileUseCase;
-import com.vetsoftware.app.companytaxprofile.application.port.in.ReactivateCompanyTaxProfileUseCase;
 import com.vetsoftware.app.companytaxprofile.application.port.in.UpdateCompanyTaxProfileUseCase;
 import com.vetsoftware.app.companytaxprofile.infrastructure.web.request.CreateCompanyTaxProfileRequest;
 import com.vetsoftware.app.companytaxprofile.infrastructure.web.request.UpdateCompanyTaxProfileRequest;
@@ -26,19 +24,14 @@ public class CompanyTaxProfileController {
     private final CreateCompanyTaxProfileUseCase createUseCase;
     private final UpdateCompanyTaxProfileUseCase updateUseCase;
     private final FindCompanyTaxProfileUseCase findUseCase;
-    private final DeleteCompanyTaxProfileUseCase deleteUseCase;
-    private final ReactivateCompanyTaxProfileUseCase reactivateUseCase;
     private final Authz authz;
 
     public CompanyTaxProfileController(CreateCompanyTaxProfileUseCase createUseCase,
             UpdateCompanyTaxProfileUseCase updateUseCase, FindCompanyTaxProfileUseCase findUseCase,
-            DeleteCompanyTaxProfileUseCase deleteUseCase,
-            ReactivateCompanyTaxProfileUseCase reactivateUseCase, Authz authz) {
+            Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -68,17 +61,6 @@ public class CompanyTaxProfileController {
     @GetMapping
     public CompanyTaxProfileResponse find() {
         return toResponse(findUseCase.findByCompanyId(authz.currentCompanyId()));
-    }
-
-    @DeleteMapping
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete() {
-        deleteUseCase.execute(authz.currentCompanyId());
-    }
-
-    @PostMapping("/reactivate")
-    public CompanyTaxProfileResponse reactivate() {
-        return toResponse(reactivateUseCase.execute(authz.currentCompanyId()));
     }
 
     private CompanyTaxProfileResponse toResponse(CompanyTaxProfileDto dto) {

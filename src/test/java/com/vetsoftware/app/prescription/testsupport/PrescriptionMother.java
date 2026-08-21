@@ -1,7 +1,6 @@
 package com.vetsoftware.app.prescription.testsupport;
 
 import com.vetsoftware.app.prescription.application.command.CreatePrescriptionCommand;
-import com.vetsoftware.app.prescription.application.command.UpdatePrescriptionCommand;
 import com.vetsoftware.app.prescription.domain.AnimalRef;
 import com.vetsoftware.app.prescription.domain.CompanyRef;
 import com.vetsoftware.app.prescription.domain.ConsultationRef;
@@ -47,11 +46,6 @@ public final class PrescriptionMother {
     public static CreatePrescriptionCommand comandoCrear() {
         return new CreatePrescriptionCommand(FECHA, "Otitis externa", "Control en 7 dias",
                 ANIMAL_ID, CONSULTATION_ID, COMPANY_ID);
-    }
-
-    public static UpdatePrescriptionCommand comandoActualizar() {
-        return new UpdatePrescriptionCommand(PRESCRIPTION_ID, FECHA, "Otitis externa",
-                "Control en 7 dias", ANIMAL_ID, CONSULTATION_ID, COMPANY_ID);
     }
 
     public static List<MedicamentRef> unMedicamento() {

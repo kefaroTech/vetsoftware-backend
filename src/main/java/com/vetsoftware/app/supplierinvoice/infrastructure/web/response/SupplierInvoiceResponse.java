@@ -11,7 +11,7 @@ import java.util.List;
 public record SupplierInvoiceResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BranchSummary branch,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SupplierSummary supplier,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SupplierInvoiceSupplierSummary supplier,
         Long purchaseOrderId, Long goodsReceiptId,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String invoiceNumber,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate issueDate,

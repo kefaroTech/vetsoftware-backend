@@ -9,7 +9,6 @@ import com.vetsoftware.app.laboratorytestfile.application.dto.LaboratoryTestSumm
 import com.vetsoftware.app.laboratorytestfile.application.port.in.CreateLaboratoryTestFileUseCase;
 import com.vetsoftware.app.laboratorytestfile.application.port.in.DeleteLaboratoryTestFileUseCase;
 import com.vetsoftware.app.laboratorytestfile.application.port.in.DownloadLaboratoryTestFileUseCase;
-import com.vetsoftware.app.laboratorytestfile.application.port.in.FindLaboratoryTestFileUseCase;
 import com.vetsoftware.app.laboratorytestfile.application.port.in.ListLaboratoryTestFilesByLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytestfile.infrastructure.web.response.EmployeeSummary;
 import com.vetsoftware.app.laboratorytestfile.infrastructure.web.response.LaboratoryTestFileResponse;
@@ -30,19 +29,16 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/laboratory-test-files")
 public class LaboratoryTestFileController {
     private final CreateLaboratoryTestFileUseCase createUseCase;
-    private final FindLaboratoryTestFileUseCase findUseCase;
     private final ListLaboratoryTestFilesByLaboratoryTestUseCase listByLaboratoryTestUseCase;
     private final DownloadLaboratoryTestFileUseCase downloadUseCase;
     private final DeleteLaboratoryTestFileUseCase deleteUseCase;
     private final Authz authz;
 
     public LaboratoryTestFileController(CreateLaboratoryTestFileUseCase createUseCase,
-            FindLaboratoryTestFileUseCase findUseCase,
             ListLaboratoryTestFilesByLaboratoryTestUseCase listByLaboratoryTestUseCase,
             DownloadLaboratoryTestFileUseCase downloadUseCase,
             DeleteLaboratoryTestFileUseCase deleteUseCase, Authz authz) {
         this.createUseCase = createUseCase;
-        this.findUseCase = findUseCase;
         this.listByLaboratoryTestUseCase = listByLaboratoryTestUseCase;
         this.downloadUseCase = downloadUseCase;
         this.deleteUseCase = deleteUseCase;
@@ -77,11 +73,6 @@ public class LaboratoryTestFileController {
         return listByLaboratoryTestUseCase
                 .listByLaboratoryTest(laboratoryTestId, authz.currentCompanyId()).stream()
                 .map(this::toResponse).toList();
-    }
-
-    @GetMapping("/{id}")
-    public LaboratoryTestFileResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
     }
 
     @GetMapping("/{id}/download")

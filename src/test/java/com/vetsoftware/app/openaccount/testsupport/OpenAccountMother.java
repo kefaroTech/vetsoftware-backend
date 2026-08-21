@@ -2,7 +2,6 @@ package com.vetsoftware.app.openaccount.testsupport;
 
 import com.vetsoftware.app.openaccount.application.command.ChangeOpenAccountStatusCommand;
 import com.vetsoftware.app.openaccount.application.command.CreateOpenAccountCommand;
-import com.vetsoftware.app.openaccount.application.command.UpdateOpenAccountCommand;
 import com.vetsoftware.app.openaccount.domain.BranchRef;
 import com.vetsoftware.app.openaccount.domain.CompanyRef;
 import com.vetsoftware.app.openaccount.domain.EmployeeRef;
@@ -93,10 +92,6 @@ public final class OpenAccountMother {
 
     public static CreateOpenAccountCommand comandoCrear() {
         return new CreateOpenAccountCommand(OWNER_ID, BRANCH_ID, COMPANY_ID, EMPLOYEE_ID);
-    }
-
-    public static UpdateOpenAccountCommand comandoActualizar() {
-        return new UpdateOpenAccountCommand(OPEN_ACCOUNT_ID, OTRO_OWNER.id(), COMPANY_ID, null);
     }
 
     public static ChangeOpenAccountStatusCommand comandoCerrar() {

@@ -8,14 +8,12 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.goodsreceipt.application.command.CreateGoodsReceiptCommand;
 import com.vetsoftware.app.goodsreceipt.application.command.GoodsReceiptLineCommand;
 import com.vetsoftware.app.goodsreceipt.application.command.SearchGoodsReceiptsCommand;
-import com.vetsoftware.app.goodsreceipt.application.command.UpdateGoodsReceiptCommand;
 import com.vetsoftware.app.goodsreceipt.application.dto.BranchSummaryDto;
 import com.vetsoftware.app.goodsreceipt.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.goodsreceipt.application.dto.GoodsReceiptDto;
@@ -27,9 +25,7 @@ import com.vetsoftware.app.goodsreceipt.application.port.in.ConfirmGoodsReceiptU
 import com.vetsoftware.app.goodsreceipt.application.port.in.CreateGoodsReceiptUseCase;
 import com.vetsoftware.app.goodsreceipt.application.port.in.DeleteGoodsReceiptUseCase;
 import com.vetsoftware.app.goodsreceipt.application.port.in.FindGoodsReceiptUseCase;
-import com.vetsoftware.app.goodsreceipt.application.port.in.ListGoodsReceiptsUseCase;
 import com.vetsoftware.app.goodsreceipt.application.port.in.SearchGoodsReceiptsUseCase;
-import com.vetsoftware.app.goodsreceipt.application.port.in.UpdateGoodsReceiptUseCase;
 import com.vetsoftware.app.goodsreceipt.domain.GoodsReceiptNotFoundException;
 import com.vetsoftware.app.goodsreceipt.domain.GoodsReceiptStatus;
 import com.vetsoftware.app.goodsreceipt.domain.InvalidGoodsReceiptStatusTransitionException;
@@ -86,25 +82,13 @@ class GoodsReceiptControllerTest {
                        "quantityReceived":10,"unitCost":12.50}]}
             """;
 
-    private static final String CUERPO_VALIDO_UPDATE = """
-            {"branchId":4,"supplierId":7,"receiptDate":"2026-03-12",
-             "supplierInvoiceNumber":"FV-1001","notes":"Entrega parcial",
-             "lines":[{"productId":21,"lotNumber":"LOTE-A","expireDate":"2027-01-31",
-                       "quantityReceived":10,"unitCost":12.50}],
-             "version":3}
-            """;
-
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
     private CreateGoodsReceiptUseCase createUseCase;
     @MockitoBean
-    private UpdateGoodsReceiptUseCase updateUseCase;
-    @MockitoBean
     private FindGoodsReceiptUseCase findUseCase;
-    @MockitoBean
-    private ListGoodsReceiptsUseCase listUseCase;
     @MockitoBean
     private SearchGoodsReceiptsUseCase searchUseCase;
     @MockitoBean
@@ -239,16 +223,6 @@ class GoodsReceiptControllerTest {
     class Lecturas {
 
         @Test
-        @DisplayName("GET /goods-receipts lista las de la empresa del contexto")
-        void get_lista_las_de_la_empresa_del_contexto() throws Exception {
-            when(listUseCase.listByCompany(COMPANY_ID)).thenReturn(List.of(borrador()));
-
-            mockMvc.perform(get("/goods-receipts")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$[0].id").value(500))
-                    .andExpect(jsonPath("$[0].company.id").value(COMPANY_ID));
-        }
-
-        @Test
         @DisplayName("GET /goods-receipts/{id} devuelve el recurso")
         void get_por_id_devuelve_el_recurso() throws Exception {
             when(findUseCase.findById(RECEIPT_ID, COMPANY_ID)).thenReturn(borrador());
@@ -314,59 +288,6 @@ class GoodsReceiptControllerTest {
     @Nested
     @DisplayName("escrituras sobre una recepcion existente")
     class Escrituras {
-
-        @Test
-        @DisplayName("PUT /goods-receipts/{id} responde 200 con el recurso actualizado")
-        void put_responde_200() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(borrador());
-
-            mockMvc.perform(put("/goods-receipts/500").contentType(MediaType.APPLICATION_JSON)
-                    .content(CUERPO_VALIDO_UPDATE)).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(500));
-        }
-
-        @Test
-        @DisplayName("PUT traduce el request al command con el id de la ruta y la version")
-        void put_traduce_el_request_con_el_id_de_la_ruta() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(borrador());
-
-            mockMvc.perform(put("/goods-receipts/500").contentType(MediaType.APPLICATION_JSON)
-                    .content(CUERPO_VALIDO_UPDATE));
-
-            verify(updateUseCase).execute(new UpdateGoodsReceiptCommand(RECEIPT_ID, BRANCH_ID,
-                    SUPPLIER_ID, null, FECHA, "FV-1001", "Entrega parcial", List.of(comandoLinea()),
-                    COMPANY_ID, EMPLOYEE_ID, 3L));
-        }
-
-        @Test
-        @DisplayName("PUT sin version responde 400: sin ella no hay lock optimista")
-        void put_sin_version_responde_400() throws Exception {
-            mockMvc.perform(put("/goods-receipts/500").contentType(MediaType.APPLICATION_JSON)
-                    .content(CUERPO_VALIDO)).andExpect(status().isBadRequest());
-
-            verify(updateUseCase, never()).execute(any());
-        }
-
-        @Test
-        @DisplayName("PUT sobre una recepcion ya confirmada responde 409")
-        void put_sobre_una_confirmada_responde_409() throws Exception {
-            when(updateUseCase.execute(any())).thenThrow(
-                    new InvalidGoodsReceiptStatusTransitionException("Goods receipt can only be "
-                            + "edited while in DRAFT, current status: CONFIRMED"));
-
-            mockMvc.perform(put("/goods-receipts/500").contentType(MediaType.APPLICATION_JSON)
-                    .content(CUERPO_VALIDO_UPDATE)).andExpect(status().isConflict());
-        }
-
-        @Test
-        @DisplayName("PUT sobre una recepcion de otra empresa responde 404")
-        void put_inexistente_responde_404() throws Exception {
-            when(updateUseCase.execute(any()))
-                    .thenThrow(new GoodsReceiptNotFoundException(RECEIPT_ID));
-
-            mockMvc.perform(put("/goods-receipts/500").contentType(MediaType.APPLICATION_JSON)
-                    .content(CUERPO_VALIDO_UPDATE)).andExpect(status().isNotFound());
-        }
 
         @Test
         @DisplayName("DELETE /goods-receipts/{id} responde 204 sin cuerpo")

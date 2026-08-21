@@ -24,7 +24,6 @@ import com.vetsoftware.app.laboratorytest.application.port.in.DeleteLaboratoryTe
 import com.vetsoftware.app.laboratorytest.application.port.in.FindLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.ListLaboratoryTestsByAnimalUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.ListLaboratoryTestsUseCase;
-import com.vetsoftware.app.laboratorytest.application.port.in.ReactivateLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.SearchLaboratoryTestsUseCase;
 import com.vetsoftware.app.laboratorytest.application.port.in.UpdateLaboratoryTestUseCase;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException;
@@ -105,8 +104,6 @@ class LaboratoryTestControllerTest {
     private SearchLaboratoryTestsUseCase searchUseCase;
     @MockitoBean
     private DeleteLaboratoryTestUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateLaboratoryTestUseCase reactivateUseCase;
 
     /**
      * Sin este stub {@code resolveAccessibleBranch} devolveria 0L —el default de
@@ -429,32 +426,6 @@ class LaboratoryTestControllerTest {
                     .when(deleteUseCase).execute(999L, COMPANY_ID);
 
             mockMvc.perform(delete("/laboratory-tests/999")).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /laboratory-tests/{id}/enable")
-    class Reactivacion {
-
-        @Test
-        @DisplayName("responde 200 con la muestra reactivada, acotada por la empresa del contexto")
-        void responde_200() throws Exception {
-            when(reactivateUseCase.execute(LaboratoryTestMother.ID, COMPANY_ID))
-                    .thenReturn(pendiente());
-
-            mockMvc.perform(patch("/laboratory-tests/" + LaboratoryTestMother.ID + "/enable"))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(LaboratoryTestMother.ID, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("reactivar una muestra inexistente responde 404")
-        void reactivar_una_muestra_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(999L, COMPANY_ID))
-                    .thenThrow(new LaboratoryTestNotFoundException(999L));
-
-            mockMvc.perform(patch("/laboratory-tests/999/enable")).andExpect(status().isNotFound());
         }
     }
 }

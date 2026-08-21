@@ -1,7 +1,6 @@
 package com.vetsoftware.app.consultation.testsupport;
 
 import com.vetsoftware.app.consultation.application.command.CreateConsultationCommand;
-import com.vetsoftware.app.consultation.application.command.UpdateConsultationCommand;
 import com.vetsoftware.app.consultation.domain.AnimalRef;
 import com.vetsoftware.app.consultation.domain.CompanyRef;
 import com.vetsoftware.app.consultation.domain.Consultation;
@@ -30,10 +29,6 @@ public final class ConsultationMother {
             "Control");
     public static final AnimalRef FIRULAIS = new AnimalRef(ANIMAL_ID, "Firulais", "A-001");
     public static final CompanyRef CLINICA = new CompanyRef(COMPANY_ID, "Clinica Norte", "NIT-900");
-
-    public static final ConsultationTypeRef VACUNACION = new ConsultationTypeRef(6L, "Vacunacion");
-    public static final AnimalRef MICHI = new AnimalRef(101L, "Michi", "A-002");
-    public static final CompanyRef OTRA_CLINICA = new CompanyRef(10L, "Clinica Sur", "NIT-901");
 
     public static final LocalDate FECHA = LocalDate.of(2026, 3, 1);
     public static final LocalDateTime CREADO = LocalDateTime.of(2026, 3, 1, 9, 0);
@@ -80,15 +75,5 @@ public final class ConsultationMother {
                 "Diagnostico", "Pronostico reservado", FECHA.plusDays(15), ANIMAL_ID, COMPANY_ID,
                 peso, unidad, new BigDecimal("38.5"), 90, 22, "Rosadas", "< 2 seg", "Normal", 5, 2,
                 "Alerta", "Sin hallazgos relevantes");
-    }
-
-    /**
-     * Comando de actualizacion que cambia todas las referencias y el examen fisico.
-     */
-    public static UpdateConsultationCommand comandoActualizar() {
-        return new UpdateConsultationCommand(CONSULTATION_ID, FECHA, VACUNACION.id(),
-                "Anamnesis nueva", "Diagnostico nuevo", "Pronostico nuevo", FECHA.plusDays(30),
-                MICHI.id(), COMPANY_ID, new BigDecimal("39.0"), 100, 25, "Palidas", "> 2 seg",
-                "Leve deshidratacion", 4, 5, "Decaido", "Hallazgo relevante");
     }
 }

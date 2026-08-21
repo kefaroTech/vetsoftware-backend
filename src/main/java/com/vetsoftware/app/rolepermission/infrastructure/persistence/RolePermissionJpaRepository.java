@@ -26,9 +26,6 @@ public interface RolePermissionJpaRepository extends JpaRepository<RolePermissio
     @EntityGraph(attributePaths = {"role", "permission"})
     List<RolePermissionJpaEntity> findAllByRoleId(Long roleId);
 
-    @EntityGraph(attributePaths = {"role", "permission"})
-    List<RolePermissionJpaEntity> findAllByRoleCompanyId(Long companyId);
-
     @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true, clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Query(value = """

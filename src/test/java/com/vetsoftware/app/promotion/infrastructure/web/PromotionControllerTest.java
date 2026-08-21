@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -21,7 +20,6 @@ import com.vetsoftware.app.promotion.application.port.in.CreatePromotionUseCase;
 import com.vetsoftware.app.promotion.application.port.in.DeletePromotionUseCase;
 import com.vetsoftware.app.promotion.application.port.in.FindPromotionUseCase;
 import com.vetsoftware.app.promotion.application.port.in.ListPromotionsUseCase;
-import com.vetsoftware.app.promotion.application.port.in.ReactivatePromotionUseCase;
 import com.vetsoftware.app.promotion.application.port.in.UpdatePromotionUseCase;
 import com.vetsoftware.app.promotion.domain.ApplicationType;
 import com.vetsoftware.app.promotion.domain.PromotionNotFoundException;
@@ -89,8 +87,6 @@ class PromotionControllerTest {
     private ListPromotionsUseCase listUseCase;
     @MockitoBean
     private DeletePromotionUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivatePromotionUseCase reactivateUseCase;
 
     /**
      * El doble de {@code Authz} lo aporta {@link WebMvcSliceConfig}; se inyecta
@@ -327,26 +323,6 @@ class PromotionControllerTest {
                     COMPANY_ID);
 
             mockMvc.perform(delete("/promotions/99")).andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("PATCH /promotions/{id}/enable reactiva y responde 200 propagando la empresa")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(PROMOTION_ID, COMPANY_ID)).thenReturn(eneroPerruno());
-
-            mockMvc.perform(patch("/promotions/44/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(PROMOTION_ID, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("PATCH enable de una promocion inexistente responde 404")
-        void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, COMPANY_ID))
-                    .thenThrow(new PromotionNotFoundException(99L));
-
-            mockMvc.perform(patch("/promotions/99/enable")).andExpect(status().isNotFound());
         }
     }
 }

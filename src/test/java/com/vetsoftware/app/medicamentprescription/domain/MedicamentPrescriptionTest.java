@@ -78,10 +78,6 @@ class MedicamentPrescriptionTest {
             return new MedicamentPrescription(id, medicament, presentation, quantity, posology,
                     observation, prescription, CREADO, null, true);
         }
-
-        private void applyTo(MedicamentPrescription line) {
-            line.update(medicament, presentation, quantity, posology, observation, prescription);
-        }
     }
 
     @Nested
@@ -226,68 +222,6 @@ class MedicamentPrescriptionTest {
         @DisplayName("quantity fraccionaria y positiva se acepta")
         void quantity_fraccionaria_y_positiva_se_acepta() {
             assertThatCode(() -> valido().quantity(0.5).build()).doesNotThrowAnyException();
-        }
-    }
-
-    @Nested
-    @DisplayName("update")
-    class Update {
-
-        @Test
-        @DisplayName("reemplaza los campos mutables y conserva id y createdDate")
-        void reemplaza_los_campos_mutables_y_conserva_id_y_created_date() {
-            MedicamentPrescription line = valido().build();
-            MedicamentRef otroMedicamento = new MedicamentRef(9L, "Ivermectina 1%");
-            PrescriptionRef otraReceta = new PrescriptionRef(8L, LocalDate.of(2026, 2, 1));
-
-            valido().medicament(otroMedicamento).presentation("Ampolla").quantity(1.0)
-                    .posology("Una vez al dia").observation("Refrigerar").prescription(otraReceta)
-                    .applyTo(line);
-
-            assertThat(line.getMedicament()).isEqualTo(otroMedicamento);
-            assertThat(line.getPresentation()).isEqualTo("Ampolla");
-            assertThat(line.getQuantity()).isEqualTo(1.0);
-            assertThat(line.getPosology()).isEqualTo("Una vez al dia");
-            assertThat(line.getObservation()).isEqualTo("Refrigerar");
-            assertThat(line.getPrescription()).isEqualTo(otraReceta);
-            assertThat(line.getId()).isEqualTo(10L);
-            assertThat(line.getCreatedDate()).isEqualTo(CREADO);
-        }
-
-        @Test
-        @DisplayName("un update invalido no deja el agregado a medias")
-        void un_update_invalido_no_deja_el_agregado_a_medias() {
-            MedicamentPrescription line = valido().build();
-
-            // La presentacion es valida y la cantidad no: si validate() no corriera ANTES
-            // de asignar, la linea se quedaria con la presentacion nueva y la cantidad
-            // vieja rechazada a medias.
-            assertThatThrownBy(() -> valido().presentation("Ampolla").quantity(-1.0).applyTo(line))
-                    .isInstanceOf(IllegalArgumentException.class);
-
-            assertThat(line.getPresentation()).isEqualTo("Tableta");
-            assertThat(line.getQuantity()).isEqualTo(2.0);
-        }
-
-        @Test
-        @DisplayName("no toca el estado de habilitacion")
-        void no_toca_el_estado_de_habilitacion() {
-            MedicamentPrescription line = valido().build();
-            line.disable();
-
-            valido().applyTo(line);
-
-            assertThat(line.isEnabled()).isFalse();
-        }
-
-        @Test
-        @DisplayName("update tambien normaliza observation en blanco a null")
-        void update_tambien_normaliza_observation_en_blanco() {
-            MedicamentPrescription line = valido().build();
-
-            valido().observation("   ").applyTo(line);
-
-            assertThat(line.getObservation()).isNull();
         }
     }
 

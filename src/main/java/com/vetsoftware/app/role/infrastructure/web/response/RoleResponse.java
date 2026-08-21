@@ -10,6 +10,6 @@ public record RoleResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) 
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanySummary company,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<PermissionSummary> permissions,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<RolePermissionSummary> permissions,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

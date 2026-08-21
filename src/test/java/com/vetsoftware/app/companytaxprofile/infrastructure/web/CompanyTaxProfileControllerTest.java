@@ -4,7 +4,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -15,9 +14,7 @@ import com.vetsoftware.app.companytaxprofile.application.command.CreateCompanyTa
 import com.vetsoftware.app.companytaxprofile.application.command.UpdateCompanyTaxProfileCommand;
 import com.vetsoftware.app.companytaxprofile.application.dto.CompanyTaxProfileDto;
 import com.vetsoftware.app.companytaxprofile.application.port.in.CreateCompanyTaxProfileUseCase;
-import com.vetsoftware.app.companytaxprofile.application.port.in.DeleteCompanyTaxProfileUseCase;
 import com.vetsoftware.app.companytaxprofile.application.port.in.FindCompanyTaxProfileUseCase;
-import com.vetsoftware.app.companytaxprofile.application.port.in.ReactivateCompanyTaxProfileUseCase;
 import com.vetsoftware.app.companytaxprofile.application.port.in.UpdateCompanyTaxProfileUseCase;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundException;
@@ -61,10 +58,6 @@ class CompanyTaxProfileControllerTest {
     private UpdateCompanyTaxProfileUseCase updateUseCase;
     @MockitoBean
     private FindCompanyTaxProfileUseCase findUseCase;
-    @MockitoBean
-    private DeleteCompanyTaxProfileUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateCompanyTaxProfileUseCase reactivateUseCase;
 
     private static final String CUERPO_CREAR = """
             {"documentType":"NIT","companyDocumentId":"900123456",
@@ -222,57 +215,6 @@ class CompanyTaxProfileControllerTest {
                     .thenThrow(new CompanyTaxProfileNotFoundException(COMPANY_ID));
 
             mockMvc.perform(get("/company-tax-profile")).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("borrado")
-    class Borrado {
-
-        @Test
-        @DisplayName("DELETE /company-tax-profile responde 204 y borra el del contexto")
-        void delete_responde_204() throws Exception {
-            mockMvc.perform(delete("/company-tax-profile")).andExpect(status().isNoContent());
-
-            verify(deleteUseCase).execute(COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("DELETE sobre un perfil inexistente responde 404")
-        void delete_sobre_perfil_inexistente_responde_404() throws Exception {
-            org.mockito.Mockito.doThrow(new CompanyTaxProfileNotFoundException(COMPANY_ID))
-                    .when(deleteUseCase).execute(COMPANY_ID);
-
-            mockMvc.perform(delete("/company-tax-profile")).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("reactivacion")
-    class Reactivacion {
-
-        @Test
-        @DisplayName("POST /company-tax-profile/reactivate responde 200 con el perfil habilitado")
-        void post_reactivar_responde_200() throws Exception {
-            when(reactivateUseCase.execute(COMPANY_ID))
-                    .thenReturn(CompanyTaxProfileDto.from(CompanyTaxProfileMother.perfilNit()));
-
-            mockMvc.perform(post("/company-tax-profile/reactivate")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("reactivar un perfil inexistente responde 404 y no llama a los demas casos de uso")
-        void post_reactivar_perfil_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(COMPANY_ID))
-                    .thenThrow(new CompanyTaxProfileNotFoundException(COMPANY_ID));
-
-            mockMvc.perform(post("/company-tax-profile/reactivate"))
-                    .andExpect(status().isNotFound());
-
-            verifyNoInteractions(createUseCase, updateUseCase, deleteUseCase, findUseCase);
         }
     }
 }

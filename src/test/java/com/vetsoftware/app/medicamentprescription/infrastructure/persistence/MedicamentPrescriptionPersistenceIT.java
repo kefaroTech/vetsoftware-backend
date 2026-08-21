@@ -65,7 +65,6 @@ import org.springframework.context.annotation.Import;
 class MedicamentPrescriptionPersistenceIT extends AbstractDataJpaTest {
 
     private static final Long COMPANY = SchemaSeed.COMPANY_ID;
-    private static final Long OTRA_COMPANY = SchemaSeed.OTRA_COMPANY_ID;
 
     @Autowired
     private JpaMedicamentPrescriptionRepository repository;
@@ -245,7 +244,8 @@ class MedicamentPrescriptionPersistenceIT extends AbstractDataJpaTest {
             releerDesdeLaBase();
 
             assertThat(guardada.getId()).isNotNull();
-            MedicamentPrescription releida = repository.findById(guardada.getId()).orElseThrow();
+            MedicamentPrescription releida = repository.findAll(0, 20).content().stream()
+                    .filter(l -> l.getId().equals(guardada.getId())).findFirst().orElseThrow();
             assertThat(releida.getPresentation()).isEqualTo("Tableta");
             assertThat(releida.getQuantity()).isEqualTo(2.0);
             assertThat(releida.getPosology()).isEqualTo("Cada 12 horas por 7 dias");
@@ -253,102 +253,6 @@ class MedicamentPrescriptionPersistenceIT extends AbstractDataJpaTest {
             assertThat(releida.getMedicamentId()).isEqualTo(medicamento.id());
             assertThat(releida.getName()).isEqualTo(medicamento.name());
             assertThat(releida.getPrescription().id()).isEqualTo(receta.id());
-        }
-    }
-
-    @Nested
-    @DisplayName("findByIdAndCompanyId — aislamiento por empresa")
-    class BusquedaPorEmpresa {
-
-        @Test
-        @DisplayName("una linea de otra empresa no se entrega")
-        void linea_de_otra_empresa_no_se_entrega() {
-            Prescription prescripcionAjena = sembrarPrescripcionEnEmpresa(OTRA_COMPANY, "A-002",
-                    "654321");
-            MedicamentPrescription lineaAjena = MedicamentPrescription.create(medicamento,
-                    "Ampolla", 1.0, "Una vez al dia", null,
-                    new PrescriptionRef(prescripcionAjena.getId(), prescripcionAjena.getDate()));
-            MedicamentPrescription guardada = repository.save(lineaAjena);
-            releerDesdeLaBase();
-
-            assertThat(repository.findByIdAndCompanyId(guardada.getId(), COMPANY)).isEmpty();
-            assertThat(repository.findByIdAndCompanyId(guardada.getId(), OTRA_COMPANY)).isPresent();
-        }
-    }
-
-    @Nested
-    @DisplayName("delete y reactivate")
-    class BorradoYReactivacion {
-
-        @Test
-        @DisplayName("una linea borrada desaparece de findById (SQLRestriction)")
-        void linea_borrada_desaparece() {
-            MedicamentPrescription guardada = repository.save(linea());
-            releerDesdeLaBase();
-
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            assertThat(repository.findById(guardada.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("reactivate() vuelve a hacer visible una linea borrada")
-        void reactivate_vuelve_a_hacer_visible() {
-            MedicamentPrescription guardada = repository.save(linea());
-            releerDesdeLaBase();
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(guardada.getId(), COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findById(guardada.getId())).isPresent();
-        }
-
-        @Test
-        @DisplayName("reactivate() sobre un id inexistente no afecta filas")
-        void reactivate_sobre_id_inexistente() {
-            assertThat(repository.reactivate(999_999L, COMPANY)).isZero();
-        }
-
-        /**
-         * La linea no tiene {@code company_id}: el filtro es un EXISTS contra
-         * {@code prescriptions}. Y es LA defensa de la reactivacion, porque no hay
-         * lectura previa que valide la propiedad —el servicio decide si existe mirando
-         * las filas afectadas—, asi que con la empresa ajena el UPDATE tiene que tocar
-         * cero filas y la linea seguir anulada.
-         */
-        @Test
-        @DisplayName("reactivate() con el companyId de otra empresa afecta 0 filas")
-        void reactivate_con_otra_empresa_no_afecta_filas() {
-            MedicamentPrescription guardada = repository.save(linea());
-            releerDesdeLaBase();
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(guardada.getId(), OTRA_COMPANY);
-            releerDesdeLaBase();
-
-            assertThat(filas).isZero();
-            assertThat(repository.findById(guardada.getId())).isEmpty();
-        }
-
-        /** El camino SYSTEM sigue existiendo: sin empresa, el UPDATE no se acota. */
-        @Test
-        @DisplayName("reactivate() sin empresa (SYSTEM) vuelve a hacer visible la linea")
-        void reactivate_sin_empresa_vuelve_a_hacer_visible() {
-            MedicamentPrescription guardada = repository.save(linea());
-            releerDesdeLaBase();
-            repository.delete(guardada.getId());
-            releerDesdeLaBase();
-
-            int filas = repository.reactivate(guardada.getId());
-            releerDesdeLaBase();
-
-            assertThat(filas).isEqualTo(1);
-            assertThat(repository.findById(guardada.getId())).isPresent();
         }
     }
 

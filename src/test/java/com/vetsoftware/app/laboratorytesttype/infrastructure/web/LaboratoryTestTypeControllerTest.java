@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,7 +21,6 @@ import com.vetsoftware.app.laboratorytesttype.application.port.in.DeleteLaborato
 import com.vetsoftware.app.laboratorytesttype.application.port.in.FindLaboratoryTestTypeUseCase;
 import com.vetsoftware.app.laboratorytesttype.application.port.in.ListAvailableLaboratoryTestTypesUseCase;
 import com.vetsoftware.app.laboratorytesttype.application.port.in.ListLaboratoryTestTypesUseCase;
-import com.vetsoftware.app.laboratorytesttype.application.port.in.ReactivateLaboratoryTestTypeUseCase;
 import com.vetsoftware.app.laboratorytesttype.application.port.in.UpdateLaboratoryTestTypeUseCase;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeHasActiveChildrenException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeNotFoundException;
@@ -80,8 +78,6 @@ class LaboratoryTestTypeControllerTest {
     private ListAvailableLaboratoryTestTypesUseCase listAvailableUseCase;
     @MockitoBean
     private DeleteLaboratoryTestTypeUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateLaboratoryTestTypeUseCase reactivateUseCase;
 
     /**
      * El doble de {@code Authz} lo aporta {@link WebMvcSliceConfig}; se inyecta
@@ -331,28 +327,6 @@ class LaboratoryTestTypeControllerTest {
                     .when(deleteUseCase).execute(70L, COMPANY_ID);
 
             mockMvc.perform(delete("/laboratory-test-types/70")).andExpect(status().isConflict());
-        }
-
-        @Test
-        @DisplayName("PATCH /laboratory-test-types/{id}/enable reactiva y responde 200 propagando la empresa")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(70L, COMPANY_ID)).thenReturn(hemograma());
-
-            mockMvc.perform(patch("/laboratory-test-types/70/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(70))
-                    .andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(70L, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("PATCH enable de un tipo inexistente responde 404")
-        void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, COMPANY_ID))
-                    .thenThrow(new LaboratoryTestTypeNotFoundException(99L));
-
-            mockMvc.perform(patch("/laboratory-test-types/99/enable"))
-                    .andExpect(status().isNotFound());
         }
     }
 }

@@ -20,7 +20,6 @@ import com.vetsoftware.app.laboratorytestfile.application.dto.LaboratoryTestSumm
 import com.vetsoftware.app.laboratorytestfile.application.port.in.CreateLaboratoryTestFileUseCase;
 import com.vetsoftware.app.laboratorytestfile.application.port.in.DeleteLaboratoryTestFileUseCase;
 import com.vetsoftware.app.laboratorytestfile.application.port.in.DownloadLaboratoryTestFileUseCase;
-import com.vetsoftware.app.laboratorytestfile.application.port.in.FindLaboratoryTestFileUseCase;
 import com.vetsoftware.app.laboratorytestfile.application.port.in.ListLaboratoryTestFilesByLaboratoryTestUseCase;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestFileNotFoundException;
@@ -59,8 +58,6 @@ class LaboratoryTestFileControllerTest {
 
     @MockitoBean
     private CreateLaboratoryTestFileUseCase createUseCase;
-    @MockitoBean
-    private FindLaboratoryTestFileUseCase findUseCase;
     @MockitoBean
     private ListLaboratoryTestFilesByLaboratoryTestUseCase listByLaboratoryTestUseCase;
     @MockitoBean
@@ -174,29 +171,6 @@ class LaboratoryTestFileControllerTest {
 
             mockMvc.perform(get("/laboratory-test-files/by-laboratory-test/500"))
                     .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(700));
-        }
-    }
-
-    @Nested
-    @DisplayName("GET /laboratory-test-files/{id}")
-    class BuscarPorId {
-
-        @Test
-        @DisplayName("responde 200 con el recurso encontrado")
-        void responde_200() throws Exception {
-            when(findUseCase.findById(700L, WebMvcSliceConfig.COMPANY_ID)).thenReturn(informe());
-
-            mockMvc.perform(get("/laboratory-test-files/700")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.storageKey").value("9/3/firulais-100/uuid-informe.pdf"));
-        }
-
-        @Test
-        @DisplayName("inexistente responde 404, no 500")
-        void inexistente_responde_404() throws Exception {
-            when(findUseCase.findById(99L, WebMvcSliceConfig.COMPANY_ID))
-                    .thenThrow(new LaboratoryTestFileNotFoundException(99L));
-
-            mockMvc.perform(get("/laboratory-test-files/99")).andExpect(status().isNotFound());
         }
     }
 

@@ -3,17 +3,11 @@ package com.vetsoftware.app.medicamentprescription.infrastructure.web;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.medicamentprescription.application.command.CreateMedicamentPrescriptionCommand;
-import com.vetsoftware.app.medicamentprescription.application.command.UpdateMedicamentPrescriptionCommand;
 import com.vetsoftware.app.medicamentprescription.application.dto.MedicamentPrescriptionDto;
 import com.vetsoftware.app.medicamentprescription.application.dto.PrescriptionSummaryDto;
 import com.vetsoftware.app.medicamentprescription.application.port.in.CreateMedicamentPrescriptionUseCase;
-import com.vetsoftware.app.medicamentprescription.application.port.in.DeleteMedicamentPrescriptionUseCase;
-import com.vetsoftware.app.medicamentprescription.application.port.in.FindMedicamentPrescriptionUseCase;
 import com.vetsoftware.app.medicamentprescription.application.port.in.ListMedicamentPrescriptionsUseCase;
-import com.vetsoftware.app.medicamentprescription.application.port.in.ReactivateMedicamentPrescriptionUseCase;
-import com.vetsoftware.app.medicamentprescription.application.port.in.UpdateMedicamentPrescriptionUseCase;
 import com.vetsoftware.app.medicamentprescription.infrastructure.web.request.CreateMedicamentPrescriptionRequest;
-import com.vetsoftware.app.medicamentprescription.infrastructure.web.request.UpdateMedicamentPrescriptionRequest;
 import com.vetsoftware.app.medicamentprescription.infrastructure.web.response.MedicamentPrescriptionResponse;
 import com.vetsoftware.app.medicamentprescription.infrastructure.web.response.PrescriptionSummary;
 import jakarta.validation.Valid;
@@ -24,25 +18,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/medicament-prescriptions")
 public class MedicamentPrescriptionController {
     private final CreateMedicamentPrescriptionUseCase createUseCase;
-    private final UpdateMedicamentPrescriptionUseCase updateUseCase;
-    private final FindMedicamentPrescriptionUseCase findUseCase;
     private final ListMedicamentPrescriptionsUseCase listUseCase;
-    private final DeleteMedicamentPrescriptionUseCase deleteUseCase;
-    private final ReactivateMedicamentPrescriptionUseCase reactivateUseCase;
     private final Authz authz;
 
     public MedicamentPrescriptionController(CreateMedicamentPrescriptionUseCase createUseCase,
-            UpdateMedicamentPrescriptionUseCase updateUseCase,
-            FindMedicamentPrescriptionUseCase findUseCase,
-            ListMedicamentPrescriptionsUseCase listUseCase,
-            DeleteMedicamentPrescriptionUseCase deleteUseCase,
-            ReactivateMedicamentPrescriptionUseCase reactivateUseCase, Authz authz) {
+            ListMedicamentPrescriptionsUseCase listUseCase, Authz authz) {
         this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
-        this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -61,31 +43,6 @@ public class MedicamentPrescriptionController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         return PageResponse.from(listUseCase.listAll(page, pageSize), this::toResponse);
-    }
-
-    @GetMapping("/{id}")
-    public MedicamentPrescriptionResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
-
-    @PutMapping("/{id}")
-    public MedicamentPrescriptionResponse update(@PathVariable Long id,
-            @Valid @RequestBody UpdateMedicamentPrescriptionRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateMedicamentPrescriptionCommand(id,
-                request.medicamentId(), request.presentation(), request.quantity(),
-                request.posology(), request.observation(), request.prescriptionId(),
-                authz.currentCompanyIdOrNull())));
-    }
-
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public MedicamentPrescriptionResponse reactivate(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyIdOrNull()));
     }
 
     private MedicamentPrescriptionResponse toResponse(MedicamentPrescriptionDto dto) {

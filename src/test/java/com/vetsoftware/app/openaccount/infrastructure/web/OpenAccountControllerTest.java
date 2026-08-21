@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,7 +15,6 @@ import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.openaccount.application.command.ChangeOpenAccountStatusCommand;
 import com.vetsoftware.app.openaccount.application.command.CreateOpenAccountCommand;
 import com.vetsoftware.app.openaccount.application.command.SearchOpenAccountsCommand;
-import com.vetsoftware.app.openaccount.application.command.UpdateOpenAccountCommand;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountDto;
 import com.vetsoftware.app.openaccount.application.dto.OpenAccountsSummaryDto;
 import com.vetsoftware.app.openaccount.application.port.in.ChangeOpenAccountStatusUseCase;
@@ -25,13 +23,10 @@ import com.vetsoftware.app.openaccount.application.port.in.DeleteOpenAccountUseC
 import com.vetsoftware.app.openaccount.application.port.in.FindOpenAccountUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.GetOpenAccountsSummaryUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.ListOpenAccountsUseCase;
-import com.vetsoftware.app.openaccount.application.port.in.ReactivateOpenAccountUseCase;
 import com.vetsoftware.app.openaccount.application.port.in.SearchOpenAccountsUseCase;
-import com.vetsoftware.app.openaccount.application.port.in.UpdateOpenAccountUseCase;
 import com.vetsoftware.app.openaccount.domain.InvalidOpenAccountStatusTransitionException;
 import com.vetsoftware.app.openaccount.domain.OpenAccountNotFoundException;
 import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
-import com.vetsoftware.app.openaccount.domain.OpenAccountVersionConflictException;
 import com.vetsoftware.app.openaccount.testsupport.OpenAccountMother;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
@@ -83,8 +78,6 @@ class OpenAccountControllerTest {
     @MockitoBean
     private CreateOpenAccountUseCase createUseCase;
     @MockitoBean
-    private UpdateOpenAccountUseCase updateUseCase;
-    @MockitoBean
     private FindOpenAccountUseCase findUseCase;
     @MockitoBean
     private ListOpenAccountsUseCase listUseCase;
@@ -94,8 +87,6 @@ class OpenAccountControllerTest {
     private GetOpenAccountsSummaryUseCase summaryUseCase;
     @MockitoBean
     private DeleteOpenAccountUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateOpenAccountUseCase reactivateUseCase;
     @MockitoBean
     private ChangeOpenAccountStatusUseCase changeStatusUseCase;
 
@@ -264,46 +255,6 @@ class OpenAccountControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /open-accounts/{id}")
-    class Actualizacion {
-
-        @Test
-        @DisplayName("actualiza el owner y responde 200")
-        void actualiza_y_responde_200() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(abierta());
-
-            mockMvc.perform(
-                    put("/open-accounts/100").contentType(MediaType.APPLICATION_JSON).content("""
-                            {"ownerId":3,"expectedVersion":1}
-                            """)).andExpect(status().isOk());
-
-            verify(updateUseCase).execute(new UpdateOpenAccountCommand(100L, 3L, COMPANY_ID, 1L));
-        }
-
-        @Test
-        @DisplayName("un conflicto de version responde 409, no 500")
-        void conflicto_de_version_responde_409() throws Exception {
-            when(updateUseCase.execute(any()))
-                    .thenThrow(new OpenAccountVersionConflictException(100L, 1L, 2L));
-
-            mockMvc.perform(
-                    put("/open-accounts/100").contentType(MediaType.APPLICATION_JSON).content("""
-                            {"ownerId":3,"expectedVersion":1}
-                            """)).andExpect(status().isConflict());
-        }
-
-        @Test
-        @DisplayName("sin ownerId responde 400 y no actualiza")
-        void sin_owner_id_responde_400() throws Exception {
-            mockMvc.perform(
-                    put("/open-accounts/100").contentType(MediaType.APPLICATION_JSON).content("{}"))
-                    .andExpect(status().isBadRequest());
-
-            verify(updateUseCase, never()).execute(any());
-        }
-    }
-
-    @Nested
     @DisplayName("DELETE /open-accounts/{id}")
     class Borrado {
 
@@ -322,20 +273,6 @@ class OpenAccountControllerTest {
                     .execute(999L, COMPANY_ID);
 
             mockMvc.perform(delete("/open-accounts/999")).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /open-accounts/{id}/enable")
-    class Reactivacion {
-
-        @Test
-        @DisplayName("responde 200 con la cuenta reactivada")
-        void responde_200() throws Exception {
-            when(reactivateUseCase.execute(100L, COMPANY_ID)).thenReturn(abierta());
-
-            mockMvc.perform(patch("/open-accounts/100/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(100));
         }
     }
 

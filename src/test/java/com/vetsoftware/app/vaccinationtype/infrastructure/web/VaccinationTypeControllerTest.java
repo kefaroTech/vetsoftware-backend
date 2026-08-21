@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,7 +22,6 @@ import com.vetsoftware.app.vaccinationtype.application.port.in.DeleteVaccination
 import com.vetsoftware.app.vaccinationtype.application.port.in.FindVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.ListAvailableVaccinationTypesUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.ListVaccinationTypesUseCase;
-import com.vetsoftware.app.vaccinationtype.application.port.in.ReactivateVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.UpdateVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeHasActiveChildrenException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
@@ -80,8 +78,6 @@ class VaccinationTypeControllerTest {
     private ListAvailableVaccinationTypesUseCase listAvailableUseCase;
     @MockitoBean
     private DeleteVaccinationTypeUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateVaccinationTypeUseCase reactivateUseCase;
 
     /**
      * El doble de {@code Authz} lo aporta {@link WebMvcSliceConfig}; se inyecta
@@ -314,27 +310,6 @@ class VaccinationTypeControllerTest {
                     .when(deleteUseCase).execute(50L, COMPANY_ID);
 
             mockMvc.perform(delete("/vaccination-types/50")).andExpect(status().isConflict());
-        }
-
-        @Test
-        @DisplayName("PATCH /vaccination-types/{id}/enable reactiva y responde 200 propagando la empresa")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(50L, COMPANY_ID)).thenReturn(rabia());
-
-            mockMvc.perform(patch("/vaccination-types/50/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(50))
-                    .andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(50L, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("PATCH enable de un tipo inexistente responde 404")
-        void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, COMPANY_ID))
-                    .thenThrow(new VaccinationTypeNotFoundException(99L));
-
-            mockMvc.perform(patch("/vaccination-types/99/enable")).andExpect(status().isNotFound());
         }
     }
 }

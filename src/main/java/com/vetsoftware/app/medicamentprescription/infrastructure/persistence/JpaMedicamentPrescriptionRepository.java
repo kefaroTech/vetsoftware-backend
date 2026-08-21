@@ -8,7 +8,6 @@ import com.vetsoftware.app.medicamentprescription.application.port.out.Medicamen
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescription;
 import com.vetsoftware.app.prescription.infrastructure.persistence.PrescriptionJpaEntity;
 import com.vetsoftware.app.prescription.infrastructure.persistence.PrescriptionJpaRepository;
-import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
@@ -43,17 +42,6 @@ public class JpaMedicamentPrescriptionRepository implements MedicamentPrescripti
     }
 
     @Override
-    public Optional<MedicamentPrescription> findById(Long id) {
-        return jpaRepository.findById(id).map(mapper::toDomain);
-    }
-
-    @Override
-    public Optional<MedicamentPrescription> findByIdAndCompanyId(Long id, Long companyId) {
-        return jpaRepository.findByIdAndPrescription_Company_Id(id, companyId)
-                .map(mapper::toDomain);
-    }
-
-    @Override
     public PageResult<MedicamentPrescription> findAll(int page, int pageSize) {
         // Orden descendente por id: es un listado de administracion donde lo ultimo
         // recetado es lo que interesa primero, y el id da un orden total, que es lo
@@ -61,20 +49,5 @@ public class JpaMedicamentPrescriptionRepository implements MedicamentPrescripti
         Page<MedicamentPrescriptionJpaEntity> result = jpaRepository
                 .findAll(Pages.request(page, pageSize, Sort.by(Sort.Direction.DESC, "id")));
         return Pages.result(result, mapper::toDomain);
-    }
-
-    @Override
-    public void delete(Long id) {
-        jpaRepository.deleteById(id);
-    }
-
-    @Override
-    public int reactivate(Long id) {
-        return jpaRepository.reactivate(id);
-    }
-
-    @Override
-    public int reactivate(Long id, Long companyId) {
-        return jpaRepository.reactivate(id, companyId);
     }
 }

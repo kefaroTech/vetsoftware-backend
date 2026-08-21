@@ -3,10 +3,6 @@ package com.vetsoftware.app.companytaxprofile.infrastructure.persistence;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 public interface CompanyTaxProfileJpaRepository
         extends
@@ -16,49 +12,4 @@ public interface CompanyTaxProfileJpaRepository
     Optional<CompanyTaxProfileJpaEntity> findByCompany_Id(Long companyId);
 
     boolean existsByCompany_Id(Long companyId);
-
-    /**
-     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
-     * proposito: una consulta nativa va directa a la base de datos, asi que ni
-     * comprueba ni incrementa la version, y el candado queda ciego ante este
-     * camino. Sin el bump, un save cargado antes reescribe {@code enabled} con su
-     * valor viejo (el mapper copia la fila entera desde el dominio) y su
-     * {@code WHERE version = ?} casa igual, con lo que una edicion concurrente
-     * resucita en silencio el perfil recien dado de baja. Movida la version, ese
-     * save ya no encuentra fila y salta
-     * {@code ObjectOptimisticLockingFailureException} -> 409
-     * {@code CONCURRENT_MODIFICATION}, para que el front recargue y reintente sobre
-     * datos frescos. {@code version} NO va en el {@code WHERE}: dar de baja es una
-     * operacion deliberada y debe ejecutarse siempre, no competir con una edicion.
-     */
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Transactional
-    @Query(value = """
-            UPDATE company_tax_profiles
-            SET enabled = false, version = version + 1
-            WHERE company_id = :companyId
-            """, nativeQuery = true)
-    int deleteByCompanyId(@Param("companyId") Long companyId);
-
-    /**
-     * El UPDATE mueve tambien {@code version}, la del bloqueo optimista, a
-     * proposito: una consulta nativa va directa a la base de datos, asi que ni
-     * comprueba ni incrementa la version, y el candado queda ciego ante este
-     * camino. Sin el bump, un save cargado antes reescribe {@code enabled} con su
-     * valor viejo (el mapper copia la fila entera desde el dominio) y su
-     * {@code WHERE version = ?} casa igual, con lo que una edicion concurrente
-     * deshace la reactivacion en silencio. Movida la version, ese save ya no
-     * encuentra fila y salta {@code ObjectOptimisticLockingFailureException} -> 409
-     * {@code CONCURRENT_MODIFICATION}, para que el front recargue y reintente sobre
-     * datos frescos. {@code version} NO va en el {@code WHERE}: reactivar es una
-     * operacion deliberada y debe ejecutarse siempre, no competir con una edicion.
-     */
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Transactional
-    @Query(value = """
-            UPDATE company_tax_profiles
-            SET enabled = true, version = version + 1
-            WHERE company_id = :companyId
-            """, nativeQuery = true)
-    int reactivate(@Param("companyId") Long companyId);
 }

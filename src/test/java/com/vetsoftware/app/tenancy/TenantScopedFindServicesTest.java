@@ -38,14 +38,8 @@ class TenantScopedFindServicesTest {
             // Ver FindMedicamentService y el @Nested "Disponibilidad" de
             // MedicamentPersistenceIT.
             new FindCase("medicament", "Medicament", "findAvailableByIdAndCompanyId"),
-            new FindCase("medicamentprescription", "MedicamentPrescription"),
             new FindCase("hospitalization", "Hospitalization"),
-            new FindCase("hospitalizationmedication", "HospitalizationMedication"),
-            new FindCase("hospitalizationobservation", "HospitalizationObservation"),
-            new FindCase("hospitalizationprocedure", "HospitalizationProcedure"),
-            new FindCase("hospitalizationprogressnote", "HospitalizationProgressNote"),
             new FindCase("laboratorytest", "LaboratoryTest"),
-            new FindCase("laboratorytestfile", "LaboratoryTestFile"),
             new FindCase("laboratorytesttype", "LaboratoryTestType"),
             new FindCase("surgery", "Surgery"), new FindCase("surgerytype", "SurgeryType"),
             new FindCase("vaccination", "Vaccination"),
@@ -53,8 +47,7 @@ class TenantScopedFindServicesTest {
             new FindCase("deworming", "Deworming"),
             new FindCase("diagnosticimaging", "DiagnosticImaging"),
             new FindCase("diagnosticimagingtype", "DiagnosticImagingType"),
-            new FindCase("spa", "Spa"), new FindCase("daycare", "DayCare"),
-            new FindCase("employee", "Employee"),
+            new FindCase("spa", "Spa"), new FindCase("employee", "Employee"),
             new FindCase("numberingresolution", "NumberingResolution"),
             new FindCase("promotion", "Promotion"));
 

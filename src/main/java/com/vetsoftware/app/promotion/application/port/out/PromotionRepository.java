@@ -14,10 +14,4 @@ public interface PromotionRepository {
     List<Promotion> findAllByCompanyId(Long companyId);
 
     void delete(Long id);
-
-    /**
-     * Reactiva la promoción SOLO si pertenece a {@code companyId}. Devuelve las
-     * filas afectadas: 0 = no existe en esa empresa.
-     */
-    int reactivate(Long id, Long companyId);
 }

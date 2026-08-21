@@ -13,24 +13,18 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.servicechargeopenaccount.application.command.CreateServiceChargeOpenAccountCommand;
-import com.vetsoftware.app.servicechargeopenaccount.application.command.UpdateServiceChargeOpenAccountCommand;
 import com.vetsoftware.app.servicechargeopenaccount.application.command.VoidServiceChargeOpenAccountCommand;
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.ServiceChargeOpenAccountDto;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.CreateServiceChargeOpenAccountUseCase;
-import com.vetsoftware.app.servicechargeopenaccount.application.port.in.FindServiceChargeOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.ListServiceChargeOpenAccountsByOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.ListServiceChargeOpenAccountsUseCase;
-import com.vetsoftware.app.servicechargeopenaccount.application.port.in.ReactivateServiceChargeOpenAccountUseCase;
-import com.vetsoftware.app.servicechargeopenaccount.application.port.in.UpdateServiceChargeOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.VoidServiceChargeOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountAlreadyVoidedException;
-import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.util.List;
@@ -74,15 +68,9 @@ class ServiceChargeOpenAccountControllerTest {
     @MockitoBean
     private CreateServiceChargeOpenAccountUseCase createUseCase;
     @MockitoBean
-    private UpdateServiceChargeOpenAccountUseCase updateUseCase;
-    @MockitoBean
-    private FindServiceChargeOpenAccountUseCase findUseCase;
-    @MockitoBean
     private ListServiceChargeOpenAccountsUseCase listUseCase;
     @MockitoBean
     private ListServiceChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
-    @MockitoBean
-    private ReactivateServiceChargeOpenAccountUseCase reactivateUseCase;
     @MockitoBean
     private VoidServiceChargeOpenAccountUseCase voidUseCase;
 
@@ -212,91 +200,6 @@ class ServiceChargeOpenAccountControllerTest {
                     .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(CHARGE_ID));
 
             verify(listByOpenAccountUseCase).listByOpenAccount(OPEN_ACCOUNT_ID, COMPANY_ID);
-        }
-    }
-
-    @Nested
-    @DisplayName("GET /service-charge-open-accounts/{id}")
-    class Buscar {
-
-        @Test
-        @DisplayName("acota la busqueda a la company del contexto")
-        void acota_la_busqueda_a_la_company_del_contexto() throws Exception {
-            when(findUseCase.findById(CHARGE_ID, COMPANY_ID)).thenReturn(cargoDto());
-
-            mockMvc.perform(get("/service-charge-open-accounts/100")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(CHARGE_ID));
-
-            verify(findUseCase).findById(CHARGE_ID, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("un cargo inexistente responde 404, no 500")
-        void un_cargo_inexistente_responde_404() throws Exception {
-            when(findUseCase.findById(999L, COMPANY_ID))
-                    .thenThrow(new ServiceChargeOpenAccountNotFoundException(999L));
-
-            mockMvc.perform(get("/service-charge-open-accounts/999"))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PUT /service-charge-open-accounts/{id}")
-    class Actualizar {
-
-        @Test
-        @DisplayName("responde 200 y arma el command con el id de la ruta")
-        void responde_200_y_arma_el_command_con_el_id_de_la_ruta() throws Exception {
-            when(updateUseCase.execute(any())).thenReturn(cargoDto());
-
-            mockMvc.perform(put("/service-charge-open-accounts/100")
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"animalId":1,"serviceId":2,"openAccountId":51,"expectedVersion":2}
-                            """)).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(CHARGE_ID));
-
-            verify(updateUseCase).execute(new UpdateServiceChargeOpenAccountCommand(CHARGE_ID, 1L,
-                    2L, 51L, COMPANY_ID, 2L));
-        }
-
-        @Test
-        @DisplayName("sin serviceId responde 400 y no llega al caso de uso")
-        void sin_service_id_responde_400() throws Exception {
-            mockMvc.perform(put("/service-charge-open-accounts/100")
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"animalId":1,"openAccountId":50}
-                            """)).andExpect(status().isBadRequest());
-
-            verifyNoInteractions(updateUseCase);
-        }
-
-        @Test
-        @DisplayName("un cargo inexistente responde 404")
-        void un_cargo_inexistente_responde_404() throws Exception {
-            when(updateUseCase.execute(any()))
-                    .thenThrow(new ServiceChargeOpenAccountNotFoundException(CHARGE_ID));
-
-            mockMvc.perform(put("/service-charge-open-accounts/100")
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"animalId":1,"serviceId":2,"openAccountId":50}
-                            """)).andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /service-charge-open-accounts/{id}/enable")
-    class Habilitar {
-
-        @Test
-        @DisplayName("responde 200 y acota la reactivacion a la company del contexto")
-        void responde_200_y_acota_la_reactivacion() throws Exception {
-            when(reactivateUseCase.execute(CHARGE_ID, COMPANY_ID)).thenReturn(cargoDto());
-
-            mockMvc.perform(patch("/service-charge-open-accounts/100/enable"))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(CHARGE_ID));
-
-            verify(reactivateUseCase).execute(CHARGE_ID, COMPANY_ID);
         }
     }
 

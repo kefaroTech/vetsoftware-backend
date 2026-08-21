@@ -6,24 +6,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
-import com.vetsoftware.app.diagnosticimaging.application.command.ChangeDiagnosticImagingStatusCommand;
 import com.vetsoftware.app.diagnosticimaging.application.command.CreateDiagnosticImagingCommand;
 import com.vetsoftware.app.diagnosticimaging.application.command.UpdateDiagnosticImagingCommand;
 import com.vetsoftware.app.diagnosticimaging.application.dto.DiagnosticImagingDto;
-import com.vetsoftware.app.diagnosticimaging.application.port.in.ChangeDiagnosticImagingStatusUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.CreateDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.DeleteDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.FindDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.ListDiagnosticImagingsByAnimalUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.ListDiagnosticImagingsUseCase;
-import com.vetsoftware.app.diagnosticimaging.application.port.in.ReactivateDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.application.port.in.UpdateDiagnosticImagingUseCase;
 import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImagingNotFoundException;
 import com.vetsoftware.app.diagnosticimaging.testsupport.DiagnosticImagingMother;
@@ -67,8 +63,6 @@ class DiagnosticImagingControllerTest {
     @MockitoBean
     private UpdateDiagnosticImagingUseCase updateUseCase;
     @MockitoBean
-    private ChangeDiagnosticImagingStatusUseCase changeStatusUseCase;
-    @MockitoBean
     private FindDiagnosticImagingUseCase findUseCase;
     @MockitoBean
     private ListDiagnosticImagingsUseCase listUseCase;
@@ -76,8 +70,6 @@ class DiagnosticImagingControllerTest {
     private ListDiagnosticImagingsByAnimalUseCase listByAnimalUseCase;
     @MockitoBean
     private DeleteDiagnosticImagingUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateDiagnosticImagingUseCase reactivateUseCase;
 
     @BeforeEach
     void companyIdOrNullDelContexto() {
@@ -289,77 +281,6 @@ class DiagnosticImagingControllerTest {
                     .when(deleteUseCase).execute(99L, COMPANY_ID);
 
             mockMvc.perform(delete("/diagnostic-imagings/99")).andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("PATCH /diagnostic-imagings/{id}/enable responde 200 con la imagen reactivada")
-        void enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(DiagnosticImagingMother.IMAGING_ID, COMPANY_ID))
-                    .thenReturn(dto());
-
-            mockMvc.perform(
-                    patch("/diagnostic-imagings/{id}/enable", DiagnosticImagingMother.IMAGING_ID))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
-
-            verify(reactivateUseCase).execute(DiagnosticImagingMother.IMAGING_ID, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("PATCH enable de una imagen inexistente responde 404")
-        void enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, COMPANY_ID))
-                    .thenThrow(new DiagnosticImagingNotFoundException(99L));
-
-            mockMvc.perform(patch("/diagnostic-imagings/99/enable"))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
-    @DisplayName("PATCH /diagnostic-imagings/{id}/status")
-    class CambioDeEstado {
-
-        @Test
-        @DisplayName("responde 200 con el estado actualizado y usa currentCompanyIdOrNull")
-        void responde_200_con_el_estado_actualizado() throws Exception {
-            DiagnosticImagingDto completada = DiagnosticImagingDto
-                    .from(DiagnosticImagingMother.deshabilitada());
-            when(changeStatusUseCase.execute(any())).thenReturn(completada);
-
-            mockMvc.perform(
-                    patch("/diagnostic-imagings/{id}/status", DiagnosticImagingMother.IMAGING_ID)
-                            .contentType(MediaType.APPLICATION_JSON).content("""
-                                    {"status":"CANCELADO"}
-                                    """))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELADO"));
-
-            verify(changeStatusUseCase).execute(new ChangeDiagnosticImagingStatusCommand(
-                    DiagnosticImagingMother.IMAGING_ID, "CANCELADO", COMPANY_ID));
-        }
-
-        @Test
-        @DisplayName("un status en blanco responde 400 y no llega al caso de uso")
-        void status_en_blanco_responde_400() throws Exception {
-            mockMvc.perform(
-                    patch("/diagnostic-imagings/{id}/status", DiagnosticImagingMother.IMAGING_ID)
-                            .contentType(MediaType.APPLICATION_JSON).content("""
-                                    {"status":""}
-                                    """))
-                    .andExpect(status().isBadRequest());
-
-            verify(changeStatusUseCase, never()).execute(any());
-        }
-
-        @Test
-        @DisplayName("una imagen inexistente responde 404")
-        void imagen_inexistente_responde_404() throws Exception {
-            when(changeStatusUseCase.execute(any()))
-                    .thenThrow(new DiagnosticImagingNotFoundException(99L));
-
-            mockMvc.perform(patch("/diagnostic-imagings/99/status")
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"status":"CANCELADO"}
-                            """)).andExpect(status().isNotFound());
         }
     }
 }

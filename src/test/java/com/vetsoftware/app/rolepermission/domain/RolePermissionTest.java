@@ -98,57 +98,6 @@ class RolePermissionTest {
     }
 
     @Nested
-    @DisplayName("update")
-    class Actualizacion {
-
-        @Test
-        @DisplayName("reemplaza rol y permiso sin tocar id ni fecha de creacion")
-        void reemplaza_rol_y_permiso() {
-            RolePermission rp = RolePermissionMother.activa();
-
-            rp.update(RolePermissionMother.RECEPCION, RolePermissionMother.CREAR_ANIMALES);
-
-            assertThat(rp.getRole()).isEqualTo(RolePermissionMother.RECEPCION);
-            assertThat(rp.getPermission()).isEqualTo(RolePermissionMother.CREAR_ANIMALES);
-            assertThat(rp.getId()).isEqualTo(1L);
-            assertThat(rp.getCreatedDate()).isEqualTo(RolePermissionMother.CREADO);
-        }
-
-        @Test
-        @DisplayName("rechaza un rol nulo y deja la asignacion intacta")
-        void rechaza_un_rol_nulo() {
-            RolePermission rp = RolePermissionMother.activa();
-
-            assertThatThrownBy(() -> rp.update(null, RolePermissionMother.CREAR_ANIMALES))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("role is required");
-            assertThat(rp.getRole()).isEqualTo(RolePermissionMother.VETERINARIO);
-            assertThat(rp.getPermission()).isEqualTo(RolePermissionMother.VER_ANIMALES);
-        }
-
-        @Test
-        @DisplayName("rechaza un permiso nulo y deja la asignacion intacta")
-        void rechaza_un_permiso_nulo() {
-            RolePermission rp = RolePermissionMother.activa();
-
-            assertThatThrownBy(() -> rp.update(RolePermissionMother.RECEPCION, null))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("permission is required");
-            assertThat(rp.getPermission()).isEqualTo(RolePermissionMother.VER_ANIMALES);
-        }
-
-        @Test
-        @DisplayName("no cambia el estado de habilitacion")
-        void no_cambia_el_estado_de_habilitacion() {
-            RolePermission rp = RolePermissionMother.desactivada();
-
-            rp.update(RolePermissionMother.RECEPCION, RolePermissionMother.CREAR_ANIMALES);
-
-            assertThat(rp.isEnabled()).isFalse();
-        }
-    }
-
-    @Nested
     @DisplayName("habilitacion")
     class Habilitacion {
 

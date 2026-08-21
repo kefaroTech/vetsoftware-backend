@@ -143,13 +143,6 @@ public class ServiceChargeOpenAccount {
                 clientRequestId);
     }
 
-    public void update(AnimalRef animal, ServiceRef service, OpenAccountRef openAccount) {
-        validate(animal, service, openAccount, this.unitPrice);
-        this.animal = animal;
-        this.service = service;
-        this.openAccount = openAccount;
-    }
-
     /**
      * Anula el cargo dejando la fila visible (no toca {@code enabled}): registra
      * quién lo anuló, cuándo y el motivo obligatorio. Un cargo ya anulado no puede

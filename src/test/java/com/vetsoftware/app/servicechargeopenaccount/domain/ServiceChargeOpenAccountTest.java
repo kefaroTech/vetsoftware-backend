@@ -67,10 +67,6 @@ class ServiceChargeOpenAccountTest {
                     openAccount, createdBy, ServiceChargeOpenAccountMother.CREADO, null, true,
                     false, null, null, null, null);
         }
-
-        private void applyTo(ServiceChargeOpenAccount charge) {
-            charge.update(animal, service, openAccount);
-        }
     }
 
     @Nested
@@ -262,54 +258,6 @@ class ServiceChargeOpenAccountTest {
                     .doesNotThrowAnyException();
         }
 
-    }
-
-    @Nested
-    @DisplayName("update")
-    class Update {
-
-        @Test
-        @DisplayName("reemplaza animal, servicio y cuenta y conserva el resto")
-        void reemplaza_los_campos_mutables() {
-            ServiceChargeOpenAccount charge = valido().build();
-
-            valido().animal(ServiceChargeOpenAccountMother.OTRO_ANIMAL)
-                    .service(ServiceChargeOpenAccountMother.OTRO_SERVICIO)
-                    .openAccount(ServiceChargeOpenAccountMother.OTRA_CUENTA).applyTo(charge);
-
-            assertThat(charge.getAnimal()).isEqualTo(ServiceChargeOpenAccountMother.OTRO_ANIMAL);
-            assertThat(charge.getService()).isEqualTo(ServiceChargeOpenAccountMother.OTRO_SERVICIO);
-            assertThat(charge.getOpenAccount())
-                    .isEqualTo(ServiceChargeOpenAccountMother.OTRA_CUENTA);
-            assertThat(charge.getId()).isEqualTo(ServiceChargeOpenAccountMother.CHARGE_ID);
-            assertThat(charge.getCreatedDate()).isEqualTo(ServiceChargeOpenAccountMother.CREADO);
-        }
-
-        @Test
-        @DisplayName("NO recalcula el precio congelado aunque el servicio nuevo cueste otra cosa")
-        void no_recalcula_el_precio_congelado() {
-            ServiceChargeOpenAccount charge = valido().build();
-
-            valido().service(ServiceChargeOpenAccountMother.OTRO_SERVICIO).applyTo(charge);
-
-            // El snapshot es el punto del agregado: editar el catalogo -o cambiar de
-            // servicio- no puede mover el total de una cuenta ya cobrada.
-            assertThat(charge.getUnitPrice()).isEqualByComparingTo("11900");
-            assertThat(charge.getTotalAmount()).isEqualByComparingTo("11900.00");
-            assertThat(charge.getBaseAmount()).isEqualByComparingTo("10000.00");
-        }
-
-        @Test
-        @DisplayName("un update invalido no deja el agregado a medias")
-        void un_update_invalido_no_deja_el_agregado_a_medias() {
-            ServiceChargeOpenAccount charge = valido().build();
-
-            assertThatThrownBy(() -> valido().animal(ServiceChargeOpenAccountMother.OTRO_ANIMAL)
-                    .service(null).applyTo(charge)).isInstanceOf(IllegalArgumentException.class);
-
-            assertThat(charge.getAnimal()).isEqualTo(ServiceChargeOpenAccountMother.ANIMAL);
-            assertThat(charge.getService()).isEqualTo(ServiceChargeOpenAccountMother.SERVICIO);
-        }
     }
 
     @Nested

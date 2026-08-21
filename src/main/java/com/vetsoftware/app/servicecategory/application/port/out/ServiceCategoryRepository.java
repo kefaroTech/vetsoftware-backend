@@ -23,6 +23,4 @@ public interface ServiceCategoryRepository {
     List<ServiceCategory> findAllByCompanyId(Long companyId);
 
     void delete(Long id);
-
-    int reactivate(Long id, Long companyId);
 }

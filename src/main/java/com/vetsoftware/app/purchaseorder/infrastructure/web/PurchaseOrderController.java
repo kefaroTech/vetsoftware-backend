@@ -13,9 +13,7 @@ import com.vetsoftware.app.purchaseorder.application.port.in.CancelPurchaseOrder
 import com.vetsoftware.app.purchaseorder.application.port.in.CreatePurchaseOrderUseCase;
 import com.vetsoftware.app.purchaseorder.application.port.in.DeletePurchaseOrderUseCase;
 import com.vetsoftware.app.purchaseorder.application.port.in.FindPurchaseOrderUseCase;
-import com.vetsoftware.app.purchaseorder.application.port.in.ListPurchaseOrdersUseCase;
 import com.vetsoftware.app.purchaseorder.application.port.in.PlacePurchaseOrderUseCase;
-import com.vetsoftware.app.purchaseorder.application.port.in.ReactivatePurchaseOrderUseCase;
 import com.vetsoftware.app.purchaseorder.application.port.in.SearchPurchaseOrdersUseCase;
 import com.vetsoftware.app.purchaseorder.application.port.in.UpdatePurchaseOrderUseCase;
 import com.vetsoftware.app.purchaseorder.domain.PurchaseOrderStatus;
@@ -41,28 +39,22 @@ public class PurchaseOrderController {
     private final CreatePurchaseOrderUseCase createUseCase;
     private final UpdatePurchaseOrderUseCase updateUseCase;
     private final FindPurchaseOrderUseCase findUseCase;
-    private final ListPurchaseOrdersUseCase listUseCase;
     private final SearchPurchaseOrdersUseCase searchUseCase;
     private final DeletePurchaseOrderUseCase deleteUseCase;
-    private final ReactivatePurchaseOrderUseCase reactivateUseCase;
     private final PlacePurchaseOrderUseCase placeUseCase;
     private final CancelPurchaseOrderUseCase cancelUseCase;
     private final Authz authz;
 
     public PurchaseOrderController(CreatePurchaseOrderUseCase createUseCase,
             UpdatePurchaseOrderUseCase updateUseCase, FindPurchaseOrderUseCase findUseCase,
-            ListPurchaseOrdersUseCase listUseCase, SearchPurchaseOrdersUseCase searchUseCase,
-            DeletePurchaseOrderUseCase deleteUseCase,
-            ReactivatePurchaseOrderUseCase reactivateUseCase,
+            SearchPurchaseOrdersUseCase searchUseCase, DeletePurchaseOrderUseCase deleteUseCase,
             PlacePurchaseOrderUseCase placeUseCase, CancelPurchaseOrderUseCase cancelUseCase,
             Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
-        this.listUseCase = listUseCase;
         this.searchUseCase = searchUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.placeUseCase = placeUseCase;
         this.cancelUseCase = cancelUseCase;
         this.authz = authz;
@@ -75,18 +67,6 @@ public class PurchaseOrderController {
                 request.supplierId(), request.orderDate(), request.expectedDate(), request.notes(),
                 toLineCommands(request.lines()), authz.currentCompanyId(),
                 authz.currentEmployeeIdOrNull())));
-    }
-
-    @GetMapping
-    public List<PurchaseOrderResponse> listByCompany() {
-        return listUseCase.listByCompany(authz.currentCompanyId()).stream().map(this::toResponse)
-                .toList();
-    }
-
-    @GetMapping("/disabled")
-    public List<PurchaseOrderResponse> listDisabled() {
-        return listUseCase.listDisabledByCompany(authz.currentCompanyId()).stream()
-                .map(this::toResponse).toList();
     }
 
     @GetMapping("/search")
@@ -121,11 +101,6 @@ public class PurchaseOrderController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyId());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public PurchaseOrderResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     @PostMapping("/{id}/place")

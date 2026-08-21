@@ -15,6 +15,4 @@ public interface HospitalizationProgressNoteRepository {
             Long hospitalizationId, Long companyId, int page, int pageSize);
 
     void delete(Long id);
-
-    int reactivate(Long id, Long companyId);
 }

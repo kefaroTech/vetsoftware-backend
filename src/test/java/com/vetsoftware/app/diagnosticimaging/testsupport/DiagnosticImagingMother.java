@@ -1,6 +1,5 @@
 package com.vetsoftware.app.diagnosticimaging.testsupport;
 
-import com.vetsoftware.app.diagnosticimaging.application.command.ChangeDiagnosticImagingStatusCommand;
 import com.vetsoftware.app.diagnosticimaging.application.command.CreateDiagnosticImagingCommand;
 import com.vetsoftware.app.diagnosticimaging.application.command.UpdateDiagnosticImagingCommand;
 import com.vetsoftware.app.diagnosticimaging.domain.AnimalRef;
@@ -71,9 +70,5 @@ public final class DiagnosticImagingMother {
         return new UpdateDiagnosticImagingCommand(IMAGING_ID, FECHA, TYPE_ID, "Cojera pata trasera",
                 "Radiografia de cadera actualizada", "Displasia moderada", "Control en 15 dias",
                 ANIMAL_ID, CONSULTATION_ID, COMPANY_ID);
-    }
-
-    public static ChangeDiagnosticImagingStatusCommand comandoCambiarEstado(String status) {
-        return new ChangeDiagnosticImagingStatusCommand(IMAGING_ID, status, COMPANY_ID);
     }
 }

@@ -15,8 +15,4 @@ public interface ConsultationRepository {
     List<Consultation> findAll();
 
     PageResult<Consultation> findAllByCompanyId(Long companyId, int page, int pageSize);
-
-    void delete(Long id, Long companyId);
-
-    int reactivate(Long id, Long companyId);
 }

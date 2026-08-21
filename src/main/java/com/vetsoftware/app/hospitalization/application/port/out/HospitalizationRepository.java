@@ -20,6 +20,4 @@ public interface HospitalizationRepository {
             String query, int page, int pageSize);
 
     void delete(Long id);
-
-    int reactivate(Long id, Long companyId);
 }

@@ -2,7 +2,6 @@ package com.vetsoftware.app.servicechargeopenaccount.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.servicechargeopenaccount.application.command.CreateServiceChargeOpenAccountCommand;
-import com.vetsoftware.app.servicechargeopenaccount.application.command.UpdateServiceChargeOpenAccountCommand;
 import com.vetsoftware.app.servicechargeopenaccount.application.command.VoidServiceChargeOpenAccountCommand;
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.AnimalSummaryDto;
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.EmployeeSummaryDto;
@@ -11,17 +10,13 @@ import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.ServiceChargeOpenAccountDto;
 import com.vetsoftware.app.servicechargeopenaccount.application.dto.ServiceSummaryDto;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.CreateServiceChargeOpenAccountUseCase;
-import com.vetsoftware.app.servicechargeopenaccount.application.port.in.FindServiceChargeOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.ListServiceChargeOpenAccountsByOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.ListServiceChargeOpenAccountsUseCase;
-import com.vetsoftware.app.servicechargeopenaccount.application.port.in.ReactivateServiceChargeOpenAccountUseCase;
-import com.vetsoftware.app.servicechargeopenaccount.application.port.in.UpdateServiceChargeOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.application.port.in.VoidServiceChargeOpenAccountUseCase;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.request.CreateServiceChargeOpenAccountRequest;
-import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.request.UpdateServiceChargeOpenAccountRequest;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.request.VoidServiceChargeOpenAccountRequest;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.response.AnimalSummary;
-import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.response.EmployeeSummary;
+import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.response.ServiceChargeOpenAccountEmployeeSummary;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.response.OpenAccountSummary;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.response.ServiceChargeOpenAccountResponse;
 import com.vetsoftware.app.servicechargeopenaccount.infrastructure.web.response.ServiceSummary;
@@ -34,27 +29,18 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/service-charge-open-accounts")
 public class ServiceChargeOpenAccountController {
     private final CreateServiceChargeOpenAccountUseCase createUseCase;
-    private final UpdateServiceChargeOpenAccountUseCase updateUseCase;
-    private final FindServiceChargeOpenAccountUseCase findUseCase;
     private final ListServiceChargeOpenAccountsUseCase listUseCase;
     private final ListServiceChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase;
-    private final ReactivateServiceChargeOpenAccountUseCase reactivateUseCase;
     private final VoidServiceChargeOpenAccountUseCase voidUseCase;
     private final Authz authz;
 
     public ServiceChargeOpenAccountController(CreateServiceChargeOpenAccountUseCase createUseCase,
-            UpdateServiceChargeOpenAccountUseCase updateUseCase,
-            FindServiceChargeOpenAccountUseCase findUseCase,
             ListServiceChargeOpenAccountsUseCase listUseCase,
             ListServiceChargeOpenAccountsByOpenAccountUseCase listByOpenAccountUseCase,
-            ReactivateServiceChargeOpenAccountUseCase reactivateUseCase,
             VoidServiceChargeOpenAccountUseCase voidUseCase, Authz authz) {
         this.createUseCase = createUseCase;
-        this.updateUseCase = updateUseCase;
-        this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByOpenAccountUseCase = listByOpenAccountUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.voidUseCase = voidUseCase;
         this.authz = authz;
     }
@@ -84,24 +70,6 @@ public class ServiceChargeOpenAccountController {
                 .stream().map(this::toResponse).toList();
     }
 
-    @GetMapping("/{id}")
-    public ServiceChargeOpenAccountResponse findById(@PathVariable Long id) {
-        return toResponse(findUseCase.findById(id, authz.currentCompanyId()));
-    }
-
-    @PutMapping("/{id}")
-    public ServiceChargeOpenAccountResponse update(@PathVariable Long id,
-            @Valid @RequestBody UpdateServiceChargeOpenAccountRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateServiceChargeOpenAccountCommand(id,
-                request.animalId(), request.serviceId(), request.openAccountId(),
-                authz.currentCompanyId(), request.expectedVersion())));
-    }
-
-    @PatchMapping("/{id}/enable")
-    public ServiceChargeOpenAccountResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
-    }
-
     @PatchMapping("/{id}/void")
     public ServiceChargeOpenAccountResponse voidCharge(@PathVariable Long id,
             @Valid @RequestBody VoidServiceChargeOpenAccountRequest request) {
@@ -121,9 +89,9 @@ public class ServiceChargeOpenAccountController {
                 new ServiceSummary(s.id(), s.name(), s.price()), dto.unitPrice(), dto.hasTax(),
                 dto.taxPercentage(), dto.taxName(), dto.baseAmount(), dto.taxAmount(),
                 dto.totalAmount(), new OpenAccountSummary(o.id(), o.companyId()),
-                e == null ? null : new EmployeeSummary(e.id(), e.name()), dto.createdDate(),
-                dto.enabled(), dto.voided(),
-                v == null ? null : new EmployeeSummary(v.id(), v.name()), dto.voidedAt(),
-                dto.voidReason());
+                e == null ? null : new ServiceChargeOpenAccountEmployeeSummary(e.id(), e.name()),
+                dto.createdDate(), dto.enabled(), dto.voided(),
+                v == null ? null : new ServiceChargeOpenAccountEmployeeSummary(v.id(), v.name()),
+                dto.voidedAt(), dto.voidReason());
     }
 }

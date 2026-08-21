@@ -1,7 +1,6 @@
 package com.vetsoftware.app.servicechargeopenaccount.testsupport;
 
 import com.vetsoftware.app.servicechargeopenaccount.application.command.CreateServiceChargeOpenAccountCommand;
-import com.vetsoftware.app.servicechargeopenaccount.application.command.UpdateServiceChargeOpenAccountCommand;
 import com.vetsoftware.app.servicechargeopenaccount.application.command.VoidServiceChargeOpenAccountCommand;
 import com.vetsoftware.app.servicechargeopenaccount.domain.AnimalRef;
 import com.vetsoftware.app.servicechargeopenaccount.domain.EmployeeRef;
@@ -31,15 +30,12 @@ public final class ServiceChargeOpenAccountMother {
     public static final Long COMPANY_ID = 9L;
     public static final Long OTRA_COMPANY_ID = 99L;
     public static final Long OPEN_ACCOUNT_ID = 50L;
-    public static final Long OTRA_CUENTA_ID = 51L;
     public static final Long CHARGE_ID = 100L;
 
     public static final AnimalRef ANIMAL = new AnimalRef(1L, "Firulais", "A-001");
-    public static final AnimalRef OTRO_ANIMAL = new AnimalRef(11L, "Michi", "A-002");
     public static final EmployeeRef EMPLEADO = new EmployeeRef(7L, "Ana Ruiz");
     public static final EmployeeRef OTRO_EMPLEADO = new EmployeeRef(8L, "Luis Paz");
     public static final OpenAccountRef CUENTA = new OpenAccountRef(OPEN_ACCOUNT_ID, COMPANY_ID);
-    public static final OpenAccountRef OTRA_CUENTA = new OpenAccountRef(OTRA_CUENTA_ID, COMPANY_ID);
     public static final OpenAccountRef CUENTA_AJENA = new OpenAccountRef(OPEN_ACCOUNT_ID,
             OTRA_COMPANY_ID);
 
@@ -55,8 +51,6 @@ public final class ServiceChargeOpenAccountMother {
             IVA_19, "GRAVADO");
     public static final ServiceRef SERVICIO_SIN_IMPUESTO = new ServiceRef(3L, "Bano",
             new BigDecimal("5000"));
-    public static final ServiceRef OTRO_SERVICIO = new ServiceRef(12L, "Vacunacion",
-            new BigDecimal("2380"), true, IVA_19, "GRAVADO");
 
     public static final LocalDateTime CREADO = LocalDateTime.of(2026, 1, 15, 10, 30);
     public static final LocalDateTime ANULADO = LocalDateTime.of(2026, 2, 1, 8, 0);
@@ -96,15 +90,6 @@ public final class ServiceChargeOpenAccountMother {
                 CUENTA_AJENA, EMPLEADO, CREADO, null, true, false, null, null, null, null);
     }
 
-    /**
-     * Cargo colgado de otra cuenta de la MISMA empresa (para probar el traslado).
-     */
-    public static ServiceChargeOpenAccount cargoEnOtraCuenta() {
-        return new ServiceChargeOpenAccount(CHARGE_ID, ANIMAL, SERVICIO, PRECIO, IVA_19, true,
-                new BigDecimal("19.00"), "IVA 19%", "IVA", "GRAVADO", BASE, IMPUESTO, TOTAL,
-                OTRA_CUENTA, EMPLEADO, CREADO, null, true, false, null, null, null, null);
-    }
-
     /** Cargo sin impuesto: base = total = precio, impuesto en cero. */
     public static ServiceChargeOpenAccount cargoSinImpuesto() {
         return new ServiceChargeOpenAccount(CHARGE_ID, ANIMAL, SERVICIO_SIN_IMPUESTO,
@@ -118,17 +103,6 @@ public final class ServiceChargeOpenAccountMother {
     public static CreateServiceChargeOpenAccountCommand comandoCrear(String clientRequestId) {
         return new CreateServiceChargeOpenAccountCommand(ANIMAL.id(), SERVICIO.id(),
                 OPEN_ACCOUNT_ID, COMPANY_ID, EMPLEADO.id(), clientRequestId, null);
-    }
-
-    public static UpdateServiceChargeOpenAccountCommand comandoActualizar() {
-        return new UpdateServiceChargeOpenAccountCommand(CHARGE_ID, ANIMAL.id(), SERVICIO.id(),
-                OPEN_ACCOUNT_ID, COMPANY_ID, null);
-    }
-
-    /** Actualizacion que traslada el cargo a OTRA cuenta de la misma empresa. */
-    public static UpdateServiceChargeOpenAccountCommand comandoTrasladar() {
-        return new UpdateServiceChargeOpenAccountCommand(CHARGE_ID, ANIMAL.id(), SERVICIO.id(),
-                OTRA_CUENTA_ID, COMPANY_ID, null);
     }
 
     public static VoidServiceChargeOpenAccountCommand comandoAnular() {

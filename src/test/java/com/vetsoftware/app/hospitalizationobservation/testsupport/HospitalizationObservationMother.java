@@ -1,7 +1,6 @@
 package com.vetsoftware.app.hospitalizationobservation.testsupport;
 
 import com.vetsoftware.app.hospitalizationobservation.application.command.CreateHospitalizationObservationCommand;
-import com.vetsoftware.app.hospitalizationobservation.application.command.UpdateHospitalizationObservationCommand;
 import com.vetsoftware.app.hospitalizationobservation.domain.EmployeeRef;
 import com.vetsoftware.app.hospitalizationobservation.domain.HospitalizationObservation;
 import com.vetsoftware.app.hospitalizationobservation.domain.HospitalizationRef;
@@ -61,15 +60,5 @@ public final class HospitalizationObservationMother {
     public static CreateHospitalizationObservationCommand comandoCrear(Long companyId) {
         return new CreateHospitalizationObservationCommand(DESCRIPCION, HOSPITALIZATION_ID,
                 EMPLOYEE_ID, companyId);
-    }
-
-    public static UpdateHospitalizationObservationCommand comandoActualizar() {
-        return comandoActualizar(COMPANY_ID);
-    }
-
-    /** El mismo comando dirigido a otra empresa: el caso de fuga entre tenants. */
-    public static UpdateHospitalizationObservationCommand comandoActualizar(Long companyId) {
-        return new UpdateHospitalizationObservationCommand(OBSERVATION_ID,
-                "Descripcion actualizada", companyId);
     }
 }

@@ -36,17 +36,6 @@ public class MedicamentPrescription {
                 observation, prescription, LocalDateTime.now(), null, true);
     }
 
-    public void update(MedicamentRef medicament, String presentation, Double quantity,
-            String posology, String observation, PrescriptionRef prescription) {
-        validate(medicament, presentation, quantity, posology, observation, prescription);
-        this.medicament = medicament;
-        this.presentation = presentation;
-        this.quantity = quantity;
-        this.posology = posology;
-        this.observation = blankToNull(observation);
-        this.prescription = prescription;
-    }
-
     public void enable() {
         this.enabled = true;
     }

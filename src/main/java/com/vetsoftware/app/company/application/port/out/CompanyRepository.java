@@ -27,6 +27,4 @@ public interface CompanyRepository {
     List<Company> findAllVisibleTo(Long companyId);
 
     void delete(Long id);
-
-    int reactivate(Long id);
 }

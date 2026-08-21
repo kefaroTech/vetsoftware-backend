@@ -1,7 +1,6 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
-import com.vetsoftware.app.electronicdocument.application.command.BuildElectronicDocumentCommand;
 import com.vetsoftware.app.electronicdocument.application.command.ConvertPosToInvoiceCommand;
 import com.vetsoftware.app.electronicdocument.application.command.EmitElectronicDocumentCommand;
 import com.vetsoftware.app.electronicdocument.application.command.IssueCreditNoteCommand;
@@ -10,7 +9,6 @@ import com.vetsoftware.app.electronicdocument.application.command.RegisterPosSal
 import com.vetsoftware.app.electronicdocument.application.command.TransmitElectronicDocumentCommand;
 import com.vetsoftware.app.electronicdocument.application.dto.ElectronicDocumentDto;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
-import com.vetsoftware.app.electronicdocument.application.port.in.BuildElectronicDocumentFromAccountUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.ConvertPosToInvoiceUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.EmitElectronicDocumentFromAccountUseCase;
 import com.vetsoftware.app.electronicdocument.application.port.in.FindElectronicDocumentByAccountUseCase;
@@ -33,15 +31,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * F2 - lectura del documento electronico + construccion PROVISIONAL desde una
- * cuenta cerrada. Sin update/delete (inmutabilidad fiscal). El POST de
- * construccion es el punto de entrada temporal para probar el modelo; F4 lo
- * reemplazara por la emision automatica al cerrar la cuenta.
+ * F4 - lectura del documento electronico + emision end-to-end desde una cuenta
+ * cerrada y registro de ventas de POS. Sin update/delete (inmutabilidad
+ * fiscal).
  */
 @RestController
 @RequestMapping("/electronic-documents")
 public class ElectronicDocumentController {
-    private final BuildElectronicDocumentFromAccountUseCase buildUseCase;
     private final EmitElectronicDocumentFromAccountUseCase emitUseCase;
     private final RegisterPosSaleUseCase registerPosSaleUseCase;
     private final ConvertPosToInvoiceUseCase convertPosUseCase;
@@ -53,8 +49,7 @@ public class ElectronicDocumentController {
     private final ListElectronicDocumentsUseCase listUseCase;
     private final Authz authz;
 
-    public ElectronicDocumentController(BuildElectronicDocumentFromAccountUseCase buildUseCase,
-            EmitElectronicDocumentFromAccountUseCase emitUseCase,
+    public ElectronicDocumentController(EmitElectronicDocumentFromAccountUseCase emitUseCase,
             RegisterPosSaleUseCase registerPosSaleUseCase,
             ConvertPosToInvoiceUseCase convertPosUseCase,
             TransmitElectronicDocumentUseCase transmitUseCase,
@@ -62,7 +57,6 @@ public class ElectronicDocumentController {
             FindElectronicDocumentUseCase findUseCase,
             FindElectronicDocumentByAccountUseCase findByAccountUseCase,
             ListElectronicDocumentsUseCase listUseCase, Authz authz) {
-        this.buildUseCase = buildUseCase;
         this.emitUseCase = emitUseCase;
         this.registerPosSaleUseCase = registerPosSaleUseCase;
         this.convertPosUseCase = convertPosUseCase;
@@ -73,14 +67,6 @@ public class ElectronicDocumentController {
         this.findByAccountUseCase = findByAccountUseCase;
         this.listUseCase = listUseCase;
         this.authz = authz;
-    }
-
-    @PostMapping("/from-account")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ElectronicDocumentDto buildFromAccount(
-            @Valid @RequestBody BuildElectronicDocumentRequest request) {
-        return buildUseCase.execute(new BuildElectronicDocumentCommand(request.openAccountId(),
-                request.documentType(), authz.currentCompanyId(), request.finalConsumer()));
     }
 
     /**

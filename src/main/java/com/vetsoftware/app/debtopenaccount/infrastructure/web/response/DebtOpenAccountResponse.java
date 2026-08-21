@@ -10,9 +10,9 @@ public record DebtOpenAccountResponse(@Schema(requiredMode = Schema.RequiredMode
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal amount,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PaymentMethod paymentMethod,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) OpenAccountSummary openAccount,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) EmployeeSummary createdBy,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) DebtOpenAccountEmployeeSummary createdBy,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean voided,
-        EmployeeSummary voidedBy, LocalDateTime voidedAt, String voidReason) {
+        DebtOpenAccountEmployeeSummary voidedBy, LocalDateTime voidedAt, String voidReason) {
 }

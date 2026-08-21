@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -19,9 +18,7 @@ import com.vetsoftware.app.servicecategory.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.servicecategory.application.dto.ServiceCategoryDto;
 import com.vetsoftware.app.servicecategory.application.port.in.CreateServiceCategoryUseCase;
 import com.vetsoftware.app.servicecategory.application.port.in.DeleteServiceCategoryUseCase;
-import com.vetsoftware.app.servicecategory.application.port.in.FindServiceCategoryUseCase;
 import com.vetsoftware.app.servicecategory.application.port.in.ListServiceCategoriesUseCase;
-import com.vetsoftware.app.servicecategory.application.port.in.ReactivateServiceCategoryUseCase;
 import com.vetsoftware.app.servicecategory.application.port.in.UpdateServiceCategoryUseCase;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryHasActiveChildrenException;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNameAlreadyExistsException;
@@ -78,13 +75,9 @@ class ServiceCategoryControllerTest {
     @MockitoBean
     private UpdateServiceCategoryUseCase updateUseCase;
     @MockitoBean
-    private FindServiceCategoryUseCase findUseCase;
-    @MockitoBean
     private ListServiceCategoriesUseCase listUseCase;
     @MockitoBean
     private DeleteServiceCategoryUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateServiceCategoryUseCase reactivateUseCase;
 
     private static ServiceCategoryDto consultas() {
         return new ServiceCategoryDto(70L, "Consultas", "Categoria de consultas",
@@ -220,26 +213,6 @@ class ServiceCategoryControllerTest {
                     .andExpect(jsonPath("$[0].id").value(70))
                     .andExpect(jsonPath("$[0].company.id").value(COMPANY_ID));
         }
-
-        @Test
-        @DisplayName("GET /service-categories/{id} devuelve el recurso")
-        void get_por_id_devuelve_el_recurso() throws Exception {
-            when(findUseCase.findById(70L, COMPANY_ID)).thenReturn(consultas());
-
-            mockMvc.perform(get("/service-categories/70")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(70))
-                    .andExpect(jsonPath("$.description").value("Categoria de consultas"))
-                    .andExpect(jsonPath("$.version").value(3));
-        }
-
-        @Test
-        @DisplayName("GET /service-categories/{id} de otra empresa responde 404, no 500")
-        void get_por_id_inexistente_responde_404() throws Exception {
-            when(findUseCase.findById(99L, COMPANY_ID))
-                    .thenThrow(new ServiceCategoryNotFoundException(99L));
-
-            mockMvc.perform(get("/service-categories/99")).andExpect(status().isNotFound());
-        }
     }
 
     @Nested
@@ -320,26 +293,6 @@ class ServiceCategoryControllerTest {
                     .when(deleteUseCase).execute(70L, COMPANY_ID);
 
             mockMvc.perform(delete("/service-categories/70")).andExpect(status().isConflict());
-        }
-
-        @Test
-        @DisplayName("PATCH /service-categories/{id}/enable reactiva y responde 200")
-        void patch_enable_responde_200() throws Exception {
-            when(reactivateUseCase.execute(70L, COMPANY_ID)).thenReturn(consultas());
-
-            mockMvc.perform(patch("/service-categories/70/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(70))
-                    .andExpect(jsonPath("$.enabled").value(true));
-        }
-
-        @Test
-        @DisplayName("PATCH enable de una categoria inexistente responde 404")
-        void patch_enable_inexistente_responde_404() throws Exception {
-            when(reactivateUseCase.execute(99L, COMPANY_ID))
-                    .thenThrow(new ServiceCategoryNotFoundException(99L));
-
-            mockMvc.perform(patch("/service-categories/99/enable"))
-                    .andExpect(status().isNotFound());
         }
     }
 }

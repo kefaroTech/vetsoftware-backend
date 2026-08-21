@@ -11,8 +11,7 @@ public interface ListRolePermissionsUseCase {
      * <p>
      * Antes lo abria tambien {@code rolePermissions.read}, que es un permiso de
      * empleado, y este listado no filtra por tenant: cualquier empleado listaba
-     * tambien las filas de las demas empresas. Lo que un tenant necesita es
-     * {@code GET /role-permissions/by-company}, que si filtra por empresa (BE-29).
+     * tambien las filas de las demas empresas (BE-29).
      */
     @PreAuthorize("hasRole('SYSTEM')")
     List<RolePermissionDto> listAll();

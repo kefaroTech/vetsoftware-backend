@@ -27,12 +27,11 @@ public class CreateMedicamentPrescriptionService implements CreateMedicamentPres
     }
 
     /**
-     * Las dos referencias se resuelven acotadas por empresa, igual que hace
-     * {@link UpdateMedicamentPrescriptionService}. Sin ese filtro, cualquiera con
-     * la autoridad {@code medicamentPrescription.create} podia colgar un
-     * medicamento de la receta de otro tenant adivinando el id: el caso de uso no
-     * carga ninguna entidad propia que valide la empresa, la receta ajena resolvia,
-     * y el registro quedaba escrito en la receta de otra empresa.
+     * Las dos referencias se resuelven acotadas por empresa. Sin ese filtro,
+     * cualquiera con la autoridad {@code medicamentPrescription.create} podia
+     * colgar un medicamento de la receta de otro tenant adivinando el id: el caso
+     * de uso no carga ninguna entidad propia que valide la empresa, la receta ajena
+     * resolvia, y el registro quedaba escrito en la receta de otra empresa.
      *
      * <p>
      * {@code companyId == null} es el camino SYSTEM (el controller lo pone con

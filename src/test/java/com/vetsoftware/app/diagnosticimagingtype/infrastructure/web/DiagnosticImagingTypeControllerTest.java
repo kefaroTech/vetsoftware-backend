@@ -6,7 +6,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -21,7 +20,6 @@ import com.vetsoftware.app.diagnosticimagingtype.application.port.in.DeleteDiagn
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.FindDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ListAvailableDiagnosticImagingTypesUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ListDiagnosticImagingTypesUseCase;
-import com.vetsoftware.app.diagnosticimagingtype.application.port.in.ReactivateDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.in.UpdateDiagnosticImagingTypeUseCase;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNotFoundException;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
@@ -62,8 +60,6 @@ class DiagnosticImagingTypeControllerTest {
     private ListAvailableDiagnosticImagingTypesUseCase listAvailableUseCase;
     @MockitoBean
     private DeleteDiagnosticImagingTypeUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateDiagnosticImagingTypeUseCase reactivateUseCase;
     @MockitoBean
     private Authz authz;
 
@@ -175,17 +171,5 @@ class DiagnosticImagingTypeControllerTest {
         mockMvc.perform(delete("/diagnostic-imaging-types/501")).andExpect(status().isNoContent());
 
         verify(deleteUseCase).execute(501L, 9L);
-    }
-
-    @Test
-    @DisplayName("PATCH /diagnostic-imaging-types/{id}/enable responde 200 y propaga la empresa del contexto")
-    void patch_enable_responde_200() throws Exception {
-        when(authz.currentCompanyId()).thenReturn(9L);
-        when(reactivateUseCase.execute(501L, 9L)).thenReturn(tipoDeEmpresa());
-
-        mockMvc.perform(patch("/diagnostic-imaging-types/501/enable")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.enabled").value(true));
-
-        verify(reactivateUseCase).execute(501L, 9L);
     }
 }

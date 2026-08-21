@@ -1,6 +1,5 @@
 package com.vetsoftware.app.surgery.testsupport;
 
-import com.vetsoftware.app.surgery.application.command.ChangeSurgeryStatusCommand;
 import com.vetsoftware.app.surgery.application.command.CreateSurgeryCommand;
 import com.vetsoftware.app.surgery.application.command.UpdateSurgeryCommand;
 import com.vetsoftware.app.surgery.domain.AnimalRef;
@@ -94,13 +93,5 @@ public final class SurgeryMother {
         return new UpdateSurgeryCommand(SURGERY_ID, FECHA.plusDays(5), CASTRACION.id(),
                 "Castracion electiva", "Anestesia local", "Observaciones nuevas", "Sangrado leve",
                 MICHI.id(), OTRA_CONSULTA.id(), COMPANY_ID);
-    }
-
-    public static ChangeSurgeryStatusCommand comandoCambiarEstado(String status) {
-        return new ChangeSurgeryStatusCommand(SURGERY_ID, status, COMPANY_ID);
-    }
-
-    public static ChangeSurgeryStatusCommand comandoCambiarEstadoSinCompanyId(String status) {
-        return new ChangeSurgeryStatusCommand(SURGERY_ID, status, null);
     }
 }

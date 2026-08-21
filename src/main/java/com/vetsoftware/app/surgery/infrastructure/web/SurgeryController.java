@@ -1,7 +1,6 @@
 package com.vetsoftware.app.surgery.infrastructure.web;
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
-import com.vetsoftware.app.surgery.application.command.ChangeSurgeryStatusCommand;
 import com.vetsoftware.app.surgery.application.command.CreateSurgeryCommand;
 import com.vetsoftware.app.surgery.application.command.UpdateSurgeryCommand;
 import com.vetsoftware.app.surgery.application.dto.AnimalSummaryDto;
@@ -10,15 +9,12 @@ import com.vetsoftware.app.surgery.application.dto.ConsultationSummaryDto;
 import com.vetsoftware.app.surgery.application.dto.SurgeryDto;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.surgery.application.dto.SurgeryTypeSummaryDto;
-import com.vetsoftware.app.surgery.application.port.in.ChangeSurgeryStatusUseCase;
 import com.vetsoftware.app.surgery.application.port.in.CreateSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.DeleteSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.FindSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.ListSurgeriesByAnimalUseCase;
 import com.vetsoftware.app.surgery.application.port.in.ListSurgeriesUseCase;
-import com.vetsoftware.app.surgery.application.port.in.ReactivateSurgeryUseCase;
 import com.vetsoftware.app.surgery.application.port.in.UpdateSurgeryUseCase;
-import com.vetsoftware.app.surgery.infrastructure.web.request.ChangeSurgeryStatusRequest;
 import com.vetsoftware.app.surgery.infrastructure.web.request.CreateSurgeryRequest;
 import com.vetsoftware.app.surgery.infrastructure.web.request.UpdateSurgeryRequest;
 import com.vetsoftware.app.surgery.infrastructure.web.response.AnimalSummary;
@@ -36,27 +32,22 @@ import org.springframework.web.bind.annotation.*;
 public class SurgeryController {
     private final CreateSurgeryUseCase createUseCase;
     private final UpdateSurgeryUseCase updateUseCase;
-    private final ChangeSurgeryStatusUseCase changeStatusUseCase;
     private final FindSurgeryUseCase findUseCase;
     private final ListSurgeriesUseCase listUseCase;
     private final ListSurgeriesByAnimalUseCase listByAnimalUseCase;
     private final DeleteSurgeryUseCase deleteUseCase;
-    private final ReactivateSurgeryUseCase reactivateUseCase;
     private final Authz authz;
 
     public SurgeryController(CreateSurgeryUseCase createUseCase, UpdateSurgeryUseCase updateUseCase,
-            ChangeSurgeryStatusUseCase changeStatusUseCase, FindSurgeryUseCase findUseCase,
-            ListSurgeriesUseCase listUseCase, ListSurgeriesByAnimalUseCase listByAnimalUseCase,
-            DeleteSurgeryUseCase deleteUseCase, ReactivateSurgeryUseCase reactivateUseCase,
+            FindSurgeryUseCase findUseCase, ListSurgeriesUseCase listUseCase,
+            ListSurgeriesByAnimalUseCase listByAnimalUseCase, DeleteSurgeryUseCase deleteUseCase,
             Authz authz) {
         this.createUseCase = createUseCase;
         this.updateUseCase = updateUseCase;
-        this.changeStatusUseCase = changeStatusUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
         this.listByAnimalUseCase = listByAnimalUseCase;
         this.deleteUseCase = deleteUseCase;
-        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -97,22 +88,10 @@ public class SurgeryController {
                 request.consultationId(), authz.currentCompanyId())));
     }
 
-    @PatchMapping("/{id}/status")
-    public SurgeryResponse changeStatus(@PathVariable Long id,
-            @Valid @RequestBody ChangeSurgeryStatusRequest request) {
-        return toResponse(changeStatusUseCase.execute(new ChangeSurgeryStatusCommand(id,
-                request.status(), authz.currentCompanyIdOrNull())));
-    }
-
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id, authz.currentCompanyIdOrNull());
-    }
-
-    @PatchMapping("/{id}/enable")
-    public SurgeryResponse enable(@PathVariable Long id) {
-        return toResponse(reactivateUseCase.execute(id, authz.currentCompanyId()));
     }
 
     private SurgeryResponse toResponse(SurgeryDto dto) {

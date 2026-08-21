@@ -3,7 +3,6 @@ package com.vetsoftware.app.goodsreceipt.testsupport;
 import com.vetsoftware.app.goodsreceipt.application.command.CreateGoodsReceiptCommand;
 import com.vetsoftware.app.goodsreceipt.application.command.GoodsReceiptLineCommand;
 import com.vetsoftware.app.goodsreceipt.application.command.SearchGoodsReceiptsCommand;
-import com.vetsoftware.app.goodsreceipt.application.command.UpdateGoodsReceiptCommand;
 import com.vetsoftware.app.goodsreceipt.domain.BranchRef;
 import com.vetsoftware.app.goodsreceipt.domain.CompanyRef;
 import com.vetsoftware.app.goodsreceipt.domain.GoodsReceipt;
@@ -35,9 +34,6 @@ public final class GoodsReceiptMother {
             "NIT-900123");
     public static final BranchRef SEDE = new BranchRef(4L, "Sede Norte");
     public static final SupplierRef PROVEEDOR = new SupplierRef(7L, "Distribuidora Vet");
-
-    public static final BranchRef OTRA_SEDE = new BranchRef(5L, "Sede Sur");
-    public static final SupplierRef OTRO_PROVEEDOR = new SupplierRef(8L, "Insumos Andinos");
 
     public static final ProductRef VACUNA = new ProductRef(21L, "Vacuna triple", "P-021");
     public static final ProductRef JERINGA = new ProductRef(22L, "Jeringa 5 ml", "P-022");
@@ -120,18 +116,6 @@ public final class GoodsReceiptMother {
     public static CreateGoodsReceiptCommand comandoCrear(List<GoodsReceiptLineCommand> lineas) {
         return new CreateGoodsReceiptCommand(SEDE.id(), PROVEEDOR.id(), null, FECHA_RECEPCION,
                 "FV-1001", "Entrega parcial", lineas, COMPANY_ID, ACTOR_ID);
-    }
-
-    /** Comando de actualizacion que mueve sede, proveedor y linea. */
-    public static UpdateGoodsReceiptCommand comandoActualizar() {
-        return comandoActualizar(List.of(comandoLineaDeOrden(900L)));
-    }
-
-    public static UpdateGoodsReceiptCommand comandoActualizar(
-            List<GoodsReceiptLineCommand> lineas) {
-        return new UpdateGoodsReceiptCommand(RECEIPT_ID, OTRA_SEDE.id(), OTRO_PROVEEDOR.id(),
-                PURCHASE_ORDER_ID, LocalDate.of(2026, 4, 1), "FV-2002", "Corregida", lineas,
-                COMPANY_ID, ACTOR_ID, 3L);
     }
 
     public static SearchGoodsReceiptsCommand comandoBuscar() {

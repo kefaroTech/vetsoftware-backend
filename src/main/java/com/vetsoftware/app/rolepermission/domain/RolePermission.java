@@ -26,15 +26,6 @@ public class RolePermission {
         return new RolePermission(null, role, permission, LocalDateTime.now(), true);
     }
 
-    public void update(RoleRef role, PermissionRef permission) {
-        if (role == null)
-            throw new IllegalArgumentException("role is required");
-        if (permission == null)
-            throw new IllegalArgumentException("permission is required");
-        this.role = role;
-        this.permission = permission;
-    }
-
     public Long getId() {
         return id;
     }

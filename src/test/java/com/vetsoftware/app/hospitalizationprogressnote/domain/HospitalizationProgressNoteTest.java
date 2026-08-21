@@ -112,38 +112,6 @@ class HospitalizationProgressNoteTest {
     }
 
     @Nested
-    @DisplayName("Actualizacion")
-    class Actualizacion {
-
-        @Test
-        @DisplayName("update() reemplaza la descripcion conservando el resto")
-        void update_reemplaza_la_descripcion() {
-            HospitalizationProgressNote nota = HospitalizationProgressNote.create(DESCRIPCION,
-                    HOSPITALIZACION, VETERINARIO);
-
-            nota.update("Evolucion favorable, se ajusta analgesia");
-
-            assertThat(nota.getDescription()).isEqualTo("Evolucion favorable, se ajusta analgesia");
-            assertThat(nota.getHospitalization()).isEqualTo(HOSPITALIZACION);
-            assertThat(nota.getCreatedBy()).isEqualTo(VETERINARIO);
-        }
-
-        @ParameterizedTest
-        @NullAndEmptySource
-        @ValueSource(strings = "   ")
-        @DisplayName("update() rechaza una descripcion vacia")
-        void update_rechaza_descripcion_vacia(String descripcion) {
-            HospitalizationProgressNote nota = HospitalizationProgressNote.create(DESCRIPCION,
-                    HOSPITALIZACION, VETERINARIO);
-
-            assertThatThrownBy(() -> nota.update(descripcion))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("description is required");
-            assertThat(nota.getDescription()).isEqualTo(DESCRIPCION);
-        }
-    }
-
-    @Nested
     @DisplayName("Estado habilitado")
     class EstadoHabilitado {
 

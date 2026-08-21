@@ -37,17 +37,6 @@ public class Prescription {
                 LocalDateTime.now(), null, true);
     }
 
-    public void update(LocalDate date, String diagnosis, String observations, AnimalRef animal,
-            ConsultationRef consultation, CompanyRef company) {
-        validate(date, diagnosis, observations, animal, consultation, company);
-        this.date = date;
-        this.diagnosis = blankToNull(diagnosis);
-        this.observations = observations;
-        this.animal = animal;
-        this.consultation = consultation;
-        this.company = company;
-    }
-
     public void enable() {
         this.enabled = true;
     }

@@ -1,13 +1,11 @@
 package com.vetsoftware.app.rolepermission.infrastructure.web;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -16,18 +14,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.rolepermission.application.command.CreateRolePermissionCommand;
 import com.vetsoftware.app.rolepermission.application.command.SyncRolePermissionsCommand;
-import com.vetsoftware.app.rolepermission.application.command.UpdateRolePermissionCommand;
 import com.vetsoftware.app.rolepermission.application.dto.PermissionSummaryDto;
 import com.vetsoftware.app.rolepermission.application.dto.RolePermissionDto;
 import com.vetsoftware.app.rolepermission.application.dto.RoleSummaryDto;
 import com.vetsoftware.app.rolepermission.application.port.in.CreateRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.DeleteRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.FindRolePermissionUseCase;
-import com.vetsoftware.app.rolepermission.application.port.in.ListRolePermissionsByCompanyUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.ListRolePermissionsUseCase;
-import com.vetsoftware.app.rolepermission.application.port.in.ReactivateRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.application.port.in.SyncRolePermissionsUseCase;
-import com.vetsoftware.app.rolepermission.application.port.in.UpdateRolePermissionUseCase;
 import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.time.LocalDateTime;
@@ -45,9 +39,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Rodaja HTTP de la asignacion rol-permiso: rutas, binding, validacion del
- * request y forma del JSON. {@code create}/{@code syncByRole}/{@code update}/
- * {@code delete}/{@code reactivate} leen la empresa de
- * {@code authz.currentCompanyIdOrNull()} —no de
+ * request y forma del JSON. {@code create}/{@code syncByRole}/{@code delete}
+ * leen la empresa de {@code authz.currentCompanyIdOrNull()} —no de
  * {@code WebMvcSliceConfig.authz()}, que solo deja stubeado
  * {@code currentCompanyId()}— asi que cada test que la necesita la resuelve
  * explicitamente.
@@ -74,17 +67,11 @@ class RolePermissionControllerTest {
     @MockitoBean
     private SyncRolePermissionsUseCase syncUseCase;
     @MockitoBean
-    private UpdateRolePermissionUseCase updateUseCase;
-    @MockitoBean
     private FindRolePermissionUseCase findUseCase;
     @MockitoBean
     private ListRolePermissionsUseCase listUseCase;
     @MockitoBean
-    private ListRolePermissionsByCompanyUseCase listByCompanyUseCase;
-    @MockitoBean
     private DeleteRolePermissionUseCase deleteUseCase;
-    @MockitoBean
-    private ReactivateRolePermissionUseCase reactivateUseCase;
 
     private static RolePermissionDto asignacion() {
         return new RolePermissionDto(ROLE_PERMISSION_ID,
@@ -189,21 +176,6 @@ class RolePermissionControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /role-permissions/by-company")
-    class ListadoPorEmpresa {
-
-        @Test
-        @DisplayName("lista las asignaciones de la empresa resuelta por el contexto")
-        void lista_las_asignaciones_de_la_empresa() throws Exception {
-            when(listByCompanyUseCase.listByCompany(COMPANY_ID)).thenReturn(List.of(asignacion()));
-
-            mockMvc.perform(get("/role-permissions/by-company")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(1))
-                    .andExpect(jsonPath("$[0].permission.code").value("ANIMAL_READ"));
-        }
-    }
-
-    @Nested
     @DisplayName("GET /role-permissions/{id}")
     class Busqueda {
 
@@ -227,51 +199,7 @@ class RolePermissionControllerTest {
     }
 
     @Nested
-    @DisplayName("PUT /role-permissions/{id}")
-    class Actualizacion {
-
-        @Test
-        @DisplayName("responde 200 y arma el command con el id de la ruta y la empresa del contexto")
-        void responde_200_y_arma_el_command() throws Exception {
-            when(authz.currentCompanyIdOrNull()).thenReturn(COMPANY_ID);
-            when(updateUseCase.execute(any())).thenReturn(asignacion());
-
-            mockMvc.perform(
-                    put("/role-permissions/1").contentType(MediaType.APPLICATION_JSON).content("""
-                            {"roleId":3,"permissionId":7}
-                            """)).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(ROLE_PERMISSION_ID));
-
-            verify(updateUseCase).execute(new UpdateRolePermissionCommand(1L, 3L, 7L, COMPANY_ID));
-        }
-
-        @Test
-        @DisplayName("una asignacion de otra empresa responde 404")
-        void asignacion_de_otra_empresa_responde_404() throws Exception {
-            when(authz.currentCompanyIdOrNull()).thenReturn(COMPANY_ID);
-            when(updateUseCase.execute(any()))
-                    .thenThrow(new RolePermissionNotFoundException(ROLE_PERMISSION_ID));
-
-            mockMvc.perform(
-                    put("/role-permissions/1").contentType(MediaType.APPLICATION_JSON).content("""
-                            {"roleId":3,"permissionId":7}
-                            """)).andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("sin permissionId responde 400 y no actualiza")
-        void sin_permission_id_responde_400() throws Exception {
-            mockMvc.perform(
-                    put("/role-permissions/1").contentType(MediaType.APPLICATION_JSON).content("""
-                            {"roleId":3}
-                            """)).andExpect(status().isBadRequest());
-
-            verify(updateUseCase, never()).execute(any());
-        }
-    }
-
-    @Nested
-    @DisplayName("DELETE y PATCH /role-permissions/{id}")
+    @DisplayName("DELETE /role-permissions/{id}")
     class EstadoDeLaAsignacion {
 
         @Test
@@ -282,27 +210,6 @@ class RolePermissionControllerTest {
             mockMvc.perform(delete("/role-permissions/1")).andExpect(status().isNoContent());
 
             verify(deleteUseCase).execute(ROLE_PERMISSION_ID, COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("PATCH /enable reactiva y responde 200 con la asignacion")
-        void patch_enable_responde_200() throws Exception {
-            when(authz.currentCompanyIdOrNull()).thenReturn(COMPANY_ID);
-            when(reactivateUseCase.execute(ROLE_PERMISSION_ID, COMPANY_ID))
-                    .thenReturn(asignacion());
-
-            mockMvc.perform(patch("/role-permissions/1/enable")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.enabled").value(true));
-        }
-
-        @Test
-        @DisplayName("reactivar una asignacion inexistente responde 404")
-        void reactivar_inexistente_responde_404() throws Exception {
-            when(authz.currentCompanyIdOrNull()).thenReturn(COMPANY_ID);
-            when(reactivateUseCase.execute(anyLong(), any()))
-                    .thenThrow(new RolePermissionNotFoundException(ROLE_PERMISSION_ID));
-
-            mockMvc.perform(patch("/role-permissions/1/enable")).andExpect(status().isNotFound());
         }
     }
 }

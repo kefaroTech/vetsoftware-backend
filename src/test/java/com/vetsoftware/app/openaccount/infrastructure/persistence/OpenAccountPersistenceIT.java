@@ -491,8 +491,8 @@ class OpenAccountPersistenceIT extends AbstractDataJpaTest {
             // Hallazgo de esta rodaja: el @SQLRestriction("enabled = true") de la entidad
             // se anade a TODA consulta JPQL/criteria, asi que el filtro `enabled` del
             // buscador nunca puede devolver las deshabilitadas — pedir enabled=false da
-            // siempre vacio. La papelera solo es alcanzable por el UPDATE nativo de
-            // reactivate(). Se deja fijado el comportamiento real, no el aparente.
+            // siempre vacio. La papelera no es alcanzable desde el buscador.
+            // Se deja fijado el comportamiento real, no el aparente.
             assertThat(repository.search(new SearchOpenAccountsCommand(COMPANY, null, false,
                     List.of(), null, 0, 20, null)).content()).isEmpty();
             assertThat(repository.search(new SearchOpenAccountsCommand(COMPANY, null, null,
@@ -564,45 +564,6 @@ class OpenAccountPersistenceIT extends AbstractDataJpaTest {
             // verse. Solo la base puede decir si las dos cosas pasan.
             assertThat(repository.findById(cuenta.getId())).isEmpty();
             assertThat(filasCrudas(cuenta.getId())).isEqualTo(1L);
-        }
-
-        @Test
-        @DisplayName("reactivar la vuelve a hacer visible")
-        void reactivar_la_vuelve_a_hacer_visible() {
-            OpenAccount cuenta = cuentaAbierta();
-            entityManager.flush();
-            repository.delete(cuenta.getId());
-            entityManager.flush();
-            entityManager.clear();
-
-            int reactivadas = repository.reactivate(cuenta.getId(), COMPANY);
-
-            assertThat(reactivadas).isEqualTo(1);
-            assertThat(repository.findByIdAndCompanyId(cuenta.getId(), COMPANY)).isPresent();
-        }
-
-        @Test
-        @DisplayName("reactivar una cuenta inexistente no toca ninguna fila")
-        void reactivar_una_cuenta_inexistente_no_toca_ninguna_fila() {
-            assertThat(repository.reactivate(-1L, COMPANY)).isZero();
-        }
-
-        @Test
-        @DisplayName("reactivar con el companyId de OTRA empresa afecta 0 filas y la deja oculta")
-        void reactivar_con_la_empresa_ajena_no_toca_ninguna_fila() {
-            // Antes el service reactivaba primero y comparaba la empresa despues: solo el
-            // rollback deshacia la escritura ajena. Ahora la empresa esta en el WHERE, asi
-            // que no hay escritura que deshacer.
-            OpenAccount cuenta = cuentaAbierta();
-            entityManager.flush();
-            repository.delete(cuenta.getId());
-            entityManager.flush();
-            entityManager.clear();
-
-            assertThat(repository.reactivate(cuenta.getId(), OTRA_COMPANY)).isZero();
-            entityManager.clear();
-
-            assertThat(repository.findById(cuenta.getId())).isEmpty();
         }
 
         private long filasCrudas(Long id) {

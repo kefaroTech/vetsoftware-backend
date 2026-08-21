@@ -15,7 +15,7 @@ import com.vetsoftware.app.role.application.port.in.UpdateRoleUseCase;
 import com.vetsoftware.app.role.infrastructure.web.request.CreateRoleRequest;
 import com.vetsoftware.app.role.infrastructure.web.request.UpdateRoleRequest;
 import com.vetsoftware.app.role.infrastructure.web.response.CompanySummary;
-import com.vetsoftware.app.role.infrastructure.web.response.PermissionSummary;
+import com.vetsoftware.app.role.infrastructure.web.response.RolePermissionSummary;
 import com.vetsoftware.app.role.infrastructure.web.response.RoleResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -91,8 +91,8 @@ public class RoleController {
 
     private RoleResponse toResponse(RoleDto dto) {
         CompanySummaryDto c = dto.company();
-        List<PermissionSummary> permissions = dto.permissions().stream()
-                .map(p -> new PermissionSummary(p.rolePermissionId(), p.id(), p.name(), p.code()))
+        List<RolePermissionSummary> permissions = dto.permissions().stream().map(
+                p -> new RolePermissionSummary(p.rolePermissionId(), p.id(), p.name(), p.code()))
                 .toList();
         return new RoleResponse(dto.id(), dto.name(), dto.code(),
                 new CompanySummary(c.id(), c.name(), c.identifier()), dto.createdDate(),
