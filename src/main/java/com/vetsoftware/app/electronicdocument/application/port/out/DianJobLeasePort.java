@@ -36,4 +36,31 @@ public interface DianJobLeasePort {
      * @return ids reclamados, vacío si no había trabajo disponible
      */
     List<Long> leaseByDianStatus(DianStatus status, int limit, Duration lease);
+
+    /**
+     * Reclama documentos <b>VALIDADO que se quedaron sin representación gráfica</b>
+     * (sin PDF), para reintentar su entrega.
+     *
+     * <p>
+     * Es un método aparte y no un {@code leaseByDianStatus(VALIDADO, …)} por una
+     * razón de tamaño de población, no de estilo: VALIDADO es el estado terminal
+     * feliz y acumula todos los documentos históricos de todas las empresas. Un
+     * lote de 25 tomado de ahí se llenaría de facturas ya entregadas y no
+     * alcanzaría nunca a las rotas, que son unas pocas. El filtro tiene que estar
+     * <b>dentro</b> de la sentencia que arrienda.
+     *
+     * <p>
+     * Comparte el mismo mecanismo de arriendo ({@code dian_leased_until} +
+     * {@code FOR UPDATE SKIP LOCKED}) que el resto de jobs, así que dos réplicas no
+     * reintentan la entrega del mismo documento —y el cliente no recibe su factura
+     * por duplicado.
+     *
+     * @param limit
+     *            tamaño máximo del lote
+     * @param lease
+     *            cuánto dura la exclusividad; debe cubrir el render del PDF, la
+     *            subida a S3 y el encolado del correo de todo el lote
+     * @return ids reclamados, vacío si no había trabajo disponible
+     */
+    List<Long> leaseUndeliveredValidated(int limit, Duration lease);
 }

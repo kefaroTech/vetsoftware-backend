@@ -12,12 +12,15 @@ import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetric
 import com.vetsoftware.app.electronicdocument.application.port.out.DianJobLeasePort;
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionLogPort;
+import com.vetsoftware.app.electronicdocument.application.usecase.DeliverElectronicDocumentService;
 import com.vetsoftware.app.electronicdocument.application.usecase.DocumentTransmitter;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import io.micrometer.observation.ObservationRegistry;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -91,6 +94,29 @@ class ScheduledJobsLeaseTest {
 
         verify(transmitter, never()).reconcile(any());
         verify(repository, never()).findById(any());
+    }
+
+    /**
+     * Issue #204. La re-entrega tambien corre en todas las replicas: sin arriendo,
+     * N replicas generarian N veces el PDF de la misma factura y el cliente
+     * recibiria N correos con su factura adjunta.
+     */
+    @Test
+    void reentrega_solo_procesa_el_lote_reclamado() {
+        ElectronicDocumentRepository repository = mock(ElectronicDocumentRepository.class);
+        DianJobLeasePort leasePort = mock(DianJobLeasePort.class);
+        DeliverElectronicDocumentService deliverService = mock(
+                DeliverElectronicDocumentService.class);
+        ElectronicDocument mine = mock(ElectronicDocument.class);
+        when(mine.getCreatedDate()).thenReturn(LocalDateTime.now());
+        when(leasePort.leaseUndeliveredValidated(anyInt(), any())).thenReturn(List.of(404L));
+        when(repository.findById(404L)).thenReturn(Optional.of(mine));
+
+        new DeliveryRetryJob(repository, leasePort, deliverService, TELEMETRY,
+                Clock.systemDefaultZone(), 72, 25, Duration.ofMinutes(15)).retryDeliveries();
+
+        verify(deliverService).deliverIfValidated(mine);
+        verify(repository, never()).findByDianStatus(any());
     }
 
     private static ElectronicDocument document(long id) {
