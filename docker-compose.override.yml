@@ -10,7 +10,18 @@ services:
     env_file:
       - path: .env.local
         required: true
+    # El perfil `local` NO viaja en la imagen: .dockerignore excluye application-local.yml del
+    # contexto de build a proposito (INF-34, la contrasena de MySQL acabo en el jar de ECR). Sin
+    # el, este contenedor arrancaba sin spring.datasource.url ni jwt.secret, porque application.yml
+    # no los define. Se monta en runtime: el fichero sigue fuera de la imagen y del registro.
+    #
+    # Las variables de `environment` de abajo son justo los placeholders que ese YAML lee
+    # (${DB_URL}, ${REDIS_URL}, ${S3_ENDPOINT}, los OTLP), ya apuntando a los hostnames de la red
+    # de compose en vez de a localhost.
+    volumes:
+      - ./src/main/resources/application-local.yml:/app/config/application-local.yml:ro
     environment:
+      SPRING_CONFIG_ADDITIONAL_LOCATION: /app/config/
       SPRING_PROFILES_ACTIVE: local
       DB_URL: jdbc:mysql://mysql:3306/${LOCAL_DB_NAME:-vetsoftware_db}
       DB_USERNAME: ${LOCAL_DB_USERNAME:-cronos}
