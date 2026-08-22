@@ -15,6 +15,8 @@ public record AdjustStockRequest(
          * Sede del ajuste. Opcional: null = sede única del empleado / Principal (según
          * alcance).
          */
-        Long branchId, @NotNull Long productId, @NotNull Integer delta,
-        @DecimalMin("0.0") BigDecimal unitCost, @NotBlank @Size(max = 255) String reason) {
+        Long branchId, @NotNull(message = "Debes seleccionar el producto.") Long productId,
+        @NotNull(message = "La cantidad del ajuste es obligatoria.") Integer delta,
+        @DecimalMin(value = "0.0", message = "El costo unitario no puede ser negativo.") BigDecimal unitCost,
+        @NotBlank(message = "El motivo del ajuste es obligatorio.") @Size(max = 255, message = "El motivo del ajuste no puede superar los 255 caracteres.") String reason) {
 }

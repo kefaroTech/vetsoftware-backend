@@ -1,11 +1,12 @@
 package com.vetsoftware.app.company.application.port.in;
 
 import com.vetsoftware.app.company.application.dto.CompanyDto;
-import java.util.List;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
- * Listado de empresas <b>acotado por el alcance del actor</b>.
+ * Listado de empresas <b>acotado por el alcance del actor</b> y
+ * <b>paginado</b>.
  *
  * <p>
  * El {@code companyId} no viene del cliente: lo pone el controller desde el
@@ -23,8 +24,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * dirección, teléfono y plan contratado de todos los tenants— a cualquiera de
  * ellos. El permiso dice <em>qué</em> puede hacer el empleado, nunca <em>sobre
  * qué filas</em>.
+ *
+ * <p>
+ * <b>Y por qué ahora devuelve una página.</b> El alcance decide <em>qué</em>
+ * filas, nunca <em>cuántas</em>. Con el alcance ya cerrado, un principal de
+ * plataforma seguía recibiendo el censo completo en una sola respuesta y la
+ * consola lo pintaba entero (VUE-06): el coste de la pantalla crecía con cada
+ * alta. La página la acota {@code Pages}, no el cliente.
  */
 public interface ListCompaniesUseCase {
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('company.read') and @authz.isMyCompany(#companyId))")
-    List<CompanyDto> listAll(Long companyId);
+    PageResult<CompanyDto> listAll(Long companyId, int page, int pageSize);
 }

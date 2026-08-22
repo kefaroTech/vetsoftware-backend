@@ -120,7 +120,8 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
             saldo(PRODUCT, BRANCH, 12, 5);
 
             List<StockView> filas = adapter
-                    .searchStock(new SearchStockCommand(COMPANY, null, null, false, 0, 20))
+                    .searchStock(
+                            new SearchStockCommand(COMPANY, null, null, false, List.of(), 0, 20))
                     .content();
 
             // El join va en la query: resolverlo en Java seria un N+1 por cada fila del
@@ -140,7 +141,8 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
             saldo(OTRO_PRODUCT, BRANCH, 10, 5);
 
             List<StockView> filas = adapter
-                    .searchStock(new SearchStockCommand(COMPANY, null, null, false, 0, 20))
+                    .searchStock(
+                            new SearchStockCommand(COMPANY, null, null, false, List.of(), 0, 20))
                     .content();
 
             assertThat(filas).filteredOn(StockView::lowStock).extracting(StockView::productId)
@@ -153,7 +155,9 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
             saldo(PRODUCT, BRANCH, 3, 5);
             saldo(OTRO_PRODUCT, BRANCH, 10, 5);
 
-            assertThat(adapter.searchStock(new SearchStockCommand(COMPANY, null, null, true, 0, 20))
+            assertThat(adapter
+                    .searchStock(
+                            new SearchStockCommand(COMPANY, null, null, true, List.of(), 0, 20))
                     .content()).extracting(StockView::productId).containsExactly(PRODUCT);
         }
 
@@ -164,14 +168,14 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
             saldo(PRODUCT, OTRA_BRANCH, 4, 5);
 
             // El `(:branchId IS NULL OR ...)` es lo que sostiene la vista consolidada.
-            assertThat(
-                    adapter.searchStock(new SearchStockCommand(COMPANY, null, null, false, 0, 20))
-                            .content())
-                    .hasSize(2);
-            assertThat(
-                    adapter.searchStock(new SearchStockCommand(COMPANY, BRANCH, null, false, 0, 20))
-                            .content())
-                    .hasSize(1);
+            assertThat(adapter
+                    .searchStock(
+                            new SearchStockCommand(COMPANY, null, null, false, List.of(), 0, 20))
+                    .content()).hasSize(2);
+            assertThat(adapter
+                    .searchStock(
+                            new SearchStockCommand(COMPANY, BRANCH, null, false, List.of(), 0, 20))
+                    .content()).hasSize(1);
         }
 
         @Test
@@ -180,11 +184,11 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
             saldo(PRODUCT, BRANCH, 12, 5);
             saldo(OTRO_PRODUCT, BRANCH, 8, 5);
 
-            assertThat(adapter
-                    .searchStock(new SearchStockCommand(COMPANY, null, "moxicil", false, 0, 20))
+            assertThat(adapter.searchStock(
+                    new SearchStockCommand(COMPANY, null, "moxicil", false, List.of(), 0, 20))
                     .content()).extracting(StockView::productId).containsExactly(PRODUCT);
-            assertThat(adapter
-                    .searchStock(new SearchStockCommand(COMPANY, null, "SKU-200", false, 0, 20))
+            assertThat(adapter.searchStock(
+                    new SearchStockCommand(COMPANY, null, "SKU-200", false, List.of(), 0, 20))
                     .content()).extracting(StockView::productId).containsExactly(OTRO_PRODUCT);
         }
 
@@ -195,10 +199,10 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
 
             // El adaptador normaliza " " a null antes de la query: si lo pasara tal
             // cual, el LIKE '% %' no encontraria nada y el listado saldria vacio.
-            assertThat(
-                    adapter.searchStock(new SearchStockCommand(COMPANY, null, "   ", false, 0, 20))
-                            .content())
-                    .hasSize(1);
+            assertThat(adapter
+                    .searchStock(
+                            new SearchStockCommand(COMPANY, null, "   ", false, List.of(), 0, 20))
+                    .content()).hasSize(1);
         }
 
         @Test
@@ -207,10 +211,10 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
             saldo(PRODUCT, BRANCH, 12, 5);
 
             // PageRequest revienta con size 0: el adaptador tiene que defenderse antes.
-            assertThat(
-                    adapter.searchStock(new SearchStockCommand(COMPANY, null, null, false, -1, 0))
-                            .pageSize())
-                    .isEqualTo(20);
+            assertThat(adapter
+                    .searchStock(
+                            new SearchStockCommand(COMPANY, null, null, false, List.of(), -1, 0))
+                    .pageSize()).isEqualTo(20);
         }
 
         @Test
@@ -218,9 +222,8 @@ class StockQueryAdapterIT extends AbstractDataJpaTest {
         void el_saldo_de_otra_empresa_no_se_ve() {
             saldo(PRODUCT, BRANCH, 12, 5);
 
-            assertThat(adapter.searchStock(
-                    new SearchStockCommand(SchemaSeed.OTRA_COMPANY_ID, null, null, false, 0, 20))
-                    .content()).isEmpty();
+            assertThat(adapter.searchStock(new SearchStockCommand(SchemaSeed.OTRA_COMPANY_ID, null,
+                    null, false, List.of(), 0, 20)).content()).isEmpty();
         }
     }
 

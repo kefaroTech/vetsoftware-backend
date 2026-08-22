@@ -14,7 +14,8 @@ public record CloseCashSessionRequest(@Valid List<CountLine> counts, String note
      * Conteo de un método: cuánto se contó físicamente (efectivo) o concilió
      * (no-efectivo).
      */
-    public record CountLine(@NotNull CashPaymentMethod method,
-            @NotNull @PositiveOrZero BigDecimal countedAmount) {
+    public record CountLine(
+            @NotNull(message = "Debes seleccionar el método de pago.") CashPaymentMethod method,
+            @NotNull(message = "El monto contado es obligatorio.") @PositiveOrZero(message = "El monto contado no puede ser negativo.") BigDecimal countedAmount) {
     }
 }

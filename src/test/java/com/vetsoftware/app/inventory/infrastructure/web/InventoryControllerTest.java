@@ -237,8 +237,8 @@ class InventoryControllerTest {
 
             mockMvc.perform(get("/inventory/stock")).andExpect(status().isOk());
 
-            verify(listStockUseCase)
-                    .search(new SearchStockCommand(COMPANY_ID, SEDE_RESUELTA, null, false, 0, 20));
+            verify(listStockUseCase).search(new SearchStockCommand(COMPANY_ID, SEDE_RESUELTA, null,
+                    false, List.of(), 0, 20));
         }
 
         @Test
@@ -249,8 +249,8 @@ class InventoryControllerTest {
             mockMvc.perform(get("/inventory/stock").param("q", "amox").param("lowStock", "true"))
                     .andExpect(status().isOk());
 
-            verify(listStockUseCase)
-                    .search(new SearchStockCommand(COMPANY_ID, SEDE_RESUELTA, "amox", true, 0, 20));
+            verify(listStockUseCase).search(new SearchStockCommand(COMPANY_ID, SEDE_RESUELTA,
+                    "amox", true, List.of(), 0, 20));
         }
 
         @Test

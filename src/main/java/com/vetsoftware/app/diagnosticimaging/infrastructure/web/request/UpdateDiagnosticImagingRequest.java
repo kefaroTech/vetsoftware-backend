@@ -5,8 +5,12 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
-public record UpdateDiagnosticImagingRequest(@NotNull LocalDate date,
-        @NotNull Long diagnosticImagingTypeId, @NotBlank @Size(max = 2000) String clinicalSigns,
-        @NotBlank @Size(max = 200) String studyType, @NotBlank @Size(max = 2000) String diagnosis,
-        @Size(max = 2000) String observations, @NotNull Long animalId, Long consultationId) {
+public record UpdateDiagnosticImagingRequest(
+        @NotNull(message = "La fecha del estudio es obligatoria.") LocalDate date,
+        @NotNull(message = "Debes seleccionar el tipo de imagen diagnóstica.") Long diagnosticImagingTypeId,
+        @NotBlank(message = "Los signos clínicos son obligatorios.") @Size(max = 2000, message = "Los signos clínicos no pueden superar los 2000 caracteres.") String clinicalSigns,
+        @NotBlank(message = "El tipo de estudio es obligatorio.") @Size(max = 200, message = "El tipo de estudio no puede superar los 200 caracteres.") String studyType,
+        @NotBlank(message = "El diagnóstico es obligatorio.") @Size(max = 2000, message = "El diagnóstico no puede superar los 2000 caracteres.") String diagnosis,
+        @Size(max = 2000, message = "Las observaciones no pueden superar los 2000 caracteres.") String observations,
+        @NotNull(message = "Debes seleccionar la mascota.") Long animalId, Long consultationId) {
 }

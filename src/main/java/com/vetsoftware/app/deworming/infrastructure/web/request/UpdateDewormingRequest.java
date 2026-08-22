@@ -6,8 +6,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
-public record UpdateDewormingRequest(@NotNull LocalDate date, LocalDate lastDeworming,
-        @NotNull DewormingType type, @NotBlank @Size(max = 200) String product,
-        @NotBlank @Size(max = 200) String dosage, LocalDate nextControl,
-        @Size(max = 2000) String observations, @NotNull Long animalId, Long consultationId) {
+public record UpdateDewormingRequest(
+        @NotNull(message = "La fecha de la desparasitación es obligatoria.") LocalDate date,
+        LocalDate lastDeworming,
+        @NotNull(message = "Debes seleccionar el tipo de desparasitación.") DewormingType type,
+        @NotBlank(message = "El producto es obligatorio.") @Size(max = 200, message = "El producto no puede superar los 200 caracteres.") String product,
+        @NotBlank(message = "La dosis es obligatoria.") @Size(max = 200, message = "La dosis no puede superar los 200 caracteres.") String dosage,
+        LocalDate nextControl,
+        @Size(max = 2000, message = "Las observaciones no pueden superar los 2000 caracteres.") String observations,
+        @NotNull(message = "Debes seleccionar la mascota.") Long animalId, Long consultationId) {
 }

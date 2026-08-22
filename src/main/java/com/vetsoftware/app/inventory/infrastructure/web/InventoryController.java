@@ -122,11 +122,16 @@ public class InventoryController {
     public PageResponse<StockView> stock(@RequestParam(required = false) Long branchId,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "false") boolean lowStock,
+            // Repetible (?productIds=1&productIds=2): el punto de venta pide los
+            // saldos de las lineas que esta pintando en vez del catalogo entero.
+            // Omitido o vacio = sin filtro; el tope lo impone SearchStockCommand.
+            @RequestParam(required = false) List<Long> productIds,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
         return PageResponse
                 .from(listStockUseCase.search(new SearchStockCommand(authz.currentCompanyId(),
-                        authz.resolveAccessibleBranch(branchId), q, lowStock, page, pageSize)));
+                        authz.resolveAccessibleBranch(branchId), q, lowStock,
+                        productIds == null ? List.of() : productIds, page, pageSize)));
     }
 
     @GetMapping("/products/{productId}/lots")

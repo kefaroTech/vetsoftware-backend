@@ -169,8 +169,9 @@ class MedicationScheduleControllerTest {
      * El {@code mode} era {@code String} y llegaba crudo al caso de uso pese al
      * {@code @Valid}: un valor mal escrito degradaba a «solo esta toma» y devolvia
      * 200 (#134). Ahora es enum, asi que lo desconocido lo corta el deserializador
-     * —400 {@code MALFORMED_REQUEST}, sin tocar el caso de uso— y el desenlace de
-     * la cascada viaja en el cuerpo de la respuesta.
+     * —400 {@code VALIDATION_FAILED} con el campo {@code mode} en {@code errors},
+     * sin tocar el caso de uso— y el desenlace de la cascada viaja en el cuerpo de
+     * la respuesta.
      */
     @Nested
     @DisplayName("reprogramacion de una toma")
@@ -209,7 +210,7 @@ class MedicationScheduleControllerTest {
             mockMvc.perform(patch("/medication-schedules/500/reschedule")
                     .contentType(MediaType.APPLICATION_JSON).content(BODY.formatted(modo)))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
             // Lo importante no es el 400 sino que no se reprograme nada: antes esto
             // movia la toma con el alcance equivocado y respondia 200.
@@ -235,7 +236,7 @@ class MedicationScheduleControllerTest {
             mockMvc.perform(patch("/medication-schedules/500/reschedule")
                     .contentType(MediaType.APPLICATION_JSON).content(BODY.formatted(modo)))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
             verify(rescheduleUseCase, never()).execute(any());
         }

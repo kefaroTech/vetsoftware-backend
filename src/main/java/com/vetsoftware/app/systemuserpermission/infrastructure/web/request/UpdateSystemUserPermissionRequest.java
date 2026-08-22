@@ -2,6 +2,7 @@ package com.vetsoftware.app.systemuserpermission.infrastructure.web.request;
 
 import jakarta.validation.constraints.NotNull;
 
-public record UpdateSystemUserPermissionRequest(@NotNull Long systemUserId,
-        @NotNull Long systemPermissionId) {
+public record UpdateSystemUserPermissionRequest(
+        @NotNull(message = "Debes seleccionar el usuario de sistema.") Long systemUserId,
+        @NotNull(message = "Debes seleccionar el permiso de sistema.") Long systemPermissionId) {
 }

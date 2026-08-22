@@ -59,11 +59,14 @@ public class CashTerminalController {
         return service.setActive(authz.currentCompanyId(), id, true);
     }
 
-    public record SaveTerminalRequest(@NotNull Long branchId,
-            @NotBlank @Size(max = 120) String name, @NotBlank @Size(max = 60) String code) {
+    public record SaveTerminalRequest(
+            @NotNull(message = "Debes seleccionar la sede.") Long branchId,
+            @NotBlank(message = "El nombre de la terminal es obligatorio.") @Size(max = 120, message = "El nombre de la terminal no puede superar los 120 caracteres.") String name,
+            @NotBlank(message = "El código de la terminal es obligatorio.") @Size(max = 60, message = "El código de la terminal no puede superar los 60 caracteres.") String code) {
     }
 
-    public record UpdateTerminalRequest(@NotBlank @Size(max = 120) String name,
-            @NotBlank @Size(max = 60) String code) {
+    public record UpdateTerminalRequest(
+            @NotBlank(message = "El nombre de la terminal es obligatorio.") @Size(max = 120, message = "El nombre de la terminal no puede superar los 120 caracteres.") String name,
+            @NotBlank(message = "El código de la terminal es obligatorio.") @Size(max = 60, message = "El código de la terminal no puede superar los 60 caracteres.") String code) {
     }
 }

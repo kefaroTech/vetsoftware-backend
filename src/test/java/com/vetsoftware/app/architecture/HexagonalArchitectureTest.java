@@ -380,6 +380,100 @@ class HexagonalArchitectureTest {
                     + " y el error sale del dominio con otra forma y otro errorCode,"
                     + " no como el error de campo que el front sabe pintar");
 
+    /**
+     * El primer anti-patrón de autorización del {@code CLAUDE.md} —«no aceptar
+     * {@code companyId} en un {@code XxxRequest} para recursos scoped al usuario»—,
+     * que hasta hoy no comprobaba ninguna de las veinticinco reglas de este
+     * fichero. Se verificaron una por una: la familia «por id»
+     * ({@link #TENANT_DEFENSA_EN_PROFUNDIDAD},
+     * {@link #OPERACIONES_POR_ID_SIN_EMPRESA_SOLO_SYSTEM},
+     * {@link #CARGA_POR_ID_ACOTADA_POR_EMPRESA},
+     * {@link #MUTACIONES_SQL_ACOTADAS_POR_EMPRESA}) mira {@code port/in},
+     * {@code application.usecase} y los {@code JpaRepository}, y la única que toca
+     * un {@code @RequestBody} —{@link #CUERPO_CON_RESTRICCIONES_SE_VALIDA}— solo
+     * comprueba que lleve {@code @Valid}: los componentes del tipo le dan igual.
+     * <b>Ninguna miraba la capa web de entrada</b>, que es por donde el dato entra.
+     *
+     * <p>
+     * <b>El ataque, que es lo que hay que entender si esto se pone rojo dentro de
+     * un año.</b> Alguien añade {@code Long companyId} a
+     * {@code CreateSurgeryRequest} para «cuadrar» con lo que el front ya mandaba,
+     * el controller lo pasa al command, y un empleado de la empresa A hace
+     * {@code POST /surgeries} con el identificador de la empresa B: <b>cirugía
+     * creada en la historia clínica de otro tenant</b>. Lo que hace al defecto peor
+     * que un olvido de gate es que el gate <em>está puesto y se lee bien</em>:
+     * {@code @PreAuthorize("@authz.isMyCompany(#command.companyId)")} compara el
+     * número que el atacante acaba de escribir <b>contra sí mismo</b> y devuelve
+     * {@code true} siempre. Las tres señales que mira un revisor —hay
+     * {@code @PreAuthorize}, nombra {@code companyId}, el SpEL apunta a un
+     * parámetro real— dicen que la autorización existe. La empresa se toma del
+     * principal, con {@code authz.currentCompanyId()}, y nunca del cuerpo.
+     *
+     * <p>
+     * <b>Nace dura y en cero</b>, sin {@code freeze(...)}, con el criterio normal
+     * del repositorio: el censo del árbol da cero. De los 162 ficheros de
+     * {@code ..infrastructure.web.request..} ninguno declara un componente
+     * {@code companyId}; las dos únicas apariciones textuales de la cadena son
+     * legítimas y la regla las deja fuera <em>por construcción</em>, no por lista
+     * —{@code RegisterUserRequest.companyIdentifier}, el NIT del registro público,
+     * porque compara por nombre exacto; y una mención dentro de un comentario de
+     * {@code RegisterPosSaleRequest}, que ArchUnit no ve porque lee bytecode—.
+     *
+     * <p>
+     * <b>La llave es el parámetro, no el paquete</b>, igual que en
+     * {@link #CUERPO_CON_RESTRICCIONES_SE_VALIDA} y por la misma razón: acotarla a
+     * {@code ..infrastructure.web..} dejaría pasar el controller escrito fuera de
+     * su paquete, que es justo el que nadie revisaría. Y desciende a los tipos
+     * anidados y a los argumentos genéricos de las colecciones, porque un
+     * {@code companyId} dentro de una línea de detalle de
+     * {@code List<LineaRequest>} es el mismo defecto con menos visibilidad.
+     *
+     * <p>
+     * <b>No lleva válvula de escape, y es una decisión, no un descuido.</b> El
+     * repositorio ya tiene el patrón —{@link NoAuthorizationRequired} con
+     * {@code reason()} obligatorio— y aquí se descartó por tres razones. La
+     * primera: <em>la ruta legítima ya existe y es más fuerte</em>. El endpoint de
+     * administración global que necesita nombrar una empresa la recibe en la URL
+     * ({@code /companies/{id}/…}), que es lo que hace hoy todo el árbol, y ahí la
+     * cubren {@link #TENANT_DEFENSA_EN_PROFUNDIDAD},
+     * {@link #OPERACIONES_POR_ID_SIN_EMPRESA_SOLO_SYSTEM} y
+     * {@link #GATE_COHERENTE_EN_FEATURE_DE_SYSTEM}, que le exigen
+     * {@code hasRole('SYSTEM')} o validación del tenant. Una exención en el cuerpo
+     * sería un camino por el que esa empresa <em>esquiva a las tres a la vez</em>,
+     * sin que ninguna pueda verlo. La segunda: la anotación iría sobre el
+     * {@code XxxRequest}, o sea sobre el artefacto cuya existencia <em>es</em> el
+     * defecto, y sería exactamente lo que añadiría el PR que introduce la fuga;
+     * {@code @NoAuthorizationRequired} funciona porque vive en un puerto, donde el
+     * revisor ya va a buscar el gate. La tercera: el censo es cero, así que no hay
+     * nada que indultar y una válvula estrenada por su primer usuario no es una
+     * excepción, es la derogación de la regla.
+     *
+     * <p>
+     * <b>Qué hacer si algún día hiciera falta de verdad</b>, para que nadie la
+     * resuelva borrando esta regla: mover la empresa a un {@code @PathVariable} y
+     * dejar que la cubra la familia «por id». Si ese camino no sirviera para un
+     * caso concreto, la exención se escribe como las de BE-26 —lista enumerada en
+     * <em>este</em> fichero, con su código y su motivo al lado del nombre, visible
+     * en el diff del PR— y jamás como una anotación por DTO, que es invisible en
+     * cuanto hay más de una.
+     *
+     * <p>
+     * <b>Lo que esta regla no ve.</b> Solo mira el nombre {@code companyId}: un
+     * {@code empresaId}, un {@code tenantId} o un {@code companyCode} pasarían sin
+     * que nadie los toque. Es a propósito —el nombre es la convención única del
+     * árbol y ampliarlo por sinónimos abre la puerta a falsos positivos como el
+     * {@code companyIdentifier} de arriba—, pero queda escrito para que el día que
+     * aparezca el primer sinónimo se sepa que hay que sumarlo aquí, no descubrirlo
+     * en producción.
+     */
+    @ArchTest
+    static final ArchRule EMPRESA_NO_VIAJA_EN_EL_CUERPO = methods()
+            .should(VetSoftwareConditions.noRecibirLaEmpresaEnElCuerpo())
+            .because("un companyId que el cliente escribe en el JSON convierte"
+                    + " @authz.isMyCompany(#command.companyId) en una comparacion del numero"
+                    + " consigo mismo: el gate se lee perfecto, siempre da true, y un empleado"
+                    + " de una empresa crea la fila en la historia clinica de otra");
+
     // ── BE-26: quién no lleva @Version, y por qué ────────────────────────────
 
     /**

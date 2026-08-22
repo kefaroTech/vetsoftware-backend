@@ -11,15 +11,21 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
-public record CreateAppointmentRequest(@NotNull LocalDateTime startAt,
+public record CreateAppointmentRequest(
+        @NotNull(message = "La fecha y hora de la cita son obligatorias.") LocalDateTime startAt,
         // Opcional: duración en minutos. Si no se envía, se usa la duración por
         // defecto de la empresa (ajuste appointment.default_duration_minutes) y, en
         // su defecto, 30 minutos.
-        @Min(1) @Max(Appointment.MAX_DURATION_MINUTES) Integer durationMinutes,
-        @NotNull AppointmentType type, @NotNull Long employeeId, Long animalId, Long ownerId,
-        @Size(max = 120) String clientName, @Size(max = 30) String clientPhone,
+        @Min(value = 1, message = "La duración debe ser de al menos 1 minuto.") @Max(value = Appointment.MAX_DURATION_MINUTES, message = "La duración no puede superar los "
+                + Appointment.MAX_DURATION_MINUTES + " minutos.") Integer durationMinutes,
+        @NotNull(message = "Debes seleccionar el tipo de cita.") AppointmentType type,
+        @NotNull(message = "Debes seleccionar el veterinario que atiende.") Long employeeId,
+        Long animalId, Long ownerId,
+        @Size(max = 120, message = "El nombre del cliente no puede superar los 120 caracteres.") String clientName,
+        @Size(max = 30, message = "El teléfono del cliente no puede superar los 30 caracteres.") String clientPhone,
         // Opcional: correo del contacto libre para enviarle la confirmación.
-        @Email @Size(max = 150) String clientEmail, @Size(max = 1000) String notes,
+        @Email(message = "El correo electrónico no tiene un formato válido.") @Size(max = 150, message = "El correo electrónico no puede superar los 150 caracteres.") String clientEmail,
+        @Size(max = 1000, message = "Las notas no pueden superar los 1000 caracteres.") String notes,
         // Opcional: sede de la cita. Si no se envía, se usa la sede "Principal" de la
         // empresa.
         Long branchId,

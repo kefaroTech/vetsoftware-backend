@@ -593,8 +593,10 @@
                         <!-- Reemplaza el informe del `test` con el de las dos fuentes. Va
                              declarado ANTES de check-floor: dentro de la misma fase, Maven
                              respeta el orden de declaracion. -->
+                        <!-- Sube a post-integration-test junto con check-floor, por el motivo que
+                             se explica alli. Siguen en la misma fase y en el mismo orden. -->
                         <id>report-all</id>
-                        <phase>verify</phase>
+                        <phase>post-integration-test</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
@@ -605,8 +607,25 @@
                     <execution>
                         <!-- Trinquete: el suelo global no puede bajar. Se sube a mano al
                              valor medido cuando un PR lo supera; nunca se baja. -->
+                        <!-- post-integration-test y no verify, que es donde vivia. Quien EJECUTA
+                             las *IT es `failsafe:integration-test`, una fase antes; quien las
+                             hace fallar es `failsafe:verify`, que solo lee failsafe-summary.xml.
+                             Colgando de post-integration-test los datos ya estan completos -el
+                             merge de arriba corre en esta misma fase y va declarado antes- y
+                             ademas la cobertura se mide AUNQUE una *IT este en rojo, que antes no
+                             pasaba: el build moria en `failsafe:verify` y el suelo no se
+                             comprobaba nunca.
+
+                             Esto NO invierte el problema. El detalle del fallo de una *IT ya se
+                             imprime durante `integration-test`, miles de lineas antes; lo unico
+                             que hace `failsafe:verify` es levantar el error. La cobertura, en
+                             cambio, no se imprime en ningun otro sitio: `jacoco:report` solo
+                             escribe ficheros, y el porcentaje solo sale por `jacoco:check`.
+                             Contrapartida real y aceptada: si fallan cobertura Y una *IT, el
+                             ultimo [ERROR] del log habla de cobertura y el de failsafe ya no se
+                             emite -el resultado sigue en target/failsafe-reports-. -->
                         <id>check-floor</id>
-                        <phase>verify</phase>
+                        <phase>post-integration-test</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>
@@ -667,8 +686,24 @@
                 </configuration>
                 <executions>
                     <execution>
+                        <!-- process-sources y no verify, que es donde vivia. Es un control de
+                             FUENTE: no necesita bytecode ni tests. En verify no se ejecutaba
+                             hasta el minuto 11:31 de un build de 11:45 (medido, no estimado), y
+                             sobre todo: si una *IT fallaba, `failsafe:verify` abortaba antes y
+                             este gate NO LLEGABA A CORRER. Un PR con un fallo de formato y otro
+                             de contrato necesitaba dos ciclos rojos de once minutos para
+                             enterarse de los dos. Aqui falla en segundos.
+
+                             Va DESPUES de validate, que es donde vive el enforcer: si el arbol de
+                             dependencias no es reproducible, eso se dice antes que un espacio de
+                             mas. Y va ANTES de compile, asi que no paga ni la compilacion.
+
+                             Efecto lateral asumido y deliberado: `mvn test` tambien lo ejecuta
+                             ahora, porque process-sources es anterior a test. Es coherente con el
+                             pre-commit, que ya exige spotless y checkstyle sobre lo staged: si
+                             esto te bloquea un `mvn test`, tampoco habrias podido commitear. -->
                         <id>spotless-check</id>
-                        <phase>verify</phase>
+                        <phase>process-sources</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>
@@ -711,8 +746,14 @@
                 </dependencies>
                 <executions>
                     <execution>
+                        <!-- Misma fase y mismo motivo que spotless-check: es un control de
+                             FUENTE, no necesita bytecode, y colgado de verify quedaba detras de
+                             `failsafe:verify` Y de spotless, asi que hacia falta un TERCER ciclo
+                             rojo para llegar a verlo. Corre despues de spotless porque este
+                             plugin se declara despues: dentro de una misma fase, Maven respeta el
+                             orden de declaracion de los plugins. -->
                         <id>checkstyle-check</id>
-                        <phase>verify</phase>
+                        <phase>process-sources</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>

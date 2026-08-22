@@ -157,6 +157,11 @@ import com.vetsoftware.app.withholdingconfig.domain.WithholdingConfigNotFoundExc
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ElementKind;
+import jakarta.validation.Path;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -164,6 +169,9 @@ import java.util.regex.Pattern;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.TypeMismatchException;
+import org.springframework.context.MessageSourceResolvable;
+import org.springframework.core.MethodParameter;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -178,13 +186,24 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.method.MethodValidationException;
+import org.springframework.validation.method.MethodValidationResult;
+import org.springframework.validation.method.ParameterErrors;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.filter.ServerHttpObservationFilter;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.exc.MismatchedInputException;
 
 // @Order(HIGHEST_PRECEDENCE): gana sobre el ProblemDetailsExceptionHandler interno de
 // Spring Boot (registrado con @Order(0) por spring.mvc.problemdetails.enabled=true), que
@@ -200,6 +219,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     /** Nombre de la constraint en el mensaje del driver: MySQL y PostgreSQL. */
     private static final Pattern CONSTRAINT_NAME = Pattern
             .compile("(?i)(?:for key|constraint)\\s*[\"'\\[]?([A-Za-z0-9_$.]{1,128})");
+
+    /**
+     * Detalle de los 400 de validación. Es el mismo texto en los cuatro caminos que
+     * producen errores por campo —cuerpo validado, cuerpo no deserializable,
+     * parámetros validados y parámetros no convertibles—, porque el front pinta el
+     * detalle como cabecera del formulario y no debe cambiar según por dónde falló.
+     */
+    private static final String VALIDATION_DETAIL = "La información enviada no es válida. Revisa los campos marcados.";
+
+    /**
+     * Tope de valores admitidos que se enumeran en el mensaje de un enum. Por
+     * encima, el mensaje deja de ser una ayuda y pasa a ser un volcado: se cae al
+     * texto genérico.
+     */
+    private static final int MAX_ENUM_VALUES_IN_MESSAGE = 12;
 
     private final AuditLogger auditLogger;
     private final Tracer tracer;
@@ -824,26 +858,378 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status,
             WebRequest request) {
-        List<Map<String, String>> errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> Map.of("field", fe.getField(), "message",
-                        fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "invalid"))
-                .toList();
-        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED",
-                "Request validation failed");
-        pd.setProperty("errors", errors);
+        ProblemDetail pd = validationProblem(fieldErrors(ex.getBindingResult().getFieldErrors()));
         return handleExceptionInternal(ex, pd, headers, status, request);
+    }
+
+    /**
+     * El 400 de validación, con la forma que el front ya sabe consumir: el
+     * {@code code} {@code VALIDATION_FAILED}, el {@code traceId} del span vivo y la
+     * lista {@code errors} de pares {@code {field, message}}.
+     *
+     * <p>
+     * Existe para que esa forma tenga <b>un solo sitio</b> donde se construye. Bean
+     * Validation no es el único camino por el que un dato del cliente se rechaza
+     * campo a campo: un valor de enum desconocido muere en el deserializador (#326)
+     * y un parámetro con restricciones lo valida Spring MVC por su cuenta (#327),
+     * los dos <em>antes</em> de que exista un BindingResult. Cuando cada camino
+     * redactaba su propia respuesta, el front recibía tres formas distintas para el
+     * mismo problema del usuario y solo sabía marcar el control en una.
+     */
+    private ProblemDetail validationProblem(List<Map<String, String>> errors) {
+        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", VALIDATION_DETAIL);
+        pd.setProperty("errors", errors);
+        return pd;
+    }
+
+    /**
+     * Errores de validación agrupados por campo, en el orden en que los produjo el
+     * validador y con <b>una sola entrada por campo</b>.
+     *
+     * <p>
+     * Lo de "una sola" no es cosmético. El front indexa esta lista por
+     * {@code field} para anclar cada mensaje a su control
+     * ({@code getProblemDetailFieldErrors}), así que dos entradas del mismo campo
+     * hacen que la segunda pise a la primera. Y el caso es corriente: una
+     * contraseña vacía viola a la vez {@code @NotBlank} y el {@code min} de
+     * {@code @Size}, y Hibernate Validator no garantiza en qué orden entrega las
+     * dos. Sin agrupar, cuál de los dos mensajes ve el usuario dependía del
+     * recorrido del validador.
+     *
+     * <p>
+     * El campo se conserva tal cual lo da Spring —el nombre de la propiedad del
+     * record, con la ruta completa en los anidados ({@code lines[0].quantity})—: es
+     * lo que el formulario del front usa como nombre de control, y no expone
+     * nombres de tabla ni de columna.
+     */
+    private static List<Map<String, String>> fieldErrors(List<FieldError> rawErrors) {
+        Map<String, String> byField = new LinkedHashMap<>();
+        for (FieldError fieldError : rawErrors) {
+            mergeFieldError(byField, fieldError.getField(), fieldError.getDefaultMessage());
+        }
+        return asFieldErrors(byField);
+    }
+
+    /**
+     * Acumula un mensaje bajo su campo respetando la invariante de una sola entrada
+     * por campo descrita arriba. Un campo en blanco se descarta: una entrada sin
+     * {@code field} no ancla a ningún control y el front la perdería igual.
+     */
+    private static void mergeFieldError(Map<String, String> byField, String field, String message) {
+        if (field == null || field.isBlank()) {
+            return;
+        }
+        String text = message == null || message.isBlank()
+                ? "El valor enviado no es válido."
+                : message;
+        byField.merge(field, text,
+                (first, second) -> first.contains(second) ? first : first + " " + second);
+    }
+
+    /** El mapa campo → mensaje con la forma que viaja en el JSON. */
+    private static List<Map<String, String>> asFieldErrors(Map<String, String> byField) {
+        return byField.entrySet().stream()
+                .map(entry -> Map.of("field", entry.getKey(), "message", entry.getValue()))
+                .toList();
     }
 
     // Body ilegible / no deserializable (JSON malformado, enum inválido, campo
     // requerido ausente que rompe el binding). El logueo lo hace
     // handleExceptionInternal.
+    //
+    // Un valor de enum desconocido NO pasa por Bean Validation (#326): falla en el
+    // deserializador, antes de que el record exista, así que ningún `message =` del
+    // DTO lo alcanza y hasta ahora la respuesta salía sin nombrar el campo. El alta
+    // de mascota tiene cinco selects de enum —gender, weightType, animalType,
+    // reproductiveState y size—, de modo que el usuario recibía un error genérico
+    // para los cinco y tenía que adivinar cuál corregir. Cuando Jackson sabe decir
+    // en qué propiedad se rompió, la respuesta pasa a tener la MISMA forma que la
+    // de
+    // Bean Validation; cuando no lo sabe —JSON sintácticamente roto, cuerpo
+    // ausente—, no hay control que marcar y se conserva MALFORMED_REQUEST.
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status,
             WebRequest request) {
-        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST",
-                "Invalid request content.");
+        List<Map<String, String>> errors = bodyBindingErrors(ex);
+        ProblemDetail pd = errors.isEmpty()
+                ? problem(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST", "Invalid request content.")
+                : validationProblem(errors);
         return handleExceptionInternal(ex, pd, headers, status, request);
+    }
+
+    /**
+     * Error por campo de un cuerpo que el deserializador no pudo convertir, o lista
+     * vacía si no hay ninguna propiedad a la que atribuirlo.
+     */
+    private static List<Map<String, String>> bodyBindingErrors(HttpMessageNotReadableException ex) {
+        if (!(ex.getCause() instanceof MismatchedInputException mismatch)) {
+            return List.of();
+        }
+        Map<String, String> byField = new LinkedHashMap<>();
+        mergeFieldError(byField, jsonFieldPath(mismatch.getPath()),
+                unconvertibleValueMessage(mismatch.getTargetType()));
+        return asFieldErrors(byField);
+    }
+
+    /**
+     * Ruta de la propiedad tal como la ve el front: el nombre del componente del
+     * record ({@code gender}), con la misma sintaxis de anidados que Spring usa en
+     * los errores de Bean Validation ({@code lines[0].quantity}). Se leen solo
+     * nombres de propiedad e índices — el {@code from()} de cada tramo es la clase
+     * Java y no se toca.
+     */
+    private static String jsonFieldPath(List<JacksonException.Reference> path) {
+        StringBuilder field = new StringBuilder();
+        for (JacksonException.Reference reference : path) {
+            String property = reference.getPropertyName();
+            if (property != null && !property.isBlank()) {
+                if (!field.isEmpty()) {
+                    field.append('.');
+                }
+                field.append(property);
+            } else if (reference.getIndex() >= 0 && !field.isEmpty()) {
+                field.append('[').append(reference.getIndex()).append(']');
+            }
+        }
+        return field.toString();
+    }
+
+    /**
+     * Mensaje para un valor que no se pudo convertir al tipo del campo. De un enum
+     * se enumeran los valores admitidos: son parte del contrato publicado en
+     * {@code api/openapi.json} y decirlos es justo lo que permite corregir. De
+     * cualquier otro tipo el mensaje es genérico, porque nombrar el tipo Java
+     * ({@code java.time.LocalDate}, {@code BigDecimal}) filtra interioridades sin
+     * dar nada accionable a cambio.
+     */
+    private static String unconvertibleValueMessage(Class<?> targetType) {
+        List<String> allowed = enumValues(targetType);
+        if (allowed.isEmpty() || allowed.size() > MAX_ENUM_VALUES_IN_MESSAGE) {
+            return "El valor enviado no es válido para este campo.";
+        }
+        return "El valor enviado no es válido. Valores admitidos: " + String.join(", ", allowed)
+                + ".";
+    }
+
+    /**
+     * Nombres de las constantes de {@code type} si es un enum, lista vacía si no lo
+     * es. Nunca devuelve el nombre de la clase. Contempla la constante con cuerpo
+     * propio, que es una subclase anónima y responde {@code false} a
+     * {@code isEnum()}.
+     */
+    private static List<String> enumValues(Class<?> type) {
+        if (type == null) {
+            return List.of();
+        }
+        Class<?> enumType = type.isEnum() ? type : type.getSuperclass();
+        if (enumType == null || !enumType.isEnum()) {
+            return List.of();
+        }
+        return Arrays.stream(enumType.getEnumConstants())
+                .map(constant -> ((Enum<?>) constant).name()).toList();
+    }
+
+    /**
+     * Validación de los argumentos del método del controller: un
+     * {@code @RequestParam} o un {@code @PathVariable} con restricciones
+     * ({@code @Min}, {@code @Size}) los valida Spring MVC por su cuenta, sin
+     * BindingResult y sin FieldError, así que {@code handleMethodArgumentNotValid}
+     * no los ve (#327). Sin este override la respuesta salía 400 pero sin
+     * {@code code}, sin {@code traceId} y sin nombrar el parámetro: el front no
+     * tenía ni con qué clasificarla ni qué marcar.
+     */
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+            HandlerMethodValidationException ex, HttpHeaders headers, HttpStatusCode status,
+            WebRequest request) {
+        return handleExceptionInternal(ex, validationProblem(parameterErrors(ex)), headers, status,
+                request);
+    }
+
+    /**
+     * La misma validación de parámetros cuando el proxy la <b>adapta</b>: con
+     * {@code spring.validation.method.adapt-constraint-violations=true}, un bean
+     * {@code @Validated} deja de lanzar el {@code ConstraintViolationException} de
+     * Jakarta y lanza el {@code MethodValidationException} de Spring (#330).
+     *
+     * <p>
+     * Es el mismo fallo del cliente con otro envoltorio, así que da la misma
+     * respuesta: cubrir las dos formas es lo que hace que <b>el valor de la
+     * propiedad deje de importar</b>. La alternativa —dejarlo atado al valor de hoy
+     * y vigilarlo— convierte una línea de configuración en una bomba de relojería:
+     * quien la active dentro de seis meses por un motivo ajeno reabriría el 500 de
+     * #327 sin relación aparente con lo que tocó. Sale gratis porque
+     * {@code MethodValidationException} y {@code HandlerMethodValidationException}
+     * implementan la misma interfaz, {@code MethodValidationResult}: no hay una
+     * segunda lógica que mantener en paralelo, solo una segunda puerta a la misma.
+     *
+     * <p>
+     * <b>Responde 400 aunque el contrato del método proponga 500</b>, que es el
+     * valor con el que Spring lo invoca. Lo que falló son los datos que escribió el
+     * cliente —los mismos que por la puerta de Jakarta ya dan 400—, y contarlo como
+     * caída del servidor es justo el defecto de #327: mancha la tasa de error,
+     * marca el span en rojo y despierta la alarma por un parámetro mal tecleado.
+     */
+    @Override
+    protected ResponseEntity<Object> handleMethodValidationException(MethodValidationException ex,
+            HttpHeaders headers, HttpStatus status, WebRequest request) {
+        return handleExceptionInternal(ex, validationProblem(parameterErrors(ex)), headers,
+                HttpStatus.BAD_REQUEST, request);
+    }
+
+    /**
+     * Los errores por campo de un resultado de validación de método, sea cual sea
+     * su envoltorio.
+     */
+    private static List<Map<String, String>> parameterErrors(MethodValidationResult result) {
+        Map<String, String> byField = new LinkedHashMap<>();
+        for (ParameterValidationResult parameterResult : result.getParameterValidationResults()) {
+            collectParameterErrors(parameterResult, byField);
+        }
+        return asFieldErrors(byField);
+    }
+
+    private static void collectParameterErrors(ParameterValidationResult result,
+            Map<String, String> byField) {
+        // Argumento-objeto (@ModelAttribute, @RequestPart): sus errores ya vienen con
+        // el nombre de la propiedad, igual que en Bean Validation.
+        if (result instanceof ParameterErrors errors) {
+            for (FieldError fieldError : errors.getFieldErrors()) {
+                mergeFieldError(byField, fieldError.getField(), fieldError.getDefaultMessage());
+            }
+            return;
+        }
+        String name = requestParameterName(result.getMethodParameter());
+        for (MessageSourceResolvable error : result.getResolvableErrors()) {
+            mergeFieldError(byField, name, error.getDefaultMessage());
+        }
+    }
+
+    /**
+     * Nombre del parámetro tal como lo escribe el cliente: el declarado en la
+     * anotación de binding y, si va sin nombre explícito, el del código fuente —el
+     * compilador conserva los reales, porque spring-boot-starter-parent activa
+     * {@code -parameters}—. Nunca el nombre del método ni el de la clase.
+     */
+    private static String requestParameterName(MethodParameter parameter) {
+        String annotated = annotatedParameterName(parameter);
+        if (!annotated.isEmpty()) {
+            return annotated;
+        }
+        String declared = parameter.getParameterName();
+        return declared == null ? "" : declared;
+    }
+
+    private static String annotatedParameterName(MethodParameter parameter) {
+        RequestParam requestParam = parameter.getParameterAnnotation(RequestParam.class);
+        if (requestParam != null) {
+            return firstNonBlank(requestParam.value(), requestParam.name());
+        }
+        PathVariable pathVariable = parameter.getParameterAnnotation(PathVariable.class);
+        if (pathVariable != null) {
+            return firstNonBlank(pathVariable.value(), pathVariable.name());
+        }
+        RequestHeader header = parameter.getParameterAnnotation(RequestHeader.class);
+        if (header != null) {
+            return firstNonBlank(header.value(), header.name());
+        }
+        return "";
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+        return second != null && !second.isBlank() ? second : "";
+    }
+
+    /**
+     * {@code @Validated} sobre la clase del controller no produce un
+     * {@code HandlerMethodValidationException}: el proxy de validación de método
+     * lanza el {@code ConstraintViolationException} crudo de Jakarta, que sin
+     * handler propio caía en {@code handleUnexpected} y salía como <b>500</b>
+     * (#327) — un error del cliente contado como caída del servidor, con su span
+     * marcado en rojo y su línea en ERROR.
+     *
+     * <p>
+     * Del {@code Path} de cada violación se publica solo el último tramo nombrado
+     * ({@code listAll.page} → {@code page}): el primero es el nombre del método
+     * Java, que no es un control del formulario ni algo que convenga publicar.
+     *
+     * <p>
+     * <b>No depende de la configuración</b>: esta es la forma que lanza el proxy
+     * por defecto, y la otra —{@code MethodValidationException}, la que aparece con
+     * {@code spring.validation.method.adapt-constraint-violations=true}— la atiende
+     * {@code handleMethodValidationException} con esta misma respuesta (#330). Da
+     * igual cómo esté la propiedad.
+     */
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ProblemDetail handleConstraintViolation(
+            jakarta.validation.ConstraintViolationException ex) {
+        Map<String, String> byField = new LinkedHashMap<>();
+        for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+            mergeFieldError(byField, violatedPropertyName(violation.getPropertyPath()),
+                    violation.getMessage());
+        }
+        // Solo los nombres de campo. El mensaje interpolado puede arrastrar el valor
+        // rechazado y esta clase no registra valores del cliente (ASVS V7.1.1).
+        log.info("Client error 400 on validated parameters: fields={}", byField.keySet());
+        return validationProblem(asFieldErrors(byField));
+    }
+
+    /**
+     * Último tramo nombrado de la ruta de una violación, saltándose los nodos que
+     * describen la invocación (método, constructor, parámetros cruzados, valor
+     * devuelto). Un anidado dentro de un contenedor pierde el prefijo —
+     * {@code lines[0].quantity} sale como {@code quantity}—: por aquí solo llegan
+     * parámetros validados, donde ese caso no se da, y el cuerpo con colecciones
+     * viaja por {@code handleMethodArgumentNotValid}, que sí conserva la ruta
+     * completa.
+     */
+    private static String violatedPropertyName(Path propertyPath) {
+        String field = "";
+        for (Path.Node node : propertyPath) {
+            ElementKind kind = node.getKind();
+            if (kind == ElementKind.METHOD || kind == ElementKind.CONSTRUCTOR
+                    || kind == ElementKind.CROSS_PARAMETER || kind == ElementKind.RETURN_VALUE) {
+                continue;
+            }
+            if (node.getName() != null && !node.getName().isBlank()) {
+                field = node.getName();
+            }
+        }
+        return field;
+    }
+
+    /**
+     * Conversión imposible de un parámetro o de una variable de ruta:
+     * {@code ?status=NINGUNO} sobre un enum, {@code /animals/abc} sobre un
+     * {@code Long}. Es el mismo defecto que el enum del cuerpo visto desde la query
+     * string —falla en el binding, antes de Bean Validation— y también salía 400
+     * sin {@code code} ni campo culpable.
+     *
+     * <p>
+     * El detalle que Spring trae de serie no se publica: dice
+     * {@code Failed to convert value of type 'java.lang.String' to required type…},
+     * que nombra tipos Java y repite el valor rechazado.
+     */
+    @Override
+    protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        Map<String, String> byField = new LinkedHashMap<>();
+        mergeFieldError(byField, typeMismatchFieldName(ex),
+                unconvertibleValueMessage(ex.getRequiredType()));
+        ProblemDetail pd = byField.isEmpty()
+                ? problem(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST", "Invalid request content.")
+                : validationProblem(asFieldErrors(byField));
+        return handleExceptionInternal(ex, pd, headers, status, request);
+    }
+
+    private static String typeMismatchFieldName(TypeMismatchException ex) {
+        return ex instanceof MethodArgumentTypeMismatchException mismatch
+                ? mismatch.getName()
+                : ex.getPropertyName();
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -1069,6 +1455,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         }
         if (ex instanceof HttpMessageNotReadableException) {
             return ex.getClass().getSimpleName();
+        }
+        // El mensaje de una conversión fallida lleva dentro el valor que tecleó el
+        // cliente ("For input string: \"...\"") y el tipo Java esperado; del mismo
+        // modo que en las de binding, se registra el tipo y el campo.
+        if (ex instanceof TypeMismatchException mismatch) {
+            return ex.getClass().getSimpleName() + " field=" + typeMismatchFieldName(mismatch);
         }
         return ex.getMessage();
     }
