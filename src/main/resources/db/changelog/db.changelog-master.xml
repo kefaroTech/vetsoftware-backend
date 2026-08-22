@@ -221,8 +221,6 @@
     <include file="db/changelog/migrations/217_add_token_retention_support.xml"/>
     <include file="db/changelog/migrations/218_scope_animal_colors_by_specie.xml"/>
     <include file="db/changelog/migrations/219_add_dian_job_lease.xml"/>
-    <include file="db/changelog/migrations/220_hash_seeded_superadmin_password.xml"/>
-    <include file="db/changelog/migrations/221_remove_seeded_superadmin.xml"/>
     <include file="db/changelog/migrations/222_add_duration_to_appointments.xml"/>
     <include file="db/changelog/migrations/223_seed_appointment_overlap_force_permission.xml"/>
     <include file="db/changelog/migrations/224_drop_audit_outbox.xml"/>
