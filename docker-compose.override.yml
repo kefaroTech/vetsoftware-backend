@@ -1,6 +1,26 @@
 services:
   backend:
     profiles: [application]
+    # ANTES DE LEVANTAR ESTO HAY QUE PREPARAR EL JAR. El Dockerfile ya no compila: es una
+    # sola etapa que copia un jar ya construido desde build/docker/application.jar, el unico
+    # fichero que .dockerignore deja entrar al contexto. Si no esta, el build muere con
+    #
+    #   ERROR: failed to solve: failed to compute cache key: failed to calculate checksum
+    #   of ref ...: "/build/docker/application.jar": not found
+    #
+    # y no hay forma de personalizar ese mensaje: BuildKit resuelve los origenes de COPY
+    # antes de ejecutar nada, asi que no existe ningun paso donde imprimir una explicacion.
+    # Por eso la explicacion vive aqui. Los dos comandos son:
+    #
+    #   mvn --batch-mode -DskipTests package
+    #   mkdir -p build/docker && cp target/vetsoftware-*.jar build/docker/application.jar
+    #
+    # AVISO (INF-34, y esta es la parte que cambio de sitio): ese `mvn package` corre en TU
+    # copia de trabajo, que tiene el application-local.yml de verdad -con la contrasena de
+    # MySQL-, y Maven lo empaqueta en BOOT-INF/classes. El jar es OPACO para .dockerignore:
+    # la exclusion que cerro INF-34 filtraba el CONTEXTO de build, y el secreto ya no pasa
+    # por ahi. Una imagen construida asi lleva el perfil local dentro y NO se publica jamas.
+    # El montaje de volumes/ de mas abajo es el camino correcto para el perfil local.
     build:
       context: .
       dockerfile: Dockerfile
@@ -10,10 +30,12 @@ services:
     env_file:
       - path: .env.local
         required: true
-    # El perfil `local` NO viaja en la imagen: .dockerignore excluye application-local.yml del
-    # contexto de build a proposito (INF-34, la contrasena de MySQL acabo en el jar de ECR). Sin
-    # el, este contenedor arrancaba sin spring.datasource.url ni jwt.secret, porque application.yml
-    # no los define. Se monta en runtime: el fichero sigue fuera de la imagen y del registro.
+    # El perfil `local` NO viaja en la imagen construida por CI: alli el jar sale de un checkout
+    # limpio, que no tiene application-local.yml porque esta en .gitignore (INF-34, la contrasena
+    # de MySQL acabo en el jar de ECR). OJO: la mitigacion ya NO es el .dockerignore -el jar es
+    # opaco para el, ver el aviso del bloque `build` de arriba-, sino donde se empaqueta el jar.
+    # Sin este perfil el contenedor arrancaba sin spring.datasource.url ni jwt.secret, porque
+    # application.yml no los define. Se monta en runtime: el fichero sigue fuera de la imagen.
     #
     # Las variables de `environment` de abajo son justo los placeholders que ese YAML lee
     # (${DB_URL}, ${REDIS_URL}, ${S3_ENDPOINT}, los OTLP), ya apuntando a los hostnames de la red

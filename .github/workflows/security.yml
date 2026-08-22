@@ -48,6 +48,13 @@ on:
 permissions:
   contents: read
 
+# Una sola declaracion del JDK: la usan `setup-java` y la clave de la cache de Maven.
+# Si se separaran, un cambio de version dejaria la clave apuntando al ~/.m2 del JDK
+# anterior sin que nada lo dijera. Identica a la de ci.yml, que es lo que hace que la
+# entrada de cache sea la MISMA y no una por workflow.
+env:
+  JAVA_VERSION: "25"
+
 concurrency:
   group: backend-security-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -77,8 +84,50 @@ jobs:
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
-          java-version: "25"
-          cache: maven
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # La clave NO es el hash del pom tal cual: neutraliza la <version> del propio
+      # proyecto -la unica linea que mueve el bump de version- y deja intacto todo lo
+      # demas, que es lo que de verdad decide el contenido de ~/.m2. Asi un merge que no
+      # toca dependencias acierta EXACTO y `actions/cache` se salta el guardado en vez de
+      # volver a subir los mismos 200 MB.
+      - name: Compute the Maven cache key
+        id: m2
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # La <version> del proyecto es la primera que aparece DESPUES de </parent>. La
+          # del <parent> y las de <dependencyManagement> si deciden el arbol y se quedan.
+          normalized="$RUNNER_TEMP/pom-cache-key.xml"
+          awk '
+            /<\/parent>/ { after_parent = 1 }
+            after_parent && !done && /<version>[^<]*<\/version>/ {
+              sub(/<version>[^<]*<\/version>/, "<version>IGNORED</version>"); done = 1
+            }
+            { print }
+          ' pom.xml > "$normalized"
+
+          # Si el awk dejara de casar, la version volveria a entrar en la clave y el
+          # fallo del 100 % regresaria en silencio, que es justo el defecto que esto cura.
+          if ! grep -q '<version>IGNORED</version>' "$normalized"; then
+            echo "::error file=pom.xml::No se pudo neutralizar la version del proyecto para la clave de cache de Maven"
+            exit 1
+          fi
+
+          echo "key=$(sha256sum "$normalized" | cut -c1-40)" >> "$GITHUB_OUTPUT"
+
+      # Antes del unico Maven del trabajo: `cyclonedx:makeBom` resuelve el arbol de
+      # dependencias completo, que es exactamente lo que acaba viviendo en ~/.m2.
+      - name: Restore the Maven repository cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          # La version del JDK entra en la clave para que el `restore-keys` no arrastre
+          # el ~/.m2 de un JDK anterior cuando se suba de version.
+          key: m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-${{ steps.m2.outputs.key }}
+          restore-keys: |
+            m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-
 
       # El objetivo suelto, sin compilar ni ejecutar pruebas: el SBOM sale del arbol
       # de dependencias resuelto, no de las clases. Segundos, no minutos. La misma

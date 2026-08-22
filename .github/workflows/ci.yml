@@ -11,8 +11,40 @@ name: Backend CI
 # Aqui se ignoraban "**/*.md" y "docs/**". Eso dejaba fuera del CI exactamente el cambio
 # que observability-rules existe para atrapar: renombrar o borrar un encabezado de
 # docs/ALERTAS_STACK_LOCAL.md al que apunta una anotacion runbook. El workflow arranca
-# ahora siempre y es el trabajo caro (Maven) el que se salta cuando el cambio solo
-# toca documentacion.
+# ahora siempre y es la parte cara de Maven -EJECUTAR la suite- la que se salta cuando el
+# cambio solo toca documentacion. El empaquetado NO se salta: ver "Contrato del jar" en el
+# job `unit`.
+#
+# Y LA COMPILACION DE LOS TESTS TAMPOCO SE SALTA, aunque lo pareciera. El rescate de ese
+# camino es `mvn -DskipTests ... package`, y `-DskipTests` apaga la EJECUCION de surefire
+# pero no la fase `test-compile`: el arbol de test entero se sigue compilando. Lo unico que
+# se la saltaria es `maven.test.skip`, que el pom deliberadamente NO cablea -su interruptor
+# `skipUTs` va sobre el parametro `skip` de surefire justo para no dejar sin efecto a
+# `-DskipTests`, que es la unica orden que tiene este camino-. Ver el comentario de
+# `skipUTs` en <properties> de pom.xml.
+#
+# COMO SE REPARTE EL TRABAJO, que es lo que decide la duracion del pipeline. Hubo un
+# unico job `verify` que corria `mvn verify` entero, y dentro de el surefire (~130 s con
+# forkCount=2) y failsafe (~297 s, un solo fork contra el MySQL de Testcontainers) iban
+# en SERIE aunque no dependen el uno del otro. Hoy son dos jobs en paralelo y un tercero
+# que junta lo que midieron:
+#
+#   changes -+-> unit          (surefire + package + el jar del contrato)  --+
+#            +-> integration   (failsafe + la fase `verify`)                -+-> coverage-gate
+#
+# El precio del reparto es una compilacion de mas -cada job compila su propio arbol- y el
+# arranque de dos runners extra; el resto es tiempo de pared que se solapa.
+#
+# LO QUE HAY QUE ENTENDER ANTES DE TOCAR ESTO. El suelo de cobertura
+# (`jacoco.line.minimum`, 0.98 en pom.xml) se mide sobre la FUSION de la cobertura
+# unitaria y la de integracion. Al repartirlas en dos maquinas, cada una produce media
+# medicion, y JaCoCo -esto es lo importante- NO FALLA CUANDO LE FALTAN DATOS: se salta el
+# gate y deja el build en verde ("Skipping JaCoCo execution due to missing execution data
+# file"). Es decir, el reparto introduce la unica forma que tiene este pipeline de mentir:
+# un 98 % que en realidad es "no me llego nada que medir". Por eso el job `coverage-gate`
+# comprueba a mano que los dos .exec llegaron y no estan vacios ANTES de invocar a Maven,
+# y exige la prueba POSITIVA de que jacoco:check corrio DESPUES. Ver alli "GUARDA
+# ANTI-FALSO-VERDE".
 on:
   pull_request:
     branches:
@@ -27,6 +59,17 @@ on:
 permissions:
   contents: read
 
+# Una sola declaracion del JDK: la usan los `setup-java` de todos los jobs de Maven y la
+# clave de la cache. Si se separaran, un cambio de version dejaria la clave apuntando al
+# ~/.m2 del JDK anterior sin que nada lo dijera. Y desde el reparto hay un segundo motivo,
+# mas silencioso: `unit` e `integration` compilan cada uno por su cuenta y sus dos
+# coberturas se fusionan despues; JaCoCo identifica cada clase por el CRC64 de su
+# bytecode, asi que dos JDK distintos producirian dos bytecodes distintos y la mitad de
+# integracion dejaria de casar. `coverage-gate` lo comprueba, pero esta linea es lo que lo
+# evita.
+env:
+  JAVA_VERSION: "25"
+
 concurrency:
   # Cuando lo llama la publicacion, `github.workflow` es el del llamador, asi que
   # este grupo no colisiona con el de los pull requests. Y solo se cancela lo que
@@ -36,16 +79,24 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  verify:
-    name: Verify backend
+  # La deteccion era el primer step del job unico, que era tambien el unico que necesitaba
+  # leerla. Al partirlo, la leen `unit`, `integration`, `coverage-gate` y `container-image`,
+  # y solo hay dos formas de darsela: un job propio, o copiar el script en cada uno de
+  # ellos. Se elige el job propio por lo mismo que documenta `lint` mas abajo: una segunda
+  # definicion de "que es un cambio de codigo" esta destinada a desincronizarse, y el dia
+  # que lo haga un job creeria que hay codigo y otro que no -es decir, correria media
+  # verificacion sin que nada lo diga-.
+  #
+  # Cuesta el arranque de un runner y un checkout con historia completa (~25 s) por delante
+  # de dos jobs que despues van en paralelo. Es el unico que necesita esa historia: los
+  # demas reciben la decision ya tomada.
+  changes:
+    name: Detect what changed
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 10
     outputs:
       container-image: ${{ steps.changes.outputs.docker }}
       code: ${{ steps.changes.outputs.code }}
-    env:
-      CI: true
-      HUSKY: 0
 
     steps:
       - name: Check out repository
@@ -89,49 +140,741 @@ jobs:
             echo "Ni Dockerfile ni .dockerignore cambian; no se construye la imagen."
           fi
 
-          # Un cambio que solo toca documentacion no compila ni ejecuta pruebas, pero
-          # sigue pasando por observability-rules, que es el gate que le corresponde.
+          # Un cambio que solo toca documentacion no ejecuta la suite, pero sigue pasando
+          # por observability-rules y por `lint`, que son los gates que le corresponden, y
+          # sigue empaquetando el jar: la publicacion construye imagen tambien en ese caso.
           nondoc="$(git diff --name-only "$BASE_SHA" HEAD | grep -Ev '^docs/|\.md$' || true)"
           if [ -n "$nondoc" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
             echo "El cambio toca codigo; se verifica con Maven."
           else
             echo "code=false" >> "$GITHUB_OUTPUT"
-            echo "El cambio solo toca documentacion; se omite la verificacion con Maven."
+            echo "El cambio solo toca documentacion; se omite la suite y solo se empaqueta el jar."
           fi
 
+  # La mitad unitaria del antiguo `verify`, y el unico job de Maven que corre en LOS DOS
+  # caminos: tambien en uno solo-documentacion, porque es quien produce el jar del contrato.
+  #
+  # LLEGA HASTA `package` Y NO HASTA `verify`, a proposito: `package` es la fase anterior a
+  # `integration-test`, asi que las *IT se quedan fuera por ciclo de vida y no hace falta
+  # ningun `-DskipITs` suelto que alguien pueda copiar a otro sitio. Lo que si corre aqui,
+  # entero y sin repartir, es surefire: sus DOS ejecuciones -`default-test` en dos forks y
+  # `archunit-tests` en uno solo- viven en este job y en esta maquina. Repartir las dos
+  # clases de ArchUnit entre jobs seria repartirlas entre MAQUINAS, y la solucion del fork
+  # compartido -que existe porque las dos escriben en config/archunit/violation-store, cuyo
+  # indice `stored.rules` es un fichero unico- dejaria de proteger nada. Ver el comentario
+  # de la ejecucion `archunit-tests` en pom.xml.
+  unit:
+    name: Run unit tests and package
+    needs: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      # Contrato del jar (ver el step "Upload the boot jar"), DECLARADO COMO DOCUMENTACION
+      # Y NO COMO CABLE. Vale `true` en los dos caminos -tambien en un cambio
+      # solo-documentacion- y esa es la invariante de la que depende el `Dockerfile`, que
+      # ya no compila el proyecto: quien construya la imagen puede contar con que
+      # `backend-boot-jar` existe.
+      #
+      # NADIE LO LEE, y conviene decirlo aqui para que nadie lo tome por un mecanismo:
+      # cero referencias a `needs.unit.outputs.boot-jar` en todo .github/, y `ci.yml`
+      # tampoco lo re-exporta en su `workflow_call`, asi que un llamador no lo ve. Lo que
+      # de verdad ata el contrato es el `if-no-files-found: error` del step que sube el
+      # artefacto, que hace fallar a ESTE job si el jar no esta. Se conserva el output
+      # porque nombra la invariante en el sitio donde se lee el job; si algun dia un
+      # consumidor quiere ramificar sobre el, hay que empezar por exponerlo en
+      # `workflow_call`.
+      boot-jar: ${{ steps.boot-jar.outputs.artifact-id != '' }}
+    env:
+      CI: true
+      HUSKY: 0
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sin `fetch-depth: 0`: la comparacion contra la base la hizo el job `changes` y
+          # aqui llega ya resuelta. Nada de lo que corre aqui lee la historia -los tests de
+          # .github/scripts son unitarios y no invocan git-.
+          persist-credentials: false
+
+      # Sin `if`: los dos caminos necesitan Maven. El de codigo para la suite, y el de
+      # solo-documentacion para empaquetar el jar del contrato (ver mas abajo).
+      #
+      # Aqui vivia `cache: maven`, y NUNCA acerto: `setup-java` hace coincidencia exacta
+      # del hash de pom.xml y no emite `restore-keys`, mientras `publish-dev-image.yml`
+      # reescribe la version del pom en cada merge a develop. El hash no se repetia jamas
+      # -el log decia literalmente "maven cache is not found" en todos los runs- y encima
+      # escribia 143-240 MB de cache inservible por merge, que expulsaban por LRU los
+      # blobs de buildx del presupuesto compartido de 10 GB. Lo sustituye el step de abajo.
       - name: Set up Java
-        if: steps.changes.outputs.code == 'true'
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
-          java-version: "25"
-          cache: maven
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # El "(read-only)" del nombre NO es decorativo: en este fichero hay cuatro steps de
+      # cache de Maven y solo UNO es el bloque canonico que se mantiene byte a byte
+      # identico en security.yml, codeql.yml, prepare-release.yml y publish-release.yml
+      # -el del job `integration`, que es el unico que GUARDA-. Los otros tres, este
+      # incluido, son `actions/cache/restore` de solo lectura con claves que no casan a
+      # proposito. Sin el sufijo, quien verifique esa sincronizacion "por nombre" se
+      # encuentra un desajuste falso de tres steps.
+      - name: Restore the Maven repository cache (read-only)
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          # Solo lectura y por prefijo, igual que `lint`. Quien calcula la clave exacta y
+          # GUARDA es `integration`, y solo el: `mvn verify` resuelve un superconjunto
+          # estricto de lo que resuelve `mvn package` -le suma failsafe y
+          # dependency:analyze-only-, asi que su ~/.m2 es el mas completo de los tres. Dos
+          # jobs guardando la misma clave dentro del mismo run pelearian por subir lo
+          # mismo. `key` no casa nunca a proposito.
+          key: m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-unit
+          restore-keys: |
+            m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-
 
       - name: Set up Node.js
-        if: steps.changes.outputs.code == 'true'
+        if: needs.changes.outputs.code == 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           cache: npm
 
       - name: Install workflow tooling
-        if: steps.changes.outputs.code == 'true'
+        if: needs.changes.outputs.code == 'true'
         run: npm ci --ignore-scripts
 
       - name: Audit workflow tooling dependencies
-        if: steps.changes.outputs.code == 'true'
+        if: needs.changes.outputs.code == 'true'
         run: npm audit --audit-level=high
 
       # Los scripts de .github/scripts deciden que version lleva cada artefacto;
       # un error ahi se paga en el despliegue, no en el build.
+      #
+      # Se quedan en este job y no en `lint` porque aqui son GRATIS: `unit` termina antes
+      # que `integration`, que es el carril largo, y estos ~45 s caben enteros debajo de esa
+      # diferencia.
       - name: Verify workflow tooling
-        if: steps.changes.outputs.code == 'true'
+        if: needs.changes.outputs.code == 'true'
         run: npm test
 
-      - name: Verify with Maven
-        if: steps.changes.outputs.code == 'true'
-        run: mvn --batch-mode --no-transfer-progress verify
+      # spotless y checkstyle salen de aqui: los corre el job `lint` en paralelo. Eran 42 s
+      # (25 + 17 medidos, siempre en frio) que se sumaban al job mas largo del repositorio
+      # sin necesitar nada de lo que este produce -son controles de FUENTE-. Cachear
+      # .build-cache/ no los arregla: sus indices incrementales comparan por fecha de
+      # modificacion y `actions/checkout` reescribe todos los mtimes en cada run.
+      - name: Run the unit suite and package with Maven
+        if: needs.changes.outputs.code == 'true'
+        run: mvn --batch-mode --no-transfer-progress -Dspotless.check.skip=true -Dcheckstyle.skip=true package
+
+      # NINGUN TEST SE PIERDE EN EL REPARTO, y esto es lo que lo comprueba en vez de
+      # suponerlo. Surefire con su `skip` activado no falla: no ejecuta nada y termina en
+      # verde, asi que "las 10.183 unitarias pasaron" y "no se ejecuto ninguna" se ven
+      # igual desde fuera si nadie mira los informes.
+      #
+      # La cifra sale de ejecutar la suite entera dos veces con resultado identico
+      # (2026-08-22, arbol 1.8.0-dev.1): 10.183 de surefire = 10.154 de `default-test` +
+      # 29 de `archunit-tests`, 1 skipped y 0 fallos.
+      - name: Assert the unit suite really ran
+        if: needs.changes.outputs.code == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          informes=(target/surefire-reports/TEST-*.xml)
+          if [ "${#informes[@]}" -eq 0 ]; then
+            echo "::error::surefire no dejo un solo informe: no se ejecuto ninguna prueba unitaria."
+            exit 1
+          fi
+
+          # Las dos clases de ArchUnit tienen que haber corrido AQUI, en este job y en el
+          # fork unico de la ejecucion `archunit-tests`. Si un reparto futuro se las llevara
+          # a maquinas distintas, las dos reescribirian `stored.rules` -indice unico del
+          # violation-store- y la que perdiera su foto contaria su deuda historica entera
+          # como violacion nueva, sin que el diff del store lo explique.
+          for clase in HexagonalArchitectureTest PiramideDeTestsTest; do
+            encontrado=(target/surefire-reports/TEST-*."$clase".xml)
+            if [ "${#encontrado[@]}" -eq 0 ]; then
+              echo "::error::No hay informe de $clase: la ejecucion archunit-tests no corrio en este job."
+              exit 1
+            fi
+          done
+
+          # SE CUENTAN ELEMENTOS <testcase>, NO EL ATRIBUTO tests="N" DEL <testsuite>.
+          # Surefire SUBCUENTA ese atributo en las clases con @Nested y
+          # @ParameterizedTest: medido sobre los informes de la suite completa, el
+          # atributo suma 9.985 y los elementos 10.183 (~2 % de diferencia). La guarda
+          # detectaba el cero igual con los dos, pero el numero que se publica abajo en
+          # el resumen es el que el siguiente que lo mire tomara por linea base, y era
+          # falso. Failsafe no tiene este problema: su <completed> del
+          # failsafe-summary.xml si cuenta uno por <testcase> (comprobado, 1.069 = 1.069).
+          #
+          # `gsub` y no `grep -c`: cuenta todas las apariciones aunque dos <testcase>
+          # compartan linea. Se le pasan los informes ya recogidos arriba y no un glob
+          # nuevo, para que awk no se quede leyendo stdin si algun dia el glob no casa.
+          total="$(awk '{ s += gsub(/<testcase /, "&") } END { print s + 0 }' "${informes[@]}")"
+          if [ "$total" -eq 0 ]; then
+            echo "::error::Los informes de surefire suman 0 pruebas."
+            exit 1
+          fi
+          echo "Pruebas unitarias ejecutadas: $total, en ${#informes[@]} clases."
+          echo "Pruebas unitarias (surefire): **$total**" >> "$GITHUB_STEP_SUMMARY"
+
+      # La huella del bytecode que JaCoCo acaba de medir. `integration` calcula la suya con
+      # la MISMA orden sobre SU compilacion y `coverage-gate` compara las dos: los .exec que
+      # se van a fusionar tienen que hablar de las mismas clases, porque JaCoCo identifica
+      # cada una por el CRC64 de sus bytes y no por su nombre. Motivo completo en la guarda
+      # de `coverage-gate`.
+      - name: Fingerprint the compiled classes
+        if: needs.changes.outputs.code == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          find target/classes -type f -name '*.class' -print0 | LC_ALL=C sort -z \
+            | xargs -0 sha256sum | sha256sum | cut -d ' ' -f 1 > target/classes-digest-unit.txt
+          echo "Huella del bytecode (unit): $(cat target/classes-digest-unit.txt)"
+
+      # La mitad unitaria de la cobertura, que sola no significa nada: el suelo se mide
+      # sobre la fusion, en `coverage-gate`. `if-no-files-found: error` es parte de la
+      # guarda anti-falso-verde: si el .exec no existiera, el fallo tiene que salir AQUI,
+      # donde el motivo es evidente, y no dos jobs mas alla convertido en un gate que se
+      # salta solo.
+      - name: Upload the unit coverage
+        if: needs.changes.outputs.code == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jacoco-unit
+          path: |
+            target/jacoco.exec
+            target/classes-digest-unit.txt
+          if-no-files-found: error
+          retention-days: 1
+
+      # El bytecode que se midio, para que `coverage-gate` no tenga que recompilarlo. No es
+      # solo velocidad: recompilar alli seria una TERCERA compilacion, y JaCoCo casa los
+      # datos con las clases por CRC64. Reutilizando exactamente estas se elimina de raiz la
+      # posibilidad de medir sobre un bytecode que nadie ejecuto.
+      - name: Upload the compiled classes
+        if: needs.changes.outputs.code == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: backend-classes
+          path: target/classes
+          if-no-files-found: error
+          retention-days: 1
+
+      # Contrato del jar, la mitad que solo aplica al camino solo-documentacion. El
+      # `Dockerfile` ya no compila el proyecto por segunda vez dentro de la imagen: consume
+      # el jar que sale de aqui. Pero en un cambio solo-documentacion Maven no corria y no
+      # habia jar, mientras `publish-dev-image.yml` seguia construyendo y publicando imagen
+      # igualmente (medido: runs de 184-310 s que si publican). Sin este step, ese camino
+      # se quedaria sin artefacto y el build de la imagen se caeria.
+      #
+      # En un run normal (code == 'true') NO corre: el `package` de arriba ya dejo el jar
+      # en target/, y empaquetar dos veces seria pagar el ahorro que esto persigue.
+      #
+      # `-DskipTests` sigue funcionando aqui, y no es casualidad: el interruptor `skipUTs`
+      # de pom.xml se cableo sobre el parametro `skip` de surefire y NO sobre `skipTests`,
+      # justo para no dejar sin efecto a la unica orden que existe para no ejecutar la
+      # suite. Ver su comentario en <properties>.
+      - name: Package the boot jar (documentation-only change)
+        if: needs.changes.outputs.code != 'true'
+        run: mvn --batch-mode --no-transfer-progress -DskipTests -Dspotless.check.skip=true -Dcheckstyle.skip=true package
+
+      # El artefacto que consume quien construye la imagen. `*.jar.original` es el jar sin
+      # empaquetar que deja el `repackage` de Spring Boot: el runtime hace `java -jar` sobre
+      # lo que encuentre en /app, asi que dos jars ahi es un arranque roto.
+      #
+      # `if-no-files-found: error` es deliberado: es lo que convierte el contrato en una
+      # invariante verificada en vez de en una suposicion. Retencion de un dia porque el
+      # unico consumidor es otro job del mismo run.
+      - name: Upload the boot jar
+        id: boot-jar
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: backend-boot-jar
+          path: |
+            target/*.jar
+            !target/*.jar.original
+            !target/*-sources.jar
+            !target/*-javadoc.jar
+          if-no-files-found: error
+          retention-days: 1
+
+  # La mitad de integracion, y el carril largo del pipeline (~297 s de failsafe). Por eso
+  # arranca en cuanto `changes` decide, con el pre-pull de las imagenes de Testcontainers
+  # por delante.
+  #
+  # ESTE JOB TIENE QUE LLEGAR A `verify`, no le vale `integration-test`: quien convierte el
+  # fallo de una *IT en build rojo es `failsafe:verify`, no `failsafe:integration-test`. De
+  # la fase `verify` cuelga ademas `dependency:analyze-only` (#111, el gate que impide que
+  # vuelva a viajar en el jar un starter que nadie usa), asi que los dos siguen corriendo
+  # exactamente una vez por run: aqui.
+  #
+  # Y como el camino hasta `verify` pasa por la fase `test`, sin `-DskipUTs=true` este job
+  # volveria a ejecutar las 10.183 unitarias que `unit` esta corriendo en paralelo, que es
+  # justo lo que el reparto viene a evitar. Ese interruptor esta declarado en pom.xml con
+  # default `false`: un `mvn verify` local, o el de cualquier otro workflow, no se entera de
+  # que existe.
+  integration:
+    name: Run integration tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: true
+      HUSKY: 0
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # La clave NO es el hash del pom tal cual: neutraliza la <version> del propio
+      # proyecto -la unica linea que mueve el bump de version- y deja intacto todo lo
+      # demas, que es lo que de verdad decide el contenido de ~/.m2. Asi un merge que no
+      # toca dependencias acierta EXACTO y `actions/cache` se salta el guardado en vez de
+      # volver a subir los mismos 200 MB.
+      - name: Compute the Maven cache key
+        id: m2
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # La <version> del proyecto es la primera que aparece DESPUES de </parent>. La
+          # del <parent> y las de <dependencyManagement> si deciden el arbol y se quedan.
+          normalized="$RUNNER_TEMP/pom-cache-key.xml"
+          awk '
+            /<\/parent>/ { after_parent = 1 }
+            after_parent && !done && /<version>[^<]*<\/version>/ {
+              sub(/<version>[^<]*<\/version>/, "<version>IGNORED</version>"); done = 1
+            }
+            { print }
+          ' pom.xml > "$normalized"
+
+          # Si el awk dejara de casar, la version volveria a entrar en la clave y el
+          # fallo del 100 % regresaria en silencio, que es justo el defecto que esto cura.
+          if ! grep -q '<version>IGNORED</version>' "$normalized"; then
+            echo "::error file=pom.xml::No se pudo neutralizar la version del proyecto para la clave de cache de Maven"
+            exit 1
+          fi
+
+          echo "key=$(sha256sum "$normalized" | cut -c1-40)" >> "$GITHUB_OUTPUT"
+
+      # EL UNICO JOB QUE GUARDA LA CACHE, y le toca por ser quien resuelve el arbol mas
+      # completo: `mvn verify` es un superconjunto estricto de `mvn package`. Que se salte
+      # en un run solo-documentacion no deja la cache sin poblar: si solo cambian ficheros
+      # de docs, el pom no cambia, la clave no cambia y la entrada ya existe.
+      - name: Restore the Maven repository cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          # La version del JDK entra en la clave para que el `restore-keys` no arrastre
+          # el ~/.m2 de un JDK anterior cuando se suba de version.
+          key: m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-${{ steps.m2.outputs.key }}
+          restore-keys: |
+            m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-
+
+      # Testcontainers descarga sus imagenes en serie y dentro del camino critico de
+      # failsafe: medido, 3,26 s de ryuk + 14,81 s de mysql + 3,08 s de redis. Aqui bajan
+      # las tres a la vez y en segundo plano, de modo que el pull solape con la resolucion
+      # de dependencias y la compilacion (~90 s) en vez de sumarse a ellas.
+      #
+      # Vive en ESTE job desde el reparto: en el de unitarias no pintaba nada -alli no se
+      # levanta un solo contenedor, porque AbstractDataJpaTest es abstract y sus hijas son
+      # *IT, que corren aqui-.
+      #
+      # No es un gate y no puede romper el job: si un pull falla, Testcontainers vuelve a
+      # intentarlo por su cuenta cuando arranque el contenedor, exactamente como hoy.
+      #
+      # MANTENER SINCRONIZADO con las clases base que declaran las imagenes. Una version
+      # que se quede atras aqui no rompe nada: se descarga una imagen de mas y el pull real
+      # sigue en el camino critico, que es la situacion anterior a este step.
+      #   mysql:8.4          -> src/test/java/com/vetsoftware/app/testsupport/AbstractDataJpaTest.java:52
+      #                         src/test/java/com/vetsoftware/app/testsupport/AbstractFullApplicationIT.java:65
+      #   redis:7.4.8-alpine -> src/test/java/com/vetsoftware/app/testsupport/AbstractFullApplicationIT.java:73
+      #   testcontainers/ryuk:0.14.0 -> NO esta en el repositorio: lo elige la propia
+      #                         libreria (testcontainers 2.0.5, gestionada por el BOM). El
+      #                         valor sale del log de failsafe y se revisa al subirla.
+      - name: Pre-pull Testcontainers images
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          log="$RUNNER_TEMP/testcontainers-pull.log"
+          for image in mysql:8.4 redis:7.4.8-alpine testcontainers/ryuk:0.14.0; do
+            # La salida NO puede heredar la del step: el runner espera a que se cierren
+            # sus descriptores y el paso se quedaria bloqueado justo lo que viene a evitar.
+            nohup docker pull --quiet "$image" >> "$log" 2>&1 &
+          done
+          disown -a 2>/dev/null || true
+          echo "Descargando en segundo plano: mysql:8.4, redis:7.4.8-alpine, testcontainers/ryuk:0.14.0"
+
+      # LAS SEIS PROPIEDADES DE LA ORDEN, UNA A UNA, porque cada una apaga algo que otro job
+      # del mismo run esta haciendo ya sobre este mismo commit:
+      #
+      #   skipUTs                las 10.183 unitarias las corre `unit`. Sin esto se
+      #                          ejecutarian aqui otra vez, de camino a `verify`.
+      #   skipCoverageCheck      el suelo se mide sobre la FUSION de las dos coberturas, y
+      #                          aqui solo existe la de integracion: comprobarlo no es que
+      #                          sobre, es que MENTIRIA -daria rojo por un motivo falso-. El
+      #                          sitio donde se mide con los dos .exec delante es
+      #                          `coverage-gate`.
+      #   spotless / checkstyle  controles de FUENTE: los corre `lint` en paralelo.
+      #   cyclonedx              el SBOM lo produce `unit` en su `package`; el de aqui seria
+      #                          el mismo fichero por segunda vez y no lo consume nadie -los
+      #                          consumidores del repo, security.yml y publish-release.yml,
+      #                          generan el suyo-.
+      #   spring-boot.repackage  el jar ejecutable lo produce `unit`, que ademas es quien lo
+      #                          sube como `backend-boot-jar`. Las *IT no lo tocan: corren
+      #                          contra target/classes.
+      #
+      # Ninguna apaga un gate: los seis siguen ocurriendo exactamente una vez por run, en el
+      # job que corresponde.
+      - name: Run the integration suite with Maven
+        run: |
+          mvn --batch-mode --no-transfer-progress \
+            -DskipUTs=true \
+            -DskipCoverageCheck=true \
+            -Dspotless.check.skip=true \
+            -Dcheckstyle.skip=true \
+            -Dcyclonedx.skip=true \
+            -Dspring-boot.repackage.skip=true \
+            verify
+
+      # La otra mitad de "ningun test se pierde". `failsafe:verify` con cero *IT ejecutadas
+      # NO falla: `failIfNoTests` es false por defecto, asi que un resumen con
+      # <completed>0</completed> pasa en verde. Es decir, el dia que un cambio deje las *IT
+      # sin recoger -un `-DskipITs` copiado, un naming que deja de casar- el pipeline diria
+      # que la integracion esta bien sin haber levantado un solo contenedor.
+      - name: Assert the integration suite really ran
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          resumen=target/failsafe-reports/failsafe-summary.xml
+          if [ ! -s "$resumen" ]; then
+            echo "::error::failsafe no dejo resumen: no se ejecuto ninguna prueba de integracion."
+            exit 1
+          fi
+
+          completadas="$(sed -n 's:.*<completed>\([0-9]*\)</completed>.*:\1:p' "$resumen")"
+          if [ "${completadas:-0}" -eq 0 ]; then
+            echo "::error::failsafe ejecuto 0 pruebas de integracion; el resumen esta en verde por vacio."
+            exit 1
+          fi
+          echo "Pruebas de integracion ejecutadas: $completadas"
+          echo "Pruebas de integracion (failsafe): **$completadas**" >> "$GITHUB_STEP_SUMMARY"
+
+      # La misma orden, byte a byte, que el step gemelo de `unit`. Si las dos huellas no
+      # coincidieran, los dos jobs habrian compilado bytecode distinto y la cobertura de
+      # integracion no casaria con las clases que mide el gate. Lo comprueba
+      # `coverage-gate`.
+      - name: Fingerprint the compiled classes
+        shell: bash
+        run: |
+          set -euo pipefail
+          find target/classes -type f -name '*.class' -print0 | LC_ALL=C sort -z \
+            | xargs -0 sha256sum | sha256sum | cut -d ' ' -f 1 > target/classes-digest-integration.txt
+          echo "Huella del bytecode (integration): $(cat target/classes-digest-integration.txt)"
+
+      - name: Upload the integration coverage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jacoco-it
+          path: |
+            target/jacoco-it.exec
+            target/classes-digest-integration.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  # EL GATE DE COBERTURA, Y EL UNICO SITIO DONDE SE MIDE EL SUELO.
+  #
+  # Antes del reparto esto no era un job: `jacoco:merge` y `jacoco:check` colgaban de
+  # post-integration-test dentro del mismo `mvn verify` que acababa de producir los dos
+  # .exec, y "estan los datos" no era una pregunta. Repartir la medicion en dos maquinas la
+  # convierte en una pregunta, y ademas en una cuya respuesta por defecto es la peligrosa:
+  # los tres goals de JaCoCo -merge, report y check- SE SALTAN SOLOS Y EN VERDE cuando les
+  # falta el fichero de datos o el directorio de clases. Un `download-artifact` que no trae
+  # nada, un `if` mal escrito o un job que se salta dejarian este gate pasando sobre la
+  # nada, con el mismo tick verde que un 98,8 % honesto.
+  #
+  # Los tres steps de abajo existen para que eso no pueda pasar:
+  #   1. antes de Maven   -> los dos .exec existen, no estan vacios, y el bytecode que se va
+  #                          a medir es EL MISMO que ejecutaron los dos jobs.
+  #   2. Maven            -> merge + report + check con la configuracion del pom.
+  #   3. despues de Maven -> prueba POSITIVA de que check corrio, y de que no hubo ni un
+  #                          "Skipping JaCoCo".
+  #
+  # El umbral no se escribe aqui. Lo lee `jacoco:check@check-floor` de
+  # `jacoco.line.minimum` en pom.xml, que es el trinquete: un segundo numero en este fichero
+  # seria un segundo trinquete, y se desincronizaria del primero.
+  coverage-gate:
+    name: Enforce the coverage floor
+    needs: [changes, unit, integration]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Hacen falta el pom -de donde salen el dataFile, los <excludes> y el suelo- y
+          # src/main/java, que es lo que el informe HTML enlaza como fuente.
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # Solo lectura, como los de `unit` y `lint`: no es el bloque canonico compartido con
+      # los otros workflows. Ver la nota del step homonimo del job `unit`.
+      - name: Restore the Maven repository cache (read-only)
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-coverage-gate
+          restore-keys: |
+            m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-
+
+      # Los tres artefactos se reconstruyen EN SU RUTA dentro de target/, que es donde los
+      # busca la configuracion del pom: `merge` lee ${project.build.directory}/jacoco.exec y
+      # jacoco-it.exec, y `report`/`check` analizan ${project.build.outputDirectory}.
+      - name: Download the unit coverage
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: jacoco-unit
+          path: target
+
+      - name: Download the integration coverage
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: jacoco-it
+          path: target
+
+      - name: Download the compiled classes
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: backend-classes
+          path: target/classes
+
+      # GUARDA ANTI-FALSO-VERDE, primera mitad: que los datos llegaron.
+      - name: Assert every coverage input arrived complete
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fallo=0
+          exigir() {
+            if [ ! -f "$1" ]; then
+              echo "::error::No llego $1 ($2). El suelo de cobertura NO se ha medido."
+              fallo=1
+            elif [ ! -s "$1" ]; then
+              echo "::error::$1 llego VACIO ($2). El suelo de cobertura NO se ha medido."
+              fallo=1
+            else
+              echo "OK  $1  ($(stat -c%s "$1") bytes)  $2"
+            fi
+          }
+          exigir target/jacoco.exec "cobertura unitaria, del job unit"
+          exigir target/jacoco-it.exec "cobertura de integracion, del job integration"
+          exigir target/classes-digest-unit.txt "huella del bytecode del job unit"
+          exigir target/classes-digest-integration.txt "huella del bytecode del job integration"
+
+          clases="$(find target/classes -type f -name '*.class' | wc -l)"
+          if [ "$clases" -eq 0 ]; then
+            echo "::error::target/classes no trae una sola clase; jacoco:check se saltaria en verde."
+            fallo=1
+          fi
+          echo "Clases descargadas: $clases"
+
+          [ "$fallo" -eq 0 ] || exit 1
+
+          # LA COMPROBACION QUE SOLO HACE FALTA DESDE QUE ESTO SON DOS MAQUINAS. Los dos
+          # .exec se midieron sobre dos compilaciones distintas del mismo commit, y JaCoCo
+          # identifica cada clase por el CRC64 de SUS BYTES, no por su nombre: si los dos
+          # bytecodes no fueran identicos, las clases del .exec de integracion no casarian
+          # con las que se analizan aqui y sus lineas contarian como NO cubiertas. Eso no
+          # inventa cobertura -acabaria en rojo, no en verde- pero produce un rojo
+          # incomprensible ("la cobertura cayo al 93 %") sobre una suite que paso entera. Se
+          # compara para que el fallo diga lo que de verdad pasa.
+          unit="$(cat target/classes-digest-unit.txt)"
+          integracion="$(cat target/classes-digest-integration.txt)"
+          aqui="$(find target/classes -type f -name '*.class' -print0 | LC_ALL=C sort -z \
+            | xargs -0 sha256sum | sha256sum | cut -d ' ' -f 1)"
+          echo "huella unit        = $unit"
+          echo "huella integration = $integracion"
+          echo "huella medida aqui = $aqui"
+
+          if [ "$unit" != "$integracion" ]; then
+            echo "::error::unit e integration compilaron bytecode DISTINTO sobre el mismo commit: la cobertura de integracion no casaria con las clases que se miden aqui."
+            exit 1
+          fi
+          if [ "$aqui" != "$unit" ]; then
+            echo "::error::El artefacto backend-classes no coincide con el bytecode que se midio: llego incompleto."
+            exit 1
+          fi
+
+      # Los tres goals por su executionId (`plugin:goal@id`) y no por fase: aqui no hay nada
+      # que compilar ni que ejecutar, y colgarlos de una fase arrastraria el ciclo entero.
+      # Cada uno usa la <configuration> de SU ejecucion del pom, de modo que el dataFile,
+      # los <excludes> y el minimo son exactamente los de un `mvn verify` local.
+      #
+      # `-DskipCoverageCheck` NO se pasa aqui, y es el motivo de que exista este job: es el
+      # unico sitio del reparto donde la comprobacion tiene los dos .exec delante.
+      - name: Merge both coverages and enforce the floor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mvn --batch-mode --no-transfer-progress \
+            jacoco:merge@merge-unit-and-integration \
+            jacoco:report@report-all \
+            jacoco:check@check-floor 2>&1 | tee "$RUNNER_TEMP/coverage-gate.log"
+
+      # GUARDA ANTI-FALSO-VERDE, segunda mitad: que el gate CORRIO.
+      #
+      # Que Maven termine en 0 no prueba que haya medido nada: los goals de JaCoCo se saltan
+      # solos -con un INFO y sin error- si les falta el fichero de datos o el directorio de
+      # clases, asi que la ausencia de fallo es compatible con la ausencia de comprobacion.
+      # Aqui se exige la evidencia positiva.
+      #
+      # Si algun dia JaCoCo cambia el texto de esos mensajes, este step se pone ROJO, que es
+      # la direccion correcta del fallo: obliga a mirar, en vez de dejar pasar.
+      - name: Assert the floor was really measured
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/coverage-gate.log"
+
+          if grep -n "Skipping JaCoCo" "$log"; then
+            echo "::error::JaCoCo se salto un goal por falta de datos; el suelo NO se ha comprobado."
+            exit 1
+          fi
+          if ! grep -q "All coverage checks have been met" "$log"; then
+            echo "::error::No aparece la confirmacion de jacoco:check en el log; el suelo NO se ha comprobado."
+            exit 1
+          fi
+          if [ ! -s target/jacoco-all.exec ]; then
+            echo "::error::No hay target/jacoco-all.exec: el merge no produjo la fusion."
+            exit 1
+          fi
+          if [ ! -s target/site/jacoco/jacoco.xml ]; then
+            echo "::error::No hay informe de JaCoCo: report-all no llego a correr."
+            exit 1
+          fi
+
+          # LA AFIRMACION CENTRAL DE ESTE JOB: que el suelo se midio sobre las DOS mitades y
+          # no sobre una. jacoco:merge nombra en el log cada fichero que carga, asi que la
+          # prueba es directa y no una inferencia.
+          #
+          # Aqui vivio una comprobacion por TAMANO -"la fusion no puede pesar menos que
+          # ninguna de sus partes"-, y era falsa: se midio que jacoco-all.exec pesa 2,2 MB
+          # frente a los 4,4 MB de jacoco.exec. El agente de JaCoCo escribe en modo APPEND y
+          # con forkCount=2 son dos JVM volcando su juego completo de registros al mismo
+          # fichero; el merge deduplica por id de clase y sale mas pequeno. Esa comprobacion
+          # habria dejado el gate en rojo en TODOS los runs.
+          if ! grep -qE 'Loading execution data file.*jacoco\.exec' "$log"; then
+            echo "::error::El merge no cargo jacoco.exec: el suelo se habria medido solo con la cobertura de integracion."
+            exit 1
+          fi
+          if ! grep -qE 'Loading execution data file.*jacoco-it\.exec' "$log"; then
+            echo "::error::El merge no cargo jacoco-it.exec: el suelo se habria medido solo con la cobertura unitaria."
+            exit 1
+          fi
+
+          # Los contadores del elemento <report> van los ULTIMOS del XML, despues de los de
+          # cada paquete. Es informativo: quien decide es el jacoco:check de arriba.
+          # El `|| true` hace falta con `set -e`: si el grep no encontrara nada, `read`
+          # devolveria 1 al llegar a EOF y el step moriria sin decir por que.
+          perdidas=""
+          cubiertas=""
+          read -r perdidas cubiertas < <(grep -o 'type="LINE" missed="[0-9]*" covered="[0-9]*"' target/site/jacoco/jacoco.xml \
+            | tail -1 | sed -E 's/[^0-9]+/ /g' | awk '{ print $1, $2 }') || true
+          if [ -z "$perdidas" ] || [ -z "$cubiertas" ]; then
+            echo "::error::El informe no trae contador de lineas: se midio sobre el vacio."
+            exit 1
+          fi
+
+          total=$((perdidas + cubiertas))
+          if [ "$total" -eq 0 ]; then
+            echo "::error::El informe declara 0 lineas: se midio sobre el vacio."
+            exit 1
+          fi
+          ratio="$(awk -v c="$cubiertas" -v t="$total" 'BEGIN { printf "%.2f", 100 * c / t }')"
+          echo "Cobertura de linea sobre la fusion: $ratio % ($cubiertas/$total)"
+          {
+            echo "Cobertura de linea (unitarias + integracion): **$ratio %** ($cubiertas/$total)"
+            echo ""
+            echo "Suelo comprobado por \`jacoco:check@check-floor\` sobre \`jacoco.line.minimum\` de pom.xml."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # spotless y checkstyle vivian dentro de `mvn verify`, es decir dentro del job mas largo
+  # del repositorio, y son controles de FUENTE: no necesitan bytecode, ni tests, ni nada que
+  # produzcan los jobs de Maven. Sacarlos a su propio job no cuesta tiempo de pared -al lado
+  # del carril largo sobran cientos de segundos ociosos, medidos- y quita 42 s del camino
+  # critico.
+  #
+  # Sin `needs` a proposito: cualquier dependencia lo serializaria y el ahorro seria cero.
+  # Tampoco `needs: changes`, que costaria ~25 s de espera para ahorrar un job de ~60 s que
+  # cabe entero debajo del carril largo.
+  #
+  # Y sin `if` de cambios, tambien a proposito: los dos gates miran el arbol entero y tardan
+  # lo mismo en un run solo-documentacion.
+  lint:
+    name: Check formatting and style
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    env:
+      CI: true
+      HUSKY: 0
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Aqui no hay nada que comparar contra una base: los dos gates miran el arbol
+          # entero.
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # Solo lectura, como los de `unit` y `coverage-gate`: no es el bloque canonico
+      # compartido con los otros workflows. Ver la nota del step homonimo del job `unit`.
+      - name: Restore the Maven repository cache (read-only)
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          # Solo lectura y por prefijo: aqui vale cualquier ~/.m2 caliente, y la clave
+          # exacta la calcula y la escribe `integration`, que es quien resuelve el arbol
+          # completo. Si este job tambien guardara, los dos pelearian por la misma clave
+          # dentro del mismo run para subir lo mismo. `key` no casa nunca a proposito.
+          key: m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-lint
+          restore-keys: |
+            m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-
+
+      # Invocacion directa de los dos goals, sin fase: ninguno necesita compilar. Los dos
+      # plugins llevan su configuracion a nivel de <plugin> en el pom -no dentro de la
+      # <execution>-, asi que desde la linea de ordenes se aplica la misma que en el build.
+      - name: Check formatting and style with Maven
+        run: mvn --batch-mode --no-transfer-progress spotless:check checkstyle:check
 
   # Las reglas de alerta y su runbook son un solo contrato. Una expresion que no compila, una
   # prueba de regla rota o un enlace de runbook muerto no fallan aqui: fallan a las 3 de la
@@ -319,10 +1062,20 @@ jobs:
   # construye la imagen de verdad y la sube a ECR desde este mismo commit. Repetir
   # aqui una compilacion ARM64 emulada con QEMU seria pagar dos veces el job mas caro
   # del repositorio para tirar el resultado.
+  #
+  # EL `needs` DESPUES DEL REPARTO. Dependia del job unico `verify`, que era a la vez quien
+  # producia el jar y quien ejecutaba toda la suite; hoy eso son tres jobs y hay que elegir.
+  # Se piden `unit` -sin el no hay artefacto que descargar- e `integration`, que es lo que
+  # conserva la invariante escrita abajo: no se construye una imagen sobre codigo que no se
+  # ha ejercitado entero. NO se pide `coverage-gate`: el suelo es una politica sobre la red
+  # de pruebas, no una afirmacion sobre si el jar funciona, y encadenarlo aqui significaria
+  # que una caida de cobertura impide ademas enterarse de que el Dockerfile esta roto. Nada
+  # de esto afecta a la publicacion: `publish-dev-image.yml` depende del workflow ENTERO,
+  # gate incluido.
   container-image:
     name: Build ARM64 container image
-    needs: verify
-    if: github.event_name != 'push' && needs.verify.outputs.container-image == 'true'
+    needs: [changes, unit, integration]
+    if: github.event_name != 'push' && needs.changes.outputs.container-image == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 
@@ -331,6 +1084,42 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # El `Dockerfile` ya no compila el proyecto dentro de la imagen: consume el jar que
+      # `unit` acaba de producir y que la suite acaba de verificar sobre este mismo arbol.
+      # La accion falla sola si el artefacto no existe, que es exactamente lo que se quiere:
+      # construir una imagen sobre un jar que nadie verifico seria peor que no construirla.
+      #
+      # A build/docker/ y no a target/. El `.dockerignore` se escribe al reves que uno
+      # corriente -deniega todo con `*` y readmite una unica ruta,
+      # `!build/docker/application.jar`-, asi que `target/` no llega al contexto de build y
+      # descargar ahi dejaria el `COPY` sin fichero que copiar.
+      - name: Download the verified boot jar
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: backend-boot-jar
+          path: build/docker
+
+      # Identico al de `publish-dev-image.yml`, y a proposito: los dos caminos que
+      # construyen imagen depositan el jar en la MISMA ruta con la MISMA comprobacion. El
+      # `COPY` del Dockerfile apunta a una ruta exacta y no a un glob porque un
+      # `COPY dir/*.jar destino` con dos ficheros los concatena en el destino sin emitir un
+      # solo aviso. Aqui se comprueba que llego uno y solo uno, y se le pone el nombre que
+      # el `COPY` espera.
+      - name: Normalize the jar into the build context
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t jars < <(find build/docker -maxdepth 1 -type f -name '*.jar' | sort)
+          if [[ "${#jars[@]}" -ne 1 ]]; then
+            echo "Se esperaba exactamente un jar en el artefacto backend-boot-jar; llegaron ${#jars[@]}." >&2
+            printf '  %s\n' "${jars[@]+"${jars[@]}"}" >&2
+            exit 1
+          fi
+          if [[ "${jars[0]}" != "build/docker/application.jar" ]]; then
+            mv "${jars[0]}" build/docker/application.jar
+          fi
+          ls -l build/docker/application.jar
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
@@ -347,7 +1136,16 @@ jobs:
           platforms: linux/arm64
           push: false
           tags: vetsoftware/backend:ci
+          # La misma ruta exacta que el defecto del `ARG JAR_FILE` del Dockerfile. Se pasa
+          # explicita para que este job y `publish-dev-image.yml` digan lo mismo y un
+          # cambio de ruta no pueda quedarse a medias en uno de los dos.
+          build-args: |
+            JAR_FILE=build/docker/application.jar
           # Solo lectura de cache. Lo que se escribe desde refs/pull/** queda
           # aislado en el scope de la rama del PR y develop no puede leerlo: seria
           # ocupar presupuesto de cache (4,07 GB de 10 GB) sin acelerar nada.
-          cache-from: type=gha,scope=backend-arm64
+          #
+          # Scope -dev- y no -release-: la imagen de un pull request es la que acabara en
+          # develop, no la de produccion. Los dos scopes se separaron; leer del antiguo
+          # `backend-arm64`, que ya no escribe nadie, seria garantizar cero aciertos.
+          cache-from: type=gha,scope=backend-arm64-dev

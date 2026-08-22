@@ -36,6 +36,13 @@ jobs:
   no-direct-push:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
+    # Sin esto se hereda el limite por defecto de GitHub Actions: 6 HORAS. El trabajo
+    # es una decena de comandos de shell sobre nombres de rama y dura segundos, asi que
+    # un cuelgue solo puede venir de un runner atascado o de un checkout que no
+    # responde, y quemaria una jornada entera de minutos antes de rendirse. 10 minutos
+    # es el mismo valor que lleva observability-rules en ci.yml, el otro trabajo corto
+    # del repositorio: sobra para un runner lento y acota el desastre.
+    timeout-minutes: 10
     steps:
       - name: Checkout de la punta y su padre
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -96,6 +103,13 @@ jobs:
   branch-naming:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
+    # Sin esto se hereda el limite por defecto de GitHub Actions: 6 HORAS. El trabajo
+    # es un `case` de shell sobre dos variables de entorno y dura segundos -ni siquiera
+    # hace checkout-, asi que un cuelgue solo puede venir de un runner atascado y
+    # quemaria una jornada entera de minutos antes de rendirse. 10 minutos es el mismo
+    # valor que lleva observability-rules en ci.yml, el otro trabajo corto del
+    # repositorio: sobra para un runner lento y acota el desastre.
+    timeout-minutes: 10
     steps:
       - name: Validar nombre de rama y rama destino
         env:

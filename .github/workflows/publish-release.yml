@@ -17,6 +17,13 @@ permissions:
   contents: write
   id-token: write
 
+# Una sola declaracion del JDK: la usan `setup-java` y la clave de la cache de Maven.
+# Si se separaran, un cambio de version dejaria la clave apuntando al ~/.m2 del JDK
+# anterior sin que nada lo dijera. Identica a la de ci.yml, que es lo que hace que la
+# entrada de cache sea la MISMA y no una por workflow.
+env:
+  JAVA_VERSION: "25"
+
 concurrency:
   group: backend-publish-release-${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.version }}
   cancel-in-progress: false
@@ -71,12 +78,62 @@ jobs:
           fi
           echo "version=${RELEASE_BRANCH#release/}" >> "$GITHUB_OUTPUT"
 
+      # Aqui vivia `cache: maven`, y tampoco acertaba nunca: `setup-java` hace coincidencia
+      # exacta del hash de pom.xml, y el pom de una release declara su propia X.Y.Z, distinta
+      # en cada una. Es la misma patologia que documenta ci.yml, con otra causa para el mismo
+      # efecto. Lo sustituyen los dos steps siguientes.
       - name: Set up Java
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
-          java-version: "25"
-          cache: maven
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # La clave NO es el hash del pom tal cual: neutraliza la <version> del propio
+      # proyecto -la unica linea que mueve el bump de version- y deja intacto todo lo
+      # demas, que es lo que de verdad decide el contenido de ~/.m2. Asi un merge que no
+      # toca dependencias acierta EXACTO y `actions/cache` se salta el guardado en vez de
+      # volver a subir los mismos 200 MB.
+      - name: Compute the Maven cache key
+        id: m2
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # La <version> del proyecto es la primera que aparece DESPUES de </parent>. La
+          # del <parent> y las de <dependencyManagement> si deciden el arbol y se quedan.
+          normalized="$RUNNER_TEMP/pom-cache-key.xml"
+          awk '
+            /<\/parent>/ { after_parent = 1 }
+            after_parent && !done && /<version>[^<]*<\/version>/ {
+              sub(/<version>[^<]*<\/version>/, "<version>IGNORED</version>"); done = 1
+            }
+            { print }
+          ' pom.xml > "$normalized"
+
+          # Si el awk dejara de casar, la version volveria a entrar en la clave y el
+          # fallo del 100 % regresaria en silencio, que es justo el defecto que esto cura.
+          if ! grep -q '<version>IGNORED</version>' "$normalized"; then
+            echo "::error file=pom.xml::No se pudo neutralizar la version del proyecto para la clave de cache de Maven"
+            exit 1
+          fi
+
+          echo "key=$(sha256sum "$normalized" | cut -c1-40)" >> "$GITHUB_OUTPUT"
+
+      # Antes del unico Maven del trabajo, el `mvn verify` completo de mas abajo. Aqui el
+      # pom ya llega con la <version> de la release declarada -`release-version.mjs verify`
+      # falla con "pom.xml is X, expected Y" si no coincide-, y esa es justo la linea que el
+      # paso anterior neutraliza: una release que no toca dependencias acierta EXACTO contra
+      # la entrada que dejo develop y `actions/cache` se salta el guardado, en vez de
+      # escribir 200 MB nuevos por cada X.Y.Z.
+      - name: Restore the Maven repository cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          # La version del JDK entra en la clave para que el `restore-keys` no arrastre
+          # el ~/.m2 de un JDK anterior cuando se suba de version.
+          key: m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-${{ steps.m2.outputs.key }}
+          restore-keys: |
+            m2-${{ runner.os }}-java${{ env.JAVA_VERSION }}-
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -135,6 +192,9 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
+      # Sigue haciendo falta aunque la imagen ya no compile nada: la etapa runtime es
+      # arm64 y su `apt-get install` ejecuta binarios de esa arquitectura sobre un runner
+      # amd64. Lo unico que desaparecio del Dockerfile fue la compilacion Maven.
       - name: Set up QEMU
         if: steps.image.outputs.push == 'true'
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
@@ -144,6 +204,30 @@ jobs:
       - name: Set up Docker Buildx
         if: steps.image.outputs.push == 'true'
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      # El jar ya esta construido: lo dejo en target/ el `mvn verify` de mas arriba, en
+      # este mismo workspace y sobre este mismo commit. Aqui no hace falta artefacto ni
+      # descarga -a diferencia de publish-dev-image.yml, donde `verify` es otro job-,
+      # solo mover el fichero al directorio limpio que es todo el contexto de build.
+      # El `COPY` del Dockerfile apunta a una ruta exacta y no a un glob: dos jars se
+      # concatenarian en el destino sin un solo aviso, asi que se comprueba que hay uno
+      # y solo uno. `-name '*.jar'` ya descarta el `*.jar.original` que deja el repackage
+      # de Spring Boot; los `-sources`/`-javadoc` se excluyen por si alguien activa sus
+      # plugins mas adelante.
+      - name: Stage the verified jar into the build context
+        if: steps.image.outputs.push == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/docker
+          mapfile -t jars < <(find target -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | sort)
+          if [[ "${#jars[@]}" -ne 1 ]]; then
+            echo "Se esperaba exactamente un jar ejecutable en target/; hay ${#jars[@]}." >&2
+            printf '  %s\n' "${jars[@]+"${jars[@]}"}" >&2
+            exit 1
+          fi
+          cp "${jars[0]}" build/docker/application.jar
+          ls -l build/docker/application.jar
 
       - name: Build and publish immutable ARM64 image
         if: steps.image.outputs.push == 'true'
@@ -166,8 +250,24 @@ jobs:
           # despliegue de desarrollo.
           provenance: false
           sbom: false
-          cache-from: type=gha,scope=backend-arm64
-          cache-to: type=gha,mode=max,scope=backend-arm64
+          # El jar entra por el contexto; el valor por defecto del ARG es este mismo, y
+          # se declara aqui para que el workflow diga en voz alta que fichero construye.
+          #
+          # APP_VERSION aqui NO corrige nada: el step "Verify synchronized release
+          # metadata" exige que `pom.xml` ya declare esta misma version antes del
+          # `mvn verify` (release-version.mjs falla con "pom.xml is X, expected Y"), asi
+          # que el valor horneado en el jar y este coinciden por construccion. Se inyecta
+          # por simetria con publish-dev-image.yml: que los dos caminos declaren la version
+          # explicitamente evita que el dia que alguien mueva el orden de los steps la
+          # imagen vuelva a mentir en silencio en uno solo de los dos.
+          build-args: |
+            JAR_FILE=build/docker/application.jar
+            APP_VERSION=${{ steps.release.outputs.version }}
+          # Scope propio, separado del de desarrollo. Compartiendo `backend-arm64` una
+          # release y una publicacion de develop se pisaban las capas mutuamente: cada
+          # una invalidaba el acierto de la otra y ninguna llegaba a amortizar el cache.
+          cache-from: type=gha,scope=backend-arm64-release
+          cache-to: type=gha,mode=max,scope=backend-arm64-release
 
       - name: Resolve and certify immutable image digest
         id: immutable_image

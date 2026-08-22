@@ -1,28 +1,57 @@
-FROM --platform=$BUILDPLATFORM maven:3.9.16-eclipse-temurin-25-alpine@sha256:72e2d64836e659d053a573ac9ebab05b78ae78fa7bb69b7452a7cb877b465fc7 AS build
-
-WORKDIR /workspace
-
-COPY pom.xml ./
-RUN mvn --batch-mode --no-transfer-progress dependency:go-offline
-
-# spotless:check y checkstyle leen su configuracion de config/, fuera de src/: sin este COPY el
-# `package` de abajo aborta con "Could not find resource /workspace/config/spotless/
-# eclipse-formatter.properties". Va antes que src/ a proposito: cambia mucho menos, asi que la
-# capa se reaprovecha entre builds.
-COPY config ./config
-COPY src ./src
-# spotless:check se salta AQUI, y solo aqui. Su politica de finales de linea es GIT_ATTRIBUTES,
-# pero .dockerignore excluye .git del contexto: dentro de la imagen no hay repositorio que
-# consultar, asi que en un contexto construido desde una copia de trabajo Windows (CRLF, porque
-# .gitattributes no normaliza *.java) marca los 5.174 ficheros como violaciones. El gate real no
-# se pierde: ci.yml:134 corre `mvn verify` sobre el checkout de Linux -donde spotless-check sigue
-# atado a process-sources- y el pre-commit lo vuelve a pasar en cada commit.
-RUN mvn --batch-mode --no-transfer-progress -DskipTests -Dspotless.check.skip=true package
+# Imagen de UNA sola etapa: el jar entra ya construido por el contexto.
+#
+# Hasta agosto de 2026 este fichero tenia una etapa `build` sobre
+# maven:3.9.16-eclipse-temurin-25-alpine que compilaba el proyecto entero dentro de la
+# imagen: `dependency:go-offline` (39,7 s) + `package -DskipTests` (45,0 s) por cada
+# publicacion, para producir exactamente el mismo binario que el job `verify` de
+# `ci.yml` acababa de producir sobre ESE MISMO commit. Y el cache de buildx no lo
+# amortiguaba nunca: el step "Bump development version" reescribe `pom.xml` antes del
+# build, asi que el `COPY pom.xml` cambiaba en todos los runs e invalidaba las dos
+# capas caras. Ahora el jar se copia y punto.
+#
+# De donde sale el jar en cada camino:
+#   - dev  (.github/workflows/publish-dev-image.yml): se descarga el artefacto
+#          `backend-boot-jar` que publica `ci.yml`, se comprueba que trae uno y solo
+#          uno, y se renombra a build/docker/application.jar.
+#   - release (.github/workflows/publish-release.yml): se copia el jar que dejo en
+#          target/ el `mvn verify` del propio job, en el mismo workspace.
+#   - local:
+#          mvn --batch-mode -DskipTests package
+#          mkdir -p build/docker && cp target/vetsoftware-*.jar build/docker/application.jar
+#          docker build -t vetsoftware/backend:local .
+#
+# Saltarse esos dos primeros comandos da este error, y no otro mas explicito, porque
+# BuildKit resuelve los origenes de `COPY` antes de ejecutar nada y no hay ningun paso
+# donde imprimir una explicacion:
+#
+#   ERROR: failed to solve: failed to compute cache key: failed to calculate checksum
+#   of ref ...: "/build/docker/application.jar": not found
+#
+# Al desaparecer la etapa `build` desaparece tambien el `-Dspotless.check.skip=true`
+# que habia que justificar aqui: spotless y checkstyle vuelven a correr solo donde
+# siempre debieron correr, en el `mvn verify` de `ci.yml` sobre el checkout de Linux y
+# en el pre-commit. La imagen ya no tiene opinion sobre el formato del codigo.
+#
+# AVISO de seguridad, porque el reparto cambia: el jar es OPACO para `.dockerignore`.
+# Las exclusiones de `src/main/resources/application-local.*` que cerraron INF-34 ya no
+# pueden filtrar nada, porque ese fichero se empaqueta en BOOT-INF/classes durante el
+# `mvn package`, no durante el `docker build`. En CI es inocuo -el checkout no lo trae,
+# esta en .gitignore-, pero un `docker build` local sobre un `mvn package` local SI
+# mete el perfil local, con su contrasena de MySQL, dentro de la imagen. Las imagenes
+# construidas en una copia de trabajo no se publican.
 
 FROM eclipse-temurin:25.0.3_9-jre-noble@sha256:fbcf915c585659b30eb766ada4d6d7cfc9ec1040bf521e95bf61b10a25af73db AS runtime
 
 ARG APP_UID=10001
 ARG APP_GID=10001
+
+# La ruta del jar dentro del contexto. Es una ruta EXACTA y no un glob a proposito: un
+# `COPY dir/*.jar /app/application.jar` con dos ficheros en el directorio los concatena
+# en el destino sin emitir un solo aviso, y `target/` deja `*.jar` junto a `*.jar.original`
+# y -si alguien activa los plugins- junto a `*-sources.jar`. Quien llena el directorio
+# es responsable de que haya un unico fichero con este nombre; los dos workflows lo
+# comprueban antes de construir. Por eso `.dockerignore` tampoco admite otra cosa.
+ARG JAR_FILE=build/docker/application.jar
 
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes ca-certificates curl fontconfig fonts-noto-core \
@@ -31,7 +60,29 @@ RUN apt-get update \
     && useradd --uid "${APP_UID}" --gid "${APP_GID}" --create-home --shell /usr/sbin/nologin vetsoftware
 
 WORKDIR /app
-COPY --from=build --chown=${APP_UID}:${APP_GID} /workspace/target/*.jar /app/application.jar
+COPY --chown=${APP_UID}:${APP_GID} ${JAR_FILE} /app/application.jar
+
+# La version que se publica, inyectada por quien construye. Se declara AQUI, lo mas tarde
+# posible, para no meterse en la clave de cache del `apt-get` de arriba: solo afecta a las
+# dos lineas de metadatos que siguen.
+#
+# Existe porque `application.yml` resuelve `service.version: ${VETSOFTWARE_VERSION:@project.version@}`
+# y ese valor por defecto se HORNEA en el jar durante el `mvn package`. En desarrollo el jar
+# lo empaqueta el job `verify`, que corre ANTES del step que bumpea la version, asi que el
+# numero horneado es siempre el anterior al del tag con el que la imagen se despliega: toda
+# traza, metrica y log de dev llegaba a Grafana marcada con una version que no era la suya.
+# La variable de entorno gana al valor horneado, de modo que esto se corrige sin recompilar
+# nada. En release el valor coincide con el horneado -`release-version.mjs verify` exige que
+# `pom.xml` ya declare la version final antes del `mvn verify`- y se inyecta igualmente por
+# simetria: los dos caminos dicen la version en voz alta en vez de confiar en el empaquetado.
+#
+# El defecto `local` es deliberado y NO es un valor vacio. Un `ENV VETSOFTWARE_VERSION=`
+# vacio seria peor que no ponerlo: Spring aplica el valor por defecto de un placeholder solo
+# cuando la propiedad no existe, no cuando existe vacia, asi que `service.version` se iria a
+# la cadena vacia. Con `local`, una imagen construida en una copia de trabajo se delata sola
+# en Grafana, que es exactamente lo que interesa de una imagen que no debe publicarse.
+ARG APP_VERSION
+ENV VETSOFTWARE_VERSION=${APP_VERSION:-local}
 
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError" \
     SPRING_PROFILES_ACTIVE=prod
