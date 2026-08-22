@@ -1,33 +1,30 @@
-.git
-.github
-.idea
-.mvn
-docs
-node_modules
-target
-*.iml
-*.log
-.env
-.env.*
-*.pem
-*.key
-*.p12
-*.pfx
-*.jks
-*.keystore
-docker-compose*.yml
+# El `docker build` de este repositorio NO compila nada. Desde que el Dockerfile paso a
+# una sola etapa, lo unico que necesita del contexto es un fichero: el jar ya construido
+# en `build/docker/application.jar`. Por eso este .dockerignore se escribe al reves que
+# uno corriente -se excluye todo y se readmite lo unico que el `COPY` toca- en vez de
+# como una lista de exclusiones que alguien tiene que acordarse de ampliar el dia que
+# cree un directorio nuevo en la raiz. Una lista de denegacion que se queda corta no
+# avisa: simplemente empieza a enviar cosas.
+#
+# Lo que esto deja fuera y antes SI viajaba en cada publicacion: src/ (29 MB),
+# config/, api/, db/, scripts/, uml/, deploy/, docker/, pom.xml, mvnw y
+# .build-cache/ -unos 39 MB por build que buildkit ya no envia-. node_modules/
+# (36 MB), target/, .git/, .github/, .idea/, .mvn/, docs/ y los
+# docker-compose*.yml ya estaban excluidos y siguen estandolo, ahora por la
+# regla general.
+# Lo que si entra es el jar y nada mas: ~122 MB, que es literalmente el contenido de
+# la imagen.
+#
+# Las exclusiones de secretos que vivian aqui (application-local.*, deploy/env, *.pem,
+# *.key, *.p12, *.pfx, *.jks, *.keystore) quedan cubiertas por la regla `*`: ninguno de
+# esos ficheros puede llegar al contexto. Ojo -y esta es la parte que este fichero ya
+# NO controla-: el `application-local.yml` viaja dentro del jar si el jar se construyo
+# en una copia de trabajo que lo tenga (INF-34). Eso se decide en el `mvn package`, no
+# aqui; ver el aviso de la cabecera del Dockerfile.
+*
 
-# El build es multi-stage y compila DENTRO de la imagen: el `COPY src ./src` del
-# Dockerfile mete todo src/main/resources en el contexto y Maven lo empaqueta en
-# BOOT-INF/classes. Sin estas exclusiones el perfil local -y su contrasena de MySQL-
-# viajaba en el jar publicado en ECR (INF-34). El .dockerignore es aqui la palanca
-# correcta precisamente porque el jar se construye desde el contexto.
-src/main/resources/application-local.yml
-src/main/resources/application-local.yaml
-src/main/resources/application-local.properties
-src/main/resources/application-local.yml.example
-src/main/resources/application-local.yaml.example
-src/main/resources/application-local.properties.example
-
-# Contratos de entorno: no los necesita ninguna etapa del build y llevan credenciales.
-deploy/env
+# El unico directorio del contexto, y con un unico nombre de fichero admitido. Lo llena
+# el workflow -o el desarrollador- con exactamente un jar. `*.jar` esta en .gitignore,
+# asi que no hay manera de commitearlo por accidente, y si el directorio llega vacio el
+# `COPY` falla en el acto en vez de construir una imagen sin aplicacion.
+!build/docker/application.jar
