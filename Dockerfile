@@ -5,8 +5,19 @@ WORKDIR /workspace
 COPY pom.xml ./
 RUN mvn --batch-mode --no-transfer-progress dependency:go-offline
 
+# spotless:check y checkstyle leen su configuracion de config/, fuera de src/: sin este COPY el
+# `package` de abajo aborta con "Could not find resource /workspace/config/spotless/
+# eclipse-formatter.properties". Va antes que src/ a proposito: cambia mucho menos, asi que la
+# capa se reaprovecha entre builds.
+COPY config ./config
 COPY src ./src
-RUN mvn --batch-mode --no-transfer-progress -DskipTests package
+# spotless:check se salta AQUI, y solo aqui. Su politica de finales de linea es GIT_ATTRIBUTES,
+# pero .dockerignore excluye .git del contexto: dentro de la imagen no hay repositorio que
+# consultar, asi que en un contexto construido desde una copia de trabajo Windows (CRLF, porque
+# .gitattributes no normaliza *.java) marca los 5.174 ficheros como violaciones. El gate real no
+# se pierde: ci.yml:134 corre `mvn verify` sobre el checkout de Linux -donde spotless-check sigue
+# atado a process-sources- y el pre-commit lo vuelve a pasar en cada commit.
+RUN mvn --batch-mode --no-transfer-progress -DskipTests -Dspotless.check.skip=true package
 
 FROM eclipse-temurin:25.0.3_9-jre-noble@sha256:fbcf915c585659b30eb766ada4d6d7cfc9ec1040bf521e95bf61b10a25af73db AS runtime
 
