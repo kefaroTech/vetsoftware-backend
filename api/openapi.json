@@ -7752,16 +7752,32 @@
       "get" : {
         "tags" : [ "company-controller" ],
         "operationId" : "listAll_41",
+        "parameters" : [ {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/CompanyResponse"
-                  }
+                  "$ref" : "#/components/schemas/PageResponseCompanyResponse"
                 }
               }
             }
@@ -11778,6 +11794,17 @@
             "default" : false
           }
         }, {
+          "name" : "productIds",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          }
+        }, {
           "name" : "page",
           "in" : "query",
           "required" : false,
@@ -13017,6 +13044,50 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ConsultationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/companies/search" : {
+      "get" : {
+        "tags" : [ "company-controller" ],
+        "operationId" : "search_10",
+        "parameters" : [ {
+          "name" : "q",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseCompanyResponse"
                 }
               }
             }
@@ -23967,6 +24038,33 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/ConsultationResponse"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "PageResponseCompanyResponse" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CompanyResponse"
             }
           },
           "page" : {

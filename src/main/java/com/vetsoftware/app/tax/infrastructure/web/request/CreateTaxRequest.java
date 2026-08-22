@@ -8,7 +8,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
-public record CreateTaxRequest(@NotBlank @Size(max = 100) String name,
-        @NotNull @DecimalMin("0.0") @DecimalMax("100.0") BigDecimal percentage,
-        @NotNull TaxScheme taxScheme) {
+public record CreateTaxRequest(
+        @NotBlank(message = "El nombre del impuesto es obligatorio.") @Size(max = 100, message = "El nombre del impuesto no puede superar los 100 caracteres.") String name,
+        @NotNull(message = "El porcentaje es obligatorio.") @DecimalMin(value = "0.0", message = "El porcentaje no puede ser negativo.") @DecimalMax(value = "100.0", message = "El porcentaje no puede superar el 100 %.") BigDecimal percentage,
+        @NotNull(message = "Debes seleccionar el esquema de impuesto.") TaxScheme taxScheme) {
 }

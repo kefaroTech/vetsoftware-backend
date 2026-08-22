@@ -32,6 +32,9 @@ public interface StockBalanceJpaRepository extends JpaRepository<StockBalanceJpa
     // lowStock=true → solo bajo mínimo. Solo productos ACTIVOS. Nativa (join
     // cross-feature por id
     // plano).
+    // filterByProducts=false apaga el filtro por ids: el SQL nativo no admite un
+    // IN vacio, asi que la bandera decide y la lista solo se lee cuando es true.
+    // Ese filtro se SUMA al company_id del WHERE, nunca lo reemplaza.
     @Query(value = """
             SELECT sb.product_id AS productId, p.name AS productName, p.code AS productCode,
                    sb.branch_id AS branchId, b.name AS branchName, sb.quantity AS quantity,
@@ -44,6 +47,7 @@ public interface StockBalanceJpaRepository extends JpaRepository<StockBalanceJpa
               AND (:branchId IS NULL OR sb.branch_id = :branchId)
               AND (:q IS NULL OR p.name LIKE CONCAT('%', :q, '%') OR p.code LIKE CONCAT('%', :q, '%'))
               AND (:lowStock = false OR sb.quantity < sb.min_stock)
+              AND (:filterByProducts = false OR sb.product_id IN :productIds)
             ORDER BY p.name ASC, b.name ASC
             """, countQuery = """
             SELECT COUNT(*)
@@ -54,9 +58,12 @@ public interface StockBalanceJpaRepository extends JpaRepository<StockBalanceJpa
               AND (:branchId IS NULL OR sb.branch_id = :branchId)
               AND (:q IS NULL OR p.name LIKE CONCAT('%', :q, '%') OR p.code LIKE CONCAT('%', :q, '%'))
               AND (:lowStock = false OR sb.quantity < sb.min_stock)
+              AND (:filterByProducts = false OR sb.product_id IN :productIds)
             """, nativeQuery = true)
     Page<StockRow> searchStock(@Param("companyId") Long companyId, @Param("branchId") Long branchId,
-            @Param("q") String q, @Param("lowStock") boolean lowStock, Pageable pageable);
+            @Param("q") String q, @Param("lowStock") boolean lowStock,
+            @Param("filterByProducts") boolean filterByProducts,
+            @Param("productIds") java.util.List<Long> productIds, Pageable pageable);
 
     // Bajo mínimo (para alertas): no paginado, solo productos activos con quantity
     // < min_stock.

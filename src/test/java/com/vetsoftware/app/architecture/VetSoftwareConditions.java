@@ -47,7 +47,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestPart;
 
 /**
  * Condiciones de arquitectura propias del proyecto, las que no se expresan con
@@ -1670,6 +1672,98 @@ final class VetSoftwareConditions {
                     .forEach(tipos::add);
         }
         return tipos;
+    }
+
+    // ── La empresa no viaja en el cuerpo de la peticion ────────────────
+
+    /**
+     * El nombre exacto del componente que nunca puede llegar escrito por el
+     * cliente.
+     */
+    private static final String CAMPO_DE_EMPRESA = "companyId";
+
+    /**
+     * Su forma de accesor JavaBean, por si el cuerpo no es un {@code record}. En un
+     * {@code record} el componente y su accesor se llaman igual, asi que el nombre
+     * de arriba cubre los dos.
+     */
+    private static final String ACCESOR_DE_EMPRESA = "getCompanyId";
+
+    /**
+     * Las tres puertas por las que Spring enlaza un objeto escrito por el cliente a
+     * un parametro. Hoy solo se usa {@code @RequestBody} en {@code src/main}; las
+     * otras dos van aqui para que el primer endpoint multipart que entre nazca ya
+     * mirado, no para tapar nada existente.
+     */
+    private static boolean esCuerpoDePeticion(JavaParameter parametro) {
+        return parametro.isAnnotatedWith(RequestBody.class)
+                || parametro.isAnnotatedWith(RequestPart.class)
+                || parametro.isAnnotatedWith(ModelAttribute.class);
+    }
+
+    static ArchCondition<JavaMethod> noRecibirLaEmpresaEnElCuerpo() {
+        return new ArchCondition<>("no aceptar un companyId en el cuerpo de la peticion") {
+            @Override
+            public void check(JavaMethod method, ConditionEvents events) {
+                for (JavaParameter parametro : method.getParameters()) {
+                    if (!esCuerpoDePeticion(parametro)) {
+                        continue;
+                    }
+                    primerCampoDeEmpresa(parametro.getRawType(), new HashSet<>(), 0)
+                            .ifPresent(donde -> events.add(SimpleConditionEvent.violated(method,
+                                    method.getFullName() + " recibe un cuerpo que declara " + donde
+                                            + ": ese numero lo escribe el cliente en el JSON, asi"
+                                            + " que @authz.isMyCompany(#command.companyId) lo"
+                                            + " compara consigo mismo y da true siempre. Un"
+                                            + " empleado de la empresa A crea la fila en la B y el"
+                                            + " gate no lo ve. La empresa se toma del principal:"
+                                            + " authz.currentCompanyId()")));
+                }
+            }
+        };
+    }
+
+    /**
+     * Donde declara el tipo un {@code companyId}, o vacio si no lo declara. Mira
+     * los campos y los accesores del propio tipo y despues baja a los tipos
+     * anidados y a los argumentos genericos de sus colecciones, igual que
+     * {@link #primeraRestriccion}: un {@code companyId} escondido en una linea de
+     * detalle es exactamente el mismo defecto, y ademas el que nadie revisa.
+     *
+     * <p>
+     * <b>Compara por nombre exacto, no por prefijo</b>, y eso no es tiquismiquis:
+     * un {@code startsWith("companyId")} tumbaria hoy mismo un uso legitimo.
+     * {@code RegisterUserRequest.companyIdentifier} es el NIT con el que se da de
+     * alta una empresa en el registro publico —no el id de un tenant existente— y
+     * en ese punto no hay principal del que sacar nada, asi que tiene que viajar en
+     * el cuerpo a la fuerza.
+     */
+    private static Optional<String> primerCampoDeEmpresa(JavaClass tipo, Set<String> visitados,
+            int profundidad) {
+        if (profundidad > MAX_DEPTH || !isOwnCode(tipo) || !visitados.add(tipo.getFullName())) {
+            return Optional.empty();
+        }
+        for (JavaField campo : tipo.getAllFields()) {
+            if (CAMPO_DE_EMPRESA.equals(campo.getName())) {
+                return Optional.of(tipo.getSimpleName() + "." + campo.getName());
+            }
+        }
+        for (JavaMethod accesor : tipo.getMethods()) {
+            if (accesor.getRawParameterTypes().isEmpty()
+                    && (CAMPO_DE_EMPRESA.equals(accesor.getName())
+                            || ACCESOR_DE_EMPRESA.equals(accesor.getName()))) {
+                return Optional.of(tipo.getSimpleName() + "." + accesor.getName() + "()");
+            }
+        }
+        for (JavaField campo : tipo.getAllFields()) {
+            for (JavaClass anidado : tiposQueTransporta(campo)) {
+                Optional<String> donde = primerCampoDeEmpresa(anidado, visitados, profundidad + 1);
+                if (donde.isPresent()) {
+                    return donde;
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     // ── BE-10: cada adaptador con su rodaja ──────────────────────────────────

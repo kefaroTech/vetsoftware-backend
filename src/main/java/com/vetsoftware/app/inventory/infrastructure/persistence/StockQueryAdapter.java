@@ -25,6 +25,13 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class StockQueryAdapter implements StockQueryPort {
 
+    /**
+     * Marcador para el {@code IN} cuando no hay filtro por producto: el SQL nativo
+     * no admite una lista vacía, así que la bandera apaga la condición y la lista
+     * lleva un id imposible.
+     */
+    private static final List<Long> NO_PRODUCT_FILTER = List.of(-1L);
+
     private final StockBalanceJpaRepository balanceRepository;
     private final StockLotJpaRepository lotRepository;
     private final StockMovementJpaRepository movementRepository;
@@ -39,8 +46,13 @@ public class StockQueryAdapter implements StockQueryPort {
     @Override
     public PageResult<StockView> searchStock(SearchStockCommand c) {
         String q = (c.q() == null || c.q().isBlank()) ? null : c.q().trim();
+        // El alcance de empresa vive en el WHERE de la consulta y es lo que filtra
+        // primero; los ids solo estrechan lo que esa empresa ya podia ver.
+        boolean filterByProducts = !c.productIds().isEmpty();
         Page<StockRow> page = balanceRepository.searchStock(c.companyId(), c.branchId(), q,
-                c.lowStock(), Pages.request(c.page(), c.pageSize()));
+                c.lowStock(), filterByProducts,
+                filterByProducts ? c.productIds() : NO_PRODUCT_FILTER,
+                Pages.request(c.page(), c.pageSize()));
         return Pages.result(page, StockQueryAdapter::toStockView);
     }
 

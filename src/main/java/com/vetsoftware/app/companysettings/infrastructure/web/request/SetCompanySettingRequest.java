@@ -3,6 +3,7 @@ package com.vetsoftware.app.companysettings.infrastructure.web.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record SetCompanySettingRequest(@NotBlank @Size(max = 100) String propertyName,
-        @NotBlank @Size(max = 255) String value) {
+public record SetCompanySettingRequest(
+        @NotBlank(message = "El nombre de la propiedad es obligatorio.") @Size(max = 100, message = "El nombre de la propiedad no puede superar los 100 caracteres.") String propertyName,
+        @NotBlank(message = "El valor es obligatorio.") @Size(max = 255, message = "El valor no puede superar los 255 caracteres.") String value) {
 }

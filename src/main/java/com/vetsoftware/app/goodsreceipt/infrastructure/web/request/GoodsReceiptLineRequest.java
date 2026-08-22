@@ -7,7 +7,11 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record GoodsReceiptLineRequest(@NotNull Long productId, Long purchaseOrderLineId,
-        @Size(max = 60) String lotNumber, LocalDate expireDate, @Positive int quantityReceived,
-        @NotNull @DecimalMin("0.0") BigDecimal unitCost) {
+public record GoodsReceiptLineRequest(
+        @NotNull(message = "Debes seleccionar el producto.") Long productId,
+        Long purchaseOrderLineId,
+        @Size(max = 60, message = "El número de lote no puede superar los 60 caracteres.") String lotNumber,
+        LocalDate expireDate,
+        @Positive(message = "La cantidad recibida debe ser mayor que cero.") int quantityReceived,
+        @NotNull(message = "El costo unitario es obligatorio.") @DecimalMin(value = "0.0", message = "El costo unitario no puede ser negativo.") BigDecimal unitCost) {
 }

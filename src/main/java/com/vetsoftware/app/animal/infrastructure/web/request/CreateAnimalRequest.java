@@ -12,15 +12,22 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record CreateAnimalRequest(@NotBlank @Size(max = 100) String name,
-        @Size(max = 50) String code, @NotNull Long specieId, @NotNull Long breedId,
-        @NotNull Long ownerId, @NotNull Gender gender, @NotNull WeightType weightType,
-        @NotNull AnimalType animalType, @NotNull ReproductiveState reproductiveState,
-        @NotNull Long colorId, LocalDate bod,
+public record CreateAnimalRequest(
+        @NotBlank(message = "El nombre de la mascota es obligatorio.") @Size(max = 100, message = "El nombre de la mascota no puede superar los 100 caracteres.") String name,
+        @Size(max = 50, message = "El código de la mascota no puede superar los 50 caracteres.") String code,
+        @NotNull(message = "Debes seleccionar la especie.") Long specieId,
+        @NotNull(message = "Debes seleccionar la raza.") Long breedId,
+        @NotNull(message = "Debes seleccionar el propietario.") Long ownerId,
+        @NotNull(message = "Debes seleccionar el sexo.") Gender gender,
+        @NotNull(message = "Debes seleccionar la unidad de peso.") WeightType weightType,
+        @NotNull(message = "Debes seleccionar el tipo de mascota.") AnimalType animalType,
+        @NotNull(message = "Debes seleccionar el estado reproductivo.") ReproductiveState reproductiveState,
+        @NotNull(message = "Debes seleccionar el color.") Long colorId, LocalDate bod,
         // Peso inicial opcional: si viene, se registra como primer WeightRecord
         // (source=MANUAL) en la
         // unidad weightType. El peso posterior se gestiona vía
         // /animals/{id}/weight-records.
-        @Positive BigDecimal weight, @PositiveOrZero Integer size, boolean deceased,
+        @Positive(message = "El peso debe ser mayor que cero.") BigDecimal weight,
+        @PositiveOrZero(message = "La talla no puede ser negativa.") Integer size, boolean deceased,
         LocalDate deceasedDate) {
 }

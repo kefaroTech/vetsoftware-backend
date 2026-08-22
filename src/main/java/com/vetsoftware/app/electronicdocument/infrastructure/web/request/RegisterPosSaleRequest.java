@@ -18,9 +18,11 @@ import java.util.List;
  * catalogo. customerOwnerId null o finalConsumer=true => consumidor final
  * anonimo.
  */
-public record RegisterPosSaleRequest(@NotNull ElectronicDocumentType documentType,
-        boolean finalConsumer, Long customerOwnerId, @NotEmpty @Valid List<SaleLineRequest> lines,
-        @NotEmpty @Valid List<SalePaymentRequest> payments,
+public record RegisterPosSaleRequest(
+        @NotNull(message = "Debes seleccionar el tipo de documento electrónico.") ElectronicDocumentType documentType,
+        boolean finalConsumer, Long customerOwnerId,
+        @NotEmpty(message = "Debes asignar al menos un ítem a la venta.") @Valid List<SaleLineRequest> lines,
+        @NotEmpty(message = "Debes asignar al menos un pago a la venta.") @Valid List<SalePaymentRequest> payments,
         /**
          * Idempotencia de la venta: UUID que el front genera por apertura del cobro
          * (opcional).
@@ -30,11 +32,15 @@ public record RegisterPosSaleRequest(@NotNull ElectronicDocumentType documentTyp
                                  * de la empresa.
                                  */
         Long branchId) {
-    public record SaleLineRequest(@NotNull SaleLineKind kind, Long refId, String description,
-            @NotNull @Positive BigDecimal quantity, @NotNull @PositiveOrZero BigDecimal unitPrice) {
+    public record SaleLineRequest(
+            @NotNull(message = "Debes seleccionar el tipo de ítem.") SaleLineKind kind, Long refId,
+            String description,
+            @NotNull(message = "La cantidad es obligatoria.") @Positive(message = "La cantidad debe ser mayor que cero.") BigDecimal quantity,
+            @NotNull(message = "El precio unitario es obligatorio.") @PositiveOrZero(message = "El precio unitario no puede ser negativo.") BigDecimal unitPrice) {
     }
 
-    public record SalePaymentRequest(@NotNull PaymentMeans means,
-            @NotNull @PositiveOrZero BigDecimal amount) {
+    public record SalePaymentRequest(
+            @NotNull(message = "Debes seleccionar el medio de pago.") PaymentMeans means,
+            @NotNull(message = "El monto es obligatorio.") @PositiveOrZero(message = "El monto no puede ser negativo.") BigDecimal amount) {
     }
 }

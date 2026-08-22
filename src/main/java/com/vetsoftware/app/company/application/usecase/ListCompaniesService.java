@@ -3,8 +3,8 @@ package com.vetsoftware.app.company.application.usecase;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.ListCompaniesUseCase;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
+import com.vetsoftware.app.shared.pagination.PageResult;
 import io.micrometer.observation.annotation.Observed;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "company.list")
@@ -21,17 +21,20 @@ public class ListCompaniesService implements ListCompaniesUseCase {
      * —{@code Authz.currentCompanyIdOrNull()} devuelve la empresa del empleado y
      * {@code null} para SYSTEM—, y es el único caso en que se lee el registro
      * completo. Un empleado llega siempre con su empresa, y entonces «listar
-     * empresas» es exactamente una fila: la suya. Se devuelve como lista, y no como
-     * recurso único, para no cambiar la forma del JSON que ya consumen los dos
-     * fronts.
+     * empresas» es exactamente una fila: la suya. Se devuelve como página, y no
+     * como recurso único, porque el alcance no cambia la forma del contrato.
      *
      * <p>
      * Una empresa que no existe (o que se borró entre la autenticación y esta
-     * lectura) devuelve lista vacía y no un 404: es un listado, y un listado sin
+     * lectura) devuelve página vacía y no un 404: es un listado, y un listado sin
      * resultados no es un error.
+     *
+     * <p>
+     * Los totales son los de la consulta y salen del adaptador; aquí solo se mapea
+     * el contenido con {@link PageResult#map}, que los conserva intactos.
      */
     @Override
-    public List<CompanyDto> listAll(Long companyId) {
-        return repository.findAllVisibleTo(companyId).stream().map(CompanyDto::from).toList();
+    public PageResult<CompanyDto> listAll(Long companyId, int page, int pageSize) {
+        return repository.findAllVisibleTo(companyId, page, pageSize).map(CompanyDto::from);
     }
 }

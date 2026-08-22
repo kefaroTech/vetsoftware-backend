@@ -10,8 +10,10 @@ import java.util.List;
  * Hoja de conteo físico: sede + líneas contadas por producto. {@code branchId}
  * lo acota el controller al alcance.
  */
-public record RecordCountRequest(@NotNull Long branchId, String note,
-        @NotEmpty @Valid List<Line> lines) {
-    public record Line(@NotNull Long productId, @PositiveOrZero int countedQuantity) {
+public record RecordCountRequest(@NotNull(message = "Debes seleccionar la sede.") Long branchId,
+        String note,
+        @NotEmpty(message = "Debes asignar al menos un producto al conteo.") @Valid List<Line> lines) {
+    public record Line(@NotNull(message = "Debes seleccionar el producto.") Long productId,
+            @PositiveOrZero(message = "La cantidad contada no puede ser negativa.") int countedQuantity) {
     }
 }

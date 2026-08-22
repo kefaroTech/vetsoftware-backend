@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
  * viejo responderia 400 a cada arrastre de dosis. Se quita cuando los dos
  * fronts envien el valor del contrato.
  */
-public record RescheduleMedicationScheduleRequest(@NotNull LocalDateTime newDateTime,
-        @NotNull @JsonFormat(with = JsonFormat.Feature.ACCEPT_CASE_INSENSITIVE_VALUES) RescheduleMode mode) {
+public record RescheduleMedicationScheduleRequest(
+        @NotNull(message = "La nueva fecha y hora es obligatoria.") LocalDateTime newDateTime,
+        @NotNull(message = "Debes seleccionar el modo de reprogramación.") @JsonFormat(with = JsonFormat.Feature.ACCEPT_CASE_INSENSITIVE_VALUES) RescheduleMode mode) {
 }

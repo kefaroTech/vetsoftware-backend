@@ -7,13 +7,15 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
-public record CreateGeneralChargeOpenAccountRequest(@NotBlank @Size(max = 150) String name,
-        @NotNull @PositiveOrZero BigDecimal unitAmount, @NotNull @Positive BigDecimal quantity,
-        Long taxId, @NotNull Long openAccountId,
+public record CreateGeneralChargeOpenAccountRequest(
+        @NotBlank(message = "El nombre del cargo es obligatorio.") @Size(max = 150, message = "El nombre del cargo no puede superar los 150 caracteres.") String name,
+        @NotNull(message = "El valor unitario es obligatorio.") @PositiveOrZero(message = "El valor unitario no puede ser negativo.") BigDecimal unitAmount,
+        @NotNull(message = "La cantidad es obligatoria.") @Positive(message = "La cantidad debe ser mayor que cero.") BigDecimal quantity,
+        Long taxId, @NotNull(message = "Debes seleccionar la cuenta abierta.") Long openAccountId,
         /**
          * Idempotency key opcional (UUID) para deduplicar reintentos del mismo cargo.
          */
-        @Size(max = 36) String clientRequestId,
+        @Size(max = 36, message = "El identificador de la solicitud no puede superar los 36 caracteres.") String clientRequestId,
         /**
          * Versión optimista de la cuenta que vio el front (opt-in) para detección
          * temprana de conflicto.

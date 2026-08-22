@@ -101,8 +101,8 @@ class InventoryQueryServiceTest {
     @Test
     @DisplayName("la busqueda de stock traslada el comando entero, incluido el filtro de bajo stock")
     void la_busqueda_de_stock_traslada_el_comando_entero() {
-        SearchStockCommand comando = new SearchStockCommand(COMPANY_ID, BRANCH_ID, "amox", true, 2,
-                20);
+        SearchStockCommand comando = new SearchStockCommand(COMPANY_ID, BRANCH_ID, "amox", true,
+                List.of(), 2, 20);
         when(stockQueryPort.searchStock(comando))
                 .thenReturn(new PageResult<>(List.of(), 2, 20, 0L, 0));
 
