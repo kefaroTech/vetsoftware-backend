@@ -70,11 +70,58 @@
              verde no protege nada y acaba desactivandose. Ahora 0.98 SI es alcanzable,
              porque es lo que mide la suite de verdad.
 
-             Historico de lo MEDIDO: 12,73 % (2026-08-08), 14,24 % (modulo animal),
-             25,64 % (2026-08-09, +17 features), 33,44 % (2026-08-12, campana de
-             cobertura + rodajas de persistencia), 53,15 % (2026-08-16, BE-10),
-             98,83 % (2026-08-17, BE-COV: 10.771 unitarias + 1.130 de integracion). -->
+             HISTORICO DE LO MEDIDO. Cada linea es la medicion de SU fecha y se deja tal
+             como se tomo: son fotos, no el estado de hoy. La ultima es la vigente.
+               12,73 % (2026-08-08)
+               14,24 % (2026-08-08, modulo animal)
+               25,64 % (2026-08-09, +17 features)
+               33,44 % (2026-08-12, campana de cobertura + rodajas de persistencia)
+               53,15 % (2026-08-16, BE-10)
+               98,83 % (2026-08-17, BE-COV: 10.771 unitarias + 1.130 de integracion)
+               98,36 % (2026-08-22, arbol 1.8.0-dev.1: 26.352/26.791 lineas, con
+                        10.183 unitarias -10.154 de `default-test` + 29 de
+                        `archunit-tests`- y 1.069 de integracion, cero fallos)
+
+             OJO AL COMPARAR LA PENULTIMA CON LA ULTIMA: 98,83 -> 98,36 no es cobertura
+             perdida sino denominador movido (28.214 lineas medidas entonces, 26.791
+             ahora). El suelo se queda en 0.98 porque las dos lo superan; el trinquete no
+             sube al 0,9836 justamente porque ese decimal depende del denominador. -->
         <jacoco.line.minimum>0.98</jacoco.line.minimum>
+
+        <!-- LOS DOS INTERRUPTORES QUE PERMITEN PARTIR `mvn verify` EN VARIOS JOBS DE CI.
+             Los dos valen `false`, asi que un `mvn verify` local o de cualquier otro
+             workflow se comporta EXACTAMENTE igual que antes de existir. Solo `ci.yml` los
+             pone en true, y cada uno en un solo job.
+
+             skipUTs — el gemelo de `-DskipITs` que surefire no trae. Failsafe si publica
+             `skipITs`, asi que el job de unitarias se limita a `mvn package` y ya se salta
+             las *IT por fase; el job de integracion, en cambio, TIENE que llegar a `verify`
+             -es `failsafe:verify` quien convierte un fallo de *IT en build rojo, no
+             `failsafe:integration-test`- y por el camino pasa por la fase `test`. Sin este
+             interruptor ese job volveria a ejecutar las 10.183 unitarias (medidas el
+             2026-08-22 sobre este arbol, contando elementos <testcase>), que es justo lo
+             que el reparto viene a evitar.
+
+             OJO A CUAL DE LOS DOS PARAMETROS DE SUREFIRE SE CABLEA, que no es indiferente:
+             va sobre `skip` (propiedad `maven.test.skip`) y NO sobre `skipTests`. Un
+             parametro configurado en el POM gana a la propiedad de usuario del mismo
+             nombre, asi que cablear `skipTests` habria dejado `-DskipTests` sin efecto — y
+             `-DskipTests` es lo que usa el camino solo-documentacion de `ci.yml` para
+             empaquetar el jar sin correr nada. Habria pasado de empaquetar en segundos a
+             ejecutar la suite entera, en el unico camino que existe para no ejecutarla.
+             Contrapartida asumida: `-Dmaven.test.skip=true` deja de silenciar surefire (el
+             compilador si se salta los tests, y surefire encuentra 0 clases y pasa).
+
+             skipCoverageCheck — apaga SOLO la ejecucion `check-floor`. El suelo se mide
+             sobre la fusion de las dos coberturas, asi que en un job que solo tiene una
+             mitad la comprobacion no es que sobre: es que MIENTE. En el job de integracion
+             mediria integracion sola y daria rojo por un motivo falso; el sitio donde se
+             mide de verdad es el job `coverage-gate`, con los dos .exec ya descargados.
+             Se cablea por ejecucion y no con el `jacoco.skip` del plugin porque ese es
+             unico para todos los goals y se llevaria por delante a `prepare-agent`, es
+             decir la cobertura entera. -->
+        <skipUTs>false</skipUTs>
+        <skipCoverageCheck>false</skipCoverageCheck>
     </properties>
 
     <dependencyManagement>
@@ -376,12 +423,41 @@
                          @{argLine} quedaria literal cuando jacoco no corre.
 
                          -Xmx explicito porque sin el la JVM del fork se queda con el default de
-                         ~25% de la RAM del runner (unos 2 GB de 7,9 GB) y eso no da para la suite:
-                         el volcado a disco esta para que un OOM futuro deje evidencia y no un stack
-                         sin contexto. maxSize baja de 32 a 8 porque retener contextos solo compensa
-                         si se reutilizan, y aqui las rodajas @WebMvcTest comparten WebMvcSliceConfig:
-                         con 8 la cache sigue acertando y se deja de pagar memoria por el resto. -->
-                    <argLine>@{argLine} -Xmx4g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath="${project.build.directory}/heapdump.hprof" -Dspring.test.context.cache.maxSize=8 -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
+                         ~25% de la RAM del runner (unos 4 GB de los 16 GB de ubuntu-24.04) y eso no
+                         da para la suite: el volcado a disco esta para que un OOM futuro deje
+                         evidencia y no un stack sin contexto. maxSize baja de 32 a 8 porque retener
+                         contextos solo compensa si se reutilizan, y aqui las rodajas @WebMvcTest
+                         comparten WebMvcSliceConfig: con 8 la cache sigue acertando y se deja de
+                         pagar memoria por el resto.
+
+                         EL -Xmx Y EL maxSize SON POR FORK, y desde forkCount=2 (ver la ejecucion
+                         default-test) hay DOS. La aritmetica, escrita para que se pueda rehacer:
+                         2 x 4 GB = 8 GB de techo sobre los 16 GB del runner, y el techo NO es
+                         reserva -la JVM compromete perezosamente-, asi que la huella real es la de
+                         hoy repartida en dos procesos. Se mantiene en 4 GB A PROPOSITO en vez de
+                         bajarlo a 3: 4 GB es el unico valor con el que se ha visto pasar la suite
+                         ENTERA, y cada fork recibe ahora la mitad de las clases, de modo que el
+                         mismo techo es estrictamente mas holgado que antes. Bajarlo seria cambiar
+                         dos variables a la vez y estrenar un numero que nadie ha medido.
+
+                         El maxSize=8 se queda igual por el mismo razonamiento, y no por inercia:
+                         lo que llena esa cache es el numero de configuraciones de contexto
+                         DISTINTAS que ve el fork, y al repartir las clases entre dos forks ese
+                         numero baja. Con 8 por fork la tasa de acierto no puede empeorar respecto
+                         al fork unico. Si algun dia aparece un OOM aqui, el primer dial es este
+                         maxSize (8 -> 6), NUNCA el de failsafe: alli el 4 es un ajuste de
+                         fiabilidad y bajarlo SUMA ~85 s (ver #284 mas abajo).
+
+                         HeapDumpPath lleva ${surefire.forkNumber} porque los dos forks escribirian
+                         si no en el MISMO fichero: el segundo OOM pisaria la evidencia del primero,
+                         o los dos volcados se entrelazarian en un .hprof ilegible. Justo el dia que
+                         hace falta. Failsafe usa su propio nombre por lo mismo. -->
+                    <!-- Ver `skipUTs` en <properties>: por defecto false, o sea surefire
+                         corre. Va a nivel de PLUGIN para que alcance a las DOS ejecuciones
+                         -default-test y archunit-tests-: si solo cubriera la primera, el job
+                         de integracion seguiria pagando las reglas de ArchUnit. -->
+                    <skip>${skipUTs}</skip>
+                    <argLine>@{argLine} -Xmx4g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath="${project.build.directory}/heapdump-surefire-${surefire.forkNumber}.hprof" -Dspring.test.context.cache.maxSize=8 -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
                     <environmentVariables>
                         <!-- EncryptedStringConverter lo instancia Hibernate, no Spring, asi
                              que lee la clave del ENTORNO de forma estatica y sin default: sin
@@ -391,6 +467,112 @@
                         <DIAN_ENC_KEY>cvPOiufeDsByvGdw71gg8XxS880Xf7S6lH9WvdfiwQY=</DIAN_ENC_KEY>
                     </environmentVariables>
                 </configuration>
+                <!-- DOS EJECUCIONES, Y LA SEGUNDA EXISTE POR UN MOTIVO DE CORRECCION, NO DE
+                     VELOCIDAD. Medido: surefire son 228 s de los 663 s de `mvn verify`, en un
+                     unico fork y en serie. Repartir las clases en dos JVM lo baja a ~130 s.
+
+                     POR QUE forkCount=2 ES SEGURO EN GENERAL. Es paralelismo de PROCESO, no de
+                     hilo: dentro de cada fork las clases siguen ejecutandose una detras de otra
+                     (no se toca `parallel` ni `threadCount`). Por eso todo el estado global de
+                     JVM sigue estando tan aislado como hoy — cada fork tiene su propio
+                     LoggerContext de Logback, su SecurityContextHolder, sus caches estaticas y su
+                     Locale por defecto. Eso importa aqui: el issue #277 documenta seis clases que
+                     enganchan sumideros al LoggerContext global y dos pares que compiten por el
+                     mismo logger; con hilos serian intermitentes, con forks NO se tocan. Lo unico
+                     que forkCount=2 pone en riesgo es el estado compartido FUERA de la JVM.
+
+                     Auditado el arbol de test entero (1.673 ficheros) buscando justo eso: cero
+                     @TempDir, cero ficheros temporales, cero System.setProperty, cero
+                     Locale/TimeZone.setDefault, cero puertos a la escucha, cero Testcontainers en
+                     alcance de surefire (AbstractDataJpaTest es abstract y sus hijas son *IT, que
+                     corren en failsafe) y un unico campo static mutable, privado de su clase
+                     (LogbackRedactionConfigTest). Solo aparecio UN recurso externo compartido, y
+                     es el de la ejecucion de abajo.
+
+                     LA EXCEPCION: EL STORE DE ARCHUNIT (issue #280). HexagonalArchitectureTest y
+                     PiramideDeTestsTest escriben las dos en config/archunit/violation-store, un
+                     directorio de ficheros que FreezingArchRule reescribe cuando una regla
+                     encuentra menos violaciones de las registradas. Los ficheros UUID por regla
+                     son disjuntos, pero `stored.rules` -el indice descripcion -> UUID- es UNO
+                     SOLO. Si las dos clases caen en forks distintos y las dos lo reescriben, se
+                     pierde una entrada: la regla que se queda sin foto cuenta su deuda historica
+                     entera como violacion NUEVA y el build se pone rojo sin que el diff del store
+                     lo explique — o, al reves, deuda ya resuelta vuelve a entrar en silencio.
+                     Sobre el gate que sostiene las veinticinco reglas de CLAUDE.md.
+
+                     Y OJO: el arreglo que propone el #280 -@ResourceLock o
+                     @Execution(SAME_THREAD)- NO sirve para esto. Esas son primitivas de JUnit para
+                     coordinar HILOS dentro de una misma JVM; entre dos procesos no coordinan nada.
+                     La unica forma de garantizarlo es que las dos clases compartan fork, y eso es
+                     lo que hace la ejecucion `archunit-tests`.
+
+                     De regalo arregla el tercer punto del #280: las dos @AnalyzeClasses importan
+                     el bytecode con opciones distintas (una con DoNotIncludeTests, otra sin), asi
+                     que son dos importaciones completas de com.vetsoftware.app. En forks distintos
+                     estarian vivas A LA VEZ contra 8 GB de techo; en el mismo fork van una detras
+                     de otra y la primera se puede recolectar.
+
+                     Coste de aislarlas: 14,4 s medidos en local (8,7 + 5,7) y 28,5 s en CI segun
+                     el #280. Es lo unico que queda en serie, y sale a cuenta: ~(228-28,5)/2 + 28,5
+                     + arranque de una JVM extra sigue estando en el entorno de los 130 s.
+
+                     LAS DOS EJECUCIONES NO SE PISAN, y conviene decir por que: el comentario de
+                     failsafe de mas abajo cuenta que surefire cachea por configuracion efectiva y
+                     que dos ejecuciones gemelas se saltan la segunda. Aqui las configuraciones
+                     DIFIEREN -una excluye lo que la otra incluye-, asi que las dos corren. Es
+                     justo el efecto que alli era un accidente y aqui es el diseno. Escriben en el
+                     mismo target/surefire-reports pero sobre clases disjuntas: ni un TEST-*.xml
+                     compartido. -->
+                <executions>
+                    <execution>
+                        <!-- La ejecucion que el ciclo de vida ya declara. Solo se le anade el
+                             reparto en dos forks y la exclusion de las dos clases de ArchUnit. -->
+                        <id>default-test</id>
+                        <configuration>
+                            <forkCount>2</forkCount>
+                            <reuseForks>true</reuseForks>
+                            <excludes>
+                                <!-- Surefire pierde sus exclusiones por defecto en cuanto el POM
+                                     declara <excludes>, y **/*$* es la que evita que una clase
+                                     anidada se tome por clase de test. Se repite a mano. -->
+                                <exclude>**/*$*</exclude>
+                                <exclude>**/architecture/HexagonalArchitectureTest.java</exclude>
+                                <exclude>**/architecture/PiramideDeTestsTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <!-- Las dos clases que comparten el store de ArchUnit, juntas y en un solo
+                             fork. Si algun dia nace una tercera clase con @AnalyzeClasses y
+                             freeze(...), va AQUI: dejarla en el reparto reabre el #280. -->
+                        <id>archunit-tests</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <forkCount>1</forkCount>
+                            <!-- <test> Y NO <includes>, Y ESTO IMPORTA. Medido: -Dtest de la linea
+                                 de comandos IGNORA tanto <includes> como <excludes>. Con
+                                 <includes>, un `mvn test -Dtest=AnimalTest` corria AnimalTest en
+                                 las DOS ejecuciones -28 tests, dos veces, comprobado-, que es
+                                 exactamente el "dos veces en silencio" contra el que avisa el
+                                 comentario de failsafe. Un parametro configurado explicitamente en
+                                 el POM gana a la propiedad de usuario del mismo nombre, asi que
+                                 <test> clava estas dos clases pase lo que pase en la linea de
+                                 comandos y la duplicacion desaparece.
+
+                                 Efecto que queda, dicho para que nadie lo descubra a solas: un
+                                 `mvn test -Dtest=LoQueSea` paga ademas los ~14 s de las reglas de
+                                 arquitectura, y el `mvn test -Dtest='HexagonalArchitectureTest,
+                                 PiramideDeTestsTest'` que documenta CLAUDE.md las corre dos veces
+                                 -una por ejecucion- porque ahi -Dtest se salta el <excludes> de
+                                 default-test. Sigue siendo correcto y verde, solo mas lento en un
+                                 comando que se usa a mano y de tarde en tarde. -->
+                            <test>HexagonalArchitectureTest, PiramideDeTestsTest</test>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -409,7 +591,8 @@
                          surefire, con la ruta entrecomillada por los espacios del .m2.
 
                          -Xmx explicito por lo mismo que en surefire, pero aqui ya medido: el fork
-                         moria con OutOfMemoryError tras 314 s y solo 203 de las ~1.130 pruebas.
+                         moria con OutOfMemoryError tras 314 s y solo 203 de las ~1.130 pruebas
+                         que habia entonces (BE-COV, 2026-08-17; hoy son 1.069).
 
                          maxSize=4 son los 3 contextos que sobreviven al colapso de las rodajas
                          mas uno de margen, y es un ajuste de FIABILIDAD, no de velocidad (#284).
@@ -458,7 +641,14 @@
                          -cuando fallo, fallo con "Failed to execute goal ...failsafe...:verify
                          (default)"-. Si algun dia hacen falta parametros distintos para las *IT,
                          van en esta <configuration> de plugin, nunca en una ejecucion gemela. -->
-                    <argLine>@{failsafeArgLine} -Xmx4g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath="${project.build.directory}/heapdump.hprof" -Dspring.test.context.cache.maxSize=4 -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
+                    <!-- SE QUEDA EN UN SOLO FORK, A PROPOSITO. Las rodajas *IT comparten el
+                         contenedor MySQL singleton de AbstractDataJpaTest y la misma base: dos
+                         forks serian dos suites escribiendo en las mismas tablas, y el resultado
+                         no es un fallo limpio sino datos que aparecen y desaparecen entre pruebas.
+                         Paralelizar esto es otro problema -pide una base por fork- y no se aborda
+                         aqui. Lo unico que cambia es el nombre del volcado, que antes colisionaba
+                         con el de surefire. -->
+                    <argLine>@{failsafeArgLine} -Xmx4g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath="${project.build.directory}/heapdump-failsafe.hprof" -Dspring.test.context.cache.maxSize=4 -javaagent:"${org.mockito:mockito-core:jar}"</argLine>
                     <environmentVariables>
                         <!-- Mismo motivo que en surefire: EncryptedStringConverter lo
                              instancia Hibernate y lee la clave del entorno sin default. -->
@@ -558,15 +748,23 @@
                             <propertyName>failsafeArgLine</propertyName>
                         </configuration>
                     </execution>
-                    <execution>
-                        <!-- Informe de `mvn test`: solo pruebas unitarias, porque en esa
-                             fase las *IT todavia no han corrido. -->
-                        <id>report</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
+                    <!-- Aqui vivia una ejecucion <id>report</id> en fase `test`, descrita como
+                         "informe de `mvn test`: solo pruebas unitarias". Se retira porque su
+                         salida la PISA entera `report-all`: las dos usan el outputDirectory por
+                         defecto -target/site/jacoco- y report-all corre despues, en
+                         post-integration-test, sobre el .exec fusionado de surefire + failsafe. En
+                         un `mvn verify` el informe que sobrevivia era siempre el segundo, asi que
+                         el primero era ~2 s de analizar 2.123 clases para escribir ficheros que
+                         nadie llegaba a leer. Comprobado que no lo consume nadie: ni un workflow
+                         de .github, ni el Dockerfile, ni un script del repo mencionan jacoco.
+
+                         LO QUE SI CAMBIA, dicho sin disimulo: `mvn test` a secas ya no deja
+                         target/site/jacoco/index.html. El suelo de cobertura no se toca -lo miden
+                         report-all y check-floor sobre jacoco-all.exec, los dos en
+                         post-integration-test- pero CLAUDE.md documenta ese HTML en su seccion
+                         "Commands" y en "Cobertura". Para el informe local sigue estando
+                         `mvn jacoco:report` tras el `mvn test`, o `mvn verify`. Registrado en su
+                         issue para que la documentacion no se quede mintiendo. -->
                     <execution>
                         <!-- Une lo que midio surefire con lo que midio failsafe. Si las *IT
                              se saltan (-DskipITs) el segundo .exec no existe y el merge se
@@ -630,6 +828,15 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <!-- Ver `skipCoverageCheck` en <properties>. Por defecto false:
+                                 un `mvn verify` completo -local, o el de cualquier otro
+                                 workflow- comprueba el suelo igual que siempre. Solo el job
+                                 `integration` de ci.yml lo pone en true, porque alli el
+                                 .exec de las unitarias no existe y medir seria mentir. El
+                                 sitio donde se mide con los dos .exec delante es el job
+                                 `coverage-gate`, que ademas comprueba ANTES que los dos
+                                 ficheros llegaron: ver "Guarda anti-falso-verde" en ci.yml. -->
+                            <skip>${skipCoverageCheck}</skip>
                             <dataFile>${project.build.directory}/jacoco-all.exec</dataFile>
                             <rules>
                                 <rule>
@@ -828,6 +1035,44 @@
                     <skipAttach>true</skipAttach>
                 </configuration>
                 <executions>
+                    <!-- NEUTRALIZA EL SBOM HEREDADO. spring-boot-starter-parent:4.1.0 declara en su
+                         pluginManagement (lineas 188-204 de su POM) una ejecucion SIN <id> -o sea
+                         `default`- que engancha makeAggregateBom a generate-resources y escribe en
+                         ${project.build.outputDirectory}/META-INF/sbom/application.cdx.json. El
+                         resultado es que CADA build resolvia el arbol de dependencias y validaba un
+                         BOM DOS VECES: esa y la `build-sbom` de aqui abajo. 9,7 s de CI por dos
+                         listas del mismo arbol, ~5 s de ellos para la que nadie usa.
+
+                         Verificado que no la consume nadie antes de apagarla, que era el riesgo
+                         real:
+                           - `grep -rn "META-INF/sbom|makeAggregateBom|application.cdx"` sobre
+                             .github/, Dockerfile, .dockerignore, scripts/, docker/, deploy/ y
+                             package.json: cero coincidencias.
+                           - Los tres consumidores de SBOM del repo leen target/bom.json, que es la
+                             salida de `build-sbom` y no la de esta: security.yml:136 lo genera con
+                             `cyclonedx:makeBom` y lo escanea con Trivy (security.yml:167-184), y
+                             publish-release.yml:376-397 lo publica como activo de la release.
+                             (Numeros de linea reverificados el 2026-08-22: los anteriores
+                             -security.yml:87 y :96-125, publish-release.yml:286-294- eran
+                             correctos al escribirse y se desplazaron al insertarse los bloques de
+                             cache de Maven, +51 lineas en security.yml y +104 en
+                             publish-release.yml. Si vuelven a no cuadrar, busca por el nombre del
+                             step, que es lo estable: "Generate CycloneDX SBOM", "Scan the SBOM for
+                             known vulnerabilities" y "Attach the SBOM to the release".)
+                           - El fichero de la heredada viajaba DENTRO del jar (target/classes/...),
+                             donde lo leeria el endpoint /actuator/sbom de Actuator. Comprobado que
+                             no esta expuesto en ningun perfil: application.yml:141-144 y
+                             application-local.yml expone health,info,metrics,prometheus, y
+                             application-dev.yml / application-prod.yml solo health. Ninguno incluye
+                             `sbom`, asi que el endpoint no responde y el fichero embebido no lo lee
+                             nadie.
+
+                         Si algun dia se expone /actuator/sbom, hay que devolver esta ejecucion a
+                         generate-resources: el jar dejo de traer su lista de materiales embebida. -->
+                    <execution>
+                        <id>default</id>
+                        <phase>none</phase>
+                    </execution>
                     <execution>
                         <id>build-sbom</id>
                         <phase>package</phase>

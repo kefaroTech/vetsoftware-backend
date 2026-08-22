@@ -26,8 +26,14 @@ jobs:
   # ganaba: es que sobre el push no corria nadie. La unica verificacion vivia en el
   # pull request anterior y nada la ataba al commit que se publicaba, asi que un CI
   # en rojo -o directamente en startup_failure, que fue lo que paso con el PR #175- no
-  # impedia que la imagen llegara a ECR. Y el `Dockerfile` compila con
-  # `-DskipTests`, de modo que el build tampoco iba a encontrar el fallo.
+  # impedia que la imagen llegara a ECR. Y el `Dockerfile` no ejecuta ninguna prueba
+  # -antes compilaba con `-DskipTests`, hoy directamente copia un jar ya hecho-, de modo
+  # que el build tampoco iba a encontrar el fallo.
+  #
+  # Desde que la imagen consume el artefacto `backend-boot-jar` que produce `ci.yml`,
+  # este job ademas dejo de ser solo una puerta: es quien construye el binario que se
+  # publica. Un `verify` que no suba ese artefacto ya no degrada a "publicar sin
+  # verificar", rompe la publicacion entera, que es la direccion correcta del fallo.
   #
   # Se verifica invocando `ci.yml` en vez de copiar aqui sus pasos: si "verificado"
   # tuviera dos definiciones, la de este fichero se quedaria atras el primer dia que
@@ -186,6 +192,10 @@ jobs:
             echo "push=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Sigue haciendo falta aunque la imagen ya no compile nada: la etapa runtime es
+      # arm64 y su `apt-get install` ejecuta binarios de esa arquitectura sobre un runner
+      # amd64. Lo que desaparecio fue la etapa `build`, que ademas era nativa
+      # (`FROM --platform=$BUILDPLATFORM`) y por tanto nunca uso esta emulacion.
       - name: Set up QEMU
         if: steps.existing.outputs.push == 'true'
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
@@ -195,6 +205,38 @@ jobs:
       - name: Set up Docker Buildx
         if: steps.existing.outputs.push == 'true'
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      # El jar que `ci.yml` acaba de construir y verificar sobre este mismo commit. Antes
+      # la imagen lo recompilaba entera con Maven dentro del `docker build` -84,7 s por
+      # publicacion- para llegar exactamente al mismo binario. El artefacto viaja por el
+      # run: `verify` es una llamada a un workflow reutilizable, asi que sus artefactos
+      # pertenecen a este run y `download-artifact` los ve sin parametros extra.
+      - name: Download the verified boot jar
+        if: steps.existing.outputs.push == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: backend-boot-jar
+          path: build/docker
+
+      # El `COPY` del Dockerfile apunta a una ruta exacta, no a un glob: dos jars en el
+      # directorio se concatenarian en el destino sin un solo aviso y la imagen
+      # arrancaria -o no- con un binario imposible de explicar. Aqui se comprueba que
+      # llego uno y solo uno, y se le pone el nombre que el `COPY` espera.
+      - name: Normalize the jar into the build context
+        if: steps.existing.outputs.push == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t jars < <(find build/docker -maxdepth 1 -type f -name '*.jar' | sort)
+          if [[ "${#jars[@]}" -ne 1 ]]; then
+            echo "Se esperaba exactamente un jar en el artefacto backend-boot-jar; llegaron ${#jars[@]}." >&2
+            printf '  %s\n' "${jars[@]+"${jars[@]}"}" >&2
+            exit 1
+          fi
+          if [[ "${jars[0]}" != "build/docker/application.jar" ]]; then
+            mv "${jars[0]}" build/docker/application.jar
+          fi
+          ls -l build/docker/application.jar
 
       # Dos tags sobre el mismo digest: la version es lo que se pide al
       # desplegar, y el tag del commit es lo que prueba que la imagen salio de
@@ -222,8 +264,25 @@ jobs:
           # Nada en los cuatro repositorios verificaba esas atestaciones.
           provenance: false
           sbom: false
-          cache-from: type=gha,scope=backend-arm64
-          cache-to: type=gha,mode=max,scope=backend-arm64
+          # El jar entra por el contexto; el valor por defecto del ARG es este mismo, y se
+          # declara aqui para que el workflow diga en voz alta que fichero construye en vez
+          # de heredarlo en silencio del Dockerfile.
+          #
+          # APP_VERSION sale de `steps.version.outputs.version`, la MISMA expresion que
+          # produce el primer tag de la lista `tags` de este mismo step, y esa es toda la
+          # garantia que hace falta: lo que la imagen reporta como `service.version` y lo
+          # que dice su tag no pueden divergir, porque salen del mismo output del step de
+          # bump. El jar viene del job `verify`, anterior al bump, y lleva horneada la
+          # version anterior; esta variable la pisa en runtime sin recompilar nada.
+          build-args: |
+            JAR_FILE=build/docker/application.jar
+            APP_VERSION=${{ steps.version.outputs.version }}
+          # Scope propio. Antes dev y release compartian `backend-arm64`, asi que una
+          # release y una publicacion de develop se pisaban las capas mutuamente y cada
+          # una invalidaba el acierto de la otra. Los PR de `ci.yml` leen este mismo
+          # scope en modo solo lectura: su imagen es la de develop, no la de produccion.
+          cache-from: type=gha,scope=backend-arm64-dev
+          cache-to: type=gha,mode=max,scope=backend-arm64-dev
 
       - name: Resolve the published digest
         id: image
