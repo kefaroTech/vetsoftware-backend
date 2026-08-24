@@ -85,6 +85,15 @@ spring:
           preferred_boolean_jdbc_type: TINYINT
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
+    # Sin este valor, Liquibase NO filtra por contexto: un changeSet con context="local,e2e"
+    # se aplicaria igual en cualquier entorno, porque "sin --contexts" significa "sin filtro",
+    # no "ningun contexto activo" (probado con liquibase-core 5.0.3: 0 changeSets filtrados
+    # cuando el valor es null/vacio). `production` es el default seguro que heredan dev y
+    # produccion -las dos arrancan con SPRING_PROFILES_ACTIVE=prod (VetSoftwareIaC/
+    # environments/{dev,prod}/locals.tf) y ninguna sobreescribe esta clave-, y no coincide con
+    # ningun context declarado hoy, asi que todo changeSet local,e2e queda fuera. Solo
+    # application-local.yml lo reabre. Ver 262_seed_local_e2e_platform_credential.xml.
+    contexts: production
   cache:
     type: redis
 

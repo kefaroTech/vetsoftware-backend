@@ -20,10 +20,9 @@ public class CreateCompanyAdapter implements CompanyCreator {
 
     @Override
     public CompanyResult create(String name, String identifier, String address,
-            String contactNumber, Long cityId, Long membershipId) {
-        var dto = systemAuthRunner
-                .call(() -> createCompanyUseCase.execute(new CreateCompanyCommand(name, identifier,
-                        address, contactNumber, cityId, membershipId)));
+            String contactNumber, Long cityId) {
+        var dto = systemAuthRunner.call(() -> createCompanyUseCase.execute(
+                new CreateCompanyCommand(name, identifier, address, contactNumber, cityId)));
         return new CompanyResult(dto.id(), dto.name(), dto.identifier());
     }
 }

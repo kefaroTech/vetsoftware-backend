@@ -168,6 +168,7 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
             UPDATE employees
             SET enabled = true, auth_version = auth_version + 1, version = version + 1
             WHERE id = :id
+              AND enabled = false
             """, nativeQuery = true)
     int reactivate(@Param("id") Long id);
 
@@ -197,6 +198,7 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeJpaEntity, 
             SET enabled = true, auth_version = auth_version + 1, version = version + 1
             WHERE id = :id
               AND company_id = :companyId
+              AND enabled = false
             """, nativeQuery = true)
     int reactivate(@Param("id") Long id, @Param("companyId") Long companyId);
 

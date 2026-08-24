@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Paso 0.1 del modelo de suscripciones (suscripciones-cambios-existentes.md §3). Añade a
+         `sub_modules` las dos columnas que el catálogo comercial y el recálculo de entitlements
+         necesitan leer: `is_sellable` distingue lo vendible de la infraestructura interna,
+         `read_only_capable` dice si el submódulo admite modo solo lectura al darse de baja.
+         Los dos defaults son FALSE a propósito -ver la justificación en la especificación-: con el
+         catálogo aún vacío (las semillas se aplazan a un PR posterior), el día 1 ningún submódulo es
+         vendible y ninguno se muestra en modo solo lectura hasta que alguien lo verifique. ALTER
+         instantáneo, solo metadatos, sin ventana de bloqueo incluso con datos
+         (https://dev.mysql.com/doc/refman/8.4/en/innodb-online-ddl-operations.html). -->
+    <changeSet id="228_add_catalog_columns_to_sub_modules" author="orlando">
+        <addColumn tableName="sub_modules">
+            <column name="is_sellable" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="read_only_capable" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="sub_modules" columnName="is_sellable"/>
+            <dropColumn tableName="sub_modules" columnName="read_only_capable"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

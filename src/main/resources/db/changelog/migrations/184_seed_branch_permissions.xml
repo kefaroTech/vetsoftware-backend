@@ -5,11 +5,13 @@
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
     <!-- Multi-sucursal (Fase C). Siembra los permisos de GESTIÓN de sucursales (branch.create/branch.update)
-         en el catálogo de permisos (sub_module + base_permissions + base_role_permissions al rol base ADMIN),
-         los habilita para las membresías (membership_sub_modules) y los backfillea a las empresas existentes
-         (permissions por empresa + role_permissions al rol ADMIN de cada empresa). La LECTURA de sucursales
-         (selector de sede) NO requiere permiso: cualquier empleado de la empresa lista sus sedes.
-         Todas las sentencias son idempotentes (guardas NOT EXISTS / claves por code). -->
+         en el catálogo de permisos (sub_module + base_permissions + base_role_permissions al rol base ADMIN)
+         y los backfillea a las empresas existentes (permissions por empresa + role_permissions al rol ADMIN
+         de cada empresa). La LECTURA de sucursales (selector de sede) NO requiere permiso: cualquier empleado
+         de la empresa lista sus sedes.
+         Todas las sentencias son idempotentes (guardas NOT EXISTS / claves por code).
+         El bloque que habilitaba el sub-módulo por plan comercial (tabla puente hoy eliminada) se retiró al demoler
+         el concepto de membresía; ver `suscripciones-cambios-existentes.md` §2.3. -->
 
     <!-- El módulo GENERAL nunca se sembró: `modules` solo se llena por API (Module.create), así que en
          una base recién creada está vacía. Los cuatro seeds de catálogo que resuelven su sub-módulo con
@@ -70,25 +72,6 @@
         <rollback>
             DELETE FROM base_role_permissions
             WHERE base_permission_id IN (SELECT id FROM base_permissions WHERE code IN ('branch.create', 'branch.update'));
-        </rollback>
-    </changeSet>
-
-    <changeSet id="184_branch_membership_sub_modules" author="orlando">
-        <!-- Habilita el sub-módulo BRANCH para TODAS las membresías (multi-sucursal es capacidad de base).
-             Sin esto, ni el registro ni el publish propagarían los permisos (gating por membership). -->
-        <sql>
-            INSERT INTO membership_sub_modules (membership_id, sub_module_id, enabled)
-            SELECT m.id, sm.id, 1
-            FROM memberships m
-            CROSS JOIN sub_modules sm
-            WHERE sm.code = 'BRANCH'
-              AND NOT EXISTS (
-                  SELECT 1 FROM membership_sub_modules x
-                  WHERE x.membership_id = m.id AND x.sub_module_id = sm.id);
-        </sql>
-        <rollback>
-            DELETE FROM membership_sub_modules
-            WHERE sub_module_id IN (SELECT id FROM sub_modules WHERE code = 'BRANCH');
         </rollback>
     </changeSet>
 

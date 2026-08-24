@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 1 (suscripciones-tablas.md #2). Puente muchos-a-muchos entre
+         el catálogo comercial y los sub_modules funcionales. Sin company_id: es global de plataforma.
+         Exenta de @Version (E2_TABLA_PUENTE): solo dos FK y ningún campo propio mutable. -->
+    <changeSet id="230_create_catalog_item_sub_modules" author="orlando">
+        <createTable tableName="catalog_item_sub_modules">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="catalog_item_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_catalog_item_sub_modules_item"
+                             references="catalog_items(id)"/>
+            </column>
+            <column name="sub_module_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_catalog_item_sub_modules_sub_module"
+                             references="sub_modules(id)"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="catalog_item_sub_modules"
+                             columnNames="catalog_item_id, sub_module_id"
+                             constraintName="uq_catalog_item_sub_modules"/>
+
+        <rollback>
+            <dropTable tableName="catalog_item_sub_modules"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

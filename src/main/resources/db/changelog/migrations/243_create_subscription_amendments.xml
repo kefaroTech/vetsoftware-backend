@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 4 (suscripciones-tablas.md #14). El otrosí del contrato.
+         Se crea antes que subscription_items porque esta apunta a ella con created_amendment_id /
+         ended_amendment_id. Exenta de @Version (E1_APPEND_ONLY), sin enabled (documento inmutable).
+         FK compuesta fk_subscription_amendments_subscription (par C3, suscripciones-modelo.md §4.5):
+         el atributo inline de Liquibase no sirve para FK de varias columnas, así que va con
+         addForeignKeyConstraint, DESPUÉS de crear el índice de listado (que la contiene como prefijo
+         por la izquierda) para que MySQL no cree uno redundante -Apéndice C-.
+         uq_subscription_amendments_company_id es la clave auxiliar que necesita subscription_items
+         (created_amendment_id, ended_amendment_id) y subscription_charges (amendment_id).
+
+         Ajuste sobre #396, extendido aquí tras verificarlo (mismo patrón detectado en
+         billing_document_applications): `uq_subscription_amendments_client_request` es
+         `UNIQUE (company_id, client_request_id)`, NO `UNIQUE (client_request_id)` a secas.
+         `JpaSubscriptionAmendmentRepository.findByClientRequestIdAndCompanyId` (via
+         `findByClientRequestIdAndCompany_Id`) deduplica ACOTADO POR EMPRESA; un índice global
+         mediría algo distinto de lo que la consulta comprueba, y dos clínicas que generen la
+         misma cadena chocarían contra una fila que la segunda no puede ver. `client_request_id`
+         ya era `NOT NULL` aquí (a diferencia de billing_document_applications), así que la
+         compuesta no cambia nulabilidad, solo alcance. Empresa primero, mismo criterio que
+         `uq_subscription_amendments_company_id`. -->
+    <changeSet id="243_create_subscription_amendments" author="orlando">
+        <createTable tableName="subscription_amendments">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_subscription_amendments_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="subscription_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="amendment_number" type="VARCHAR(30)">
+                <constraints nullable="false" unique="true"
+                             uniqueConstraintName="uq_subscription_amendments_number"/>
+            </column>
+            <column name="amendment_type" type="VARCHAR(25)"><constraints nullable="false"/></column>
+            <column name="effective_date" type="DATE"><constraints nullable="false"/></column>
+            <column name="reason" type="VARCHAR(255)"/>
+            <column name="requested_by_employee_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_subscription_amendments_employee"
+                             references="employees(id)"/>
+            </column>
+            <column name="requested_by_system_user_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_subscription_amendments_system_user"
+                             references="system_users(id)"/>
+            </column>
+            <column name="proration_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="monthly_delta_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quote_id" type="BIGINT"><constraints nullable="true"/></column>
+            <column name="client_request_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="subscription_amendments" columnNames="company_id, id"
+                             constraintName="uq_subscription_amendments_company_id"/>
+        <addUniqueConstraint tableName="subscription_amendments"
+                             columnNames="company_id, client_request_id"
+                             constraintName="uq_subscription_amendments_client_request"/>
+
+        <sql><![CDATA[
+            ALTER TABLE subscription_amendments
+                ADD CONSTRAINT chk_subscription_amendments_type
+                    CHECK (amendment_type IN ('ADD_ITEM','REMOVE_ITEM','CHANGE_QUANTITY','CHANGE_CYCLE',
+                                               'SUSPEND','REACTIVATE','CANCEL','PRICE_LIST_MIGRATION')),
+                ADD CONSTRAINT chk_subscription_amendments_actor
+                    CHECK ((requested_by_employee_id IS NOT NULL AND requested_by_system_user_id IS NULL)
+                           OR (requested_by_employee_id IS NULL AND requested_by_system_user_id IS NOT NULL))
+        ]]></sql>
+
+        <createIndex tableName="subscription_amendments" indexName="ix_subscription_amendments_effective">
+            <column name="company_id"/>
+            <column name="subscription_id"/>
+            <column name="effective_date"/>
+        </createIndex>
+        <!-- Índice explícito y FK compuesta: una ampliación solo puede citar una
+             cotización de la misma empresa; quote_id nullable conserva los
+             cambios que no provienen de cotización. -->
+        <createIndex tableName="subscription_amendments" indexName="ix_subscription_amendments_company_quote">
+            <column name="company_id"/>
+            <column name="quote_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="subscription_amendments"
+                                 baseColumnNames="company_id, subscription_id"
+                                 referencedTableName="subscriptions"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_subscription_amendments_subscription"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_amendments"
+                                 baseColumnNames="company_id, quote_id"
+                                 referencedTableName="quotes"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_subscription_amendments_quote"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="subscription_amendments"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

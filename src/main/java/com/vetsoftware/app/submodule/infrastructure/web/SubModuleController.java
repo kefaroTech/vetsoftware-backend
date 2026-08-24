@@ -44,8 +44,9 @@ public class SubModuleController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SubModuleResponse create(@Valid @RequestBody CreateSubModuleRequest request) {
-        return toResponse(createUseCase.execute(
-                new CreateSubModuleCommand(request.name(), request.code(), request.moduleId())));
+        return toResponse(
+                createUseCase.execute(new CreateSubModuleCommand(request.name(), request.code(),
+                        request.moduleId(), request.sellable(), request.readOnlyCapable())));
     }
 
     @GetMapping
@@ -61,8 +62,9 @@ public class SubModuleController {
     @PutMapping("/{id}")
     public SubModuleResponse update(@PathVariable Long id,
             @Valid @RequestBody UpdateSubModuleRequest request) {
-        return toResponse(updateUseCase.execute(new UpdateSubModuleCommand(id, request.name(),
-                request.code(), request.moduleId())));
+        return toResponse(
+                updateUseCase.execute(new UpdateSubModuleCommand(id, request.name(), request.code(),
+                        request.moduleId(), request.sellable(), request.readOnlyCapable())));
     }
 
     @DeleteMapping("/{id}")
@@ -79,6 +81,7 @@ public class SubModuleController {
     private SubModuleResponse toResponse(SubModuleDto dto) {
         ModuleSummaryDto m = dto.module();
         return new SubModuleResponse(dto.id(), dto.name(), dto.code(),
-                new ModuleSummary(m.id(), m.name(), m.code()), dto.createdDate(), dto.enabled());
+                new ModuleSummary(m.id(), m.name(), m.code()), dto.sellable(),
+                dto.readOnlyCapable(), dto.createdDate(), dto.enabled());
     }
 }

@@ -308,6 +308,71 @@ class AuthzTest {
     }
 
     @Nested
+    @DisplayName("currentSystemUserId — la firma de una decisión comercial")
+    class UsuarioDeSistemaActual {
+
+        @Test
+        @DisplayName("una cuenta de plataforma devuelve su id")
+        void usuario_de_sistema_devuelve_su_id() {
+            autenticar(AuthMother.usuarioDeSistema());
+            assertThat(authz.currentSystemUserId()).isEqualTo(AuthMother.SYSTEM_USER_ID);
+        }
+
+        @Test
+        @DisplayName("un empleado no puede firmar como plataforma")
+        void un_empleado_no_puede_firmar_como_plataforma() {
+            autenticar(AuthMother.empleado());
+            assertThatThrownBy(() -> authz.currentSystemUserId())
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("No system user context");
+        }
+
+        @Test
+        @DisplayName("el proceso interno no tiene cuenta que firmar")
+        void el_proceso_interno_no_tiene_cuenta_que_firmar() {
+            autenticar(SystemContext.INSTANCE);
+            assertThatThrownBy(() -> authz.currentSystemUserId())
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("No system user context");
+        }
+
+        @Test
+        @DisplayName("sin autenticación no hay firma posible")
+        void sin_autenticacion_no_hay_firma_posible() {
+            assertThatThrownBy(() -> authz.currentSystemUserId())
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("No system user context");
+        }
+
+        @Test
+        @DisplayName("variante sin lanzar: una cuenta de plataforma devuelve su id")
+        void or_null_usuario_de_sistema_devuelve_su_id() {
+            autenticar(AuthMother.usuarioDeSistema());
+            assertThat(authz.currentSystemUserIdOrNull()).isEqualTo(AuthMother.SYSTEM_USER_ID);
+        }
+
+        @Test
+        @DisplayName("variante sin lanzar: un empleado devuelve null")
+        void or_null_empleado_devuelve_null() {
+            autenticar(AuthMother.empleado());
+            assertThat(authz.currentSystemUserIdOrNull()).isNull();
+        }
+
+        @Test
+        @DisplayName("variante sin lanzar: el proceso interno devuelve null")
+        void or_null_system_context_devuelve_null_en_sistema() {
+            autenticar(SystemContext.INSTANCE);
+            assertThat(authz.currentSystemUserIdOrNull()).isNull();
+        }
+
+        @Test
+        @DisplayName("variante sin lanzar: sin autenticación devuelve null")
+        void or_null_sin_autenticacion_devuelve_null_en_sistema() {
+            assertThat(authz.currentSystemUserIdOrNull()).isNull();
+        }
+    }
+
+    @Nested
     @DisplayName("isSuperAdmin")
     class SuperAdmin {
 

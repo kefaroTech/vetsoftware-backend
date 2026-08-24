@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 5 (suscripciones-tablas.md #17). Qué puede usar cada empresa
+         AHORA MISMO; sustituye a la antigua tabla puente de planes como fuente de verdad del acceso. Derivada:
+         se recalcula con borrado físico + reinserción dentro de una transacción -es la ÚNICA
+         excepción de borrado físico del modelo-, por eso NO lleva enabled ni @Version
+         (E6_YA_PROTEGIDO). uq_company_entitlements es el acceso caliente: point lookup por
+         (company_id, sub_module_id) y listado "qué puede usar esta empresa" por company_id.
+         FK compuesta fk_company_entitlements_item (par P6, suscripciones-modelo.md §4.5). -->
+    <changeSet id="246_create_company_entitlements" author="orlando">
+        <createTable tableName="company_entitlements">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_company_entitlements_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="sub_module_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_company_entitlements_sub_module"
+                             references="sub_modules(id)"/>
+            </column>
+            <column name="access_level" type="VARCHAR(15)"><constraints nullable="false"/></column>
+            <column name="source" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="subscription_id" type="BIGINT"/>
+            <column name="subscription_item_id" type="BIGINT"/>
+            <column name="valid_from" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="valid_until" type="DATETIME(6)"/>
+            <column name="recalculated_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="company_entitlements" columnNames="company_id, sub_module_id"
+                             constraintName="uq_company_entitlements"/>
+
+        <sql><![CDATA[
+            ALTER TABLE company_entitlements
+                ADD CONSTRAINT chk_company_entitlements_access_level
+                    CHECK (access_level IN ('FULL','READ_ONLY','NONE')),
+                ADD CONSTRAINT chk_company_entitlements_source
+                    CHECK (source IN ('SUBSCRIPTION','TRIAL','CORE','MANUAL_GRANT')),
+                ADD CONSTRAINT chk_company_entitlements_validity
+                    CHECK (valid_until IS NULL OR valid_until > valid_from),
+                ADD CONSTRAINT chk_company_entitlements_origin
+                    CHECK (source NOT IN ('SUBSCRIPTION','TRIAL') OR subscription_id IS NOT NULL)
+        ]]></sql>
+
+        <createIndex tableName="company_entitlements" indexName="ix_company_entitlements_stale">
+            <column name="recalculated_at"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="company_entitlements"
+                                 baseColumnNames="company_id, subscription_id"
+                                 referencedTableName="subscriptions"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_company_entitlements_subscription"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_entitlements"
+                                 baseColumnNames="company_id, subscription_item_id"
+                                 referencedTableName="subscription_items"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_company_entitlements_item"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="company_entitlements"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 6 (suscripciones-tablas.md #21). El IVA calculado UNA SOLA VEZ,
+         sobre la base agregada de todas las líneas que comparten tarifa (bloqueante corregido: el
+         cargo NO guarda tax_amount, ver 251). Exenta de @Version (E1_APPEND_ONLY), sin enabled
+         (base declarable ante la DIAN: ocultar una fila cambia lo declarado sin dejar rastro).
+         uq_sbdt_document_rate es la constraint que impone "una sola vez por tratamiento y tarifa".
+         FK compuesta fk_sbdt_document; su índice automático (company_id, billing_document_id) ya
+         sirve el listado, no hace falta ninguno adicional. -->
+    <changeSet id="250_create_subscription_billing_document_taxes" author="orlando">
+        <createTable tableName="subscription_billing_document_taxes">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_sbdt_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="billing_document_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="tax_treatment" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="tax_rate" type="DECIMAL(5,2)"><constraints nullable="false"/></column>
+            <column name="taxable_base" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="tax_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="subscription_billing_document_taxes"
+                             columnNames="billing_document_id, tax_treatment, tax_rate"
+                             constraintName="uq_sbdt_document_rate"/>
+
+        <sql><![CDATA[
+            ALTER TABLE subscription_billing_document_taxes
+                ADD CONSTRAINT chk_sbdt_tax_treatment
+                    CHECK (tax_treatment IN ('TAXED','EXEMPT','EXCLUDED')),
+                ADD CONSTRAINT chk_sbdt_rate CHECK (tax_rate >= 0 AND tax_rate <= 100),
+                ADD CONSTRAINT chk_sbdt_amounts_positive
+                    CHECK (taxable_base >= 0 AND tax_amount >= 0),
+                ADD CONSTRAINT chk_sbdt_coherence
+                    CHECK ((tax_treatment = 'TAXED' AND tax_rate > 0)
+                           OR (tax_treatment <> 'TAXED' AND tax_rate = 0 AND tax_amount = 0))
+        ]]></sql>
+
+        <addForeignKeyConstraint baseTableName="subscription_billing_document_taxes"
+                                 baseColumnNames="company_id, billing_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_sbdt_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="subscription_billing_document_taxes"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

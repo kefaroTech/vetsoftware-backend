@@ -42,7 +42,6 @@ class FindCompanyServiceTest {
             assertThat(dto.id()).isEqualTo(CompanyMother.COMPANY_ID);
             assertThat(dto.name()).isEqualTo("Clinica Norte");
             assertThat(dto.city().name()).isEqualTo("Bogota");
-            assertThat(dto.membership().status()).isEqualTo("ACTIVE");
         }
     }
 

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Catálogo TÉCNICO de una instalación limpia. No crea artículos comerciales,
+      tarifas, impuestos ni respuestas del configurador: solo registra las
+      capacidades que ya existen en el backend y en la navegación de ambos
+      clientes. GENERAL era sembrado por 184 y algunos submódulos por
+      184/191/196/199/256/257; aquí se completa el conjunto y se hacen explícitos
+      los dos flags que 228 añadió con default FALSE.
+
+      is_sellable describe si la capacidad puede formar parte de un artículo
+      comercial. Las piezas base de administración y las operaciones internas de
+      plataforma no se venden aisladas. read_only_capable indica que existe una
+      superficie de consulta utilizable cuando el entitlement baja a READ_ONLY.
+
+      En el dominio SaaS, ENTITLEMENT, SUBSCRIPTION_PAYMENT y DUNNING ya existían
+      por 256/257: este seed fija sus flags a no vendibles y aptos para READ_ONLY.
+      SUBSCRIPTION, QUOTE y SUBSCRIPTION_BILLING se añaden aquí con los mismos
+      flags para completar las superficies técnicas de autoservicio.
+    -->
+    <changeSet id="258_seed_technical_catalog" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO modules (name, code, enabled)
+            SELECT 'General', 'GENERAL', TRUE
+            WHERE NOT EXISTS (SELECT 1 FROM modules WHERE code = 'GENERAL');
+
+            INSERT INTO sub_modules
+                    (name, code, module_id, enabled, is_sellable, read_only_capable)
+            SELECT seed.name, seed.code, general.id, TRUE, seed.is_sellable,
+                   seed.read_only_capable
+            FROM (
+                SELECT 'Historia clínica' AS name, 'CLINICAL_HISTORY' AS code,
+                       TRUE AS is_sellable, TRUE AS read_only_capable
+                UNION ALL SELECT 'Agenda', 'AGENDA', TRUE, TRUE
+                UNION ALL SELECT 'Vacunación', 'VACCINATION', TRUE, TRUE
+                UNION ALL SELECT 'Hospitalización', 'HOSPITALIZATION', TRUE, TRUE
+                UNION ALL SELECT 'Laboratorio', 'LABORATORY', TRUE, TRUE
+                UNION ALL SELECT 'Imagen diagnóstica', 'DIAGNOSTIC_IMAGING', TRUE, TRUE
+                UNION ALL SELECT 'Desparasitación', 'DEWORMING', TRUE, TRUE
+                UNION ALL SELECT 'Cirugía', 'SURGERY', TRUE, TRUE
+                UNION ALL SELECT 'Spa', 'SPA', TRUE, TRUE
+                UNION ALL SELECT 'Guardería', 'DAYCARE', TRUE, TRUE
+                UNION ALL SELECT 'Sucursales', 'BRANCH', FALSE, TRUE
+                UNION ALL SELECT 'Empresa', 'COMPANY', FALSE, TRUE
+                UNION ALL SELECT 'Empleados', 'EMPLOYEES', FALSE, TRUE
+                UNION ALL SELECT 'Roles y permisos', 'ROLES', FALSE, TRUE
+                UNION ALL SELECT 'Medicamentos', 'MEDICAMENTS', FALSE, TRUE
+                UNION ALL SELECT 'Inventario', 'INVENTORY', TRUE, TRUE
+                UNION ALL SELECT 'Caja', 'CASH', TRUE, TRUE
+                UNION ALL SELECT 'Servicios', 'SERVICES', TRUE, TRUE
+                UNION ALL SELECT 'Promociones', 'PROMOTIONS', TRUE, TRUE
+                UNION ALL SELECT 'Impuestos', 'TAXES', TRUE, TRUE
+                UNION ALL SELECT 'Cuentas por cobrar', 'OPEN_ACCOUNTS', TRUE, TRUE
+                UNION ALL SELECT 'Facturación electrónica', 'BILLING', TRUE, TRUE
+                UNION ALL SELECT 'Compras', 'PURCHASES', TRUE, TRUE
+                UNION ALL SELECT 'Derechos de suscripción', 'ENTITLEMENT', FALSE, TRUE
+                UNION ALL SELECT 'Suscripciones', 'SUBSCRIPTION', FALSE, TRUE
+                UNION ALL SELECT 'Cotizaciones de suscripción', 'QUOTE', FALSE, TRUE
+                UNION ALL SELECT 'Cobros de suscripción', 'SUBSCRIPTION_BILLING', FALSE, TRUE
+                UNION ALL SELECT 'Pagos de suscripción', 'SUBSCRIPTION_PAYMENT', FALSE, TRUE
+                UNION ALL SELECT 'Cobranza de suscripción', 'DUNNING', FALSE, TRUE
+            ) seed
+            JOIN modules general ON general.code = 'GENERAL'
+            LEFT JOIN sub_modules existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+
+            UPDATE sub_modules
+            SET is_sellable = CASE code
+                    WHEN 'CLINICAL_HISTORY' THEN TRUE
+                    WHEN 'AGENDA' THEN TRUE
+                    WHEN 'VACCINATION' THEN TRUE
+                    WHEN 'HOSPITALIZATION' THEN TRUE
+                    WHEN 'LABORATORY' THEN TRUE
+                    WHEN 'DIAGNOSTIC_IMAGING' THEN TRUE
+                    WHEN 'DEWORMING' THEN TRUE
+                    WHEN 'SURGERY' THEN TRUE
+                    WHEN 'SPA' THEN TRUE
+                    WHEN 'DAYCARE' THEN TRUE
+                    WHEN 'INVENTORY' THEN TRUE
+                    WHEN 'CASH' THEN TRUE
+                    WHEN 'SERVICES' THEN TRUE
+                    WHEN 'PROMOTIONS' THEN TRUE
+                    WHEN 'TAXES' THEN TRUE
+                    WHEN 'OPEN_ACCOUNTS' THEN TRUE
+                    WHEN 'BILLING' THEN TRUE
+                    WHEN 'PURCHASES' THEN TRUE
+                    ELSE FALSE
+                END,
+                read_only_capable = TRUE
+            WHERE code IN (
+                'CLINICAL_HISTORY', 'AGENDA', 'VACCINATION', 'HOSPITALIZATION',
+                'LABORATORY', 'DIAGNOSTIC_IMAGING', 'DEWORMING', 'SURGERY', 'SPA',
+                'DAYCARE', 'BRANCH', 'COMPANY', 'EMPLOYEES', 'ROLES', 'MEDICAMENTS',
+                'INVENTORY', 'CASH', 'SERVICES', 'PROMOTIONS', 'TAXES', 'OPEN_ACCOUNTS',
+                'BILLING', 'PURCHASES', 'ENTITLEMENT', 'SUBSCRIPTION', 'QUOTE',
+                'SUBSCRIPTION_BILLING', 'SUBSCRIPTION_PAYMENT', 'DUNNING'
+            );
+        ]]></sql>
+
+        <rollback>
+            <!-- Los siete códigos ya existían antes de este changeSet. Se restaura
+                 el estado que dejó 228 y solo se eliminan las filas creadas aquí. -->
+            <sql><![CDATA[
+                UPDATE sub_modules
+                SET is_sellable = FALSE, read_only_capable = FALSE
+                WHERE code IN ('BRANCH', 'INVENTORY', 'CASH', 'PURCHASES',
+                               'ENTITLEMENT', 'SUBSCRIPTION_PAYMENT', 'DUNNING');
+
+                DELETE FROM sub_modules
+                WHERE code IN (
+                    'CLINICAL_HISTORY', 'AGENDA', 'VACCINATION', 'HOSPITALIZATION',
+                    'LABORATORY', 'DIAGNOSTIC_IMAGING', 'DEWORMING', 'SURGERY', 'SPA',
+                    'DAYCARE', 'COMPANY', 'EMPLOYEES', 'ROLES', 'MEDICAMENTS', 'SERVICES',
+                    'PROMOTIONS', 'TAXES', 'OPEN_ACCOUNTS', 'BILLING', 'SUBSCRIPTION',
+                    'QUOTE', 'SUBSCRIPTION_BILLING'
+                );
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

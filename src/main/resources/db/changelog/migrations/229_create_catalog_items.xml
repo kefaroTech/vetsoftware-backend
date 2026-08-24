@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 1 (suscripciones-tablas.md #1). Catálogo global de plataforma,
+         sin company_id: el estante de la tienda. Ninguna columna de texto declara COLLATE/CHARACTER
+         SET (ver suscripciones-modelo.md §1.1) y los booleanos son type="BOOLEAN", nunca TINYINT(1). -->
+    <changeSet id="229_create_catalog_items" author="orlando">
+        <createTable tableName="catalog_items">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_catalog_items_code"/>
+            </column>
+            <column name="name" type="VARCHAR(120)"><constraints nullable="false"/></column>
+            <column name="short_description" type="VARCHAR(255)"/>
+            <column name="long_description" type="TEXT"/>
+            <column name="item_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="capacity_unit" type="VARCHAR(30)"/>
+            <column name="is_core" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="min_quantity" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="max_quantity" type="INT"/>
+            <column name="sort_order" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_items
+                ADD CONSTRAINT chk_catalog_items_item_type
+                    CHECK (item_type IN ('MODULE','CAPACITY','ONE_TIME','BUNDLE')),
+                ADD CONSTRAINT chk_catalog_items_capacity_unit
+                    CHECK ((item_type = 'CAPACITY' AND capacity_unit IN ('USER','BRANCH','TERMINAL','STORAGE_GB'))
+                           OR (item_type <> 'CAPACITY' AND capacity_unit IS NULL)),
+                ADD CONSTRAINT chk_catalog_items_status
+                    CHECK (status IN ('DRAFT','ACTIVE','DEPRECATED')),
+                ADD CONSTRAINT chk_catalog_items_quantity_range
+                    CHECK (min_quantity >= 0 AND (max_quantity IS NULL OR max_quantity >= min_quantity)),
+                ADD CONSTRAINT chk_catalog_items_sort_order
+                    CHECK (sort_order >= 0)
+        ]]></sql>
+
+        <createIndex tableName="catalog_items" indexName="ix_catalog_items_status_sort">
+            <column name="status"/>
+            <column name="sort_order"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="catalog_items"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

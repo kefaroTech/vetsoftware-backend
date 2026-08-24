@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 2, paso 9 (suscripciones-tablas.md #7). Rompe el único ciclo del
+         modelo: configurator_questions.parent_option_id -> configurator_options.id, ahora que
+         configurator_options (creada en 236) ya existe. Preguntas condicionales.
+         Coste con datos: ADD COLUMN nulable es instant y ADD FOREIGN KEY es in place, sin bloqueo
+         (https://dev.mysql.com/doc/refman/8.4/en/innodb-online-ddl-operations.html). Aquí la tabla
+         nace vacía, así que es gratis, pero se documenta el coste para cuando ya tenga filas. -->
+    <changeSet id="237_add_parent_option_to_configurator_questions" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE configurator_questions
+                ADD COLUMN parent_option_id BIGINT NULL,
+                ADD CONSTRAINT fk_configurator_questions_parent_option
+                    FOREIGN KEY (parent_option_id) REFERENCES configurator_options (id)
+                    ON DELETE RESTRICT ON UPDATE RESTRICT
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE configurator_questions
+                    DROP FOREIGN KEY fk_configurator_questions_parent_option,
+                    DROP COLUMN parent_option_id
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

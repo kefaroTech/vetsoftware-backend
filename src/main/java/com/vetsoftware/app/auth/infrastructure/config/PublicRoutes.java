@@ -66,8 +66,23 @@ public final class PublicRoutes {
             new Route(HttpMethod.GET, "/species"), new Route(HttpMethod.GET, "/animal-colors"),
             new Route(HttpMethod.GET, "/consultation-types"), new Route(HttpMethod.GET, "/modules"),
             new Route(HttpMethod.GET, "/sub-modules"), new Route(HttpMethod.GET, "/spa-types"),
-            new Route(null, "/swagger-ui/**"), new Route(null, "/v3/api-docs/**"),
-            new Route(null, "/swagger-resources/**"), new Route(null, "/webjars/**"));
+            // El asistente de venta lo lee un prospecto que todavia no es cliente: si
+            // exigiera token no se podria cotizar antes de existir como usuario. Van
+            // las DOS mitades del asistente —leer el cuestionario y resolver lo
+            // respondido—: abrir solo la primera deja al prospecto con un 401 en el
+            // paso siguiente, que es el unico para el que la primera se abrio.
+            // Los patrones son exactos y NO /configurator/**, que abriria tambien los
+            // endpoints SYSTEM de administracion del cuestionario que cuelgan del mismo
+            // prefijo.
+            //
+            // /configurator/resolve es un POST anonimo, asi que lleva su propio limite
+            // por IP en LoginRateLimitFilter: LoginRateLimitFilterTest exige que toda
+            // ruta publica POST este limitada, y esa prueba es lo que hace de esto una
+            // invariante y no una buena intencion.
+            new Route(HttpMethod.GET, "/configurator/questionnaire"),
+            new Route(HttpMethod.POST, "/configurator/resolve"), new Route(null, "/swagger-ui/**"),
+            new Route(null, "/v3/api-docs/**"), new Route(null, "/swagger-resources/**"),
+            new Route(null, "/webjars/**"));
 
     /**
      * Rutas que resuelve otra {@code SecurityFilterChain} —hoy solo Actuator, con

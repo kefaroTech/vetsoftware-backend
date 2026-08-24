@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #427 (la otra mitad de #408, ya cerrada). `uq_quotes_client_request` era
+         UNIQUE (client_request_id) GLOBAL, mientras CreateQuoteService busca la idempotencia
+         ACOTADA POR EMPRESA en cuanto hay companyId. Consecuencia real y verificada por el propio
+         issue: el segundo tenant que reutiliza una llave que otra clinica ya uso queda BLOQUEADO
+         PERMANENTEMENTE -su lectura acotada no ve la fila que estorba, decide insertar, choca
+         contra el indice global, y reintentar con la MISMA llave (el contrato de la idempotencia)
+         nunca sale del 409-.
+
+         NO SE EDITA 239_create_quotes.xml. A diferencia de los otros tres arreglos de este mismo
+         defecto en este bloque (243/252/253, corregidos in situ porque nunca habian corrido en
+         ningun entorno), el propio issue #427 advierte que editar el 239 rompe el checksum, y con
+         Docker levantado y mas de un agente trabajando en paralelo sobre este arbol de changesets
+         no hay forma barata de confirmar que ese changeset sigue sin haberse aplicado en ningun
+         sitio. Se trata como YA APLICADO: la correccion va en un changeset nuevo, con DROP + ADD,
+         que es el patron de la casa para esto (210_scope_open_accounts_by_branch.xml,
+         226_add_unique_active_appointment_slot.xml).
+
+         LA VIA ELEGIDA, y por que un compuesto simple (company_id, client_request_id) NO SIRVE:
+         quotes.company_id es NULABLE a proposito -un prospecto que aun no es empresa no tiene
+         compania (suscripciones-modelo.md #4.7)-, y MySQL considera satisfecha una UNIQUE
+         multicolumna en cuanto UNA de sus columnas es NULL (multiples NULL conviven sin
+         comprobarse -mismo comportamiento que ya se documenta para las 22 FK compuestas del modelo
+         en suscripciones-modelo.md #4.6, aqui aplicado a un indice UNIQUE en vez de a una FK-). Con
+         (company_id, client_request_id) a secas, CUALQUIER numero de prospectos podria reutilizar
+         la misma client_request_id sin que la base lo impida jamas: la deduplicacion de prospectos,
+         que es el caso para el que existe esta columna, quedaria completamente rota, no solo
+         debilitada.
+
+         La correccion: una columna generada que colapsa el NULL a un centinela, mismo patron que
+         active_marker (242), current_item_marker (244) y recurring_cycle_marker (249) -una columna
+         GENERATED ALWAYS ... STORED que expresa una unicidad condicional que MySQL no sabe declarar
+         de otra forma-.
+
+         client_request_scope BIGINT GENERATED ALWAYS AS (COALESCE(company_id, -1)) STORED
+         UNIQUE (client_request_scope, client_request_id)
+
+         Efecto: cada empresa real tiene su propio espacio de llaves (client_request_scope = su
+         company_id), y TODOS los prospectos comparten un unico espacio comun
+         (client_request_scope = -1) en el que se siguen deduplicando entre si exactamente como
+         antes -es el mismo comportamiento que tenia el indice global, pero acotado al subconjunto
+         de filas sin empresa, que es el unico subconjunto donde "global" seguia siendo la semantica
+         correcta-.
+
+         POR QUE -1 Y NO 0 COMO CENTINELA. company_id es BIGINT AUTO_INCREMENT via companies(id),
+         que arranca en 1 y solo crece; explicitar el valor 0 al insertar un AUTO_INCREMENT sin
+         NO_AUTO_VALUE_ON_ZERO en el sql_mode hace que MySQL regenere el siguiente valor en vez de
+         guardar el 0 literal, asi que 0 YA es improbable -pero ese comportamiento depende de una
+         configuracion de sql_mode que este changeset no controla ni puede verificar contra dev/prod
+         (regla del proyecto: no se consulta la base viva)-. -1 no depende de ninguna configuracion:
+         AUTO_INCREMENT jamas genera un valor negativo bajo ningun sql_mode, y ninguna de las 227+
+         migraciones existentes ni SchemaSeed.java inserta jamas un id explicito negativo. Sigue
+         siendo, en sentido estricto, un valor INSERTABLE a mano si alguien lo fuerza -companies.id
+         no lleva un CHECK que lo prohiba-, pero es la via mas alejada de cualquier operacion normal
+         de la aplicacion, y es preferible a 0 precisamente porque no depende de sql_mode.
+
+         POR QUE STORED Y NO VIRTUAL. balance_amount (249) es la unica columna generada VIRTUAL del
+         modelo, y lo es porque NO lleva indice encima. Esta SI lleva un indice UNIQUE, que es
+         exactamente el criterio que en este mismo bloque decidio STORED para active_marker,
+         current_item_marker y recurring_cycle_marker. company_id solo cambia una vez por fila
+         -cuando un prospecto acepta y nace la empresa (suscripciones-tablas.md #10)-, asi que el
+         coste de recalcular en cada UPDATE es irrelevante; el ALTER TABLE de este changeset
+         reconstruye la tabla (ADD COLUMN STORED no es in-place), pero quotes nace sin semillas y
+         sin ningun flujo de negocio que la pueble todavia (issue #364), asi que el coste real de
+         esta migracion es efectivamente cero filas.
+
+         SIN precondicion HALT, y es una decision razonada, no un olvido: a diferencia de
+         206/210/226 -que ANADEN una restriccion que datos existentes podrian violar-, este
+         changeset AFLOJA una restriccion (de global a acotada). Si la tabla ya satisfacia
+         UNIQUE (client_request_id) global, satisface trivialmente
+         UNIQUE (client_request_scope, client_request_id): un subconjunto de un conjunto ya unico es
+         unico. No hay combinacion de datos existentes que pueda romper la creacion del nuevo indice.
+
+         CONSECUENCIA DE CODIGO, fuera de mandato de db-migrations (no se toca src/main ni
+         src/test): QuotePersistenceIT.Idempotencia -clase completa, ver su javadoc en
+         src/test/java/.../quote/infrastructure/persistence/QuotePersistenceIT.java- fija el
+         defecto de hoy: el test
+         defecto_el_indice_unico_es_global_y_la_misma_llave_en_dos_empresas_revienta espera
+         DataIntegrityViolationException al reutilizar la misma llave desde dos empresas distintas,
+         y con este changeset aplicado esa insercion pasa a tener EXITO -que es el comportamiento
+         correcto-, asi que ese test (y el javadoc de la clase, que documenta el defecto como
+         vigente) tienen que actualizarse en el mismo PR que este changeset. No hace falta tocar
+         QuoteJpaEntity ni ningun mapeo JPA: la columna nueva no esta mapeada por ninguna entidad y
+         ddl-auto: validate no comprueba columnas ni indices que el @Entity no declara. -->
+    <changeSet id="261_scope_quotes_client_request_by_company" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE quotes
+                DROP INDEX uq_quotes_client_request,
+                ADD COLUMN client_request_scope BIGINT
+                    GENERATED ALWAYS AS (COALESCE(company_id, -1)) STORED,
+                ADD CONSTRAINT uq_quotes_client_request
+                    UNIQUE (client_request_scope, client_request_id)
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE quotes
+                    DROP INDEX uq_quotes_client_request,
+                    DROP COLUMN client_request_scope,
+                    ADD CONSTRAINT uq_quotes_client_request UNIQUE (client_request_id)
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

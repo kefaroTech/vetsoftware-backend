@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de LABORATORIO, solo para entorno local y e2e. Contexto local,e2e:
+         ver application.yml/application-local.yml y el comentario de
+         262_seed_local_e2e_platform_credential.xml. NUNCA se aplica en dev ni en
+         produccion.
+
+         Catalogo comercial MINIMO (docs/db/suscripciones-datos-semilla.md), mas dos
+         complementos y un paquete para que el configurador, las dependencias
+         REQUIRES/RECOMMENDS y la composicion de un BUNDLE tengan algo que ejercitar
+         en Playwright. TODOS los importes y nombres comerciales son de laboratorio;
+         los precios reales estan pendientes de decision comercial (ver el propio
+         documento, secciones 2 y 5) y este changeSet no los toca -esa parte sigue en
+         264, tambien marcada como de laboratorio-.
+
+         Nota importante que el documento de diseno (fechado 2026-08-22) no reflejaba
+         todavia: el changeSet 258_seed_technical_catalog (numeracion posterior)
+         sembro TODOS los sub_modules que faltaban -incluidos AGENDA, CLINICAL_HISTORY
+         y BILLING-, asi que el bloqueo de la seccion 1.3 del documento («Cuatro de
+         nueve») ya no aplica: hoy los cinco articulos de este catalogo tienen un
+         sub_modules real al que atarse. Se deja constancia aqui para que quien lea el
+         documento junto a este changeSet no se confunda.
+
+         CORE no tiene un sub_modules dedicado a «clientes y mascotas» -no existe ese
+         codigo en la tabla-, asi que se ata a AGENDA: es lo unico que aparece junto a
+         CORE en las cuatro respuestas de la pregunta P1 del configurador propuesto
+         (seccion 6). SCHEDULING se ata tambien a AGENDA porque es literalmente el
+         mismo concepto. La consulta real que resuelve el minimo estructural
+         (PlatformCatalogTemplateJpaRepository) solo exige que exista ALGUNA fila de
+         catalog_item_sub_modules con enabled=TRUE para CORE -no filtra por
+         is_sellable-, asi que esta eleccion es válida y documentada, no una
+         necesidad del codigo. -->
+
+    <changeSet id="263_seed_local_e2e_catalog_items" author="orlando" context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_items
+                    (code, name, short_description, item_type, is_core, min_quantity,
+                     max_quantity, sort_order, status)
+            SELECT seed.code, seed.name, seed.short_description, seed.item_type,
+                   seed.is_core, seed.min_quantity, seed.max_quantity, seed.sort_order,
+                   'ACTIVE'
+              FROM (
+                SELECT 'CORE' AS code, 'Nucleo: clientes y mascotas' AS name,
+                       'Gestion de clientes y sus mascotas (laboratorio)' AS short_description,
+                       'MODULE' AS item_type, TRUE AS is_core, 1 AS min_quantity,
+                       1 AS max_quantity, 10 AS sort_order
+                UNION ALL SELECT 'SCHEDULING', 'Agenda de citas',
+                       'Agenda y citas (laboratorio)', 'MODULE', FALSE, 1, 1, 20
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'Historia clinica y consultas',
+                       'Historia clinica (laboratorio)', 'MODULE', FALSE, 1, 1, 30
+                UNION ALL SELECT 'CASH_REGISTER', 'Caja y punto de venta',
+                       'Caja (laboratorio)', 'MODULE', FALSE, 1, 1, 50
+                UNION ALL SELECT 'ELECTRONIC_INVOICING', 'Facturacion electronica DIAN',
+                       'Facturacion electronica (laboratorio)', 'MODULE', FALSE, 1, 1, 80
+                UNION ALL SELECT 'PACK_CLINIC', 'Pack Clinica',
+                       'Nucleo + agenda + historia clinica + caja (laboratorio)',
+                       'BUNDLE', FALSE, 1, 1, 320
+              ) seed
+             WHERE NOT EXISTS (SELECT 1 FROM catalog_items x WHERE x.code = seed.code);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM catalog_items
+                 WHERE code IN ('CORE','SCHEDULING','CLINICAL_HISTORY','CASH_REGISTER',
+                                 'ELECTRONIC_INVOICING','PACK_CLINIC');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="263_seed_local_e2e_catalog_item_sub_modules" author="orlando" context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_sub_modules (catalog_item_id, sub_module_id)
+            SELECT ci.id, sm.id
+              FROM (
+                SELECT 'CORE' AS item_code, 'AGENDA' AS sub_module_code
+                UNION ALL SELECT 'SCHEDULING', 'AGENDA'
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'CLINICAL_HISTORY'
+                UNION ALL SELECT 'CASH_REGISTER', 'CASH'
+                UNION ALL SELECT 'ELECTRONIC_INVOICING', 'BILLING'
+              ) seed
+              JOIN catalog_items ci ON ci.code = seed.item_code
+              JOIN sub_modules sm ON sm.code = seed.sub_module_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM catalog_item_sub_modules x
+                  WHERE x.catalog_item_id = ci.id AND x.sub_module_id = sm.id);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM catalog_item_sub_modules
+                 WHERE catalog_item_id IN (
+                     SELECT id FROM catalog_items
+                      WHERE code IN ('CORE','SCHEDULING','CLINICAL_HISTORY','CASH_REGISTER',
+                                      'ELECTRONIC_INVOICING'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="263_seed_local_e2e_catalog_item_dependencies" author="orlando" context="local,e2e">
+        <!-- REQUIRES y RECOMMENDS tal como los propone el documento de diseno (seccion 4).
+             Sin EXCLUDES: el documento es explicito en que hoy ningun par de articulos de
+             este catalogo minimo es mutuamente excluyente -inventar uno solo para que
+             Playwright ejercite ese camino distorsionaria el catalogo de laboratorio con
+             una regla comercial falsa-. Queda registrado como hallazgo abierto (ver
+             informe de cierre / issue). -->
+        <sql><![CDATA[
+            INSERT INTO catalog_item_dependencies
+                    (catalog_item_id, related_item_id, relation_type, note)
+            SELECT a.id, b.id, seed.relation_type, seed.note
+              FROM (
+                SELECT 'ELECTRONIC_INVOICING' AS item_code, 'CASH_REGISTER' AS related_code,
+                       'REQUIRES' AS relation_type,
+                       'Facturar electronicamente necesita el modulo de Caja' AS note
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'SCHEDULING', 'RECOMMENDS',
+                       'La historia clinica se llena sola desde las citas'
+              ) seed
+              JOIN catalog_items a ON a.code = seed.item_code
+              JOIN catalog_items b ON b.code = seed.related_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM catalog_item_dependencies x
+                  WHERE x.catalog_item_id = a.id AND x.related_item_id = b.id
+                    AND x.relation_type = seed.relation_type);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM catalog_item_dependencies
+                 WHERE catalog_item_id IN (
+                     SELECT id FROM catalog_items
+                      WHERE code IN ('ELECTRONIC_INVOICING','CLINICAL_HISTORY'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="263_seed_local_e2e_bundle_components" author="orlando" context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO bundle_components (bundle_item_id, component_item_id, quantity)
+            SELECT bundle.id, comp.id, 1
+              FROM catalog_items bundle
+              JOIN catalog_items comp
+                ON comp.code IN ('CORE','SCHEDULING','CLINICAL_HISTORY','CASH_REGISTER')
+             WHERE bundle.code = 'PACK_CLINIC'
+               AND NOT EXISTS (
+                   SELECT 1 FROM bundle_components x
+                    WHERE x.bundle_item_id = bundle.id AND x.component_item_id = comp.id);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM bundle_components
+                 WHERE bundle_item_id IN (SELECT id FROM catalog_items WHERE code = 'PACK_CLINIC');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -6,9 +6,10 @@
 
     <!-- F3 Compras: siembra los permisos de facturas de proveedor / cuentas por pagar
          (supplierinvoice.read/create/update/delete) bajo el sub_module PURCHASES (ya creado por la migración 199):
-         base_permissions + base_role_permissions al rol base ADMIN, habilitación por membresía y backfill a empresas
-         existentes (permissions + role_permissions al rol ADMIN de cada empresa). Mismo patrón que 199. Sentencias
-         idempotentes (guardas NOT EXISTS / claves por code).
+         base_permissions + base_role_permissions al rol base ADMIN y backfill a empresas existentes (permissions +
+         role_permissions al rol ADMIN de cada empresa). Mismo patrón que 199. Sentencias idempotentes (guardas NOT
+         EXISTS / claves por code). El bloque que habilitaba el sub-módulo por membresía se retiró al demoler el
+         concepto de membresía; ver `suscripciones-cambios-existentes.md` §2.3.
          OJO (memoria): sembrar por SQL NO invalida la cache Redis `employee-permissions`; hace falta rebuild/restart. -->
 
     <changeSet id="204_ap_base_permissions" author="orlando">
@@ -51,21 +52,6 @@
                 SELECT id FROM base_permissions
                 WHERE code IN ('supplierinvoice.read', 'supplierinvoice.create', 'supplierinvoice.update', 'supplierinvoice.delete'));
         </rollback>
-    </changeSet>
-
-    <changeSet id="204_ap_membership_sub_modules" author="orlando">
-        <!-- PURCHASES ya está habilitado para todas las membresías (migración 199); guarda idempotente por si acaso. -->
-        <sql>
-            INSERT INTO membership_sub_modules (membership_id, sub_module_id, enabled)
-            SELECT m.id, sm.id, 1
-            FROM memberships m
-            CROSS JOIN sub_modules sm
-            WHERE sm.code = 'PURCHASES'
-              AND NOT EXISTS (
-                  SELECT 1 FROM membership_sub_modules x
-                  WHERE x.membership_id = m.id AND x.sub_module_id = sm.id);
-        </sql>
-        <rollback/>
     </changeSet>
 
     <changeSet id="204_ap_permissions_backfill_companies" author="orlando">

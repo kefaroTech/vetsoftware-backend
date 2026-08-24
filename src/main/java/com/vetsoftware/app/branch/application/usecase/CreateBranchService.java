@@ -3,6 +3,7 @@ package com.vetsoftware.app.branch.application.usecase;
 import com.vetsoftware.app.branch.application.command.CreateBranchCommand;
 import com.vetsoftware.app.branch.application.dto.BranchDto;
 import com.vetsoftware.app.branch.application.port.in.CreateBranchUseCase;
+import com.vetsoftware.app.branch.application.port.out.BranchCapacityPort;
 import com.vetsoftware.app.branch.application.port.out.BranchRepository;
 import com.vetsoftware.app.branch.application.port.out.CityQueryPort;
 import com.vetsoftware.app.branch.application.port.out.CompanyQueryPort;
@@ -21,14 +22,17 @@ public class CreateBranchService implements CreateBranchUseCase {
     private final CityQueryPort cityQueryPort;
     private final CompanyQueryPort companyQueryPort;
     private final FullCoverageBranchAssignmentPort fullCoverageAssignmentPort;
+    private final BranchCapacityPort branchCapacityPort;
 
     public CreateBranchService(BranchRepository repository, CityQueryPort cityQueryPort,
             CompanyQueryPort companyQueryPort,
-            FullCoverageBranchAssignmentPort fullCoverageAssignmentPort) {
+            FullCoverageBranchAssignmentPort fullCoverageAssignmentPort,
+            BranchCapacityPort branchCapacityPort) {
         this.repository = repository;
         this.cityQueryPort = cityQueryPort;
         this.companyQueryPort = companyQueryPort;
         this.fullCoverageAssignmentPort = fullCoverageAssignmentPort;
+        this.branchCapacityPort = branchCapacityPort;
     }
 
     @Override
@@ -44,6 +48,7 @@ public class CreateBranchService implements CreateBranchUseCase {
                 () -> new IllegalArgumentException("Company not found: " + command.companyId()));
         Branch branch = Branch.create(command.name(), code, command.address(), command.phone(),
                 city, company);
+        branchCapacityPort.reserve(command.companyId());
         Branch saved = repository.save(branch);
         // Multi-sucursal: los empleados "con todas las sedes" heredan la sede recién
         // creada (ver

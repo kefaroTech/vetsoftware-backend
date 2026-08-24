@@ -9,6 +9,5 @@ public record UpdateCompanyRequest(
         @NotBlank(message = "El número de identificación de la empresa es obligatorio.") @Size(max = 50, message = "El número de identificación de la empresa no puede superar los 50 caracteres.") String identifier,
         @Size(max = 255, message = "La dirección no puede superar los 255 caracteres.") String address,
         @Size(max = 30, message = "El teléfono de contacto no puede superar los 30 caracteres.") String contactNumber,
-        @NotNull(message = "Debes seleccionar la ciudad.") Long cityId,
-        @NotNull(message = "Debes seleccionar la membresía.") Long membershipId) {
+        @NotNull(message = "Debes seleccionar la ciudad.") Long cityId) {
 }

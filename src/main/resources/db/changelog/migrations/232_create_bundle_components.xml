@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 1 (suscripciones-tablas.md #4). Qué trae un paquete BUNDLE.
+         Que bundle_item_id sea BUNDLE y que component_item_id no sea otro BUNDLE no es declarable
+         en un CHECK (columnas de la misma tabla lo permiten, pero comparar contra el tipo de la
+         propia fila referenciada no); baja a reglas de código. Exenta de @Version (E2_TABLA_PUENTE). -->
+    <changeSet id="232_create_bundle_components" author="orlando">
+        <createTable tableName="bundle_components">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="bundle_item_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_bundle_components_bundle"
+                             references="catalog_items(id)"/>
+            </column>
+            <column name="component_item_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_bundle_components_component"
+                             references="catalog_items(id)"/>
+            </column>
+            <column name="quantity" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="bundle_components"
+                             columnNames="bundle_item_id, component_item_id"
+                             constraintName="uq_bundle_components"/>
+
+        <sql><![CDATA[
+            ALTER TABLE bundle_components
+                ADD CONSTRAINT chk_bundle_components_quantity CHECK (quantity > 0),
+                ADD CONSTRAINT chk_bundle_components_not_self CHECK (bundle_item_id <> component_item_id)
+        ]]></sql>
+
+        <rollback>
+            <dropTable tableName="bundle_components"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

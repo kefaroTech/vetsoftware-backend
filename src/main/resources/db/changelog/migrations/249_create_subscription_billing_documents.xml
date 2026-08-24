@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 6 (suscripciones-tablas.md #20). La cuenta de cobro que
+         VetSoftware le emite a la clínica (DC-); NO es la factura electrónica DIAN de la clínica a
+         sus clientes (esa sigue viviendo en electronic_documents/numbering_resolutions). Sin enabled
+         (documento de dinero: no se borra, se anula o se corrige con nota crédito).
+         Tres columnas generadas (Apéndice A de suscripciones-tablas.md):
+           - balance_amount VIRTUAL = total_amount - settled_amount, sin índice, ALTER futuro in-place.
+           - recurring_cycle_marker STORED: barandilla anti doble-facturación POR PERIODO EXACTO
+             (bloqueante corregido: agrupar por mes bloqueaba pasar a plan anual a mitad de mes).
+           - overdue_marker STORED: "registrada y no saldada"; el "vencida" (due_date < CURRENT_DATE)
+             lo pone la consulta, porque una columna generada no puede usar CURRENT_DATE (no determinista).
+         FK compuestas fk_sbd_subscription y fk_sbd_corrects (autorreferencial, par P5). uq_sbd_company_id
+         es la clave auxiliar que necesitan subscription_charges, subscription_billing_document_taxes,
+         billing_document_applications (x2), dunning_events y ella misma. ix_sbd_subscription_period se
+         crea ANTES de la FK compuesta (Apéndice C). -->
+    <changeSet id="249_create_subscription_billing_documents" author="orlando">
+        <createTable tableName="subscription_billing_documents">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="document_number" type="VARCHAR(30)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_sbd_number"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_sbd_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="subscription_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="document_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="billing_reason" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="period_start" type="DATE"><constraints nullable="false"/></column>
+            <column name="period_end" type="DATE"><constraints nullable="false"/></column>
+            <column name="issue_status" type="VARCHAR(20)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="external_invoice_number" type="VARCHAR(60)"/>
+            <column name="external_cufe" type="VARCHAR(100)"/>
+            <column name="external_issued_at" type="DATE"/>
+            <column name="external_provider" type="VARCHAR(40)"/>
+            <column name="external_registered_at" type="DATETIME(6)"/>
+            <column name="external_registered_by_system_user_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_sbd_registered_by"
+                             references="system_users(id)"/>
+            </column>
+            <column name="corrects_document_id" type="BIGINT"/>
+            <column name="due_date" type="DATE"/>
+            <column name="subtotal_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="settled_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="subscription_billing_documents" columnNames="company_id, id"
+                             constraintName="uq_sbd_company_id"/>
+        <addUniqueConstraint tableName="subscription_billing_documents"
+                             columnNames="external_provider, external_invoice_number"
+                             constraintName="uq_sbd_external"/>
+
+        <sql><![CDATA[
+            ALTER TABLE subscription_billing_documents
+                ADD COLUMN balance_amount DECIMAL(19,2)
+                    GENERATED ALWAYS AS (total_amount - settled_amount) VIRTUAL,
+                ADD COLUMN recurring_cycle_marker BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN document_kind = 'INVOICE'
+                             AND billing_reason = 'RECURRING_CYCLE'
+                             AND issue_status <> 'VOIDED'
+                            THEN subscription_id
+                            ELSE NULL
+                        END
+                    ) STORED,
+                ADD COLUMN overdue_marker BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN issue_status = 'EXTERNAL_REGISTERED'
+                             AND document_kind = 'INVOICE'
+                             AND total_amount > settled_amount
+                             AND due_date IS NOT NULL
+                            THEN company_id
+                            ELSE NULL
+                        END
+                    ) STORED,
+                ADD CONSTRAINT uq_sbd_recurring_cycle
+                    UNIQUE (recurring_cycle_marker, period_start, period_end),
+                ADD CONSTRAINT chk_sbd_kind
+                    CHECK (document_kind IN ('INVOICE','CREDIT_NOTE','DEBIT_NOTE')),
+                ADD CONSTRAINT chk_sbd_billing_reason
+                    CHECK (billing_reason IN ('RECURRING_CYCLE','PRORATION','ONE_TIME','ADJUSTMENT')),
+                ADD CONSTRAINT chk_sbd_issue_status
+                    CHECK (issue_status IN ('DRAFT','AWAITING_EXTERNAL','EXTERNAL_REGISTERED','VOIDED')),
+                ADD CONSTRAINT chk_sbd_period CHECK (period_end >= period_start),
+                ADD CONSTRAINT chk_sbd_amounts_positive
+                    CHECK (subtotal_amount >= 0 AND tax_amount >= 0 AND total_amount >= 0
+                           AND settled_amount >= 0),
+                ADD CONSTRAINT chk_sbd_total
+                    CHECK (total_amount = subtotal_amount + tax_amount),
+                ADD CONSTRAINT chk_sbd_settled_cap
+                    CHECK (settled_amount <= total_amount),
+                ADD CONSTRAINT chk_sbd_external_registered
+                    CHECK (issue_status <> 'EXTERNAL_REGISTERED'
+                           OR (external_invoice_number IS NOT NULL AND external_issued_at IS NOT NULL
+                               AND external_provider IS NOT NULL)),
+                ADD CONSTRAINT chk_sbd_due_date
+                    CHECK (due_date IS NULL OR external_issued_at IS NULL OR due_date >= external_issued_at),
+                ADD CONSTRAINT chk_sbd_corrects_kind
+                    CHECK (corrects_document_id IS NULL OR document_kind IN ('CREDIT_NOTE','DEBIT_NOTE'))
+        ]]></sql>
+
+        <createIndex tableName="subscription_billing_documents" indexName="ix_sbd_subscription_period">
+            <column name="company_id"/>
+            <column name="subscription_id"/>
+            <column name="period_start"/>
+        </createIndex>
+        <createIndex tableName="subscription_billing_documents" indexName="ix_sbd_overdue">
+            <column name="overdue_marker"/>
+            <column name="due_date"/>
+        </createIndex>
+        <createIndex tableName="subscription_billing_documents" indexName="ix_sbd_awaiting">
+            <column name="issue_status"/>
+            <column name="created_date"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="subscription_billing_documents"
+                                 baseColumnNames="company_id, subscription_id"
+                                 referencedTableName="subscriptions"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_sbd_subscription"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_billing_documents"
+                                 baseColumnNames="company_id, corrects_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_sbd_corrects"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="subscription_billing_documents"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -13,11 +13,13 @@
          fiscal/DIAN, identidad y plataforma) mas las 22 del bloque de procedimientos clinicos
          (hospitalizaciones y sus tablas hijas, laboratorio, cirugias, vacunaciones, desparasitaciones,
          imagenes diagnosticas, spas, medicaciones, prescripciones, agendas de medicacion y
-         procedimiento, y sus catalogos de tipo) — 55 changeSets en total. `laboratory_test_files`
-         queda exenta a propósito: dominio con los 10 campos `final`, sin mutadores, borrado físico.
-         Junto con las 16 tablas ya versionadas en `101`/`157`/`174`/`189`/`195`/`197`/`200`/`201`/
-         `203`/`212`, la campaña BE-26 deja 71 de 104 entidades con bloqueo optimista. No reordenar
-         ni renumerar los changeSets existentes al ampliar: solo anadir al final. -->
+         procedimiento, y sus catalogos de tipo) — 54 changeSets en total (la tabla de planes comerciales se retiró
+         de este fichero al demoler el concepto de membresía; ver `suscripciones-cambios-existentes.md`
+         §2.2). `laboratory_test_files` queda exenta a propósito: dominio con los 10 campos `final`,
+         sin mutadores, borrado físico. Junto con las 16 tablas ya versionadas en `101`/`157`/`174`/
+         `189`/`195`/`197`/`200`/`201`/`203`/`212`, la campaña BE-26 deja 70 de 103 entidades con
+         bloqueo optimista (104/71 originales menos la tabla de planes comerciales, que desapareció entera). No
+         reordenar ni renumerar los changeSets existentes al ampliar: solo anadir al final. -->
 
     <!-- ===== Clinico ===== -->
     <changeSet id="225_add_version_to_animals" author="orlando">
@@ -328,17 +330,6 @@
         </addColumn>
         <rollback>
             <dropColumn tableName="sub_modules" columnName="version"/>
-        </rollback>
-    </changeSet>
-
-    <changeSet id="225_add_version_to_memberships" author="orlando">
-        <addColumn tableName="memberships">
-            <column name="version" type="BIGINT" defaultValueNumeric="0">
-                <constraints nullable="false"/>
-            </column>
-        </addColumn>
-        <rollback>
-            <dropColumn tableName="memberships" columnName="version"/>
         </rollback>
     </changeSet>
 

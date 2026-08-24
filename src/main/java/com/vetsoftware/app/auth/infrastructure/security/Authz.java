@@ -20,6 +20,7 @@ public class Authz {
 
     private static final String NO_COMPANY_CONTEXT = "No company context";
     private static final String NO_EMPLOYEE_CONTEXT = "No employee context";
+    private static final String NO_SYSTEM_USER_CONTEXT = "No system user context";
 
     /**
      * Actor autenticado de la request, o {@code null} si no hay ninguno. Único
@@ -95,6 +96,47 @@ public class Authz {
         return switch (currentContext()) {
             case EmployeeContext me -> me.employeeId();
             case SystemUserContext _ -> null;
+            case SystemContext _ -> null;
+            case null -> null;
+        };
+    }
+
+    /**
+     * Identificador de la cuenta de plataforma que firma la acción. Existe porque
+     * el modelo de suscripciones guarda <strong>quién</strong> tomó una decisión
+     * comercial —{@code price_lists.published_by_system_user_id},
+     * {@code subscription_amendments.requested_by_system_user_id},
+     * {@code subscription_billing_documents.external_registered_by_system_user_id}—
+     * y esa firma no la puede elegir el cliente en el cuerpo de la petición.
+     *
+     * <p>
+     * Es el gemelo de {@link #currentEmployeeId()} para el otro actor: sin él, un
+     * endpoint {@code SYSTEM} sólo puede recibir el id por el {@code Request}, y
+     * entonces la columna deja de probar nada —cualquiera con acceso al endpoint
+     * puede atribuirle a otro la publicación de una tarifa—. Un rastro de auditoría
+     * que el auditado escribe no es un rastro de auditoría.
+     *
+     * @throws AccessDeniedException
+     *             si el actor no es una cuenta de plataforma
+     */
+    public Long currentSystemUserId() {
+        return switch (currentContext()) {
+            case SystemUserContext me -> me.systemUserId();
+            case EmployeeContext _ -> throw new AccessDeniedException(NO_SYSTEM_USER_CONTEXT);
+            case SystemContext _ -> throw new AccessDeniedException(NO_SYSTEM_USER_CONTEXT);
+            case null -> throw new AccessDeniedException(NO_SYSTEM_USER_CONTEXT);
+        };
+    }
+
+    /**
+     * Como {@link #currentSystemUserId()} pero devuelve {@code null} cuando no hay
+     * cuenta de plataforma. Para columnas de firma <em>opcionales</em>, nunca para
+     * autorizar.
+     */
+    public Long currentSystemUserIdOrNull() {
+        return switch (currentContext()) {
+            case SystemUserContext me -> me.systemUserId();
+            case EmployeeContext _ -> null;
             case SystemContext _ -> null;
             case null -> null;
         };

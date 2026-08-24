@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 6 (suscripciones-tablas.md #25). El expediente de cobranza.
+         Exenta de @Version (E1_APPEND_ONLY), sin enabled (bitácora: probar que se avisó exige que no
+         se pueda ocultar). subscription_id y billing_document_id son [AÑADIDOS]: sin ellos un evento
+         de cobranza no se puede atar al contrato ni al documento que lo disparó.
+         Dos FK compuestas. ix_dunning_events_subscription se crea ANTES de
+         fk_dunning_events_subscription para que MySQL no genere un índice redundante (Apéndice C). -->
+    <changeSet id="254_create_dunning_events" author="orlando">
+        <createTable tableName="dunning_events">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_dunning_events_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="subscription_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="billing_document_id" type="BIGINT"/>
+            <column name="event_type" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="days_overdue" type="INT"/>
+            <column name="channel" type="VARCHAR(20)"/>
+            <column name="detail" type="VARCHAR(255)"/>
+            <column name="occurred_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE dunning_events
+                ADD CONSTRAINT chk_dunning_events_type
+                    CHECK (event_type IN ('REMINDER_SENT','GRACE_STARTED','READ_ONLY_APPLIED',
+                                           'REACTIVATED','WRITTEN_OFF')),
+                ADD CONSTRAINT chk_dunning_events_channel
+                    CHECK (channel IS NULL OR channel IN ('EMAIL','SMS','WHATSAPP','PHONE','IN_APP')),
+                ADD CONSTRAINT chk_dunning_events_days
+                    CHECK (days_overdue IS NULL OR days_overdue >= 0),
+                ADD CONSTRAINT chk_dunning_events_reminder_channel
+                    CHECK (event_type <> 'REMINDER_SENT' OR channel IS NOT NULL)
+        ]]></sql>
+
+        <createIndex tableName="dunning_events" indexName="ix_dunning_events_subscription">
+            <column name="company_id"/>
+            <column name="subscription_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="dunning_events"
+                                 baseColumnNames="company_id, subscription_id"
+                                 referencedTableName="subscriptions"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_dunning_events_subscription"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="dunning_events"
+                                 baseColumnNames="company_id, billing_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_dunning_events_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="dunning_events"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -5,11 +5,11 @@ import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.CreateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.out.CityQueryPort;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
-import com.vetsoftware.app.company.application.port.out.MembershipQueryPort;
 import com.vetsoftware.app.company.domain.CityRef;
 import com.vetsoftware.app.company.domain.Company;
-import com.vetsoftware.app.company.domain.MembershipRef;
 import io.micrometer.observation.annotation.Observed;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 
 @Observed(name = "company.create")
@@ -17,24 +17,21 @@ import org.springframework.stereotype.Service;
 public class CreateCompanyService implements CreateCompanyUseCase {
     private final CompanyRepository repository;
     private final CityQueryPort cityQueryPort;
-    private final MembershipQueryPort membershipQueryPort;
+    private final Clock clock;
 
     public CreateCompanyService(CompanyRepository repository, CityQueryPort cityQueryPort,
-            MembershipQueryPort membershipQueryPort) {
+            Clock clock) {
         this.repository = repository;
         this.cityQueryPort = cityQueryPort;
-        this.membershipQueryPort = membershipQueryPort;
+        this.clock = clock;
     }
 
     @Override
     public CompanyDto execute(CreateCompanyCommand command) {
         CityRef city = cityQueryPort.findById(command.cityId()).orElseThrow(
                 () -> new IllegalArgumentException("City not found: " + command.cityId()));
-        MembershipRef membership = membershipQueryPort.findById(command.membershipId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Membership not found: " + command.membershipId()));
         Company company = Company.create(command.name(), command.identifier(), command.address(),
-                command.contactNumber(), city, membership);
+                command.contactNumber(), city, LocalDateTime.now(clock));
         return CompanyDto.from(repository.save(company));
     }
 }

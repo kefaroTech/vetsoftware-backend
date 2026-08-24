@@ -2644,6 +2644,144 @@ final class VetSoftwareConditions {
     }
 
     /**
+     * Los contenedores que Spring Data desenvuelve antes de proyectar. El tipo
+     * proyectado de {@code List<FooView>} es {@code FooView}, no {@code List}.
+     */
+    private static final Set<String> CONTENEDORES_DE_PROYECCION = Set.of("java.util.List",
+            "java.util.Optional", "java.util.Set", "java.util.Collection", "java.lang.Iterable",
+            "java.util.stream.Stream", "org.springframework.data.domain.Page",
+            "org.springframework.data.domain.Slice", "org.springframework.data.domain.Window");
+
+    /**
+     * Cierre de la incidencia #472, y la mitad que le faltaba a
+     * {@code PROYECCION_SIN_LITERAL_BOOLEANO} (#196): ninguna
+     * {@code @Query(nativeQuery = true)} puede proyectar sobre un tipo que exponga
+     * una propiedad {@code Boolean} o {@code boolean}.
+     *
+     * <p>
+     * <b>Por qué la regla de #196 no vio este defecto.</b> Aquella mira el <b>texto
+     * del SQL</b> y prohíbe el literal ({@code THEN true}); esta mira el <b>tipo de
+     * destino</b>. Son dos formas de escribir el mismo problema —una columna
+     * booleana que nadie sabe convertir al extraer el resultado— y la primera solo
+     * cazaba la que ya nos había mordido.
+     * {@code ContractItemJpaRepository.findModuleLines} no tiene un solo literal en
+     * su proyección: proyecta {@code sm.read_only_capable} y {@code ci.is_core},
+     * dos columnas reales, con el alias correcto. Pasaba la regla vieja limpiamente
+     * y aun así tumbaba el alta de empresa entera.
+     *
+     * <p>
+     * <b>Por qué falla.</b> MySQL no tiene tipo booleano. El CLAUDE.md exige
+     * {@code TINYINT} pelado —{@code TINYINT(1)} lo reporta el driver como
+     * {@code BIT} y revienta el arranque con {@code ddl-auto: validate}—, así que
+     * Connector/J entrega la columna como {@code java.lang.Byte}. Una entidad
+     * gestionada no lo nota, porque Hibernate le aplica su
+     * {@code preferred_boolean_jdbc_type: TINYINT}; una proyección de consulta
+     * nativa <b>no pasa por ahí</b>: la resuelve el
+     * {@code ProjectingMethodInterceptor} de Spring Data, cuyo
+     * {@code ConversionService} no trae ningún converter {@code Byte -> Boolean}.
+     * Al no poder convertir intenta tratar el getter como proyección anidada y
+     * lanza {@code UnsupportedOperationException: Cannot project java.lang.Byte to
+     * java.lang.Boolean}.
+     *
+     * <p>
+     * <b>Por qué nadie lo vio durante meses.</b> El fallo no está en la consulta
+     * sino en la primera fila que devuelve: con el catálogo comercial vacío la
+     * consulta devolvía cero filas y el código de proyección <b>nunca llegaba a
+     * ejecutarse</b>. La primera siembra con datos reales lo destapó a la primera.
+     * Es justo el caso que una rodaja de persistencia no cubre si nadie escribió la
+     * suya, y por eso hace falta una regla que mire todas las {@code @Query} que
+     * existan, se ejecuten o no.
+     *
+     * <p>
+     * <b>Nace dura y en cero</b>, como #196: la única violación era
+     * {@code ContractModuleLineView} y quedó arreglada al cerrar #472.
+     *
+     * <p>
+     * <b>Las entidades quedan fuera a propósito.</b> Una {@code @Query} nativa que
+     * devuelve una {@code @Entity} la materializa Hibernate con sus tipos, no el
+     * proyector de Spring Data, así que su {@code Boolean getEnabled()} es
+     * legítimo. Incluirlas convertiría la regla en ruido sobre media docena de
+     * repositorios que funcionan.
+     *
+     * <p>
+     * La salida ante una violación no es tocar la regla ni cambiar la columna a
+     * {@code TINYINT(1)} —lo prohíbe el CLAUDE.md— ni forzar un {@code CAST} en el
+     * SQL —MySQL no puede devolver un booleano por mucho que se le pida—: es
+     * proyectar el número y traducirlo en Java, como hacen
+     * {@code JpaSubscriptionQueryPort.esCierto} y
+     * {@code CompanyEntitlementJpaRepository}.
+     */
+    static ArchCondition<JavaMethod> proyectarSinBooleanoEnConsultaNativa() {
+        return new ArchCondition<>("no proyectar booleanos en consultas nativas: MySQL entrega"
+                + " TINYINT como Byte y Spring Data no sabe convertirlo") {
+            @Override
+            public void check(JavaMethod metodo, ConditionEvents events) {
+                boolean nativa = metodo.tryGetAnnotationOfType(Query.class).map(Query::nativeQuery)
+                        .orElse(Boolean.FALSE);
+                if (!nativa) {
+                    return;
+                }
+                JavaClass proyectado = tipoProyectado(metodo.getReturnType());
+                List<String> booleanas = propiedadesBooleanas(proyectado);
+                events.add(new SimpleConditionEvent(metodo, booleanas.isEmpty(),
+                        metodo.getOwner().getSimpleName() + "." + metodo.getName() + "():"
+                                + " la consulta nativa proyecta sobre " + proyectado.getSimpleName()
+                                + ", que expone " + String.join(", ", booleanas)
+                                + " como booleano. MySQL no tiene tipo booleano y el CLAUDE.md"
+                                + " exige TINYINT pelado, asi que Connector/J entrega un Byte y"
+                                + " el ProjectingMethodInterceptor de Spring Data revienta con"
+                                + " 'Cannot project java.lang.Byte to java.lang.Boolean' en"
+                                + " cuanto la consulta devuelve UNA fila: asi cayo el alta de"
+                                + " empresa entera en #472. Salida: proyectar Byte/Integer y"
+                                + " comparar contra cero en Java."));
+            }
+        };
+    }
+
+    /**
+     * El tipo sobre el que Spring Data va a proyectar, desenvolviendo los
+     * contenedores. {@code List<FooView>} proyecta sobre {@code FooView};
+     * {@code Optional<List<FooView>>} también.
+     */
+    private static JavaClass tipoProyectado(JavaType tipo) {
+        if (tipo instanceof JavaParameterizedType parametrizado
+                && CONTENEDORES_DE_PROYECCION.contains(parametrizado.toErasure().getName())
+                && !parametrizado.getActualTypeArguments().isEmpty()) {
+            return tipoProyectado(parametrizado.getActualTypeArguments().get(0));
+        }
+        return tipo.toErasure();
+    }
+
+    /**
+     * Las propiedades booleanas que el tipo proyectado expone. Lista vacía = el
+     * tipo cumple.
+     *
+     * <p>
+     * Solo cuentan los accesores sin argumentos: así el {@code equals(Object)} que
+     * toda interfaz hereda de {@code Object} —que también devuelve {@code boolean}—
+     * no convierte cada proyección del proyecto en una violación.
+     */
+    private static List<String> propiedadesBooleanas(JavaClass proyectado) {
+        if (proyectado.isEquivalentTo(Boolean.class) || proyectado.isEquivalentTo(boolean.class)) {
+            return List.of("el propio valor devuelto");
+        }
+        // Una @Entity la materializa Hibernate con sus tipos, no el proyector de
+        // Spring Data: su Boolean es legitimo. Y lo que no es del proyecto no es una
+        // proyeccion sino una columna suelta --un List<String> findCodes()--, donde
+        // String trae isBlank(), isEmpty() e isLatin1() heredados de la JDK: ese fue
+        // el primer falso positivo que dio esta regla al escribirla.
+        if (proyectado.isAnnotatedWith("jakarta.persistence.Entity")
+                || !proyectado.getName().startsWith(APP_PACKAGE + ".")) {
+            return List.of();
+        }
+        return proyectado.getAllMethods().stream()
+                .filter(metodo -> metodo.getRawParameterTypes().isEmpty())
+                .filter(metodo -> metodo.getRawReturnType().isEquivalentTo(Boolean.class)
+                        || metodo.getRawReturnType().isEquivalentTo(boolean.class))
+                .map(JavaMethod::getName).sorted().toList();
+    }
+
+    /**
      * Los literales booleanos que una consulta pone en su lista de proyección.
      * Lista vacía = la consulta cumple.
      *

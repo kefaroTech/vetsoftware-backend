@@ -4,13 +4,11 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <include file="db/changelog/migrations/001_create_memberships.xml"/>
     <include file="db/changelog/migrations/002_create_modules.xml"/>
     <include file="db/changelog/migrations/003_create_sub_modules.xml"/>
     <include file="db/changelog/migrations/004_create_base_permissions.xml"/>
     <include file="db/changelog/migrations/005_create_base_roles.xml"/>
     <include file="db/changelog/migrations/006_create_base_role_permissions.xml"/>
-    <include file="db/changelog/migrations/007_create_membership_sub_modules.xml"/>
     <include file="db/changelog/migrations/008_create_system_users.xml"/>
     <include file="db/changelog/migrations/009_create_system_permissions.xml"/>
     <include file="db/changelog/migrations/010_create_system_user_permissions.xml"/>
@@ -23,12 +21,10 @@
     <include file="db/changelog/migrations/017_create_roles.xml"/>
     <include file="db/changelog/migrations/018_create_role_permissions.xml"/>
     <include file="db/changelog/migrations/019_create_employee_roles.xml"/>
-    <include file="db/changelog/migrations/020_seed_membership_basic.xml"/>
     <include file="db/changelog/migrations/022_seed_americas_geography.xml"/>
     <include file="db/changelog/migrations/023_add_unique_modules_code.xml"/>
     <include file="db/changelog/migrations/024_add_unique_sub_modules_code.xml"/>
     <include file="db/changelog/migrations/025_add_unique_base_permissions_code.xml"/>
-    <include file="db/changelog/migrations/026_add_mandatory_to_memberships.xml"/>
     <include file="db/changelog/migrations/027_add_unique_permissions_company_code.xml"/>
     <include file="db/changelog/migrations/028_create_species.xml"/>
     <include file="db/changelog/migrations/029_create_breeds.xml"/>
@@ -227,5 +223,132 @@
     <include file="db/changelog/migrations/225_add_version_optimistic_lock_wave2.xml"/>
     <include file="db/changelog/migrations/226_add_unique_active_appointment_slot.xml"/>
     <include file="db/changelog/migrations/227_scope_appointment_slot_by_overlap_forced.xml"/>
+
+    <!-- Modelo de suscripciones (suscripciones-modelo.md / suscripciones-tablas.md /
+         suscripciones-cambios-existentes.md). 228 es el paso 0.1 (columnas nuevas en sub_modules);
+         229-255 son las 26 tablas nuevas en el orden de creación de suscripciones-tablas.md §1. -->
+    <include file="db/changelog/migrations/228_add_catalog_columns_to_sub_modules.xml"/>
+    <include file="db/changelog/migrations/229_create_catalog_items.xml"/>
+    <include file="db/changelog/migrations/230_create_catalog_item_sub_modules.xml"/>
+    <include file="db/changelog/migrations/231_create_catalog_item_dependencies.xml"/>
+    <include file="db/changelog/migrations/232_create_bundle_components.xml"/>
+    <include file="db/changelog/migrations/233_create_price_lists.xml"/>
+    <include file="db/changelog/migrations/234_create_catalog_prices.xml"/>
+    <include file="db/changelog/migrations/235_create_configurator_questions.xml"/>
+    <include file="db/changelog/migrations/236_create_configurator_options.xml"/>
+    <include file="db/changelog/migrations/237_add_parent_option_to_configurator_questions.xml"/>
+    <include file="db/changelog/migrations/238_create_configurator_effects.xml"/>
+    <include file="db/changelog/migrations/239_create_quotes.xml"/>
+    <include file="db/changelog/migrations/240_create_quote_lines.xml"/>
+    <include file="db/changelog/migrations/241_create_quote_answers.xml"/>
+    <include file="db/changelog/migrations/242_create_subscriptions.xml"/>
+    <include file="db/changelog/migrations/243_create_subscription_amendments.xml"/>
+    <include file="db/changelog/migrations/244_create_subscription_items.xml"/>
+    <include file="db/changelog/migrations/245_create_subscription_status_history.xml"/>
+    <include file="db/changelog/migrations/246_create_company_entitlements.xml"/>
+    <include file="db/changelog/migrations/247_create_company_capacities.xml"/>
+    <include file="db/changelog/migrations/248_create_billing_document_sequences.xml"/>
+    <include file="db/changelog/migrations/249_create_subscription_billing_documents.xml"/>
+    <include file="db/changelog/migrations/250_create_subscription_billing_document_taxes.xml"/>
+    <include file="db/changelog/migrations/251_create_subscription_charges.xml"/>
+    <include file="db/changelog/migrations/252_create_subscription_payments.xml"/>
+    <include file="db/changelog/migrations/253_create_billing_document_applications.xml"/>
+    <include file="db/changelog/migrations/254_create_dunning_events.xml"/>
+    <include file="db/changelog/migrations/255_create_platform_billing_config.xml"/>
+
+    <!-- Issue #385: entitlement.read no tenía fila en base_permissions; recalculate es SYSTEM-only. -->
+    <include file="db/changelog/migrations/256_seed_entitlement_permissions.xml"/>
+
+    <!-- Issue #395: se registran únicamente las tres lecturas tenant de pagos y cobranza. -->
+    <include file="db/changelog/migrations/257_seed_subscriptionpayment_dunning_permissions.xml"/>
+
+    <include file="db/changelog/migrations/258_seed_technical_catalog.xml"/>
+
+    <!-- Plantilla de autoservicio SaaS: solo operaciones tenant seguras. -->
+    <include file="db/changelog/migrations/259_seed_tenant_saas_read_permissions.xml"/>
+
+    <!-- Issue #421: subscription.update/subscription.cancel no tenían fila tras reabrir los tres
+         puertos de autoservicio del tenant en #411. -->
+    <include file="db/changelog/migrations/260_seed_subscription_selfservice_permissions.xml"/>
+
+    <!-- Issue #427: uq_quotes_client_request era global; se acota por empresa via columna generada
+         (COALESCE(company_id, -1)) para no romper la deduplicacion de prospectos con company_id NULL. -->
+    <include file="db/changelog/migrations/261_scope_quotes_client_request_by_company.xml"/>
+
+    <!-- Semillas de LABORATORIO (contexto Liquibase local,e2e — ver application.yml /
+         application-local.yml). NUNCA se aplican en dev ni en produccion: las dos corren con
+         SPRING_PROFILES_ACTIVE=prod y heredan `contexts: production` de application.yml, que
+         filtra fuera todo changeSet marcado local,e2e. Resuelven el arranque en vacio
+         deliberado (PlatformCatalogNotConfiguredException) y el issue #173 de
+         vetsoftware-admin-web (sin credencial conocida no hay forma de autenticarse contra el
+         backend local). Los precios de 264 son marcadores de laboratorio, no una decision
+         comercial (docs/db/suscripciones-datos-semilla.md). -->
+    <include file="db/changelog/migrations/262_seed_local_e2e_platform_credential.xml"/>
+    <include file="db/changelog/migrations/263_seed_local_e2e_commercial_catalog.xml"/>
+    <include file="db/changelog/migrations/264_seed_local_e2e_price_list.xml"/>
+    <include file="db/changelog/migrations/265_seed_local_e2e_capacity_catalog.xml"/>
+    <include file="db/changelog/migrations/266_seed_base_roles.xml"/>
+    <include file="db/changelog/migrations/267_seed_base_role_permissions_admin_backfill.xml"/>
+
+    <!-- Issue #504. 268 tapa el agujero de permisos de AGENDA (base_permissions +
+         base_role_permissions + backfill, sin contexto: estructura de plataforma).
+         269 ata CORE a los submodulos estructurales (BRANCH/EMPLOYEES/ROLES) en el
+         catalogo de laboratorio, mismo contexto local,e2e que 262-265.
+
+         Nota de correccion (issue #511, sin editar 269 -rompe el checksum-): la frase de
+         269 "el dueno tiene que poder operar el minimo de su propia cuenta -crear una
+         sede, dar de alta un empleado-" nunca prometio abrir una SEGUNDA sede gratis -
+         BRANCH nacia y sigue naciendo en limit=1, consumido por la sede Principal del
+         propio alta-; leela como "operar con la sede que el alta ya crea". La mitad de
+         "dar de alta un empleado" si estaba rota -CAPACITY_USER tambien nacia en limit=1,
+         consumido por el propio dueno- y la corrige 271 mas abajo. -->
+    <include file="db/changelog/migrations/268_seed_agenda_permissions.xml"/>
+    <include file="db/changelog/migrations/269_seed_local_e2e_catalog_core_structural_submodules.xml"/>
+
+    <!-- Issue #506. 269 ato CORE a EMPLOYEES y ROLES pero ninguno de los dos submodulos
+         tenia un solo base_permissions sembrado: el dueno de una empresa nueva veia los
+         submodulos concedidos y aun asi recibia 403 al invitar a un segundo empleado o
+         crear un rol. 270 siembra los nueve codigos que exige el @PreAuthorize real
+         (employee.create/read/update/delete, rolePermissions.create/read/update/delete
+         y role.read), sin contexto: estructura de plataforma, mismo argumento que
+         266/267/268. -->
+    <include file="db/changelog/migrations/270_seed_employee_role_base_permissions.xml"/>
+
+    <!-- Issue #511. 265 dejo CAPACITY_USER con techo 1 (limit=1), y el propio dueno lo
+         agota al registrarse: ninguna empresa nueva podia invitar a nadie sin comprar
+         capacidad, contradiciendo la promesa de 269. 271 sube el techo de USER a 3
+         (dueno + 2 libres, "dueno, algun veterinario, quien atiende el mostrador" segun
+         el criterio del usuario) subiendo catalog_prices.included_quantity, no
+         catalog_items.min_quantity. BRANCH se queda deliberadamente en 1: la segunda
+         sede se vende, el segundo empleado no. Mismo contexto local,e2e que 262-265/269/
+         270. -->
+    <include file="db/changelog/migrations/271_raise_local_e2e_core_user_capacity_minimum.xml"/>
+
+    <!-- Issue #517: "owner.read y animal.read no existen en ninguna semilla: ninguna
+         empresa puede listar sus clientes ni sus mascotas". Censo real (el del issue
+         redondeaba): el codigo exige 137 autoridades @PreAuthorize reales, no 150 -13
+         de esa cifra eran menciones de Javadoc en los ReactivateXxxUseCase de los
+         catalogos maestros de plataforma, documentando una authority que el codigo YA
+         NO comprueba (ver nota completa en 273)-. De las 137, base_permissions solo
+         tenia 51: faltaban 86, repartidas en ocho changesets tematicos por dominio.
+
+         272-274 crean el submodulo que nunca existio para "clientes y mascotas"
+         -269 lo dejo escrito como pendiente- y lo atan a CORE en local,e2e.
+         275-279 siembran las 78 autoridades restantes (atencion clinica, catalogo
+         comercial, cuentas por cobrar/POS, facturacion electronica, autoservicio de
+         empresa), cerrando ademas la mitad BILLING del #512.
+
+         Las nueve son SIN CONTEXTO a proposito, mismo argumento que 266/267/268/270:
+         base_permissions y base_role_permissions son estructura de plataforma -el
+         catalogo de QUE puede hacer un empleado-, no oferta comercial; solo 274 (el
+         puente catalog_item_sub_modules) es local,e2e, igual que 269. -->
+    <include file="db/changelog/migrations/272_seed_owners_animals_submodule.xml"/>
+    <include file="db/changelog/migrations/273_seed_owner_animal_permissions.xml"/>
+    <include file="db/changelog/migrations/274_seed_local_e2e_catalog_core_owners_animals_submodule.xml"/>
+    <include file="db/changelog/migrations/275_seed_clinical_care_permissions.xml"/>
+    <include file="db/changelog/migrations/276_seed_commercial_catalog_permissions.xml"/>
+    <include file="db/changelog/migrations/277_seed_accounts_and_pos_permissions.xml"/>
+    <include file="db/changelog/migrations/278_seed_electronic_billing_permissions.xml"/>
+    <include file="db/changelog/migrations/279_seed_company_self_service_permissions.xml"/>
 
 </databaseChangeLog>

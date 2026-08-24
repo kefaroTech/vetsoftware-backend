@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 7, última tabla (suscripciones-tablas.md #26). Las políticas
+         de negocio en una sola fila, garantizada por el esquema: UNIQUE(singleton) + CHECK(singleton
+         = 1) juntos impiden un segundo valor y una segunda fila. `singleton` es TINYINT (un pin fijo,
+         no un booleano de dominio) porque un CHECK no puede referenciar una columna AUTO_INCREMENT
+         (suscripciones-modelo.md §1.9); no se puede repetir aquí el atajo de
+         215_add_audit_chain_integrity (CHECK (id = 1)) porque platform_billing_config.id SÍ es
+         AUTO_INCREMENT. C5: choque deliberado con la convención del árbol -esta tabla NO lleva
+         `enabled`, ver suscripciones-modelo.md §2.2 fila 12-. Sin company_id: singleton global.
+
+         DATO DEL SLICE platformbillingconfig: la fila única se siembra AQUÍ, en el MISMO changeset
+         que crea la tabla -no es catálogo comercial (el usuario decidió no sembrarlo, ver
+         suscripciones-modelo.md §6), es la estructura mínima de un singleton-. La entidad JPA no
+         hace upsert: tanto la lectura como la escritura lanzan PlatformBillingConfigNotConfigured-
+         Exception si la fila no existe, así que sin ella la consola de plataforma arranca dando 500
+         en cuanto alguien abre la configuración. default_price_list_id queda NULL: el catálogo y las
+         listas de precio siguen sin semillas (suscripciones-modelo.md §6), así que no hay ninguna
+         price_lists a la que apuntar todavía; se rellena a mano o desde el PR de semillas. -->
+    <changeSet id="255_create_platform_billing_config" author="orlando">
+        <createTable tableName="platform_billing_config">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="singleton" type="TINYINT" defaultValueNumeric="1">
+                <constraints nullable="false" unique="true"
+                             uniqueConstraintName="uq_platform_billing_config_singleton"/>
+            </column>
+            <column name="default_price_list_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_platform_billing_config_price_list"
+                             references="price_lists(id)"/>
+            </column>
+            <column name="default_grace_days" type="INT" defaultValueNumeric="5">
+                <constraints nullable="false"/>
+            </column>
+            <column name="default_trial_days" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="invoice_day_of_month" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="default_payment_term_days" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="external_billing_provider" type="VARCHAR(40)"/>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE platform_billing_config
+                ADD CONSTRAINT chk_platform_billing_config_singleton CHECK (singleton = 1),
+                ADD CONSTRAINT chk_platform_billing_config_grace CHECK (default_grace_days >= 0),
+                ADD CONSTRAINT chk_platform_billing_config_trial CHECK (default_trial_days >= 0),
+                ADD CONSTRAINT chk_platform_billing_config_invoice_day
+                    CHECK (invoice_day_of_month BETWEEN 1 AND 28),
+                ADD CONSTRAINT chk_platform_billing_config_term CHECK (default_payment_term_days >= 0)
+        ]]></sql>
+
+        <!-- Fila única sembrada en el MISMO changeSet que crea la tabla: la lectura y la
+             escritura de platformbillingconfig lanzan PlatformBillingConfigNotConfiguredException
+             cuando la fila no existe (deliberado, sin upsert), así que si el createTable corre y
+             este insert no, la consola de plataforma arranca dando 500 en la primera pantalla de
+             configuración. Sin INSERT IGNORE: un fallo aquí tiene que gritar, no reaparecer después
+             disfrazado de violación de FK en otra tabla (ver la nota del 2026-08-17 en CLAUDE.md).
+             Todos los valores van explícitos -incluidos los que ya tienen defaultValueNumeric en el
+             createTable- para que no dependan de un default que alguien cambie mañana.
+             default_price_list_id se omite (columna nullable sin default): la lista de precios
+             llega en el PR de semillas del catálogo, todavía no hay ninguna price_lists a la que
+             apuntar (suscripciones-modelo.md §6). -->
+        <insert tableName="platform_billing_config">
+            <column name="singleton" valueNumeric="1"/>
+            <column name="default_grace_days" valueNumeric="5"/>
+            <column name="default_trial_days" valueNumeric="0"/>
+            <column name="invoice_day_of_month" valueNumeric="1"/>
+            <column name="default_payment_term_days" valueNumeric="0"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+
+        <rollback>
+            <dropTable tableName="platform_billing_config"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

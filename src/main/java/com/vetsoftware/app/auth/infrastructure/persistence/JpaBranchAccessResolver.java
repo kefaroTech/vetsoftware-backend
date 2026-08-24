@@ -13,9 +13,18 @@ import org.springframework.stereotype.Repository;
  * en paralelo a {@link JpaPermissionResolver}. {@code employee_branches} es la
  * única fuente del alcance por sede — "todas" se materializa como una fila por
  * sede, así que no hay flag que leer por request. Se cachea un {@link HashSet}
- * (no un {@code Set.copyOf(...)} inmutable) para round-trippear de forma fiable
- * con {@code GenericJackson2JsonRedisSerializer}, igual que
- * {@code employee-permissions}.
+ * (no un {@code Set.copyOf(...)} inmutable) porque una colección inmutable de
+ * la JDK no tiene constructor que Jackson pueda usar al volver de Redis, igual
+ * que {@code employee-permissions}.
+ *
+ * <p>
+ * <b>Quien garantiza que vuelva como {@code Set} es {@code CacheConfig}</b>, no
+ * el tipo que se guarde aquí: el serializador de {@code employee-branch-ids}
+ * está declarado con el {@code JavaType} de {@code Set<Long>}. El javadoc
+ * anterior afirmaba lo contrario -que bastaba con guardar un {@code HashSet}- y
+ * era falso: sin tipo declarado, el JSON {@code [1,2]} vuelve como
+ * {@code ArrayList} sea cual sea la implementación que se guardó. Ver la
+ * incidencia #464.
  *
  * <p>
  * El {@code @Cacheable} vive en el método público invocado desde otro bean

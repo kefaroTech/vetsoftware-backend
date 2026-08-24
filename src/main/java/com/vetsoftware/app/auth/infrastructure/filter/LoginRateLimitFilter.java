@@ -74,6 +74,19 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     private static final RouteLimit VERIFY_EMAIL_LIMIT = new RouteLimit("verify-email-rl:",
             "/register/verify", 10, Duration.ofHours(1), "VERIFY_EMAIL_RATE_LIMITED",
             "Too many verification attempts. Try again later.", List.of("token"));
+    // El unico POST anonimo que no es un flujo de credenciales: resuelve el
+    // cuestionario del asistente de venta para un prospecto que todavia no tiene
+    // cuenta. Se limita solo por IP —el cuerpo son ids de opcion y numeros, no hay
+    // ninguna cuenta que contar— y con holgura, porque una sesion del asistente
+    // reevalua el carrito a cada respuesta: 60/min deja pasar de sobra a una
+    // persona
+    // y acota lo que cuesta el endpoint, que lee el cuestionario entero dos veces
+    // por
+    // llamada.
+    private static final RouteLimit CONFIGURATOR_RESOLVE_LIMIT = new RouteLimit(
+            "configurator-resolve-rl:", "/configurator/resolve", 60, Duration.ofMinutes(1),
+            "CONFIGURATOR_RESOLVE_RATE_LIMITED", "Too many configurator requests. Try again later.",
+            List.of());
 
     /**
      * Campos cuyo valor es un secreto opaco y NO se normaliza a minusculas: dos
@@ -160,6 +173,8 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             return RESET_PASSWORD_LIMIT;
         if (uri.equals(VERIFY_EMAIL_LIMIT.path()))
             return VERIFY_EMAIL_LIMIT;
+        if (uri.equals(CONFIGURATOR_RESOLVE_LIMIT.path()))
+            return CONFIGURATOR_RESOLVE_LIMIT;
         if (uri.startsWith(DIAN_WEBHOOK_LIMIT.path() + "/"))
             return DIAN_WEBHOOK_LIMIT;
         return null;

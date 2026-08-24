@@ -18,11 +18,14 @@ public interface RoleJpaRepository extends JpaRepository<RoleJpaEntity, Long> {
     @EntityGraph(attributePaths = "company")
     Optional<RoleJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
-    @EntityGraph(attributePaths = {"company", "company.membership"})
+    @EntityGraph(attributePaths = "company")
     List<RoleJpaEntity> findAllByCode(String code);
 
     @EntityGraph(attributePaths = "company")
     List<RoleJpaEntity> findAllByCompanyId(Long companyId);
+
+    @EntityGraph(attributePaths = "company")
+    Optional<RoleJpaEntity> findByCompanyIdAndCode(Long companyId, String code);
 
     // El UPDATE mueve tambien `version`, la del bloqueo
     // optimista, a proposito: sin eso, un save cargado antes

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 1 (suscripciones-tablas.md #3). Reglas REQUIRES/RECOMMENDS/
+         EXCLUDES del configurador. Choque C2 resuelto en inglés (suscripciones-modelo.md §5): todos
+         los demás tipos cerrados del documento de diseño ya están en inglés. Exenta de @Version
+         (E2_TABLA_PUENTE). -->
+    <changeSet id="231_create_catalog_item_dependencies" author="orlando">
+        <createTable tableName="catalog_item_dependencies">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="catalog_item_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_catalog_item_dependencies_item"
+                             references="catalog_items(id)"/>
+            </column>
+            <column name="related_item_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_catalog_item_dependencies_related"
+                             references="catalog_items(id)"/>
+            </column>
+            <column name="relation_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="note" type="VARCHAR(255)"/>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="catalog_item_dependencies"
+                             columnNames="catalog_item_id, related_item_id, relation_type"
+                             constraintName="uq_catalog_item_dependencies"/>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_item_dependencies
+                ADD CONSTRAINT chk_catalog_item_dependencies_type
+                    CHECK (relation_type IN ('REQUIRES','RECOMMENDS','EXCLUDES')),
+                ADD CONSTRAINT chk_catalog_item_dependencies_not_self
+                    CHECK (catalog_item_id <> related_item_id)
+        ]]></sql>
+
+        <rollback>
+            <dropTable tableName="catalog_item_dependencies"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

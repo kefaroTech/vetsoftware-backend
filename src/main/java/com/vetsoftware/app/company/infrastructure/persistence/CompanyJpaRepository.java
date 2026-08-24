@@ -12,18 +12,18 @@ import org.springframework.data.repository.query.Param;
 public interface CompanyJpaRepository extends JpaRepository<CompanyJpaEntity, Long> {
 
     @Override
-    @EntityGraph(attributePaths = {"city", "membership"})
+    @EntityGraph(attributePaths = "city")
     List<CompanyJpaEntity> findAll();
 
     @Override
-    @EntityGraph(attributePaths = {"city", "membership"})
+    @EntityGraph(attributePaths = "city")
     Optional<CompanyJpaEntity> findById(Long id);
 
-    // Las dos asociaciones del grafo son to-one, así que el JOIN FETCH convive con
+    // La asociación del grafo es to-one, así que el JOIN FETCH convive con
     // la paginación sin traerse la tabla a memoria. Con una colección habría que
     // separar la consulta o Hibernate paginaría en el heap (HHH000104).
     @Override
-    @EntityGraph(attributePaths = {"city", "membership"})
+    @EntityGraph(attributePaths = "city")
     Page<CompanyJpaEntity> findAll(Pageable pageable);
 
     /**
@@ -33,7 +33,7 @@ public interface CompanyJpaRepository extends JpaRepository<CompanyJpaEntity, Lo
      * {@code page=1} la consulta devuelve contenido vacío y {@code totalElements=1}
      * sola, sin aritmética que equivocar.
      */
-    @EntityGraph(attributePaths = {"city", "membership"})
+    @EntityGraph(attributePaths = "city")
     @Query("""
             SELECT c
             FROM CompanyJpaEntity c
@@ -42,7 +42,7 @@ public interface CompanyJpaRepository extends JpaRepository<CompanyJpaEntity, Lo
     Page<CompanyJpaEntity> findPageByCompanyId(@Param("companyId") Long companyId,
             Pageable pageable);
 
-    @EntityGraph(attributePaths = {"city", "membership"})
+    @EntityGraph(attributePaths = "city")
     @Query("""
             SELECT c
             FROM CompanyJpaEntity c
@@ -51,7 +51,7 @@ public interface CompanyJpaRepository extends JpaRepository<CompanyJpaEntity, Lo
             """)
     Page<CompanyJpaEntity> searchByTerm(@Param("query") String query, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"city", "membership"})
+    @EntityGraph(attributePaths = "city")
     @Query("""
             SELECT c
             FROM CompanyJpaEntity c

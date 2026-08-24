@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #517. Solo local y e2e -mismo contexto que 262/263/264/265/269, NUNCA
+         se aplica en dev ni en produccion-: la pausa del usuario protege precios y
+         paquetes comerciales, y el puente catalog_item_sub_modules de esta semilla
+         concreta es exactamente eso -el catalogo comercial de laboratorio que 263
+         sembro-.
+
+         269 ato CORE a BRANCH/EMPLOYEES/ROLES como "minimo operable" pero dejo
+         fuera, a proposito, "clientes y mascotas" porque el sub_modules no existia
+         todavia (269, y el propio #504 lo dejaron escrito como pendiente). 272 crea
+         ese sub_modules (OWNERS_ANIMALS) y 273 le siembra sus permisos: este
+         changeset cierra el circuito atando CORE a OWNERS_ANIMALS, que es lo que
+         hace que JpaRolePermissionInitializationPort.initializeForRole tenga algo
+         que copiar para una empresa nueva. Sin este changeset, 272+273 dejarian el
+         permiso sembrado pero inalcanzable -el mismo callejon sin salida de #385/
+         #395/#421/#506 que este issue cierra-.
+
+         Es MAS estructural que BRANCH/EMPLOYEES/ROLES, no menos: una clinica sin
+         poder listar sus propios clientes ni pacientes no tiene nada que operar. -->
+
+    <changeSet id="274_seed_local_e2e_catalog_core_owners_animals_submodule"
+               author="orlando" context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_sub_modules (catalog_item_id, sub_module_id)
+            SELECT ci.id, sm.id
+              FROM catalog_items ci
+              JOIN sub_modules sm ON sm.code = 'OWNERS_ANIMALS'
+             WHERE ci.code = 'CORE'
+               AND NOT EXISTS (
+                   SELECT 1 FROM catalog_item_sub_modules x
+                    WHERE x.catalog_item_id = ci.id AND x.sub_module_id = sm.id);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM catalog_item_sub_modules
+                 WHERE catalog_item_id IN (SELECT id FROM catalog_items WHERE code = 'CORE')
+                   AND sub_module_id IN (SELECT id FROM sub_modules WHERE code = 'OWNERS_ANIMALS');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -3,6 +3,7 @@ package com.vetsoftware.app.branch.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.branch.application.command.CreateBranchCommand;
 import com.vetsoftware.app.branch.application.dto.BranchDto;
+import com.vetsoftware.app.branch.application.port.out.BranchCapacityPort;
 import com.vetsoftware.app.branch.application.port.out.BranchRepository;
 import com.vetsoftware.app.branch.application.port.out.CityQueryPort;
 import com.vetsoftware.app.branch.application.port.out.CompanyQueryPort;
@@ -17,6 +19,8 @@ import com.vetsoftware.app.branch.application.port.out.FullCoverageBranchAssignm
 import com.vetsoftware.app.branch.domain.Branch;
 import com.vetsoftware.app.branch.domain.CityRef;
 import com.vetsoftware.app.branch.domain.CompanyRef;
+import com.vetsoftware.app.entitlement.domain.CapacityUnit;
+import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +45,8 @@ class CreateBranchServiceTest {
     private CompanyQueryPort companyQueryPort;
     @Mock
     private FullCoverageBranchAssignmentPort fullCoverageAssignmentPort;
+    @Mock
+    private BranchCapacityPort branchCapacityPort;
     @InjectMocks
     private CreateBranchService service;
 
@@ -84,6 +90,7 @@ class CreateBranchServiceTest {
         // La sede recién creada se auto-asigna a los empleados "con todas las sedes" de
         // la empresa.
         verify(fullCoverageAssignmentPort).assignNewBranchToFullCoverageEmployees(9L, 1L);
+        verify(branchCapacityPort).reserve(9L);
     }
 
     @Test
@@ -140,5 +147,22 @@ class CreateBranchServiceTest {
                 .hasMessageContaining("Company not found");
 
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void el_limite_branch_aborta_antes_de_persistir_y_asignar_cobertura() {
+        when(repository.codeExists(9L, "NORTE")).thenReturn(false);
+        when(cityQueryPort.findById(5L)).thenReturn(Optional.of(city));
+        when(companyQueryPort.findById(9L)).thenReturn(Optional.of(company));
+        doThrow(new CompanyCapacityLimitExceededException(9L, CapacityUnit.BRANCH, 2, 2, 1))
+                .when(branchCapacityPort).reserve(9L);
+
+        assertThatThrownBy(
+                () -> service.execute(new CreateBranchCommand("Sede", "NORTE", null, null, 5L, 9L)))
+                .isInstanceOf(CompanyCapacityLimitExceededException.class)
+                .hasMessageContaining("BRANCH");
+
+        verify(repository, never()).save(any());
+        verifyNoInteractions(fullCoverageAssignmentPort);
     }
 }

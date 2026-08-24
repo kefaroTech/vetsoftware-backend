@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #511. Semilla de LABORATORIO, solo local y e2e -mismo contexto que
+         262-265/269/270, NUNCA se aplica en dev ni en produccion-.
+
+         265_seed_local_e2e_capacity_catalog.xml dejo CAPACITY_USER con min_quantity=1 e
+         included_quantity=0: CreateInitialSubscriptionService.capacityLine() firma la
+         cantidad = max(min_quantity, 1) = 1, y CapacityGrantLine.ceiling() =
+         included_quantity + quantity = 0 + 1 = 1. El dueno consume esa unica unidad al
+         registrarse, asi que company_capacities.USER nace en limit=1, used=1 -sin margen
+         para invitar a nadie- y AdjustCompanyCapacityUsageService responde 409 INVALID_STATE
+         "Company X has exhausted capacity USER" en el primer intento de alta de un segundo
+         empleado. Confirmado con el motor real subiendo limit_quantity a mano (ver #511).
+
+         269_seed_local_e2e_catalog_core_structural_submodules.xml promete por escrito -sin
+         poder editarse, rompe el checksum- que "el dueno de una empresa recien registrada
+         tiene que poder operar el minimo de su propia cuenta -crear una sede, dar de alta un
+         empleado- sin haber contratado nada mas que el nucleo". Con el catalogo tal como
+         265 lo dejo, la mitad de "dar de alta un empleado" era falsa. La otra mitad -"crear
+         una sede"- NUNCA fue literal: BRANCH tambien nace en limit=1, y la sede "Principal"
+         que el propio alta crea consume esa unica unidad. Esta correccion NO sube BRANCH
+         -decision explicita, ver mas abajo-, asi que el texto de 269 queda corregido AQUI,
+         sin tocar el 269: "crear una sede" hay que leerlo como "operar con la sede Principal
+         que el alta ya crea", no como "abrir una sede adicional gratis". Abrir una sede
+         adicional es EXTRA_BRANCH, una ampliacion comercial (docs/db/suscripciones-datos-
+         semilla.md §2.2), y eso siempre fue asi incluso antes de este changeSet.
+
+         La decision, dada por el usuario en el cierre de #511: "la segunda sede se vende;
+         el segundo empleado no".
+
+           - BRANCH se queda en 1. Una clinica de un solo local es el caso base y abrir un
+             segundo local es una ampliacion comercial legitima; con el arreglo de #510 en
+             marcha (employee_branches), una sola sede es perfectamente operable.
+
+           - USER sube a 3 en total: dueno + 2 unidades libres. El caso base no es "el dueno
+             solo" -esa es Ana en el documento de precios, y Ana es la excepcion, no la
+             regla-: es la clinica veterinaria pequena real, con TRES personas operando desde
+             el primer dia -dueno, algun veterinario, quien atiende el mostrador-, la frase
+             textual con la que el usuario definio el criterio. Quedarse en 1 (el dueno solo)
+             hace que la primera experiencia del producto sea un muro: ni un veterinario ni
+             un recepcionista caben sin pasar por caja el mismo dia del alta, y un alta que
+             no admite a nadie mas es una demo, no un producto. Subir a un numero mas alto
+             -por ejemplo 10- regala asientos que eran la via natural de crecimiento del
+             contrato: en una suscripcion de SaaS por asiento, cada usuario extra vendido es
+             ingreso recurrente, y el catalogo comercial ya declara USER como capacidad
+             vendible (`EXTRA_USER` en el documento aplazado, `docs/db/suscripciones-datos-
+             semilla.md` §2.2). 3 es el punto donde las tres personas del caso base caben sin
+             comprar nada y la cuarta persona -la primera contratacion real de crecimiento- ya
+             es una venta.
+
+         Como en 265, se sube `catalog_prices.included_quantity` y NO `catalog_items.
+         min_quantity`: min_quantity es el "tope inferior de venta" (suscripciones-tablas.md
+         ficha 1) y tiene que seguir en 1 -la unidad minima vendible de USER sigue siendo una
+         sola, para cuando exista EXTRA_USER-; included_quantity es exactamente la columna que
+         el propio modelo reserva para "cuantas unidades vienen ya incluidas sin cobrar"
+         (misma ficha), y es el mismo mecanismo que el documento aplazado propone para
+         CORE.included_quantity (suscripciones-datos-semilla.md §5.2/§7 D3). Con
+         included_quantity=2 y quantity=max(min_quantity,1)=1, el techo que
+         CapacityGrantLine.ceiling() calcula es 2+1=3.
+
+         Que debe replicar el catalogo REAL de produccion (no via Liquibase, via consola de
+         plataforma segun 223_seed_appointment_overlap_force_permission.xml): el articulo que
+         juegue el papel de CAPACITY_USER en el catalogo comercial real -o el included_quantity
+         de CORE si la vinculacion final es la alternativa que suscripciones-datos-semilla.md
+         §3 deja pendiente como decision D7- tiene que conceder un total de 3 usuarios sin
+         cargo (dueno + 2), y el articulo que juegue el papel de CAPACITY_BRANCH tiene que
+         seguir concediendo exactamente 1 sede sin cargo. Subir cualquiera de los dos numeros
+         es una decision comercial nueva, no una replica de este changeSet. -->
+
+    <changeSet id="271_raise_local_e2e_core_user_capacity_minimum" author="orlando"
+               context="local,e2e">
+        <sql><![CDATA[
+            UPDATE catalog_prices cp
+              JOIN catalog_items ci ON ci.id = cp.catalog_item_id
+              JOIN price_lists pl ON pl.id = cp.price_list_id
+               SET cp.included_quantity = 2,
+                   cp.version = cp.version + 1
+             WHERE ci.code = 'CAPACITY_USER'
+               AND pl.code = 'LISTA-LOCAL-LAB'
+               AND cp.billing_cycle = 'MONTHLY'
+               AND cp.tier_min = 1
+               AND cp.included_quantity <> 2;
+        ]]></sql>
+        <rollback>
+            <sql>
+                UPDATE catalog_prices cp
+                  JOIN catalog_items ci ON ci.id = cp.catalog_item_id
+                  JOIN price_lists pl ON pl.id = cp.price_list_id
+                   SET cp.included_quantity = 0,
+                       cp.version = cp.version + 1
+                 WHERE ci.code = 'CAPACITY_USER'
+                   AND pl.code = 'LISTA-LOCAL-LAB'
+                   AND cp.billing_cycle = 'MONTHLY'
+                   AND cp.tier_min = 1;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

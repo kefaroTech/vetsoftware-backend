@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #385. El slice `entitlement` (CompanyEntitlementController,
+         ListCompanyEntitlementsUseCase.java:18 y RecalculateCompanyEntitlementsUseCase.java:25)
+         ya exige `hasAuthority('entitlement.read')` / `hasAuthority('entitlement.recalculate')`
+         en su @PreAuthorize. Solo `entitlement.read` se siembra como permiso tenant: el recálculo
+         cambia la proyección de acceso y es exclusivamente SYSTEM, por lo que no puede quedar en
+         base_permissions ni en permissions asignables a un rol de clínica. Siembra la consulta en
+         el catálogo (sub_module ENTITLEMENT bajo el módulo GENERAL + base_permissions +
+         base_role_permissions al rol base ADMIN). En una instalación limpia, el alta de empresa
+         materializa permissions y role_permissions desde esta plantilla, filtrada por sus
+         company_entitlements; no hay empresas existentes que backfillear. Todas las sentencias son idempotentes
+         (guardas NOT EXISTS / claves por code, nunca INSERT IGNORE).
+
+         SIN el bloque que ataba el permiso a la antigua tabla puente de planes: ese concepto ya
+         no existe (demolido en esta misma numeración, ver `suscripciones-cambios-existentes.md`
+         §2.3); el reparto por empresa no sale de ahí, sale de `company_entitlements`. El bloque de
+         no hay una tabla puente de planes: el reparto por empresa sale de
+         company_entitlements. -->
+
+    <changeSet id="256_entitlement_submodule" author="orlando">
+        <sql>
+            INSERT INTO sub_modules (name, code, module_id, enabled)
+            SELECT 'Derechos de suscripción', 'ENTITLEMENT', (SELECT id FROM modules WHERE code = 'GENERAL'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM sub_modules WHERE code = 'ENTITLEMENT');
+        </sql>
+        <rollback>
+            DELETE FROM sub_modules WHERE code = 'ENTITLEMENT';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="256_entitlement_base_permissions" author="orlando">
+        <sql>
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Ver derechos de suscripción', 'entitlement.read', (SELECT id FROM sub_modules WHERE code = 'ENTITLEMENT'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM base_permissions WHERE code = 'entitlement.read');
+
+        </sql>
+        <rollback>
+            DELETE FROM base_permissions WHERE code = 'entitlement.read';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="256_entitlement_base_role_permissions_admin" author="orlando">
+        <!-- El rol base ADMIN recibe entitlement: así toda empresa NUEVA lo hereda al registrarse. -->
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code = 'entitlement.read'
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            DELETE FROM base_role_permissions
+            WHERE base_permission_id IN (
+                SELECT id FROM base_permissions
+                WHERE code = 'entitlement.read');
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

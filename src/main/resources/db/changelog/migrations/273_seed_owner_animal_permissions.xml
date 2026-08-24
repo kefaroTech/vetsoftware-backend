@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #517. "owner.read y animal.read no existen en ninguna semilla:
+         ninguna empresa puede listar sus clientes ni sus mascotas" -literalmente el
+         proposito de la aplicacion. Censo real (no el redondeado del issue): el
+         codigo exige 137 autoridades distintas en @PreAuthorize reales -no 150; esa
+         cifra contaba 13 menciones de hasAuthority(...) que solo viven en Javadoc de
+         los ReactivateXxxUseCase de los catalogos maestros (base_permission.update,
+         base_role.update, base_role_permission.update, city.update, country.update,
+         module.update, submodule.update, permission.update, systempermission.update,
+         systemuser.update, consultationtype.update, spatype.update), documentando
+         una autoridad que el codigo YA NO exige -esos ports son hoy
+         hasRole('SYSTEM') a secas, sembrarlas seria inventar un permiso que ningun
+         @PreAuthorize real comprueba-. De las 137 reales, base_permissions solo
+         tenia 51: 86 autoridades sin sembrar. Este changeset cierra las ocho de
+         owner/animal, las que bloquean el flujo principal.
+
+         Los ocho codigos se verificaron uno a uno contra el @PreAuthorize real, sin
+         normalizar nada -mismo criterio que 268/270-:
+           - owner.create   CreateOwnerUseCase
+           - owner.read     FindOwnerUseCase, ListOwnersUseCase, SearchOwnersUseCase
+           - owner.update   UpdateOwnerUseCase
+           - owner.delete   DeleteOwnerUseCase
+           - animal.create  CreateAnimalUseCase, CreateWeightRecordUseCase
+           - animal.read    FindAnimalUseCase, FindLatestWeightRecordUseCase,
+                             ListAnimalsByOwnerUseCase, ListAnimalsUseCase,
+                             ListWeightRecordsByAnimalUseCase
+           - animal.delete  DeleteWeightRecordUseCase
+
+         No existe 'animal.update': no hay ningun UpdateAnimalUseCase en el
+         repositorio hoy -no se inventa la mitad que faltaria de la familia CRUD-.
+
+         Atados al submodulo nuevo OWNERS_ANIMALS (272). SIN CONTEXTO A PROPOSITO,
+         mismo argumento que 266/267/268/270: base_permissions y
+         base_role_permissions son estructura de plataforma, no oferta comercial.
+
+         Backfill a empresas EXISTENTES acotado por company_entitlements, mismo
+         patron que 268/270: *.read con FULL o READ_ONLY; el resto (mutaciones) solo
+         FULL. Hoy en produccion NINGUNA empresa tiene OWNERS_ANIMALS en
+         company_entitlements todavia -274 solo ata CORE a este submodulo en
+         contexto local,e2e-, asi que estos dos bloques no insertan ninguna fila
+         hasta que el catalogo real de produccion (o una concesion manual via
+         consola) lo conceda; quedan listos para ese momento, igual que el backfill
+         de 270 para EMPLOYEES/ROLES.
+
+         Todas las sentencias son idempotentes (guardas NOT EXISTS, nunca
+         INSERT IGNORE). -->
+
+    <changeSet id="273_owner_animal_base_permissions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT seed.name, seed.code, sm.id, TRUE
+            FROM (
+                SELECT 'Crear clientes' AS name, 'owner.create' AS code
+                UNION ALL SELECT 'Ver clientes', 'owner.read'
+                UNION ALL SELECT 'Editar clientes', 'owner.update'
+                UNION ALL SELECT 'Eliminar clientes', 'owner.delete'
+                UNION ALL SELECT 'Crear mascotas', 'animal.create'
+                UNION ALL SELECT 'Ver mascotas', 'animal.read'
+                UNION ALL SELECT 'Eliminar mascotas', 'animal.delete'
+            ) seed
+            JOIN sub_modules sm ON sm.code = 'OWNERS_ANIMALS'
+            LEFT JOIN base_permissions existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_permissions
+                WHERE code IN ('owner.create', 'owner.read', 'owner.update', 'owner.delete',
+                                'animal.create', 'animal.read', 'animal.delete');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="273_owner_animal_base_role_permissions_admin" author="orlando">
+        <!-- ADMIN tenant recibe las siete: es el minimo con el que un dueno de
+             clinica recien registrada puede listar y gestionar sus propios clientes
+             y sus mascotas desde el primer dia. -->
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN (
+                'owner.create', 'owner.read', 'owner.update', 'owner.delete',
+                'animal.create', 'animal.read', 'animal.delete')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id FROM base_permissions
+                    WHERE code IN ('owner.create', 'owner.read', 'owner.update',
+                                    'owner.delete', 'animal.create', 'animal.read',
+                                    'animal.delete'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="273_owner_animal_permissions_backfill_companies_read" author="orlando">
+        <!-- *.read: FULL o READ_ONLY (reconcile() los concede en los dos niveles). -->
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'OWNERS_ANIMALS'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code IN ('owner.read', 'animal.read')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>DELETE FROM permissions WHERE code IN ('owner.read', 'animal.read');</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="273_owner_animal_permissions_backfill_companies_write" author="orlando">
+        <!-- Las cinco mutaciones: solo FULL, mismo criterio que 260/268/270. -->
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'OWNERS_ANIMALS'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level = 'FULL'
+              AND bp.code IN ('owner.create', 'owner.update', 'owner.delete',
+                               'animal.create', 'animal.delete')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM permissions
+                WHERE code IN ('owner.create', 'owner.update', 'owner.delete',
+                                'animal.create', 'animal.delete');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="273_owner_animal_role_permissions_backfill_admin" author="orlando">
+        <!-- Asigna esos permisos al rol ADMIN (code = 'ADMIN') de cada empresa
+             backfillada, sin importar cual de los dos bloques anteriores los creo. -->
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id
+                AND p.code IN ('owner.create', 'owner.read', 'owner.update', 'owner.delete',
+                                'animal.create', 'animal.read', 'animal.delete')
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM role_permissions
+                WHERE permission_id IN (
+                    SELECT id FROM permissions
+                    WHERE code IN ('owner.create', 'owner.read', 'owner.update',
+                                    'owner.delete', 'animal.create', 'animal.read',
+                                    'animal.delete'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -3,16 +3,21 @@ package com.vetsoftware.app.branch.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.vetsoftware.app.branch.application.dto.BranchDto;
+import com.vetsoftware.app.branch.application.port.out.BranchCapacityPort;
 import com.vetsoftware.app.branch.application.port.out.BranchRepository;
 import com.vetsoftware.app.branch.domain.Branch;
 import com.vetsoftware.app.branch.domain.BranchNotFoundException;
 import com.vetsoftware.app.branch.domain.CityRef;
 import com.vetsoftware.app.branch.domain.CompanyRef;
+import com.vetsoftware.app.entitlement.domain.CapacityUnit;
+import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -27,6 +32,8 @@ class ActivateBranchServiceTest {
 
     @Mock
     private BranchRepository repository;
+    @Mock
+    private BranchCapacityPort branchCapacityPort;
     @InjectMocks
     private ActivateBranchService service;
 
@@ -49,15 +56,18 @@ class ActivateBranchServiceTest {
         assertThat(inactiva.isActive()).isTrue();
         assertThat(dto.active()).isTrue();
         verify(repository).save(inactiva);
+        verify(branchCapacityPort).reserve(9L);
     }
 
     @Test
     void es_idempotente_si_ya_estaba_activa() {
         Branch activa = branch(true);
         when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(activa));
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         assertThat(service.execute(3L, 9L).active()).isTrue();
+
+        verify(repository, never()).save(any());
+        verifyNoInteractions(branchCapacityPort);
     }
 
     @Test
@@ -66,6 +76,22 @@ class ActivateBranchServiceTest {
 
         assertThatThrownBy(() -> service.execute(3L, 9L))
                 .isInstanceOf(BranchNotFoundException.class);
+        verify(repository, never()).save(any());
+        verifyNoInteractions(branchCapacityPort);
+    }
+
+    @Test
+    void el_limite_branch_aborta_sin_activar_ni_persistir() {
+        Branch inactiva = branch(false);
+        when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(inactiva));
+        doThrow(new CompanyCapacityLimitExceededException(9L, CapacityUnit.BRANCH, 2, 2, 1))
+                .when(branchCapacityPort).reserve(9L);
+
+        assertThatThrownBy(() -> service.execute(3L, 9L))
+                .isInstanceOf(CompanyCapacityLimitExceededException.class)
+                .hasMessageContaining("BRANCH");
+
+        assertThat(inactiva.isActive()).isFalse();
         verify(repository, never()).save(any());
     }
 }

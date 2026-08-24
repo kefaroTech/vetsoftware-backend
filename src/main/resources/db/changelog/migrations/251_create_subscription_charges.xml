@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 6 (suscripciones-tablas.md #22). Lo devengado, con o sin
+         factura todavía. NO tiene tax_amount a propósito -bloqueante corregido: el IVA se calcula
+         una sola vez, sobre la base agregada, en subscription_billing_document_taxes (250); si
+         alguien añade tax_amount aquí, reabre el bloqueante-. Exenta de @Version (E6_YA_PROTEGIDO):
+         el importe nunca muta, el único UPDATE es el sellado PENDING -> INVOICED dentro de la misma
+         transacción que crea subscription_billing_documents (ya versionada). Sin enabled.
+         chk_subscription_charges_sign es la convención de signos hecha esquema
+         (suscripciones-modelo.md §3): CREDIT/DISCOUNT <= 0 cuando NO anulan nada, RECURRING/
+         ONE_TIME >= 0, PRORATION libre.
+         Cinco FK compuestas, incluida la autorreferencial fk_subscription_charges_voids.
+         uq_subscription_charges_company_id es la clave auxiliar solo para esa autorreferencia.
+         ix_subscription_charges_pending se crea ANTES de fk_subscription_charges_subscription
+         (Apéndice C).
+
+         Issue #402: chk_subscription_charges_sign y chk_subscription_charges_voids chocaban para
+         un caso real -mismo género de defecto que "una devolución no cabía en el esquema" de
+         suscripciones-modelo.md §3-. chk_subscription_charges_voids exige que todo cargo que anula
+         a otro (voids_charge_id IS NOT NULL) sea CREDIT; chk_subscription_charges_sign, en su
+         primera redacción, exigía que TODO CREDIT fuera <= 0. Anular un CREDIT que ya era negativo
+         -una nota de crédito mal emitida por -50.000- exige un compensador de +50.000 para que
+         sumen cero, y las dos reglas no podían cumplirse a la vez: la operación quedaba
+         irrepresentable. Se corrige eximiendo del signo fijo solo al CREDIT que anula a otro
+         (voids_charge_id IS NOT NULL); un CREDIT directo -el caso normal, que no anula nada- sigue
+         obligado a <= 0 sin cambio. No se resolvió haciendo que el CHECK mirara el signo del cargo
+         anulado -sería más ajustado, pero un CHECK no puede leer otra fila de la misma tabla
+         (https://dev.mysql.com/doc/refman/8.4/en/create-table-check-constraints.html)-; que la
+         anulación efectivamente sume cero con el cargo que anula baja a
+         suscripciones-reglas-codigo.md como regla de código, igual que R3 en
+         billing_document_applications. Detalle completo en suscripciones-modelo.md §3.4 y
+         suscripciones-tablas.md #22. Este changeset todavía no se había aplicado en ningún
+         entorno, así que se corrige in situ en vez de con un ALTER aparte. -->
+    <changeSet id="251_create_subscription_charges" author="orlando">
+        <createTable tableName="subscription_charges">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_subscription_charges_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="subscription_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="subscription_item_id" type="BIGINT"/>
+            <column name="charge_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="description" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="service_period_start" type="DATE"><constraints nullable="false"/></column>
+            <column name="service_period_end" type="DATE"><constraints nullable="false"/></column>
+            <column name="quantity" type="DECIMAL(12,3)" defaultValueNumeric="1.000">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="subtotal_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="tax_rate" type="DECIMAL(5,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_treatment" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="proration_days" type="INT"/>
+            <column name="period_days" type="INT"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amendment_id" type="BIGINT"/>
+            <column name="billing_document_id" type="BIGINT"/>
+            <column name="voids_charge_id" type="BIGINT"/>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="subscription_charges" columnNames="company_id, id"
+                             constraintName="uq_subscription_charges_company_id"/>
+
+        <sql><![CDATA[
+            ALTER TABLE subscription_charges
+                ADD CONSTRAINT chk_subscription_charges_type
+                    CHECK (charge_type IN ('RECURRING','PRORATION','ONE_TIME','CREDIT','DISCOUNT')),
+                ADD CONSTRAINT chk_subscription_charges_status
+                    CHECK (status IN ('PENDING','INVOICED','VOIDED')),
+                ADD CONSTRAINT chk_subscription_charges_tax_treatment
+                    CHECK (tax_treatment IN ('TAXED','EXEMPT','EXCLUDED')),
+                ADD CONSTRAINT chk_subscription_charges_period
+                    CHECK (service_period_end >= service_period_start),
+                ADD CONSTRAINT chk_subscription_charges_quantity CHECK (quantity > 0),
+                ADD CONSTRAINT chk_subscription_charges_unit_amount CHECK (unit_amount >= 0),
+                ADD CONSTRAINT chk_subscription_charges_tax_rate
+                    CHECK (tax_rate >= 0 AND tax_rate <= 100),
+                ADD CONSTRAINT chk_subscription_charges_sign
+                    CHECK ((charge_type IN ('CREDIT','DISCOUNT') AND voids_charge_id IS NULL
+                            AND subtotal_amount <= 0)
+                           OR (charge_type IN ('RECURRING','ONE_TIME') AND subtotal_amount >= 0)
+                           OR charge_type = 'PRORATION'
+                           OR (charge_type = 'CREDIT' AND voids_charge_id IS NOT NULL)),
+                ADD CONSTRAINT chk_subscription_charges_proration
+                    CHECK ((proration_days IS NULL AND period_days IS NULL)
+                           OR (proration_days IS NOT NULL AND period_days IS NOT NULL
+                               AND period_days > 0 AND proration_days >= 0
+                               AND proration_days <= period_days)),
+                ADD CONSTRAINT chk_subscription_charges_invoiced
+                    CHECK (status <> 'INVOICED' OR billing_document_id IS NOT NULL),
+                ADD CONSTRAINT chk_subscription_charges_voids
+                    CHECK (voids_charge_id IS NULL OR charge_type = 'CREDIT')
+        ]]></sql>
+
+        <createIndex tableName="subscription_charges" indexName="ix_subscription_charges_pending">
+            <column name="company_id"/>
+            <column name="subscription_id"/>
+            <column name="status"/>
+            <column name="service_period_start"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="subscription_charges"
+                                 baseColumnNames="company_id, subscription_id"
+                                 referencedTableName="subscriptions"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_subscription_charges_subscription"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_charges"
+                                 baseColumnNames="company_id, subscription_item_id"
+                                 referencedTableName="subscription_items"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_subscription_charges_item"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_charges"
+                                 baseColumnNames="company_id, amendment_id"
+                                 referencedTableName="subscription_amendments"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_subscription_charges_amendment"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_charges"
+                                 baseColumnNames="company_id, billing_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_subscription_charges_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_charges"
+                                 baseColumnNames="company_id, voids_charge_id"
+                                 referencedTableName="subscription_charges"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_subscription_charges_voids"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="subscription_charges"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

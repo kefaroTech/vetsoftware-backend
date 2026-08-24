@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #504 (mitad de sembrado). El articulo CORE del catalogo comercial solo
+         ata al submodulo AGENDA (263_seed_local_e2e_commercial_catalog.xml), pero de
+         los 36 base_permissions sembrados por Liquibase hasta el 267 NINGUNO
+         pertenece a AGENDA: viven en {BRANCH, INVENTORY, CASH, PURCHASES, ENTITLEMENT,
+         SUBSCRIPTION_PAYMENT, DUNNING, SUBSCRIPTION, QUOTE, SUBSCRIPTION_BILLING}. La
+         interseccion con lo que CORE concede es vacia, y JpaRolePermissionInitializa
+         tionPort.initializeForRole (linea 113-125) deja al rol ADMIN de toda empresa
+         nueva sin un solo permiso: "El rol N de la empresa M nace sin permisos".
+
+         Los seis codigos se verificaron uno a uno contra el @PreAuthorize real de
+         appointment/application/port/in (createAppointmentUseCase.java,
+         GetAppointmentUseCase.java, UpdateAppointmentUseCase.java,
+         DeleteAppointmentUseCase.java, CancelAppointmentUseCase.java,
+         RescheduleAppointmentUseCase.java, ChangeAppointmentStatusUseCase.java):
+           - appointment.create          CreateAppointmentUseCase
+           - appointment.read            GetAppointmentUseCase, ListAppointmentsUseCase
+           - appointment.update          UpdateAppointmentUseCase, RescheduleAppointmentUseCase,
+                                          ChangeAppointmentStatusUseCase
+           - appointment.delete          DeleteAppointmentUseCase
+           - appointment.cancel          CancelAppointmentUseCase
+           - appointment.overlap.force   exigido ADEMAS por create/update/reschedule
+                                          cuando forceOverlap=true (BE-17, ver 223)
+
+         Mismo criterio CRUD por recurso que 184 (branch.create/update), 191
+         (inventory.read/adjust/transfer) y 199 (supplier.read/create/update/delete):
+         un permiso por verbo del @PreAuthorize, nunca uno generico "agenda.manage".
+
+         'appointment.create' y 'appointment.overlap.force' pueden existir YA en
+         entornos donde el modulo de citas se sembro por fuera (ver comentario de
+         223_seed_appointment_overlap_force_permission.xml: "el modulo de citas no
+         tiene ningun changeset Liquibase que lo siembre, se creo por fuera, via
+         consola de plataforma"). Los seis INSERT van guardados por code con
+         NOT EXISTS, asi que en esos entornos simplemente no insertan nada para los
+         codigos que ya existan -no hay colision, no hay duplicado- y el resto del
+         changeset (base_role_permissions + backfill) sigue funcionando sobre la fila
+         que ya estaba.
+
+         SIN CONTEXTO A PROPOSITO, mismo argumento que 266/267: base_permissions y
+         base_role_permissions son estructura de plataforma -el catalogo de QUE puede
+         hacer un empleado-, no oferta comercial. La pausa de "nada de semillas de
+         catalogo comercial en produccion" (262/263/264/265) protege precios y
+         paquetes, no permisos.
+
+         Backfill a empresas EXISTENTES acotado por company_entitlements, mismo
+         patron que 260: appointment.read se concede con access_level FULL o
+         READ_ONLY (JpaRolePermissionInitializationPort.reconcile() solo exige FULL
+         para los codigos que no terminan en .read); los cinco restantes -mutaciones-
+         solo con FULL. Sin este backfill, una empresa que ya tenga AGENDA contratada
+         seguiria sin estos permisos hasta la proxima recalculacion de entitlements
+         que los reconcilie via la plantilla ADMIN.
+
+         Todas las sentencias son idempotentes (guardas NOT EXISTS / claves por code,
+         nunca INSERT IGNORE). -->
+
+    <changeSet id="268_agenda_base_permissions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT seed.name, seed.code, sm.id, TRUE
+            FROM (
+                SELECT 'Crear citas' AS name, 'appointment.create' AS code
+                UNION ALL SELECT 'Ver citas', 'appointment.read'
+                UNION ALL SELECT 'Editar citas', 'appointment.update'
+                UNION ALL SELECT 'Eliminar citas', 'appointment.delete'
+                UNION ALL SELECT 'Cancelar citas', 'appointment.cancel'
+                UNION ALL SELECT 'Forzar solape de citas', 'appointment.overlap.force'
+            ) seed
+            JOIN sub_modules sm ON sm.code = 'AGENDA'
+            LEFT JOIN base_permissions existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_permissions
+                WHERE code IN ('appointment.create', 'appointment.read', 'appointment.update',
+                                'appointment.delete', 'appointment.cancel',
+                                'appointment.overlap.force');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="268_agenda_base_role_permissions_admin" author="orlando">
+        <!-- ADMIN tenant recibe las seis: es el minimo con el que un dueno de clinica
+             recien registrada puede operar su agenda desde el primer dia. -->
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN (
+                'appointment.create', 'appointment.read', 'appointment.update',
+                'appointment.delete', 'appointment.cancel', 'appointment.overlap.force')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id FROM base_permissions
+                    WHERE code IN ('appointment.create', 'appointment.read',
+                                    'appointment.update', 'appointment.delete',
+                                    'appointment.cancel', 'appointment.overlap.force'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="268_agenda_permissions_backfill_companies_read" author="orlando">
+        <!-- appointment.read: FULL o READ_ONLY (es un *.read, reconcile() lo concede
+             en los dos niveles). -->
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'AGENDA'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code = 'appointment.read'
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>DELETE FROM permissions WHERE code = 'appointment.read';</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="268_agenda_permissions_backfill_companies_write" author="orlando">
+        <!-- Las cinco mutaciones: solo FULL, mismo criterio que 260 con
+             subscription.update/subscription.cancel. -->
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'AGENDA'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level = 'FULL'
+              AND bp.code IN ('appointment.create', 'appointment.update',
+                               'appointment.delete', 'appointment.cancel',
+                               'appointment.overlap.force')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM permissions
+                WHERE code IN ('appointment.create', 'appointment.update',
+                                'appointment.delete', 'appointment.cancel',
+                                'appointment.overlap.force');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="268_agenda_role_permissions_backfill_admin" author="orlando">
+        <!-- Asigna esos permisos al rol ADMIN (code = 'ADMIN') de cada empresa
+             backfillada, sin importar cual de los dos bloques anteriores los creo. -->
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id
+                AND p.code IN ('appointment.create', 'appointment.read',
+                                'appointment.update', 'appointment.delete',
+                                'appointment.cancel', 'appointment.overlap.force')
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM role_permissions
+                WHERE permission_id IN (
+                    SELECT id FROM permissions
+                    WHERE code IN ('appointment.create', 'appointment.read',
+                                    'appointment.update', 'appointment.delete',
+                                    'appointment.cancel', 'appointment.overlap.force'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

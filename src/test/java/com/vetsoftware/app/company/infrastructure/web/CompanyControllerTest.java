@@ -20,11 +20,10 @@ import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.command.UpdateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CitySummaryDto;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
-import com.vetsoftware.app.company.application.dto.MembershipSummaryDto;
-import com.vetsoftware.app.company.application.port.in.CreateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.DeleteCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.FindCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.ListCompaniesUseCase;
+import com.vetsoftware.app.company.application.port.in.ProvisionCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.SearchCompaniesUseCase;
 import com.vetsoftware.app.company.application.port.in.UpdateCompanyUseCase;
 import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
@@ -46,8 +45,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Rodaja HTTP del controller de empresas: rutas, binding, validacion del
- * request, codigos de estado y forma del JSON (incluidos los companion summary
- * de ciudad y membresia). Lo que hay debajo son dobles; la autorizacion de
+ * request, codigos de estado y forma del JSON (incluido el companion summary de
+ * ciudad). Lo que hay debajo son dobles; la autorizacion de
  * {@code @PreAuthorize} (SYSTEM o la authority puntual) vive en los puertos de
  * entrada y se prueba aparte, no en esta rodaja con seguridad deshabilitada.
  */
@@ -58,7 +57,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class CompanyControllerTest {
 
     private static final String CUERPO_VALIDO = """
-            {"name":"Clinica Norte","identifier":"NIT-900","address":"Calle 123 #45-67","contactNumber":"3001234567","cityId":11,"membershipId":21}
+            {"name":"Clinica Norte","identifier":"NIT-900","address":"Calle 123 #45-67","contactNumber":"3001234567","cityId":11}
             """;
 
     @Autowired
@@ -73,7 +72,7 @@ class CompanyControllerTest {
     private Authz authz;
 
     @MockitoBean
-    private CreateCompanyUseCase createUseCase;
+    private ProvisionCompanyUseCase provisionUseCase;
     @MockitoBean
     private UpdateCompanyUseCase updateUseCase;
     @MockitoBean
@@ -87,9 +86,7 @@ class CompanyControllerTest {
 
     private static CompanyDto clinicaNorte() {
         return new CompanyDto(9L, "Clinica Norte", "NIT-900", "Calle 123 #45-67", "3001234567",
-                new CitySummaryDto(11L, "Bogota"),
-                new MembershipSummaryDto(21L, "Premium", "ACTIVE"),
-                LocalDateTime.of(2026, 1, 15, 10, 30), true);
+                new CitySummaryDto(11L, "Bogota"), LocalDateTime.of(2026, 1, 15, 10, 30), true);
     }
 
     /**
@@ -103,7 +100,7 @@ class CompanyControllerTest {
 
     private static CreateCompanyCommand comandoDeCreacionEsperado() {
         return new CreateCompanyCommand("Clinica Norte", "NIT-900", "Calle 123 #45-67",
-                "3001234567", 11L, 21L);
+                "3001234567", 11L);
     }
 
     @Nested
@@ -111,9 +108,9 @@ class CompanyControllerTest {
     class Creacion {
 
         @Test
-        @DisplayName("responde 201 con el recurso creado, incluidos los companion de ciudad y membresia")
+        @DisplayName("responde 201 con el recurso creado, incluido el companion de ciudad")
         void responde_201_con_el_recurso_creado() throws Exception {
-            when(createUseCase.execute(any())).thenReturn(clinicaNorte());
+            when(provisionUseCase.execute(any())).thenReturn(clinicaNorte());
 
             mockMvc.perform(post("/companies").contentType(MediaType.APPLICATION_JSON)
                     .content(CUERPO_VALIDO)).andExpect(status().isCreated())
@@ -121,67 +118,76 @@ class CompanyControllerTest {
                     .andExpect(jsonPath("$.name").value("Clinica Norte"))
                     .andExpect(jsonPath("$.city.id").value(11))
                     .andExpect(jsonPath("$.city.name").value("Bogota"))
-                    .andExpect(jsonPath("$.membership.id").value(21))
-                    .andExpect(jsonPath("$.membership.status").value("ACTIVE"))
+                    .andExpect(jsonPath("$.membership").doesNotExist())
                     .andExpect(jsonPath("$.enabled").value(true));
         }
 
         @Test
         @DisplayName("traduce el request al command")
         void traduce_el_request_al_command() throws Exception {
-            when(createUseCase.execute(any())).thenReturn(clinicaNorte());
+            when(provisionUseCase.execute(any())).thenReturn(clinicaNorte());
 
             mockMvc.perform(post("/companies").contentType(MediaType.APPLICATION_JSON)
                     .content(CUERPO_VALIDO));
 
-            verify(createUseCase).execute(comandoDeCreacionEsperado());
+            verify(provisionUseCase).execute(comandoDeCreacionEsperado());
         }
 
         @Test
         @DisplayName("nombre en blanco responde 400 y no llega al caso de uso")
         void nombre_en_blanco_responde_400() throws Exception {
             mockMvc.perform(post("/companies").contentType(MediaType.APPLICATION_JSON).content("""
-                    {"name":"","identifier":"NIT-900","cityId":11,"membershipId":21}
+                    {"name":"","identifier":"NIT-900","cityId":11}
                     """)).andExpect(status().isBadRequest());
 
-            verify(createUseCase, never()).execute(any());
+            verify(provisionUseCase, never()).execute(any());
         }
 
         @Test
         @DisplayName("identificador de mas de 50 caracteres responde 400")
         void identificador_demasiado_largo_responde_400() throws Exception {
-            mockMvc.perform(post("/companies").contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"name\":\"Clinica Norte\",\"identifier\":\"" + "x".repeat(51)
-                            + "\",\"cityId\":11,\"membershipId\":21}"))
+            mockMvc.perform(
+                    post("/companies").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"Clinica Norte\",\"identifier\":\""
+                                    + "x".repeat(51) + "\",\"cityId\":11}"))
                     .andExpect(status().isBadRequest());
 
-            verify(createUseCase, never()).execute(any());
+            verify(provisionUseCase, never()).execute(any());
         }
 
         @Test
         @DisplayName("cityId nulo responde 400")
         void city_id_nulo_responde_400() throws Exception {
             mockMvc.perform(post("/companies").contentType(MediaType.APPLICATION_JSON).content("""
-                    {"name":"Clinica Norte","identifier":"NIT-900","membershipId":21}
+                    {"name":"Clinica Norte","identifier":"NIT-900"}
                     """)).andExpect(status().isBadRequest());
 
-            verify(createUseCase, never()).execute(any());
+            verify(provisionUseCase, never()).execute(any());
         }
 
+        /**
+         * El plan dejo de ser un campo del alta. Un cliente viejo que siga mandando
+         * {@code membershipId} no debe romperse ni colar el dato: Jackson lo ignora y
+         * el command que llega al caso de uso no lo lleva.
+         */
         @Test
-        @DisplayName("membershipId nulo responde 400")
-        void membership_id_nulo_responde_400() throws Exception {
-            mockMvc.perform(post("/companies").contentType(MediaType.APPLICATION_JSON).content("""
-                    {"name":"Clinica Norte","identifier":"NIT-900","cityId":11}
-                    """)).andExpect(status().isBadRequest());
+        @DisplayName("un membershipId sobrante en el cuerpo se ignora y no viaja al command")
+        void un_membership_id_sobrante_se_ignora() throws Exception {
+            when(provisionUseCase.execute(any())).thenReturn(clinicaNorte());
 
-            verify(createUseCase, never()).execute(any());
+            mockMvc.perform(post("/companies").contentType(MediaType.APPLICATION_JSON).content(
+                    """
+                            {"name":"Clinica Norte","identifier":"NIT-900","address":"Calle 123 #45-67","contactNumber":"3001234567","cityId":11,"membershipId":21}
+                            """))
+                    .andExpect(status().isCreated());
+
+            verify(provisionUseCase).execute(comandoDeCreacionEsperado());
         }
 
         @Test
         @DisplayName("una ciudad inexistente sale como 400, no como 500")
         void ciudad_inexistente_responde_400() throws Exception {
-            when(createUseCase.execute(any()))
+            when(provisionUseCase.execute(any()))
                     .thenThrow(new IllegalArgumentException("City not found: 11"));
 
             mockMvc.perform(post("/companies").contentType(MediaType.APPLICATION_JSON)
@@ -447,7 +453,7 @@ class CompanyControllerTest {
                     .content(CUERPO_VALIDO));
 
             verify(updateUseCase).execute(new UpdateCompanyCommand(9L, "Clinica Norte", "NIT-900",
-                    "Calle 123 #45-67", "3001234567", 11L, 21L));
+                    "Calle 123 #45-67", "3001234567", 11L));
         }
 
         @Test

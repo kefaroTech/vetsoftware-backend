@@ -2,6 +2,17 @@ package com.vetsoftware.app.company.domain;
 
 import java.time.LocalDateTime;
 
+/**
+ * La empresa ya no lleva plan colgado.
+ *
+ * <p>
+ * Lo que antes era {@code MembershipRef} —una FK a {@code memberships}— lo
+ * sustituye el contrato: {@code subscriptions} con sus lineas vigentes, de
+ * donde se derivan los {@code company_entitlements}. Esa cadena vive en los
+ * slices {@code subscription} y {@code entitlement} y guarda historia, cosa que
+ * la FK no hacia. No se deja opcional «por si acaso»: dos fuentes de verdad
+ * sobre lo mismo es como se corrompe un modelo.
+ */
 public class Company {
     private Long id;
     private String name;
@@ -9,14 +20,12 @@ public class Company {
     private String address;
     private String contactNumber;
     private CityRef city;
-    private MembershipRef membership;
     private final LocalDateTime createdDate;
     private Long version;
     private boolean enabled;
 
     public Company(Long id, String name, String identifier, String address, String contactNumber,
-            CityRef city, MembershipRef membership, LocalDateTime createdDate, Long version,
-            boolean enabled) {
+            CityRef city, LocalDateTime createdDate, Long version, boolean enabled) {
         if (name == null || name.isBlank())
             throw new IllegalArgumentException("name is required");
         if (name.length() > 100)
@@ -27,28 +36,25 @@ public class Company {
             throw new IllegalArgumentException("identifier must be 50 chars or less");
         if (city == null)
             throw new IllegalArgumentException("city is required");
-        if (membership == null)
-            throw new IllegalArgumentException("membership is required");
         this.id = id;
         this.name = name;
         this.identifier = identifier;
         this.address = address;
         this.contactNumber = contactNumber;
         this.city = city;
-        this.membership = membership;
         this.createdDate = createdDate;
         this.version = version;
         this.enabled = enabled;
     }
 
     public static Company create(String name, String identifier, String address,
-            String contactNumber, CityRef city, MembershipRef membership) {
-        return new Company(null, name, identifier, address, contactNumber, city, membership,
-                LocalDateTime.now(), null, true);
+            String contactNumber, CityRef city, LocalDateTime createdDate) {
+        return new Company(null, name, identifier, address, contactNumber, city, createdDate, null,
+                true);
     }
 
     public void update(String name, String identifier, String address, String contactNumber,
-            CityRef city, MembershipRef membership) {
+            CityRef city) {
         if (name == null || name.isBlank())
             throw new IllegalArgumentException("name is required");
         if (name.length() > 100)
@@ -59,14 +65,11 @@ public class Company {
             throw new IllegalArgumentException("identifier must be 50 chars or less");
         if (city == null)
             throw new IllegalArgumentException("city is required");
-        if (membership == null)
-            throw new IllegalArgumentException("membership is required");
         this.name = name;
         this.identifier = identifier;
         this.address = address;
         this.contactNumber = contactNumber;
         this.city = city;
-        this.membership = membership;
     }
 
     public boolean isEnabled() {
@@ -103,10 +106,6 @@ public class Company {
 
     public CityRef getCity() {
         return city;
-    }
-
-    public MembershipRef getMembership() {
-        return membership;
     }
 
     public LocalDateTime getCreatedDate() {

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #500 (mitad de datos), continua 266_seed_base_roles.xml. SIN CONTEXTO,
+         mismo argumento que 266: estructura de plataforma, no catalogo comercial.
+
+         Los trece "INSERT ... SELECT ... FROM base_roles br ... WHERE br.code =
+         'ADMIN'" de 184/191/196/199/202/204/205/209/223/256/257/259/260 YA se
+         ejecutaron -estan marcados en DATABASECHANGELOG y Liquibase no los repite
+         solos-, y con base_roles vacia en ese momento insertaron cero filas. Este
+         changeset no los reabre: es un backfill nuevo que otorga a ADMIN TODO
+         base_permissions que exista hoy, que es exactamente lo que cada uno de
+         aquellos trece pretendia lograr en su momento. Es idempotente (WHERE NOT
+         EXISTS) y seguro de repetir si en el futuro se anade un base_permissions
+         nuevo sin su propio backfill: esta fila no lo cubre retroactivamente, solo
+         los que ya existen al aplicarse. -->
+
+    <changeSet id="267_backfill_base_role_permissions_admin" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, TRUE
+              FROM base_roles br
+              JOIN base_permissions bp ON 1 = 1
+             WHERE br.code = 'ADMIN'
+               AND NOT EXISTS (
+                   SELECT 1 FROM base_role_permissions x
+                    WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_role_permissions
+                 WHERE base_role_id IN (SELECT id FROM base_roles WHERE code = 'ADMIN');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

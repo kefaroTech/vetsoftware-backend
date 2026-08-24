@@ -31,14 +31,12 @@ class CompanyDtoTest {
     }
 
     @Test
-    @DisplayName("aplana los companion VO en summaries sin perder campos")
+    @DisplayName("aplana el companion VO de ciudad en su summary sin perder campos")
     void aplana_los_companion_vo_en_summaries() {
         CompanyDto dto = CompanyDto.from(CompanyMother.clinicaNorte());
 
         assertThat(dto.city()).isEqualTo(
                 new CitySummaryDto(CompanyMother.BOGOTA.id(), CompanyMother.BOGOTA.name()));
-        assertThat(dto.membership()).isEqualTo(new MembershipSummaryDto(CompanyMother.PREMIUM.id(),
-                CompanyMother.PREMIUM.name(), CompanyMother.PREMIUM.status()));
     }
 
     @Test
@@ -60,7 +58,7 @@ class CompanyDtoTest {
     @DisplayName("propaga id nulo de la empresa aun no persistida")
     void propaga_id_nulo() {
         Company sinPersistir = Company.create("Clinica Norte", "NIT-900", null, null,
-                CompanyMother.BOGOTA, CompanyMother.PREMIUM);
+                CompanyMother.BOGOTA, CompanyMother.CREADO);
 
         assertThat(CompanyDto.from(sinPersistir).id()).isNull();
     }

@@ -25,6 +25,14 @@ spring:
   data:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
+  liquibase:
+    # Reabre lo que application.yml cierra por defecto (`contexts: production`). Aplica
+    # las semillas de laboratorio marcadas context="local,e2e" -catalogo comercial minimo
+    # + credencial system_users de laboratorio, ver 262/263/264_seed_local_e2e_*.xml-.
+    # Sin esta linea el perfil local arranca igual, pero el alta de empresa sigue
+    # fallando (PlatformCatalogNotConfiguredException) y no hay con que autenticarse
+    # (issue #173 de vetsoftware-admin-web).
+    contexts: local,e2e
 
 jwt:
   # Fail-closed ya existente y deliberado: Keys.hmacShaKeyFor rechaza claves de menos de

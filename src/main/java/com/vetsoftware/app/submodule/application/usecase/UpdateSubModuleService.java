@@ -30,7 +30,8 @@ public class UpdateSubModuleService implements UpdateSubModuleUseCase {
                 .orElseThrow(() -> new SubModuleNotFoundException(command.id()));
         ModuleRef module = moduleQueryPort.findById(command.moduleId()).orElseThrow(
                 () -> new IllegalArgumentException("Module not found: " + command.moduleId()));
-        subModule.update(command.name(), command.code(), module);
+        subModule.update(command.name(), command.code(), module, command.sellable(),
+                command.readOnlyCapable());
         return SubModuleDto.from(repository.save(subModule));
     }
 }

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 1 (suscripciones-tablas.md #6). Precio de un artículo dentro de
+         una lista, por tramos y por ciclo. Importes DECIMAL(19,2) -choque C1 con las 38 columnas
+         DECIMAL(12,2) del resto del árbol; gana el documento (suscripciones-modelo.md §1.7)-, la tasa
+         de impuesto DECIMAL(5,2). uq_catalog_prices_tier ya sirve de índice de búsqueda de precio, no
+         hace falta ninguno adicional. -->
+    <changeSet id="234_create_catalog_prices" author="orlando">
+        <createTable tableName="catalog_prices">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="price_list_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_catalog_prices_price_list"
+                             references="price_lists(id)"/>
+            </column>
+            <column name="catalog_item_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_catalog_prices_item"
+                             references="catalog_items(id)"/>
+            </column>
+            <column name="billing_cycle" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="tier_min" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tier_max" type="INT"/>
+            <column name="included_quantity" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="setup_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_rate" type="DECIMAL(5,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_treatment" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="catalog_prices"
+                             columnNames="price_list_id, catalog_item_id, billing_cycle, tier_min"
+                             constraintName="uq_catalog_prices_tier"/>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_prices
+                ADD CONSTRAINT chk_catalog_prices_cycle
+                    CHECK (billing_cycle IN ('MONTHLY','ANNUAL')),
+                ADD CONSTRAINT chk_catalog_prices_tax_treatment
+                    CHECK (tax_treatment IN ('TAXED','EXEMPT','EXCLUDED')),
+                ADD CONSTRAINT chk_catalog_prices_tier
+                    CHECK (tier_min >= 1 AND (tier_max IS NULL OR tier_max >= tier_min)),
+                ADD CONSTRAINT chk_catalog_prices_included
+                    CHECK (included_quantity >= 0),
+                ADD CONSTRAINT chk_catalog_prices_amounts
+                    CHECK (unit_amount >= 0 AND setup_amount >= 0),
+                ADD CONSTRAINT chk_catalog_prices_tax_rate
+                    CHECK (tax_rate >= 0 AND tax_rate <= 100),
+                ADD CONSTRAINT chk_catalog_prices_tax_coherence
+                    CHECK ((tax_treatment = 'TAXED' AND tax_rate > 0)
+                           OR (tax_treatment <> 'TAXED' AND tax_rate = 0))
+        ]]></sql>
+
+        <rollback>
+            <dropTable tableName="catalog_prices"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

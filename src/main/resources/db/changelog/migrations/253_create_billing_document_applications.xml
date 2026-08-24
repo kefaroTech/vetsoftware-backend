@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 6 (suscripciones-tablas.md #24). Qué salda qué. Bloqueante
+         corregido: acepta PAYMENT y CREDIT_NOTE como origen (la v1 solo aceptaba pagos, y una
+         devolución no podía descontar el saldo). Exenta de @Version (E1_APPEND_ONLY), sin enabled
+         (se revierte con una contra-aplicación negativa, nunca se borra ni se oculta).
+         chk_bda_source_exclusive es el bloqueante que la auditoría pidió verificar explícitamente:
+         exige el origen correcto y prohíbe el otro en una sola constraint. Es declarable porque las
+         FK de payment_id/source_document_id usan RESTRICT sin acciones referenciales (suscripciones-
+         modelo.md §1.9 punto 2); un ON DELETE SET NULL lo haría ilegal.
+         Cuatro FK compuestas, incluida la autorreferencial fk_bda_reversal. uq_bda_company_id es la
+         clave auxiliar solo para esa autorreferencia.
+
+         Issue #396: client_request_id VARCHAR(64) es [AÑADIDO] respecto de la primera redacción de
+         esta ficha. El modelo ya exigía llave de idempotencia en toda petición que mueva dinero, y
+         aplicar un pago mueve dinero; sin ella una aplicación parcial repetida (doble clic, reintento
+         del cliente HTTP) crea DOS filas que R3 no detecta -R3 acota el total aplicado desde un
+         origen, no cuántas veces se aplicó, así que dos aplicaciones de 50 desde un pago de 100 le
+         parecen legítimas aunque el operador solo quiso aplicar 50 una vez-. NULABLE a propósito:
+         las filas que nacen de un proceso interno sin petición de cliente no tienen llave que
+         guardar, y MySQL permite varios NULL en un índice único, que es exactamente lo que hace
+         falta. Este changeset todavía no se había aplicado en ningún entorno, así que se corrige in
+         situ en vez de con un ALTER aparte.
+
+         Ajuste sobre el propio #396, detectado al verificarlo: `uq_bda_client_request` es
+         `UNIQUE (company_id, client_request_id)`, NO `UNIQUE (client_request_id)` a secas.
+         `JpaBillingDocumentApplicationRepository.findByCompanyIdAndClientRequestId` deduplica
+         ACOTADO POR EMPRESA; un índice global sobre client_request_id mediría algo distinto de lo
+         que la consulta comprueba, y dos clínicas que generen la misma cadena (el cliente la
+         genera, no hay que imaginar una colisión de UUID: basta con que dos integraciones usen
+         "req-1") chocarían contra una fila que la segunda no puede ver -un 500 en una operación de
+         dinero causado por otro tenant-. company_id es NOT NULL, así que la compuesta es sólida
+         y no hereda el problema de los NULL múltiples. Empresa primero: mismo criterio que las
+         claves auxiliares de las FK compuestas (suscripciones-modelo.md §4.2), y sirve además para
+         acotar cualquier consulta de tenant sobre esta columna. -->
+    <changeSet id="253_create_billing_document_applications" author="orlando">
+        <createTable tableName="billing_document_applications">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_bda_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="target_document_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="source_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="payment_id" type="BIGINT"/>
+            <column name="source_document_id" type="BIGINT"/>
+            <column name="applied_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="reversal_of_id" type="BIGINT"/>
+            <column name="applied_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="client_request_id" type="VARCHAR(64)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="billing_document_applications" columnNames="company_id, id"
+                             constraintName="uq_bda_company_id"/>
+        <addUniqueConstraint tableName="billing_document_applications" columnNames="reversal_of_id"
+                             constraintName="uq_bda_reversal"/>
+        <addUniqueConstraint tableName="billing_document_applications"
+                             columnNames="company_id, client_request_id"
+                             constraintName="uq_bda_client_request"/>
+
+        <sql><![CDATA[
+            ALTER TABLE billing_document_applications
+                ADD CONSTRAINT chk_bda_source_kind
+                    CHECK (source_kind IN ('PAYMENT','CREDIT_NOTE')),
+                ADD CONSTRAINT chk_bda_source_exclusive
+                    CHECK ((source_kind = 'PAYMENT' AND payment_id IS NOT NULL AND source_document_id IS NULL)
+                           OR (source_kind = 'CREDIT_NOTE' AND source_document_id IS NOT NULL AND payment_id IS NULL)),
+                ADD CONSTRAINT chk_bda_amount_not_zero CHECK (applied_amount <> 0),
+                ADD CONSTRAINT chk_bda_reversal_sign
+                    CHECK ((reversal_of_id IS NULL AND applied_amount > 0)
+                           OR (reversal_of_id IS NOT NULL AND applied_amount < 0)),
+                ADD CONSTRAINT chk_bda_not_self_target
+                    CHECK (source_document_id IS NULL OR source_document_id <> target_document_id)
+        ]]></sql>
+
+        <createIndex tableName="billing_document_applications" indexName="ix_bda_company_applied">
+            <column name="company_id"/>
+            <column name="applied_at"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="billing_document_applications"
+                                 baseColumnNames="company_id, target_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_bda_target_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="billing_document_applications"
+                                 baseColumnNames="company_id, source_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_bda_source_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="billing_document_applications"
+                                 baseColumnNames="company_id, payment_id"
+                                 referencedTableName="subscription_payments"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_bda_payment"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="billing_document_applications"
+                                 baseColumnNames="company_id, reversal_of_id"
+                                 referencedTableName="billing_document_applications"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_bda_reversal"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="billing_document_applications"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
