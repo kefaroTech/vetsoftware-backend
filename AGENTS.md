@@ -83,3 +83,9 @@ No se permiten ramas de trabajo creadas desde otra rama temporal ni ramas con fl
 - No mezclar una feature directamente en `main`.
 - No saltarse ramas, validaciones, commits, merges o etiquetas obligatorias aunque el repositorio todavía no tenga remoto configurado.
 - Si una petición contradice esta política, detener la operación y explicar el flujo GitFlow correcto antes de continuar.
+
+## Integración con Codex
+
+Codex carga este `AGENTS.md` automáticamente. `CLAUDE.md` permanece como referencia técnica detallada compartida: antes de tocar código, localiza sus encabezados con `rg -n "^#{1,3} " CLAUDE.md` y lee las secciones aplicables. Lee siempre las reglas activas del inicio y, cuando el trabajo cambie o revise código, el cierre obligatorio y los gates correspondientes. No cargues el documento completo si el alcance solo necesita una sección. En caso de conflicto, para Codex prevalece este `AGENTS.md`.
+
+Los agentes nativos relevantes están en `.codex/agents/`: `backend-feature`, `backend-tests`, `backend-authz-audit`, `db-architect`, `db-migrations`, `api-contract-sync`, `observability-telemetry`, `aws-readonly` y `gitflow-release`. Sus instrucciones compartidas viven en `../.claude/agents/`. Delega únicamente trabajo acotado y respeta la propiedad exclusiva de changelog, contrato, telemetría y Git definida por la coordinación del workspace.
