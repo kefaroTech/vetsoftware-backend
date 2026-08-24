@@ -1,6 +1,7 @@
 package com.vetsoftware.app.employee.application.usecase;
 
 import com.vetsoftware.app.employee.application.port.in.DeleteEmployeeUseCase;
+import com.vetsoftware.app.employee.application.port.out.EmployeeCapacityPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRolesQueryPort;
 import com.vetsoftware.app.employee.domain.AdminEmployeeCannotBeDisabledException;
@@ -19,11 +20,14 @@ public class DeleteEmployeeService implements DeleteEmployeeUseCase {
 
     private final EmployeeRepository repository;
     private final EmployeeRolesQueryPort employeeRolesQueryPort;
+    private final EmployeeCapacityPort employeeCapacityPort;
 
     public DeleteEmployeeService(EmployeeRepository repository,
-            EmployeeRolesQueryPort employeeRolesQueryPort) {
+            EmployeeRolesQueryPort employeeRolesQueryPort,
+            EmployeeCapacityPort employeeCapacityPort) {
         this.repository = repository;
         this.employeeRolesQueryPort = employeeRolesQueryPort;
+        this.employeeCapacityPort = employeeCapacityPort;
     }
 
     /**
@@ -57,5 +61,6 @@ public class DeleteEmployeeService implements DeleteEmployeeUseCase {
         // employee_roles
         // activos no tiene efecto de seguridad.
         repository.delete(id, companyId);
+        employeeCapacityPort.release(employee.getCompany().id());
     }
 }

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 3 (suscripciones-tablas.md #10). company_id es NULABLE a
+         propósito: un prospecto que aún no es empresa no tiene compañía (suscripciones-modelo.md
+         §4.7). quotes es la frontera de tenant de quote_lines/quote_answers, que cuelgan de aquí con
+         FK simple y sin company_id propio. ix_quotes_expiring NO empieza por company_id: es un
+         barrido de plataforma, no una consulta de un tenant (declarado, no un olvido). -->
+    <changeSet id="239_create_quotes" author="orlando">
+        <createTable tableName="quotes">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="quote_number" type="VARCHAR(30)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_quotes_number"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_quotes_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="prospect_name" type="VARCHAR(150)"/>
+            <column name="prospect_email" type="VARCHAR(120)"/>
+            <column name="prospect_document" type="VARCHAR(50)"/>
+            <column name="prospect_phone" type="VARCHAR(30)"/>
+            <column name="price_list_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_quotes_price_list"
+                             references="price_lists(id)"/>
+            </column>
+            <column name="billing_cycle" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="subtotal_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="discount_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="valid_until" type="DATE"><constraints nullable="false"/></column>
+            <column name="trial_days" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="accepted_at" type="DATETIME(6)"/>
+            <column name="accepted_by_email" type="VARCHAR(120)"/>
+            <column name="accepted_ip" type="VARCHAR(45)"/>
+            <column name="client_request_id" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"
+                             uniqueConstraintName="uq_quotes_client_request"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Clave auxiliar para las referencias tenant-scoped desde contratos y
+             otrosíes: (company_id, quote_id) no puede cruzar cotizaciones entre
+             empresas. company_id permanece nullable para los prospectos. -->
+        <addUniqueConstraint tableName="quotes" columnNames="company_id, id"
+                             constraintName="uq_quotes_company_id"/>
+
+        <sql><![CDATA[
+            ALTER TABLE quotes
+                ADD CONSTRAINT chk_quotes_status
+                    CHECK (status IN ('DRAFT','SENT','ACCEPTED','REJECTED','EXPIRED')),
+                ADD CONSTRAINT chk_quotes_cycle
+                    CHECK (billing_cycle IN ('MONTHLY','ANNUAL')),
+                ADD CONSTRAINT chk_quotes_amounts
+                    CHECK (subtotal_amount >= 0 AND discount_amount >= 0 AND tax_amount >= 0
+                           AND total_amount >= 0),
+                ADD CONSTRAINT chk_quotes_trial_days
+                    CHECK (trial_days >= 0),
+                ADD CONSTRAINT chk_quotes_party
+                    CHECK (company_id IS NOT NULL OR prospect_name IS NOT NULL),
+                ADD CONSTRAINT chk_quotes_accepted
+                    CHECK ((status = 'ACCEPTED' AND accepted_at IS NOT NULL) OR (status <> 'ACCEPTED'))
+        ]]></sql>
+
+        <createIndex tableName="quotes" indexName="ix_quotes_company_status">
+            <column name="company_id"/>
+            <column name="status"/>
+            <column name="created_date"/>
+        </createIndex>
+        <createIndex tableName="quotes" indexName="ix_quotes_expiring">
+            <column name="status"/>
+            <column name="valid_until"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="quotes"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

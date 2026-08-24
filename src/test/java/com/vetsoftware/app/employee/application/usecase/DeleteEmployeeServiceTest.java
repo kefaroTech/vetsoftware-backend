@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
+import com.vetsoftware.app.employee.application.port.out.EmployeeCapacityPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRolesQueryPort;
 import com.vetsoftware.app.employee.domain.AdminEmployeeCannotBeDisabledException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
@@ -38,6 +39,8 @@ class DeleteEmployeeServiceTest {
     private EmployeeRepository repository;
     @Mock
     private EmployeeRolesQueryPort employeeRolesQueryPort;
+    @Mock
+    private EmployeeCapacityPort employeeCapacityPort;
     @InjectMocks
     private DeleteEmployeeService service;
 
@@ -56,6 +59,7 @@ class DeleteEmployeeServiceTest {
             service.execute(EmployeeMother.EMPLOYEE_ID, COMPANY_ID);
 
             verify(repository).delete(EmployeeMother.EMPLOYEE_ID, COMPANY_ID);
+            verify(employeeCapacityPort).release(EmployeeMother.COMPANY_ID);
         }
 
         @Test
@@ -70,6 +74,7 @@ class DeleteEmployeeServiceTest {
             service.execute(EmployeeMother.EMPLOYEE_ID, null);
 
             verify(repository).delete(EmployeeMother.EMPLOYEE_ID, null);
+            verify(employeeCapacityPort).release(EmployeeMother.COMPANY_ID);
         }
     }
 
@@ -87,6 +92,7 @@ class DeleteEmployeeServiceTest {
 
             verify(repository, never()).delete(anyLong(), anyLong());
             verifyNoInteractions(employeeRolesQueryPort);
+            verifyNoInteractions(employeeCapacityPort);
         }
 
         @Test
@@ -100,6 +106,7 @@ class DeleteEmployeeServiceTest {
 
             verify(repository, never()).delete(anyLong(), anyLong());
             verifyNoInteractions(employeeRolesQueryPort);
+            verifyNoInteractions(employeeCapacityPort);
         }
 
         @Test
@@ -117,6 +124,7 @@ class DeleteEmployeeServiceTest {
             verify(repository, never()).findByIdIncludingDisabled(anyLong());
             verify(repository, never()).delete(anyLong(), anyLong());
             verifyNoInteractions(employeeRolesQueryPort);
+            verifyNoInteractions(employeeCapacityPort);
         }
 
         @Test
@@ -133,6 +141,7 @@ class DeleteEmployeeServiceTest {
                     .hasMessageContaining("ADMIN");
 
             verify(repository, never()).delete(anyLong(), anyLong());
+            verifyNoInteractions(employeeCapacityPort);
         }
     }
 }

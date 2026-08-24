@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #395. Mismo caso que el #385 (entitlement, ver 256_seed_entitlement_permissions.xml):
+         sin fila en base_permissions, el 403 del endpoint no se puede resolver desde la interfaz.
+         Los nueve códigos se verificaron uno a uno contra el @PreAuthorize real. Solo los tres
+         `*.read` se siembran para tenants; las seis mutaciones quedan exclusivamente para SYSTEM
+         y no se exponen como base_permissions ni permissions asignables a una clínica:
+           - subscriptionPayment.create      RegisterSubscriptionPaymentUseCase.java:14
+           - subscriptionPayment.read        FindSubscriptionPaymentUseCase.java:14, ListSubscriptionPaymentsUseCase.java:16
+           - subscriptionPayment.changeStatus ChangeSubscriptionPaymentStatusUseCase.java:14
+           - subscriptionPayment.reconcile   ReconcileSubscriptionPaymentUseCase.java:14
+           - billingDocumentApplication.create  ApplyBillingDocumentUseCase.java:13
+           - billingDocumentApplication.reverse ReverseBillingDocumentApplicationUseCase.java:13
+           - billingDocumentApplication.read    ListBillingDocumentApplicationsUseCase.java:10
+           - dunningEvent.create             RecordDunningEventUseCase.java:14
+           - dunningEvent.read               FindDunningEventUseCase.java:8, ListDunningEventsBySubscriptionUseCase.java:14
+         Los tres permisos sembrados coinciden al carácter con los puertos de lectura.
+
+         DOS sub_modules, no uno: SUBSCRIPTION_PAYMENT (los siete permisos de subscriptionPayment.*
+         y billingDocumentApplication.*) y DUNNING (los dos de dunningEvent.*). El criterio es el
+         mismo que ya traza suscripciones-tablas.md #1 "Reparto en slices": subscription_payments y
+         billing_document_applications viven en el MISMO slice `subscriptionpayment` -comparten
+         frontera de tenant y cruzan por FK compuesta entre si (par P4)-, mientras que dunning_events
+         es un slice aparte (`dunning`) que cruza a los otros dos por FK pero es una capacidad
+         distinta: cobranza, no pagos. Un solo sub_module para los tres tipos de permiso habria
+         mezclado "quien puede registrar un pago" con "quien puede enviar un aviso de mora" bajo el
+         mismo interruptor de plataforma, que es precisamente la granularidad que un sub_module
+         existe para evitar.
+
+         Mismo patron que 184/191/196/199/204/256: sub_module + base_permissions +
+         permisos de lectura al rol base ADMIN. En una instalación limpia, el alta materializa
+         permissions/role_permissions desde la plantilla base y los company_entitlements; no hay
+         empresas existentes que backfillear. Las mutaciones de dinero y cobranza quedan fuera de
+         ADMIN tenant: create/changeStatus/reconcile de pagos, create/reverse de aplicaciones y
+         create de eventos de cobranza son operaciones de plataforma (SYSTEM), no facultades de la
+         clínica. SIN el bloque de la antigua tabla puente de planes (ver
+         suscripciones-cambios-existentes.md 2.3): el reparto por empresa sale de
+         company_entitlements, no de ahi. Todas las sentencias son idempotentes (guardas NOT EXISTS
+         / claves por code, nunca INSERT IGNORE). -->
+
+    <changeSet id="257_subscriptionpayment_submodule" author="orlando">
+        <sql>
+            INSERT INTO sub_modules (name, code, module_id, enabled)
+            SELECT 'Pagos y aplicaciones de suscripcion', 'SUBSCRIPTION_PAYMENT', (SELECT id FROM modules WHERE code = 'GENERAL'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM sub_modules WHERE code = 'SUBSCRIPTION_PAYMENT');
+        </sql>
+        <rollback>
+            DELETE FROM sub_modules WHERE code = 'SUBSCRIPTION_PAYMENT';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="257_dunning_submodule" author="orlando">
+        <sql>
+            INSERT INTO sub_modules (name, code, module_id, enabled)
+            SELECT 'Cobranza de suscripcion', 'DUNNING', (SELECT id FROM modules WHERE code = 'GENERAL'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM sub_modules WHERE code = 'DUNNING');
+        </sql>
+        <rollback>
+            DELETE FROM sub_modules WHERE code = 'DUNNING';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="257_subscriptionpayment_base_permissions" author="orlando">
+        <sql>
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Ver pagos de suscripcion', 'subscriptionPayment.read', (SELECT id FROM sub_modules WHERE code = 'SUBSCRIPTION_PAYMENT'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM base_permissions WHERE code = 'subscriptionPayment.read');
+
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Ver aplicaciones de pago', 'billingDocumentApplication.read', (SELECT id FROM sub_modules WHERE code = 'SUBSCRIPTION_PAYMENT'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM base_permissions WHERE code = 'billingDocumentApplication.read');
+        </sql>
+        <rollback>
+            DELETE FROM base_permissions WHERE code IN (
+                'subscriptionPayment.read', 'billingDocumentApplication.read');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="257_dunning_base_permissions" author="orlando">
+        <sql>
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Ver expediente de cobranza', 'dunningEvent.read', (SELECT id FROM sub_modules WHERE code = 'DUNNING'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM base_permissions WHERE code = 'dunningEvent.read');
+        </sql>
+        <rollback>
+            DELETE FROM base_permissions WHERE code = 'dunningEvent.read';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="257_subscriptionpayment_base_role_permissions_admin" author="orlando">
+        <!-- ADMIN tenant solo puede consultar pagos y aplicaciones; los movimientos de dinero son SYSTEM. -->
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN (
+                'subscriptionPayment.read', 'billingDocumentApplication.read')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            DELETE FROM base_role_permissions
+            WHERE base_permission_id IN (
+                SELECT id FROM base_permissions WHERE code IN (
+                    'subscriptionPayment.read', 'billingDocumentApplication.read'));
+        </rollback>
+    </changeSet>
+
+    <changeSet id="257_dunning_base_role_permissions_admin" author="orlando">
+        <!-- ADMIN tenant solo puede consultar cobranza; registrar eventos es una operación SYSTEM. -->
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code = 'dunningEvent.read'
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            DELETE FROM base_role_permissions
+            WHERE base_permission_id IN (
+                SELECT id FROM base_permissions WHERE code = 'dunningEvent.read');
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,7 +1,0 @@
-JpaAuthEmployeeRepository no tiene rodaja de persistencia: falta AuthEmployeePersistenceIT (@DataJpaTest) en com.vetsoftware.app.auth.infrastructure.persistence
-JpaAuthSystemUserRepository no tiene rodaja de persistencia: falta AuthSystemUserPersistenceIT (@DataJpaTest) en com.vetsoftware.app.auth.infrastructure.persistence
-JpaEmailVerificationTokenRepository no tiene rodaja de persistencia: falta EmailVerificationTokenPersistenceIT (@DataJpaTest) en com.vetsoftware.app.registration.infrastructure.persistence
-JpaEmployeeCredentialsRepository no tiene rodaja de persistencia: falta EmployeeCredentialsPersistenceIT (@DataJpaTest) en com.vetsoftware.app.auth.infrastructure.persistence
-JpaProductChargeOpenAccountRepository no tiene rodaja de persistencia: falta ProductChargeOpenAccountPersistenceIT (@DataJpaTest) en com.vetsoftware.app.productchargeopenaccount.infrastructure.persistence
-JpaRefreshTokenRepository no tiene rodaja de persistencia: falta RefreshTokenPersistenceIT (@DataJpaTest) en com.vetsoftware.app.auth.infrastructure.persistence
-JpaSpaTypeRepository no tiene rodaja de persistencia: falta SpaTypePersistenceIT (@DataJpaTest) en com.vetsoftware.app.spatype.infrastructure.persistence

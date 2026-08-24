@@ -3,7 +3,7 @@ package com.vetsoftware.app.cashterminal.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -12,9 +12,12 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.cashregister.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.cashregister.application.port.out.CashSessionRepository;
 import com.vetsoftware.app.cashterminal.application.dto.CashTerminalDto;
-import com.vetsoftware.app.cashterminal.infrastructure.persistence.CashTerminalJpaEntity;
-import com.vetsoftware.app.cashterminal.infrastructure.persistence.CashTerminalJpaRepository;
+import com.vetsoftware.app.cashterminal.application.port.out.CashTerminalCapacityPort;
+import com.vetsoftware.app.cashterminal.application.port.out.CashTerminalRepository;
+import com.vetsoftware.app.cashterminal.domain.CashTerminal;
 import com.vetsoftware.app.cashterminal.testsupport.CashTerminalMother;
+import com.vetsoftware.app.entitlement.domain.CapacityUnit;
+import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -34,17 +37,20 @@ class CashTerminalServiceTest {
     private static final Long TERMINAL_ID = 3L;
 
     @Mock
-    private CashTerminalJpaRepository repository;
+    private CashTerminalRepository repository;
     @Mock
     private BranchQueryPort branchQueryPort;
     @Mock
     private CashSessionRepository cashSessionRepository;
+    @Mock
+    private CashTerminalCapacityPort cashTerminalCapacityPort;
 
     private CashTerminalService service;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        service = new CashTerminalService(repository, branchQueryPort, cashSessionRepository);
+        service = new CashTerminalService(repository, branchQueryPort, cashSessionRepository,
+                cashTerminalCapacityPort);
     }
 
     @Nested
@@ -80,14 +86,13 @@ class CashTerminalServiceTest {
             when(branchQueryPort.existsActiveInCompany(BRANCH_ID, COMPANY_ID)).thenReturn(true);
             var activa = CashTerminalMother.activa(TERMINAL_ID, COMPANY_ID, BRANCH_ID,
                     "Caja principal", "CAJA-1");
-            when(repository.findAllByCompanyIdAndBranchIdAndActiveTrueOrderByNameAsc(COMPANY_ID,
-                    BRANCH_ID)).thenReturn(List.of(activa));
+            when(repository.findAllByBranch(COMPANY_ID, BRANCH_ID, true))
+                    .thenReturn(List.of(activa));
 
             List<CashTerminalDto> resultado = service.list(COMPANY_ID, BRANCH_ID, true);
 
             assertThat(resultado).extracting(CashTerminalDto::id).containsExactly(TERMINAL_ID);
-            verify(repository, never())
-                    .findAllByCompanyIdAndBranchIdOrderByActiveDescNameAsc(anyLong(), anyLong());
+            verify(repository, never()).findAllByBranch(COMPANY_ID, BRANCH_ID, false);
         }
 
         @Test
@@ -96,14 +101,13 @@ class CashTerminalServiceTest {
             when(branchQueryPort.existsActiveInCompany(BRANCH_ID, COMPANY_ID)).thenReturn(true);
             var inactiva = CashTerminalMother.inactiva(TERMINAL_ID, COMPANY_ID, BRANCH_ID,
                     "Caja secundaria", "CAJA-2");
-            when(repository.findAllByCompanyIdAndBranchIdOrderByActiveDescNameAsc(COMPANY_ID,
-                    BRANCH_ID)).thenReturn(List.of(inactiva));
+            when(repository.findAllByBranch(COMPANY_ID, BRANCH_ID, false))
+                    .thenReturn(List.of(inactiva));
 
             List<CashTerminalDto> resultado = service.list(COMPANY_ID, BRANCH_ID, false);
 
             assertThat(resultado).extracting(CashTerminalDto::id).containsExactly(TERMINAL_ID);
-            verify(repository, never())
-                    .findAllByCompanyIdAndBranchIdAndActiveTrueOrderByNameAsc(anyLong(), anyLong());
+            verify(repository, never()).findAllByBranch(COMPANY_ID, BRANCH_ID, true);
         }
     }
 
@@ -175,8 +179,7 @@ class CashTerminalServiceTest {
         @DisplayName("lanza si ya existe un terminal con ese código en la sede")
         void lanza_si_ya_existe_un_terminal_con_ese_codigo_en_la_sede() {
             when(branchQueryPort.existsActiveInCompany(BRANCH_ID, COMPANY_ID)).thenReturn(true);
-            when(repository.existsByCompanyIdAndBranchIdAndCodeIgnoreCase(COMPANY_ID, BRANCH_ID,
-                    "CAJA-1")).thenReturn(true);
+            when(repository.existsCode(COMPANY_ID, BRANCH_ID, "CAJA-1")).thenReturn(true);
 
             assertThatThrownBy(() -> service.create(COMPANY_ID, BRANCH_ID, "Caja", "caja-1"))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -189,17 +192,15 @@ class CashTerminalServiceTest {
         @DisplayName("persiste la terminal con el nombre recortado y el código normalizado en mayúsculas")
         void persiste_la_terminal_con_nombre_recortado_y_codigo_en_mayusculas() {
             when(branchQueryPort.existsActiveInCompany(BRANCH_ID, COMPANY_ID)).thenReturn(true);
-            when(repository.existsByCompanyIdAndBranchIdAndCodeIgnoreCase(COMPANY_ID, BRANCH_ID,
-                    "CAJA-1")).thenReturn(false);
+            when(repository.existsCode(COMPANY_ID, BRANCH_ID, "CAJA-1")).thenReturn(false);
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             CashTerminalDto dto = service.create(COMPANY_ID, BRANCH_ID, "  Caja principal  ",
                     " caja-1 ");
 
-            ArgumentCaptor<CashTerminalJpaEntity> captor = ArgumentCaptor
-                    .forClass(CashTerminalJpaEntity.class);
+            ArgumentCaptor<CashTerminal> captor = ArgumentCaptor.forClass(CashTerminal.class);
             verify(repository).save(captor.capture());
-            CashTerminalJpaEntity guardado = captor.getValue();
+            CashTerminal guardado = captor.getValue();
             assertThat(guardado.getCompanyId()).isEqualTo(COMPANY_ID);
             assertThat(guardado.getBranchId()).isEqualTo(BRANCH_ID);
             assertThat(guardado.getName()).isEqualTo("Caja principal");
@@ -208,6 +209,22 @@ class CashTerminalServiceTest {
             assertThat(guardado.getCreatedAt()).isNotNull();
             assertThat(dto.name()).isEqualTo("Caja principal");
             assertThat(dto.code()).isEqualTo("CAJA-1");
+            verify(cashTerminalCapacityPort).reserve(COMPANY_ID);
+        }
+
+        @Test
+        @DisplayName("el límite TERMINAL aborta antes de persistir")
+        void el_limite_terminal_aborta_antes_de_persistir() {
+            when(branchQueryPort.existsActiveInCompany(BRANCH_ID, COMPANY_ID)).thenReturn(true);
+            when(repository.existsCode(COMPANY_ID, BRANCH_ID, "CAJA-1")).thenReturn(false);
+            doThrow(new CompanyCapacityLimitExceededException(COMPANY_ID, CapacityUnit.TERMINAL, 2,
+                    2, 1)).when(cashTerminalCapacityPort).reserve(COMPANY_ID);
+
+            assertThatThrownBy(() -> service.create(COMPANY_ID, BRANCH_ID, "Caja", "CAJA-1"))
+                    .isInstanceOf(CompanyCapacityLimitExceededException.class)
+                    .hasMessageContaining("TERMINAL");
+
+            verify(repository, never()).save(any());
         }
     }
 
@@ -236,8 +253,8 @@ class CashTerminalServiceTest {
                     "Caja principal", "CAJA-1");
             when(repository.findByIdAndCompanyId(TERMINAL_ID, COMPANY_ID))
                     .thenReturn(Optional.of(existente));
-            when(repository.existsByCompanyIdAndBranchIdAndCodeIgnoreCaseAndIdNot(COMPANY_ID,
-                    BRANCH_ID, "CAJA-1", TERMINAL_ID)).thenReturn(false);
+            when(repository.existsOtherWithCode(COMPANY_ID, BRANCH_ID, "CAJA-1", TERMINAL_ID))
+                    .thenReturn(false);
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             service.update(COMPANY_ID, TERMINAL_ID, "Caja renombrada", "caja-1");
@@ -271,8 +288,8 @@ class CashTerminalServiceTest {
                     .thenReturn(Optional.of(existente));
             when(cashSessionRepository.existsOpenByTerminalId(COMPANY_ID, BRANCH_ID, TERMINAL_ID))
                     .thenReturn(false);
-            when(repository.existsByCompanyIdAndBranchIdAndCodeIgnoreCaseAndIdNot(COMPANY_ID,
-                    BRANCH_ID, "CAJA-2", TERMINAL_ID)).thenReturn(false);
+            when(repository.existsOtherWithCode(COMPANY_ID, BRANCH_ID, "CAJA-2", TERMINAL_ID))
+                    .thenReturn(false);
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             CashTerminalDto dto = service.update(COMPANY_ID, TERMINAL_ID, "Caja", "caja-2");
@@ -289,8 +306,8 @@ class CashTerminalServiceTest {
                     .thenReturn(Optional.of(existente));
             when(cashSessionRepository.existsOpenByTerminalId(COMPANY_ID, BRANCH_ID, TERMINAL_ID))
                     .thenReturn(false);
-            when(repository.existsByCompanyIdAndBranchIdAndCodeIgnoreCaseAndIdNot(COMPANY_ID,
-                    BRANCH_ID, "CAJA-2", TERMINAL_ID)).thenReturn(true);
+            when(repository.existsOtherWithCode(COMPANY_ID, BRANCH_ID, "CAJA-2", TERMINAL_ID))
+                    .thenReturn(true);
 
             assertThatThrownBy(() -> service.update(COMPANY_ID, TERMINAL_ID, "Caja", "CAJA-2"))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -330,6 +347,7 @@ class CashTerminalServiceTest {
 
             assertThat(dto.active()).isTrue();
             verifyNoInteractions(cashSessionRepository);
+            verify(cashTerminalCapacityPort).reserve(COMPANY_ID);
         }
 
         @Test
@@ -339,11 +357,12 @@ class CashTerminalServiceTest {
                     "Caja principal", "CAJA-1");
             when(repository.findByIdAndCompanyId(TERMINAL_ID, COMPANY_ID))
                     .thenReturn(Optional.of(inactiva));
-            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             service.setActive(COMPANY_ID, TERMINAL_ID, false);
 
             verifyNoInteractions(cashSessionRepository);
+            verifyNoInteractions(cashTerminalCapacityPort);
+            verify(repository, never()).save(any());
         }
 
         @Test
@@ -377,6 +396,7 @@ class CashTerminalServiceTest {
             CashTerminalDto dto = service.setActive(COMPANY_ID, TERMINAL_ID, false);
 
             assertThat(dto.active()).isFalse();
+            verify(cashTerminalCapacityPort).release(COMPANY_ID);
         }
     }
 }

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 6 (suscripciones-tablas.md #23). La plata que entró,
+         independiente de a qué factura se aplique. Sin enabled (documento de dinero).
+         uq_subscription_payments_gateway es la barandilla del webhook: el mismo aviso de la pasarela
+         recibido dos veces no crea dos pagos (los NULL múltiples de MySQL dejan pasar los pagos
+         manuales sin colisionar). client_request_id es [AÑADIDO]: cubre el doble clic del operador
+         que registra un pago manual. uq_subscription_payments_company_id es la clave auxiliar que
+         necesita billing_document_applications (par P4).
+
+         Hallazgo NO pedido, encontrado al verificar el patrón que #396 corrigió en
+         billing_document_applications y subscription_amendments: este changeset tenía EL MISMO
+         defecto. `uq_subscription_payments_client_request` era `UNIQUE (client_request_id)` a
+         secas -global-, pero `RegisterSubscriptionPaymentService.findByClientRequestId` llama a
+         `SubscriptionPaymentRepository.findByCompanyIdAndClientRequestId`, ACOTADO POR EMPRESA. Se
+         corrige a `UNIQUE (company_id, client_request_id)`, mismo criterio y mismo motivo que las
+         otras dos: un índice único cuyo alcance no coincide con el de la consulta que deduplica no
+         protege, sorprende. `client_request_id` sigue NULABLE (a diferencia de
+         subscription_amendments): las filas de origen no-cliente (webhook de pasarela) no llevan
+         esta llave, y MySQL permite varios NULL en un índice único aunque sea compuesto en cuanto
+         una de sus columnas lo es. -->
+    <changeSet id="252_create_subscription_payments" author="orlando">
+        <createTable tableName="subscription_payments">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_subscription_payments_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="currency" type="CHAR(3)" defaultValue="COP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payment_method" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="gateway" type="VARCHAR(40)"/>
+            <column name="gateway_reference" type="VARCHAR(120)"/>
+            <column name="received_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reconciled_at" type="DATETIME(6)"/>
+            <column name="client_request_id" type="VARCHAR(64)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="subscription_payments" columnNames="company_id, id"
+                             constraintName="uq_subscription_payments_company_id"/>
+        <addUniqueConstraint tableName="subscription_payments"
+                             columnNames="gateway, gateway_reference"
+                             constraintName="uq_subscription_payments_gateway"/>
+        <addUniqueConstraint tableName="subscription_payments"
+                             columnNames="company_id, client_request_id"
+                             constraintName="uq_subscription_payments_client_request"/>
+
+        <sql><![CDATA[
+            ALTER TABLE subscription_payments
+                ADD CONSTRAINT chk_subscription_payments_method
+                    CHECK (payment_method IN ('TRANSFER','CARD','PSE','CASH','OTHER')),
+                ADD CONSTRAINT chk_subscription_payments_status
+                    CHECK (status IN ('PENDING','CONFIRMED','FAILED','REFUNDED')),
+                ADD CONSTRAINT chk_subscription_payments_amount CHECK (amount > 0),
+                ADD CONSTRAINT chk_subscription_payments_currency
+                    CHECK (CHAR_LENGTH(currency) = 3 AND currency = UPPER(currency)),
+                ADD CONSTRAINT chk_subscription_payments_gateway_pair
+                    CHECK ((gateway IS NULL AND gateway_reference IS NULL)
+                           OR (gateway IS NOT NULL AND gateway_reference IS NOT NULL)),
+                ADD CONSTRAINT chk_subscription_payments_reconciled
+                    CHECK (reconciled_at IS NULL OR status = 'CONFIRMED')
+        ]]></sql>
+
+        <createIndex tableName="subscription_payments" indexName="ix_subscription_payments_company_status">
+            <column name="company_id"/>
+            <column name="status"/>
+            <column name="received_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="subscription_payments"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

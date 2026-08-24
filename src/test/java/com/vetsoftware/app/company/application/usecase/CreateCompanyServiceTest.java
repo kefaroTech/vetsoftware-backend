@@ -11,9 +11,11 @@ import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.out.CityQueryPort;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
-import com.vetsoftware.app.company.application.port.out.MembershipQueryPort;
 import com.vetsoftware.app.company.domain.Company;
 import com.vetsoftware.app.company.testsupport.CompanyMother;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,6 +25,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,8 +36,8 @@ class CreateCompanyServiceTest {
     private CompanyRepository repository;
     @Mock
     private CityQueryPort cityQueryPort;
-    @Mock
-    private MembershipQueryPort membershipQueryPort;
+    @Spy
+    private Clock clock = Clock.fixed(Instant.parse("2026-01-15T10:30:00Z"), ZoneOffset.UTC);
 
     @InjectMocks
     private CreateCompanyService service;
@@ -42,11 +45,9 @@ class CreateCompanyServiceTest {
     @Captor
     private ArgumentCaptor<Company> companyCaptor;
 
-    private void ambasReferenciasExisten() {
+    private void laCiudadExiste() {
         when(cityQueryPort.findById(CompanyMother.BOGOTA.id()))
                 .thenReturn(Optional.of(CompanyMother.BOGOTA));
-        when(membershipQueryPort.findById(CompanyMother.PREMIUM.id()))
-                .thenReturn(Optional.of(CompanyMother.PREMIUM));
     }
 
     @Nested
@@ -56,7 +57,7 @@ class CreateCompanyServiceTest {
         @Test
         @DisplayName("persiste la empresa con las referencias resueltas por los puertos")
         void persiste_la_empresa_con_las_referencias_resueltas() {
-            ambasReferenciasExisten();
+            laCiudadExiste();
             when(repository.save(any())).thenReturn(CompanyMother.clinicaNorte());
 
             service.execute(CompanyMother.comandoCrear());
@@ -68,13 +69,12 @@ class CreateCompanyServiceTest {
             assertThat(guardada.getAddress()).isEqualTo("Calle 123 #45-67");
             assertThat(guardada.getContactNumber()).isEqualTo("3001234567");
             assertThat(guardada.getCity()).isEqualTo(CompanyMother.BOGOTA);
-            assertThat(guardada.getMembership()).isEqualTo(CompanyMother.PREMIUM);
         }
 
         @Test
         @DisplayName("la empresa guardada nace sin id y habilitada")
         void la_empresa_guardada_nace_sin_id_y_habilitada() {
-            ambasReferenciasExisten();
+            laCiudadExiste();
             when(repository.save(any())).thenReturn(CompanyMother.clinicaNorte());
 
             service.execute(CompanyMother.comandoCrear());
@@ -82,13 +82,13 @@ class CreateCompanyServiceTest {
             verify(repository).save(companyCaptor.capture());
             assertThat(companyCaptor.getValue().getId()).isNull();
             assertThat(companyCaptor.getValue().isEnabled()).isTrue();
-            assertThat(companyCaptor.getValue().getCreatedDate()).isNotNull();
+            assertThat(companyCaptor.getValue().getCreatedDate()).isEqualTo(CompanyMother.CREADO);
         }
 
         @Test
         @DisplayName("devuelve el DTO de lo que el repositorio devolvio, no del comando")
         void devuelve_el_dto_de_lo_que_devolvio_el_repositorio() {
-            ambasReferenciasExisten();
+            laCiudadExiste();
             when(repository.save(any())).thenReturn(CompanyMother.clinicaNorte(77L));
 
             CompanyDto dto = service.execute(CompanyMother.comandoCrear());
@@ -96,7 +96,6 @@ class CreateCompanyServiceTest {
             assertThat(dto.id()).isEqualTo(77L);
             assertThat(dto.name()).isEqualTo("Clinica Norte");
             assertThat(dto.city().name()).isEqualTo("Bogota");
-            assertThat(dto.membership().status()).isEqualTo("ACTIVE");
             assertThat(dto.enabled()).isTrue();
         }
     }
@@ -106,28 +105,13 @@ class CreateCompanyServiceTest {
     class ReferenciasInexistentes {
 
         @Test
-        @DisplayName("sin ciudad no escribe nada y ni siquiera consulta la membresia")
+        @DisplayName("sin ciudad no escribe nada")
         void sin_ciudad_no_escribe_nada() {
             when(cityQueryPort.findById(CompanyMother.BOGOTA.id())).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(CompanyMother.comandoCrear()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("City not found: 11");
-
-            verifyNoInteractions(repository, membershipQueryPort);
-        }
-
-        @Test
-        @DisplayName("sin membresia no escribe nada")
-        void sin_membresia_no_escribe_nada() {
-            when(cityQueryPort.findById(CompanyMother.BOGOTA.id()))
-                    .thenReturn(Optional.of(CompanyMother.BOGOTA));
-            when(membershipQueryPort.findById(CompanyMother.PREMIUM.id()))
-                    .thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.execute(CompanyMother.comandoCrear()))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Membership not found: 21");
 
             verifyNoInteractions(repository);
         }
@@ -140,9 +124,9 @@ class CreateCompanyServiceTest {
         @Test
         @DisplayName("un nombre en blanco aborta antes de tocar el repositorio")
         void un_nombre_en_blanco_aborta_antes_de_escribir() {
-            ambasReferenciasExisten();
+            laCiudadExiste();
             CreateCompanyCommand comando = new CreateCompanyCommand("  ", "NIT-900", null, null,
-                    CompanyMother.BOGOTA.id(), CompanyMother.PREMIUM.id());
+                    CompanyMother.BOGOTA.id());
 
             assertThatThrownBy(() -> service.execute(comando))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -154,9 +138,9 @@ class CreateCompanyServiceTest {
         @Test
         @DisplayName("un identificador demasiado largo aborta antes de tocar el repositorio")
         void un_identificador_demasiado_largo_aborta() {
-            ambasReferenciasExisten();
+            laCiudadExiste();
             CreateCompanyCommand comando = new CreateCompanyCommand("Clinica Norte", "i".repeat(51),
-                    null, null, CompanyMother.BOGOTA.id(), CompanyMother.PREMIUM.id());
+                    null, null, CompanyMother.BOGOTA.id());
 
             assertThatThrownBy(() -> service.execute(comando))
                     .isInstanceOf(IllegalArgumentException.class)

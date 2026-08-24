@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 2 (suscripciones-tablas.md #8). uq_configurator_options_code
+         es por pregunta, no global: dos preguntas distintas pueden compartir una opción `YES`, y ese
+         mismo índice sirve el listado `WHERE question_id = ?`. -->
+    <changeSet id="236_create_configurator_options" author="orlando">
+        <createTable tableName="configurator_options">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="question_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_configurator_options_question"
+                             references="configurator_questions(id)"/>
+            </column>
+            <column name="code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+            <column name="label" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="help_text" type="VARCHAR(500)"/>
+            <column name="sort_order" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="configurator_options"
+                             columnNames="question_id, code"
+                             constraintName="uq_configurator_options_code"/>
+
+        <sql><![CDATA[
+            ALTER TABLE configurator_options
+                ADD CONSTRAINT chk_configurator_options_sort_order CHECK (sort_order >= 0)
+        ]]></sql>
+
+        <rollback>
+            <dropTable tableName="configurator_options"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

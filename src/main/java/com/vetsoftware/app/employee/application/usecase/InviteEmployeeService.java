@@ -5,12 +5,13 @@ import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 import com.vetsoftware.app.employee.application.port.in.InviteEmployeeUseCase;
 import com.vetsoftware.app.employee.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeBranchAssigner;
+import com.vetsoftware.app.employee.application.port.out.EmployeeCapacityPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeInvitationEmailSender;
+import com.vetsoftware.app.employee.application.port.out.EmployeePasswordHasherPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRoleAssigner;
 import com.vetsoftware.app.employee.domain.CompanyRef;
 import com.vetsoftware.app.employee.domain.Employee;
-import com.vetsoftware.app.infrastructure.security.PasswordHasher;
 import io.micrometer.observation.annotation.Observed;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,21 +30,24 @@ public class InviteEmployeeService implements InviteEmployeeUseCase {
 
     private final EmployeeRepository repository;
     private final CompanyQueryPort companyQueryPort;
-    private final PasswordHasher passwordHasher;
+    private final EmployeePasswordHasherPort passwordHasher;
     private final EmployeeRoleAssigner roleAssigner;
     private final EmployeeBranchAssigner branchAssigner;
     private final EmployeeInvitationEmailSender invitationEmailSender;
+    private final EmployeeCapacityPort employeeCapacityPort;
 
     public InviteEmployeeService(EmployeeRepository repository, CompanyQueryPort companyQueryPort,
-            PasswordHasher passwordHasher, EmployeeRoleAssigner roleAssigner,
+            EmployeePasswordHasherPort passwordHasher, EmployeeRoleAssigner roleAssigner,
             EmployeeBranchAssigner branchAssigner,
-            EmployeeInvitationEmailSender invitationEmailSender) {
+            EmployeeInvitationEmailSender invitationEmailSender,
+            EmployeeCapacityPort employeeCapacityPort) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
         this.passwordHasher = passwordHasher;
         this.roleAssigner = roleAssigner;
         this.branchAssigner = branchAssigner;
         this.invitationEmailSender = invitationEmailSender;
+        this.employeeCapacityPort = employeeCapacityPort;
     }
 
     @Override
@@ -67,6 +71,7 @@ public class InviteEmployeeService implements InviteEmployeeUseCase {
         // login.
         Employee employee = Employee.create(command.employeeCode(), hashed, command.name(),
                 command.email(), company, true, true);
+        employeeCapacityPort.reserve(command.companyId());
         // IDENTITY → INSERT inmediato: si el código ya existe, falla aquí (antes de
         // asignar roles /
         // enviar correo).

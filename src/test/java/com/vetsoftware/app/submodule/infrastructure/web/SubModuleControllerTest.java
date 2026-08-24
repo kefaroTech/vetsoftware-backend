@@ -63,7 +63,7 @@ class SubModuleControllerTest {
 
     private static SubModuleDto reportes() {
         return new SubModuleDto(2L, "Reportes", "REP",
-                new ModuleSummaryDto(1L, "Facturacion", "FACT"),
+                new ModuleSummaryDto(1L, "Facturacion", "FACT"), true, false,
                 LocalDateTime.of(2026, 1, 15, 10, 30), true);
     }
 
@@ -77,7 +77,9 @@ class SubModuleControllerTest {
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(2))
                 .andExpect(jsonPath("$.name").value("Reportes"))
                 .andExpect(jsonPath("$.code").value("REP"))
-                .andExpect(jsonPath("$.module.name").value("Facturacion"));
+                .andExpect(jsonPath("$.module.name").value("Facturacion"))
+                .andExpect(jsonPath("$.sellable").value(true))
+                .andExpect(jsonPath("$.readOnlyCapable").value(false));
     }
 
     @Test
@@ -85,10 +87,28 @@ class SubModuleControllerTest {
     void post_traduce_el_request_al_command() throws Exception {
         when(createUseCase.execute(any())).thenReturn(reportes());
 
+        mockMvc.perform(post("/sub-modules").contentType(MediaType.APPLICATION_JSON).content(
+                "{\"name\":\"Reportes\",\"code\":\"REP\",\"moduleId\":1,\"sellable\":true,\"readOnlyCapable\":true}"));
+
+        verify(createUseCase)
+                .execute(new CreateSubModuleCommand("Reportes", "REP", 1L, true, true));
+    }
+
+    /**
+     * Los dos defaults de la especificacion son {@code false}: si nadie decide si
+     * un submodulo es comercial o si sabe funcionar en solo lectura, el fallo
+     * seguro es que no aparezca en el catalogo y que se oculte al darse de baja.
+     */
+    @Test
+    @DisplayName("un cuerpo que omite las dos banderas las manda en falso, no las inventa")
+    void un_cuerpo_sin_banderas_las_manda_en_falso() throws Exception {
+        when(createUseCase.execute(any())).thenReturn(reportes());
+
         mockMvc.perform(post("/sub-modules").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Reportes\",\"code\":\"REP\",\"moduleId\":1}"));
 
-        verify(createUseCase).execute(new CreateSubModuleCommand("Reportes", "REP", 1L));
+        verify(createUseCase)
+                .execute(new CreateSubModuleCommand("Reportes", "REP", 1L, false, false));
     }
 
     @Test

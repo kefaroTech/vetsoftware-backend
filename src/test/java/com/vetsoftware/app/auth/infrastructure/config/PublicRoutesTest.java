@@ -53,6 +53,7 @@ class PublicRoutesTest {
                     "GET /countries/{countryId}/states", "GET /states/{stateId}/cities",
                     "GET /species/{specieId}/breeds", "GET /species", "GET /animal-colors",
                     "GET /consultation-types", "GET /modules", "GET /sub-modules", "GET /spa-types",
+                    "GET /configurator/questionnaire", "POST /configurator/resolve",
                     "ANY /swagger-ui/**", "ANY /v3/api-docs/**", "ANY /swagger-resources/**",
                     "ANY /webjars/**");
         }

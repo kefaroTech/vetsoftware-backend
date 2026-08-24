@@ -75,7 +75,7 @@ class LoginRateLimitFilterTest {
         @ParameterizedTest
         @ValueSource(strings = {"/auth/login/employee", "/auth/login/system", "/auth/refresh",
                 "/register", "/auth/forgot-password", "/dian/webhooks/matias", "/auth/recover-code",
-                "/auth/reset-password", "/register/verify"})
+                "/auth/reset-password", "/register/verify", "/configurator/resolve"})
         @DisplayName("cada ruta pública sensible pasa por el limitador")
         void cada_ruta_publica_sensible_pasa_por_el_limitador(String path) {
             assertThat(filter.shouldNotFilter(request("POST", path))).isFalse();

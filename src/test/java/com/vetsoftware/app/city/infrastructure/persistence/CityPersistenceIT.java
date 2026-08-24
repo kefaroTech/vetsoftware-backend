@@ -44,8 +44,8 @@ import org.springframework.context.annotation.Import;
  * <p>
  * <b>Por que no usa {@code SchemaSeed}.</b> City solo depende de {@code states}
  * (y esta, de {@code countries}): nada del resto de la cadena de
- * {@code SchemaSeed} (membership, company, branch, product...) le hace falta.
- * Los ids de {@code SchemaSeed} son literales fijos y compartidos por todas las
+ * {@code SchemaSeed} (company, contrato, branch, product...) le hace falta. Los
+ * ids de {@code SchemaSeed} son literales fijos y compartidos por todas las
  * features que lo usan; para un catalogo geografico esos mismos ids (900,
  * 901...) pueden coincidir con filas ya sembradas por otra cadena de FKs. Por
  * eso este test siembra su propio pais y sus propios departamentos dejando que

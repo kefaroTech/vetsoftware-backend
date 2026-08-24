@@ -18,11 +18,11 @@ public final class PublishAdminPermissionsMother {
     }
 
     public static CompanyAdminContext clinicaNorte() {
-        return new CompanyAdminContext(1L, 10L, 100L);
+        return new CompanyAdminContext(1L, 100L);
     }
 
     public static CompanyAdminContext clinicaSur() {
-        return new CompanyAdminContext(2L, 20L, 200L);
+        return new CompanyAdminContext(2L, 200L);
     }
 
     public static UpsertedPermission creado(Long id) {

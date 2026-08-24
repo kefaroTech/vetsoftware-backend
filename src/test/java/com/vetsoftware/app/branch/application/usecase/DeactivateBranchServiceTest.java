@@ -5,9 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.branch.application.dto.BranchDto;
+import com.vetsoftware.app.branch.application.port.out.BranchCapacityPort;
 import com.vetsoftware.app.branch.application.port.out.BranchRepository;
 import com.vetsoftware.app.branch.domain.Branch;
 import com.vetsoftware.app.branch.domain.BranchNotFoundException;
@@ -33,6 +35,8 @@ class DeactivateBranchServiceTest {
 
     @Mock
     private BranchRepository repository;
+    @Mock
+    private BranchCapacityPort branchCapacityPort;
     @InjectMocks
     private DeactivateBranchService service;
 
@@ -57,6 +61,7 @@ class DeactivateBranchServiceTest {
         assertThat(dto.active()).isFalse();
         assertThat(dto.id()).as("sigue existiendo, no se borra").isEqualTo(3L);
         verify(repository).save(activa);
+        verify(branchCapacityPort).release(9L);
     }
 
     @Test
@@ -71,13 +76,13 @@ class DeactivateBranchServiceTest {
 
         assertThat(ultimaActiva.isActive()).as("no debe desactivarse").isTrue();
         verify(repository, never()).save(any());
+        verifyNoInteractions(branchCapacityPort);
     }
 
     @Test
     void permite_desactivar_una_ya_inactiva_aunque_sea_la_unica_sin_consultar_el_guard() {
         Branch inactiva = branch(false);
         when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(inactiva));
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         // Idempotente: como ya está inactiva, el guard ni siquiera se evalúa (no reduce
         // sedes activas).
@@ -85,7 +90,8 @@ class DeactivateBranchServiceTest {
 
         assertThat(dto.active()).isFalse();
         verify(repository, never()).existsOtherActiveByCompanyId(any(), any());
-        verify(repository).save(inactiva);
+        verify(repository, never()).save(any());
+        verifyNoInteractions(branchCapacityPort);
     }
 
     @Test
@@ -95,5 +101,6 @@ class DeactivateBranchServiceTest {
         assertThatThrownBy(() -> service.execute(3L, 9L))
                 .isInstanceOf(BranchNotFoundException.class);
         verify(repository, never()).save(any());
+        verifyNoInteractions(branchCapacityPort);
     }
 }

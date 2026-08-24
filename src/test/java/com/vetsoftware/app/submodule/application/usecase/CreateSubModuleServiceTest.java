@@ -12,6 +12,9 @@ import com.vetsoftware.app.submodule.application.port.out.ModuleQueryPort;
 import com.vetsoftware.app.submodule.application.port.out.SubModuleRepository;
 import com.vetsoftware.app.submodule.domain.SubModule;
 import com.vetsoftware.app.submodule.testsupport.SubModuleMother;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,6 +34,8 @@ class CreateSubModuleServiceTest {
     private SubModuleRepository repository;
     @Mock
     private ModuleQueryPort moduleQueryPort;
+    @Spy
+    private Clock clock = Clock.fixed(Instant.parse("2026-01-15T10:30:00Z"), ZoneOffset.UTC);
     @InjectMocks
     private CreateSubModuleService service;
 
@@ -51,6 +57,7 @@ class CreateSubModuleServiceTest {
             assertThat(captor.getValue().getName()).isEqualTo("Reportes");
             assertThat(captor.getValue().getCode()).isEqualTo("REP");
             assertThat(captor.getValue().getModule()).isEqualTo(SubModuleMother.FACTURACION);
+            assertThat(captor.getValue().getCreatedDate()).isEqualTo(SubModuleMother.CREADO);
             assertThat(dto.name()).isEqualTo("Reportes");
         }
     }

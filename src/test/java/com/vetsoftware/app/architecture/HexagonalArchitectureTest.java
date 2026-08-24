@@ -485,10 +485,14 @@ class HexagonalArchitectureTest {
      *
      * <p>
      * <b>La cuenta cierra al dígito, y esa es la prueba de que la lista es
-     * exhaustiva y no una muestra</b>: 104 clases {@code @Entity} = 71 versionadas
-     * (las 16 que ya lo estaban + 55 de la campaña de BE-26) + estas 33 exentas.
-     * Cualquier entidad nueva desequilibra la suma y
-     * {@link #ENTIDADES_CON_BLOQUEO_OPTIMISTA} la caza el mismo día.
+     * exhaustiva y no una muestra</b>: 128 clases {@code @Entity} = 82 versionadas
+     * + estas 46 exentas. El modelo de suscripciones movió las dos mitades a la
+     * vez: se fueron {@code memberships} y {@code membership_sub_modules} —una
+     * versionada y otra exenta— y entraron las 26 tablas nuevas, 12 versionadas y
+     * 14 exentas. Que las dos restas y las dos sumas cuadren es lo que prueba que
+     * ninguna entidad del modelo nuevo se coló sin decidir su bloqueo. Cualquier
+     * entidad nueva desequilibra la suma y {@link #ENTIDADES_CON_BLOQUEO_OPTIMISTA}
+     * la caza el mismo día.
      *
      * <p>
      * <b>Cómo se añade una entrada.</b> Nunca «para que pase el test». El código
@@ -537,6 +541,29 @@ class HexagonalArchitectureTest {
                             + " update ni reactivación, y el borrado es físico junto al objeto"
                             + " en S3 (por eso ni siquiera lleva @SQLDelete)"),
 
+            // --- modelo de suscripciones ---
+            exenta("QuoteLineJpaEntity", E1_APPEND_ONLY,
+                    "renglón congelado de la oferta: se escribe con la cotización y ningún"
+                            + " caso de uso lo reescribe; el bloqueo vive en quotes, ya versionada"),
+            exenta("QuoteAnswerJpaEntity", E1_APPEND_ONLY,
+                    "respuesta del configurador tal como se dio: se inserta una vez y ahí acaba"),
+            exenta("SubscriptionAmendmentJpaEntity", E1_APPEND_ONLY,
+                    "documento inmutable del contrato: corregir un otrosí es emitir otro,"
+                            + " nunca editarlo"),
+            exenta("SubscriptionStatusHistoryJpaEntity", E1_APPEND_ONLY,
+                    "bitácora de transiciones: solo se inserta; reescribirla sería falsificar"
+                            + " por qué una cuenta está en solo lectura"),
+            exenta("SubscriptionBillingDocumentTaxJpaEntity", E1_APPEND_ONLY,
+                    "desglose de impuestos: se calcula una sola vez sobre la base agregada y se"
+                            + " escribe con el documento; poder editarlo encima crearía la segunda"
+                            + " verdad que esta tabla existe para impedir"),
+            exenta("BillingDocumentApplicationJpaEntity", E1_APPEND_ONLY,
+                    "una aplicación no se edita: si está mal se contra-aplica con otra fila"
+                            + " negativa que apunta a ella"),
+            exenta("DunningEventJpaEntity", E1_APPEND_ONLY,
+                    "expediente de cobranza: su valor es probar que se avisó, y eso exige que"
+                            + " no se pueda reescribir"),
+
             // E2 — relación N:M pura: solo dos FK, insert + delete, par único en BD.
             exenta("RolePermissionJpaEntity", E2_TABLA_PUENTE,
                     "solo dos FK y ningún campo propio mutable; par único en BD"),
@@ -548,10 +575,18 @@ class HexagonalArchitectureTest {
                     "solo dos FK y ningún campo propio mutable; par único en BD"),
             exenta("EmployeeBranchJpaEntity", E2_TABLA_PUENTE,
                     "solo dos FK y ningún campo propio mutable; par único en BD"),
-            exenta("MembershipSubModuleJpaEntity", E2_TABLA_PUENTE,
-                    "solo dos FK y ningún campo propio mutable; par único en BD"),
             exenta("CompanyTaxProfileResponsibilityJpaEntity", E2_TABLA_PUENTE,
                     "responsabilidades DIAN del perfil, reemplazadas en bloque"),
+
+            // --- modelo de suscripciones ---
+            exenta("CatalogItemSubModuleJpaEntity", E2_TABLA_PUENTE,
+                    "solo dos FK y ningún campo propio mutable; par único en BD"),
+            exenta("CatalogItemDependencyJpaEntity", E2_TABLA_PUENTE,
+                    "dos FK y un tipo de relación que se reemplaza borrando e insertando;"
+                            + " terna única en BD"),
+            exenta("BundleComponentJpaEntity", E2_TABLA_PUENTE,
+                    "composición de un paquete: se reescribe en bloque desde el editor del"
+                            + " bundle; par único en BD"),
 
             // E3 — un solo uso o vida corta: se emite, se consume y caduca.
             exenta("RefreshTokenJpaEntity", E3_TOKEN,
@@ -590,7 +625,26 @@ class HexagonalArchitectureTest {
             exenta("NumberingResolutionJpaEntity", E6_YA_PROTEGIDO,
                     "el consecutivo fiscal se serializa con SELECT … FOR UPDATE en"
                             + " lockActiveForUpdate, dentro de un REQUIRES_NEW; añadirle"
-                            + " @Version arriesgaría un 409 en mitad de una emisión"));
+                            + " @Version arriesgaría un 409 en mitad de una emisión"),
+
+            // --- modelo de suscripciones ---
+            exenta("CompanyEntitlementJpaEntity", E6_YA_PROTEGIDO,
+                    "tabla derivada: la recalcula un único proceso que reescribe en bloque los"
+                            + " permisos de una empresa dentro de una transacción; un 409 aquí"
+                            + " bloquearía el recálculo en vez de proteger nada"),
+            exenta("CompanyCapacityJpaEntity", E6_YA_PROTEGIDO,
+                    "contador: used_quantity se mueve con UPDATE … SET used_quantity ="
+                            + " used_quantity + ?, atómico en el motor; @Version lo convertiría"
+                            + " en un 409 cada vez que dos usuarios se dan de alta a la vez"),
+            exenta("SubscriptionChargeJpaEntity", E6_YA_PROTEGIDO,
+                    "lo devengado no se edita: anular es insertar un cargo compensatorio. El"
+                            + " único campo que muta es status al facturarse, y ese cambio va"
+                            + " dentro de la transacción que crea su documento de cobro, ya"
+                            + " versionado"),
+            exenta("BillingDocumentSequenceJpaEntity", E6_YA_PROTEGIDO,
+                    "contador de numeración: se serializa con SELECT … FOR UPDATE antes de"
+                            + " incrementarse, igual que numbering_resolutions; @Version lo"
+                            + " convertiría en un 409 en mitad de una emisión"));
 
     private static ExencionDeVersion exenta(String entidad, CodigoDeExencion codigo,
             String motivo) {
@@ -892,6 +946,42 @@ class HexagonalArchitectureTest {
             .should(VetSoftwareConditions.proyectarSinLiteralBooleano())
             .because("un THEN true en la proyeccion revienta al extraer el resultado con"
                     + " Hibernate 7 y tuvo la facturacion electronica caida al 100%");
+
+    /**
+     * Cierre de la incidencia #472, y <b>la otra mitad</b> de
+     * {@link #PROYECCION_SIN_LITERAL_BOOLEANO}. Ninguna
+     * {@code @Query(nativeQuery = true)} puede proyectar sobre un tipo que exponga
+     * una propiedad booleana.
+     *
+     * <p>
+     * <b>Por qué hacía falta una regla más.</b> La de #196 mira el <i>texto del
+     * SQL</i> y prohíbe el literal ({@code THEN true}); esta mira el <i>tipo de
+     * destino</i>. {@code ContractItemJpaRepository.findModuleLines} no tenía ni un
+     * literal —proyecta {@code sm.read_only_capable} y {@code ci.is_core}, dos
+     * columnas reales con el alias correcto—, pasaba la regla vieja limpiamente y
+     * aun así devolvía {@code 500} en {@code POST /register} y dejaba el producto
+     * sin poder dar de alta ni una empresa. Mismo defecto de fondo —una columna
+     * booleana que nadie sabe convertir al extraer el resultado— escrito de la otra
+     * forma posible.
+     *
+     * <p>
+     * <b>Nace dura y en cero</b>, igual que #196: la única violación era
+     * {@code ContractModuleLineView}, arreglada al cerrar #472. Las entidades
+     * quedan fuera por construcción —las materializa Hibernate con sus tipos, no el
+     * proyector de Spring Data—, no por lista.
+     *
+     * <p>
+     * Ver {@code VetSoftwareConditions.proyectarSinBooleanoEnConsultaNativa()} para
+     * la mecánica completa: por qué {@code TINYINT} pelado (el que exige el
+     * CLAUDE.md) llega como {@code Byte}, por qué {@code TINYINT(1)} no es la
+     * salida y por qué ningún {@code CAST} arregla esto en MySQL.
+     */
+    @ArchTest
+    static final ArchRule PROYECCION_NATIVA_SIN_BOOLEANO = methods().that()
+            .areAnnotatedWith(Query.class)
+            .should(VetSoftwareConditions.proyectarSinBooleanoEnConsultaNativa())
+            .because("MySQL entrega TINYINT como Byte, Spring Data no sabe convertirlo a Boolean"
+                    + " en una proyeccion nativa y eso tumbo el alta de empresa entera");
 
     // ── Reglas congeladas: deuda preexistente, cero violaciones nuevas ───────
 

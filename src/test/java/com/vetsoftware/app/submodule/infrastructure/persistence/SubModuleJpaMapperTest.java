@@ -36,7 +36,7 @@ class SubModuleJpaMapperTest {
     void to_jpa_copia_cada_campo_del_dominio() {
         LocalDateTime creado = LocalDateTime.of(2026, 1, 15, 10, 30);
         SubModule subModule = new SubModule(2L, "Reportes", "REP",
-                new ModuleRef(1L, "Facturacion", "FACT"), creado, null, true);
+                new ModuleRef(1L, "Facturacion", "FACT"), true, false, creado, null, true);
 
         SubModuleJpaEntity entity = mapper.toJpa(subModule, moduleEntity);
 
@@ -44,16 +44,31 @@ class SubModuleJpaMapperTest {
         assertThat(entity.getName()).isEqualTo("Reportes");
         assertThat(entity.getCode()).isEqualTo("REP");
         assertThat(entity.getModule()).isSameAs(moduleEntity);
+        assertThat(entity.isSellable()).isTrue();
+        assertThat(entity.isReadOnlyCapable()).isFalse();
         assertThat(entity.getCreatedDate()).isEqualTo(creado);
         assertThat(entity.isEnabled()).isTrue();
+    }
+
+    @Test
+    @DisplayName("toJpa no cruza is_sellable con read_only_capable")
+    void to_jpa_no_cruza_las_dos_banderas() {
+        SubModule soloLectura = new SubModule(2L, "Reportes", "REP",
+                new ModuleRef(1L, "Facturacion", "FACT"), false, true,
+                LocalDateTime.of(2026, 1, 15, 10, 30), null, true);
+
+        SubModuleJpaEntity entity = mapper.toJpa(soloLectura, moduleEntity);
+
+        assertThat(entity.isSellable()).isFalse();
+        assertThat(entity.isReadOnlyCapable()).isTrue();
     }
 
     @Test
     @DisplayName("toJpa conserva enabled=false de un submodulo deshabilitado")
     void to_jpa_conserva_enabled_false() {
         SubModule subModule = new SubModule(2L, "Reportes", "REP",
-                new ModuleRef(1L, "Facturacion", "FACT"), LocalDateTime.of(2026, 1, 15, 10, 30),
-                null, false);
+                new ModuleRef(1L, "Facturacion", "FACT"), true, true,
+                LocalDateTime.of(2026, 1, 15, 10, 30), null, false);
 
         SubModuleJpaEntity entity = mapper.toJpa(subModule, moduleEntity);
 
@@ -72,11 +87,15 @@ class SubModuleJpaMapperTest {
         entity.setName("Reportes");
         entity.setCode("REP");
         entity.setModule(moduleEntity);
+        entity.setSellable(true);
+        entity.setReadOnlyCapable(false);
         entity.setCreatedDate(creado);
         entity.setEnabled(false);
 
         SubModule subModule = mapper.toDomain(entity);
 
+        assertThat(subModule.isSellable()).isTrue();
+        assertThat(subModule.isReadOnlyCapable()).isFalse();
         assertThat(subModule.getId()).isEqualTo(2L);
         assertThat(subModule.getName()).isEqualTo("Reportes");
         assertThat(subModule.getCode()).isEqualTo("REP");

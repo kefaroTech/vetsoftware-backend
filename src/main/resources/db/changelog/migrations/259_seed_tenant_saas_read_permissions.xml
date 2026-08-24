@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      Allowlist de autoservicio SaaS para ADMIN tenant en una instalación limpia.
+      256/257 ya siembran entitlement.read, subscriptionPayment.read,
+      billingDocumentApplication.read y dunningEvent.read con sus plantillas ADMIN;
+      aquí se completan las cinco operaciones que faltaban:
+
+        subscription.read                  -> SUBSCRIPTION
+        quote.read / quote.accept / quote.reject -> QUOTE
+        subscriptionBilling.read           -> SUBSCRIPTION_BILLING
+
+      No hay backfill de companies, permissions ni role_permissions: una empresa nueva
+      crea esos registros desde base_permissions/base_role_permissions en
+      JpaRolePermissionInitializationPort, limitada a los submódulos que su contrato
+      concede. El catálogo comercial CORE debe vincular estos submódulos técnicos para
+      que el recálculo de entitlements los conceda; este changeset no inventa artículos,
+      precios, impuestos ni cantidades comerciales.
+
+      No se incluyen mutaciones financieras ni de ciclo de vida: SYSTEM conserva esas
+      operaciones fuera de las plantillas tenant. quote.accept/reject se otorgan en FULL,
+      pero el filtro de entitlements solo conserva *.read en READ_ONLY.
+    -->
+    <changeSet id="259_seed_tenant_saas_read_permissions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT seed.name, seed.code, sm.id, TRUE
+            FROM (
+                SELECT 'Ver suscripción' AS name, 'subscription.read' AS code, 'SUBSCRIPTION' AS sub_module_code
+                UNION ALL SELECT 'Ver cotizaciones de suscripción', 'quote.read', 'QUOTE'
+                UNION ALL SELECT 'Aceptar cotización de suscripción', 'quote.accept', 'QUOTE'
+                UNION ALL SELECT 'Rechazar cotización de suscripción', 'quote.reject', 'QUOTE'
+                UNION ALL SELECT 'Ver documentos de cobro de suscripción', 'subscriptionBilling.read', 'SUBSCRIPTION_BILLING'
+            ) seed
+            JOIN sub_modules sm ON sm.code = seed.sub_module_code
+            LEFT JOIN base_permissions existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, TRUE
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN (
+                'subscription.read', 'quote.read', 'quote.accept', 'quote.reject',
+                'subscriptionBilling.read')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM base_role_permissions existing
+                  WHERE existing.base_role_id = br.id
+                    AND existing.base_permission_id = bp.id);
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id
+                    FROM base_permissions
+                    WHERE code IN (
+                        'subscription.read', 'quote.read', 'quote.accept', 'quote.reject',
+                        'subscriptionBilling.read'));
+
+                DELETE FROM base_permissions
+                WHERE code IN (
+                    'subscription.read', 'quote.read', 'quote.accept', 'quote.reject',
+                    'subscriptionBilling.read');
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

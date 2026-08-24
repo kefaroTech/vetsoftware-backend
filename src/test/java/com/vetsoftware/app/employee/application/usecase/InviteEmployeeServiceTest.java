@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,13 +16,16 @@ import com.vetsoftware.app.employee.application.command.InviteEmployeeCommand;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 import com.vetsoftware.app.employee.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeBranchAssigner;
+import com.vetsoftware.app.employee.application.port.out.EmployeeCapacityPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeInvitationEmailSender;
+import com.vetsoftware.app.employee.application.port.out.EmployeePasswordHasherPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRoleAssigner;
 import com.vetsoftware.app.employee.domain.CompanyRef;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.employee.domain.EmployeeStatus;
-import com.vetsoftware.app.infrastructure.security.PasswordHasher;
+import com.vetsoftware.app.entitlement.domain.CapacityUnit;
+import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -52,13 +56,15 @@ class InviteEmployeeServiceTest {
     @Mock
     private CompanyQueryPort companyQueryPort;
     @Mock
-    private PasswordHasher passwordHasher;
+    private EmployeePasswordHasherPort passwordHasher;
     @Mock
     private EmployeeRoleAssigner roleAssigner;
     @Mock
     private EmployeeBranchAssigner branchAssigner;
     @Mock
     private EmployeeInvitationEmailSender invitationEmailSender;
+    @Mock
+    private EmployeeCapacityPort employeeCapacityPort;
     @InjectMocks
     private InviteEmployeeService service;
 
@@ -98,6 +104,7 @@ class InviteEmployeeServiceTest {
             assertThat(captor.getValue().getHashPassword()).isEqualTo("$2a$10$hashed");
             assertThat(captor.getValue().getHashPassword()).isNotEqualTo("Temporal123*");
             verify(passwordHasher).hash("Temporal123*");
+            verify(employeeCapacityPort).reserve(COMPANY);
         }
 
         @Test
@@ -149,8 +156,9 @@ class InviteEmployeeServiceTest {
             // dejaría una invitación enviada para una cuenta que nunca existió.
             service.execute(command(List.of(3L), List.of(7L)));
 
-            InOrder order = inOrder(repository, roleAssigner, branchAssigner,
+            InOrder order = inOrder(employeeCapacityPort, repository, roleAssigner, branchAssigner,
                     invitationEmailSender);
+            order.verify(employeeCapacityPort).reserve(COMPANY);
             order.verify(repository).save(any());
             order.verify(roleAssigner).assign(55L, COMPANY, 3L);
             order.verify(branchAssigner).assign(55L, COMPANY, List.of(7L));
@@ -210,6 +218,22 @@ class InviteEmployeeServiceTest {
             assertThatThrownBy(() -> service.execute(command(List.of(3L), List.of(99L))))
                     .isInstanceOf(IllegalArgumentException.class);
 
+            verify(invitationEmailSender, never()).send(anyString(), anyString(), anyString(),
+                    anyString(), anyString(), anyString());
+        }
+
+        @Test
+        void el_limite_user_aborta_antes_de_persistir_roles_sedes_y_correo() {
+            doThrow(new CompanyCapacityLimitExceededException(COMPANY, CapacityUnit.USER, 5, 5, 1))
+                    .when(employeeCapacityPort).reserve(COMPANY);
+
+            assertThatThrownBy(() -> service.execute(command(List.of(3L), List.of(7L))))
+                    .isInstanceOf(CompanyCapacityLimitExceededException.class)
+                    .hasMessageContaining("USER");
+
+            verify(repository, never()).save(any());
+            verify(roleAssigner, never()).assign(anyLong(), anyLong(), anyLong());
+            verify(branchAssigner, never()).assign(anyLong(), anyLong(), any());
             verify(invitationEmailSender, never()).send(anyString(), anyString(), anyString(),
                     anyString(), anyString(), anyString());
         }

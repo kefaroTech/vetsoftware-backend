@@ -50,6 +50,18 @@ public interface PermissionJpaRepository extends JpaRepository<PermissionJpaEnti
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id,
             @org.springframework.data.repository.query.Param("companyId") Long companyId);
 
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT id
+            FROM permissions
+            WHERE company_id = :companyId
+              AND code = :code
+              AND enabled = false
+            LIMIT 1
+            """, nativeQuery = true)
+    Optional<Long> findDisabledIdByCompanyIdAndCode(
+            @org.springframework.data.repository.query.Param("companyId") Long companyId,
+            @org.springframework.data.repository.query.Param("code") String code);
+
     boolean existsByCompany_Id(Long companyId);
 
     boolean existsBySubModule_Id(Long subModuleId);

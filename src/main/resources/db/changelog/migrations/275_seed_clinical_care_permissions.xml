@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #517 (segunda tanda: atencion clinica). Mismo patron de 268/270/273:
+         base_permissions tenia 51 de las 137 autoridades reales que exige el codigo
+         -no 150, ver la nota completa del censo en 273-. Este changeset siembra las
+         36 que cubren la practica clinica en sentido estricto: historia clinica,
+         consultas, desparasitacion, imagen diagnostica, hospitalizacion,
+         laboratorio, medicamentos/prescripcion, spa, cirugia y vacunacion.
+
+         Verificado uno a uno contra el @PreAuthorize real, sin normalizar nada:
+
+         CLINICAL_HISTORY (clinicalhistory/, consultation/):
+           - clinicalHistory.read   ExportClinicalHistoryUseCase,
+                                    GetClinicalHistorySummaryUseCase, GetClinicalHistoryUseCase
+           - consultation.create    CreateConsultationUseCase
+           - consultation.read      FindConsultationUseCase
+
+         DEWORMING (deworming/): create/read/update DewormingUseCase*,
+           delete DeleteDewormingUseCase.
+
+         DIAGNOSTIC_IMAGING (diagnosticimaging/, diagnosticimagingtype/): CRUD
+           completo, compartido literalmente por las dos features -mismo codigo,
+           dos paquetes, no se reparte en dos permisos distintos porque el
+           @PreAuthorize real usa el mismo string en ambas-.
+
+         HOSPITALIZATION (hospitalization/ y sus siete hermanos -
+           hospitalizationmedication/, hospitalizationobservation/,
+           hospitalizationprocedure/, hospitalizationprogressnote/,
+           medicationschedule/, procedureschedule/): CRUD completo, mismo codigo
+           'hospitalization.*' en las ocho features -es el modulo mas grande de los
+           36 codigos: 7 create, 5 delete, 8 read, 10 update-.
+
+         LABORATORY (laboratorytest/, laboratorytestfile/, laboratorytesttype/):
+           CRUD completo, mismo codigo 'laboratoryTest.*' en las tres features.
+
+         MEDICAMENTS (medicament/, medicamentprescription/, prescription/):
+           - medicamentPrescription.create   CreateMedicamentPrescriptionUseCase
+           - prescription.create/read/update/delete: mismo codigo 'prescription.*'
+             reutilizado por DOS features distintas -medicament/ (el catalogo de
+             medicamentos, con nombres de metodo Create/Delete/Find/Update/
+             ReactivateMedicamentUseCase) Y prescription/ (la receta en si,
+             CreatePrescriptionUseCase/ExportPrescriptionUseCase/
+             FindPrescriptionUseCase)-. Es la misma incoherencia de nomenclatura que
+             270 documento para 'rolePermissions.read'/'role.read': no le toca a
+             este changeset decidir si el catalogo de medicamentos deberia tener su
+             propio 'medicament.*' -eso es el censo de nomenclatura del #514-, asi
+             que se siembra literalmente 'prescription.*' una sola vez porque es
+             literalmente el mismo string en los dos @PreAuthorize.
+
+         SPA (spa/): CRUD completo.
+         SURGERY (surgery/, surgerytype/): CRUD completo, mismo codigo 'surgery.*'
+           en las dos features.
+         VACCINATION (vaccination/, vaccinationtype/): CRUD completo, mismo codigo
+           'vaccination.*' en las dos features.
+
+         Atados a los sub_modules TECNICOS que 258 ya sembro para las diez
+         capacidades clinicas (is_sellable=TRUE) mas MEDICAMENTS (is_sellable=FALSE,
+         catalogo tecnico compartido). SIN CONTEXTO A PROPOSITO, mismo argumento que
+         266/267/268/270/273: base_permissions y base_role_permissions son
+         estructura de plataforma, no oferta comercial -la pausa de 262-265/269/274
+         protege el catalogo COMERCIAL (catalog_item_sub_modules: que vende CORE),
+         no el catalogo TECNICO de que existe.
+
+         Backfill a empresas EXISTENTES acotado por company_entitlements, mismo
+         patron que 268/270/273: *.read con FULL o READ_ONLY; el resto (mutaciones)
+         solo FULL. Ninguno de estos diez submodulos esta atado a CORE (269/274): son
+         is_sellable=TRUE, se venden aparte -SCHEDULING/CLINICAL_HISTORY ya existen
+         como articulos de catalogo, el resto (VACCINATION, HOSPITALIZATION,
+         LABORATORY, DIAGNOSTIC_IMAGING, DEWORMING, SURGERY, SPA) no tiene todavia un
+         articulo comercial que los venda-, asi que estos backfills no insertan
+         ninguna fila hoy en ningun entorno hasta que una empresa tenga el
+         entitlement correspondiente; quedan listos para ese momento.
+
+         Todas las sentencias son idempotentes (guardas NOT EXISTS, nunca
+         INSERT IGNORE). -->
+
+    <changeSet id="275_clinical_care_base_permissions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT seed.name, seed.code, sm.id, TRUE
+            FROM (
+                SELECT 'Ver historia clinica' AS name, 'clinicalHistory.read' AS code, 'CLINICAL_HISTORY' AS sub_module_code
+                UNION ALL SELECT 'Crear consultas', 'consultation.create', 'CLINICAL_HISTORY'
+                UNION ALL SELECT 'Ver consultas', 'consultation.read', 'CLINICAL_HISTORY'
+
+                UNION ALL SELECT 'Crear desparasitaciones', 'deworming.create', 'DEWORMING'
+                UNION ALL SELECT 'Ver desparasitaciones', 'deworming.read', 'DEWORMING'
+                UNION ALL SELECT 'Editar desparasitaciones', 'deworming.update', 'DEWORMING'
+                UNION ALL SELECT 'Eliminar desparasitaciones', 'deworming.delete', 'DEWORMING'
+
+                UNION ALL SELECT 'Crear imagenes diagnosticas', 'diagnosticimaging.create', 'DIAGNOSTIC_IMAGING'
+                UNION ALL SELECT 'Ver imagenes diagnosticas', 'diagnosticimaging.read', 'DIAGNOSTIC_IMAGING'
+                UNION ALL SELECT 'Editar imagenes diagnosticas', 'diagnosticimaging.update', 'DIAGNOSTIC_IMAGING'
+                UNION ALL SELECT 'Eliminar imagenes diagnosticas', 'diagnosticimaging.delete', 'DIAGNOSTIC_IMAGING'
+
+                UNION ALL SELECT 'Crear hospitalizaciones', 'hospitalization.create', 'HOSPITALIZATION'
+                UNION ALL SELECT 'Ver hospitalizaciones', 'hospitalization.read', 'HOSPITALIZATION'
+                UNION ALL SELECT 'Editar hospitalizaciones', 'hospitalization.update', 'HOSPITALIZATION'
+                UNION ALL SELECT 'Eliminar hospitalizaciones', 'hospitalization.delete', 'HOSPITALIZATION'
+
+                UNION ALL SELECT 'Crear examenes de laboratorio', 'laboratoryTest.create', 'LABORATORY'
+                UNION ALL SELECT 'Ver examenes de laboratorio', 'laboratoryTest.read', 'LABORATORY'
+                UNION ALL SELECT 'Editar examenes de laboratorio', 'laboratoryTest.update', 'LABORATORY'
+                UNION ALL SELECT 'Eliminar examenes de laboratorio', 'laboratoryTest.delete', 'LABORATORY'
+
+                UNION ALL SELECT 'Crear prescripcion de medicamento', 'medicamentPrescription.create', 'MEDICAMENTS'
+                UNION ALL SELECT 'Crear prescripciones', 'prescription.create', 'MEDICAMENTS'
+                UNION ALL SELECT 'Ver prescripciones', 'prescription.read', 'MEDICAMENTS'
+                UNION ALL SELECT 'Editar prescripciones', 'prescription.update', 'MEDICAMENTS'
+                UNION ALL SELECT 'Eliminar prescripciones', 'prescription.delete', 'MEDICAMENTS'
+
+                UNION ALL SELECT 'Crear servicios de spa', 'spa.create', 'SPA'
+                UNION ALL SELECT 'Ver servicios de spa', 'spa.read', 'SPA'
+                UNION ALL SELECT 'Editar servicios de spa', 'spa.update', 'SPA'
+                UNION ALL SELECT 'Eliminar servicios de spa', 'spa.delete', 'SPA'
+
+                UNION ALL SELECT 'Crear cirugias', 'surgery.create', 'SURGERY'
+                UNION ALL SELECT 'Ver cirugias', 'surgery.read', 'SURGERY'
+                UNION ALL SELECT 'Editar cirugias', 'surgery.update', 'SURGERY'
+                UNION ALL SELECT 'Eliminar cirugias', 'surgery.delete', 'SURGERY'
+
+                UNION ALL SELECT 'Crear vacunaciones', 'vaccination.create', 'VACCINATION'
+                UNION ALL SELECT 'Ver vacunaciones', 'vaccination.read', 'VACCINATION'
+                UNION ALL SELECT 'Editar vacunaciones', 'vaccination.update', 'VACCINATION'
+                UNION ALL SELECT 'Eliminar vacunaciones', 'vaccination.delete', 'VACCINATION'
+            ) seed
+            JOIN sub_modules sm ON sm.code = seed.sub_module_code
+            LEFT JOIN base_permissions existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_permissions
+                WHERE code IN (
+                    'clinicalHistory.read', 'consultation.create', 'consultation.read',
+                    'deworming.create', 'deworming.read', 'deworming.update', 'deworming.delete',
+                    'diagnosticimaging.create', 'diagnosticimaging.read', 'diagnosticimaging.update', 'diagnosticimaging.delete',
+                    'hospitalization.create', 'hospitalization.read', 'hospitalization.update', 'hospitalization.delete',
+                    'laboratoryTest.create', 'laboratoryTest.read', 'laboratoryTest.update', 'laboratoryTest.delete',
+                    'medicamentPrescription.create', 'prescription.create', 'prescription.read', 'prescription.update', 'prescription.delete',
+                    'spa.create', 'spa.read', 'spa.update', 'spa.delete',
+                    'surgery.create', 'surgery.read', 'surgery.update', 'surgery.delete',
+                    'vaccination.create', 'vaccination.read', 'vaccination.update', 'vaccination.delete');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="275_clinical_care_base_role_permissions_admin" author="orlando">
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN (
+                'clinicalHistory.read', 'consultation.create', 'consultation.read',
+                'deworming.create', 'deworming.read', 'deworming.update', 'deworming.delete',
+                'diagnosticimaging.create', 'diagnosticimaging.read', 'diagnosticimaging.update', 'diagnosticimaging.delete',
+                'hospitalization.create', 'hospitalization.read', 'hospitalization.update', 'hospitalization.delete',
+                'laboratoryTest.create', 'laboratoryTest.read', 'laboratoryTest.update', 'laboratoryTest.delete',
+                'medicamentPrescription.create', 'prescription.create', 'prescription.read', 'prescription.update', 'prescription.delete',
+                'spa.create', 'spa.read', 'spa.update', 'spa.delete',
+                'surgery.create', 'surgery.read', 'surgery.update', 'surgery.delete',
+                'vaccination.create', 'vaccination.read', 'vaccination.update', 'vaccination.delete')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id FROM base_permissions
+                    WHERE code IN (
+                        'clinicalHistory.read', 'consultation.create', 'consultation.read',
+                        'deworming.create', 'deworming.read', 'deworming.update', 'deworming.delete',
+                        'diagnosticimaging.create', 'diagnosticimaging.read', 'diagnosticimaging.update', 'diagnosticimaging.delete',
+                        'hospitalization.create', 'hospitalization.read', 'hospitalization.update', 'hospitalization.delete',
+                        'laboratoryTest.create', 'laboratoryTest.read', 'laboratoryTest.update', 'laboratoryTest.delete',
+                        'medicamentPrescription.create', 'prescription.create', 'prescription.read', 'prescription.update', 'prescription.delete',
+                        'spa.create', 'spa.read', 'spa.update', 'spa.delete',
+                        'surgery.create', 'surgery.read', 'surgery.update', 'surgery.delete',
+                        'vaccination.create', 'vaccination.read', 'vaccination.update', 'vaccination.delete'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="275_clinical_care_permissions_backfill_companies_read" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, bp.sub_module_id, 1
+            FROM company_entitlements ce
+            JOIN base_permissions bp ON bp.sub_module_id = ce.sub_module_id
+            JOIN sub_modules sm ON sm.id = bp.sub_module_id
+                AND sm.code IN ('CLINICAL_HISTORY', 'DEWORMING', 'DIAGNOSTIC_IMAGING',
+                                 'HOSPITALIZATION', 'LABORATORY', 'MEDICAMENTS', 'SPA',
+                                 'SURGERY', 'VACCINATION')
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code IN ('clinicalHistory.read', 'consultation.read',
+                               'deworming.read', 'diagnosticimaging.read',
+                               'hospitalization.read', 'laboratoryTest.read',
+                               'prescription.read', 'spa.read', 'surgery.read',
+                               'vaccination.read')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM permissions
+                WHERE code IN ('clinicalHistory.read', 'consultation.read',
+                                'deworming.read', 'diagnosticimaging.read',
+                                'hospitalization.read', 'laboratoryTest.read',
+                                'prescription.read', 'spa.read', 'surgery.read',
+                                'vaccination.read');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="275_clinical_care_permissions_backfill_companies_write" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, bp.sub_module_id, 1
+            FROM company_entitlements ce
+            JOIN base_permissions bp ON bp.sub_module_id = ce.sub_module_id
+            JOIN sub_modules sm ON sm.id = bp.sub_module_id
+                AND sm.code IN ('CLINICAL_HISTORY', 'DEWORMING', 'DIAGNOSTIC_IMAGING',
+                                 'HOSPITALIZATION', 'LABORATORY', 'MEDICAMENTS', 'SPA',
+                                 'SURGERY', 'VACCINATION')
+            WHERE ce.access_level = 'FULL'
+              AND bp.code IN ('consultation.create',
+                               'deworming.create', 'deworming.update', 'deworming.delete',
+                               'diagnosticimaging.create', 'diagnosticimaging.update', 'diagnosticimaging.delete',
+                               'hospitalization.create', 'hospitalization.update', 'hospitalization.delete',
+                               'laboratoryTest.create', 'laboratoryTest.update', 'laboratoryTest.delete',
+                               'medicamentPrescription.create', 'prescription.create', 'prescription.update', 'prescription.delete',
+                               'spa.create', 'spa.update', 'spa.delete',
+                               'surgery.create', 'surgery.update', 'surgery.delete',
+                               'vaccination.create', 'vaccination.update', 'vaccination.delete')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM permissions
+                WHERE code IN ('consultation.create',
+                                'deworming.create', 'deworming.update', 'deworming.delete',
+                                'diagnosticimaging.create', 'diagnosticimaging.update', 'diagnosticimaging.delete',
+                                'hospitalization.create', 'hospitalization.update', 'hospitalization.delete',
+                                'laboratoryTest.create', 'laboratoryTest.update', 'laboratoryTest.delete',
+                                'medicamentPrescription.create', 'prescription.create', 'prescription.update', 'prescription.delete',
+                                'spa.create', 'spa.update', 'spa.delete',
+                                'surgery.create', 'surgery.update', 'surgery.delete',
+                                'vaccination.create', 'vaccination.update', 'vaccination.delete');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="275_clinical_care_role_permissions_backfill_admin" author="orlando">
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id
+                AND p.code IN (
+                    'clinicalHistory.read', 'consultation.create', 'consultation.read',
+                    'deworming.create', 'deworming.read', 'deworming.update', 'deworming.delete',
+                    'diagnosticimaging.create', 'diagnosticimaging.read', 'diagnosticimaging.update', 'diagnosticimaging.delete',
+                    'hospitalization.create', 'hospitalization.read', 'hospitalization.update', 'hospitalization.delete',
+                    'laboratoryTest.create', 'laboratoryTest.read', 'laboratoryTest.update', 'laboratoryTest.delete',
+                    'medicamentPrescription.create', 'prescription.create', 'prescription.read', 'prescription.update', 'prescription.delete',
+                    'spa.create', 'spa.read', 'spa.update', 'spa.delete',
+                    'surgery.create', 'surgery.read', 'surgery.update', 'surgery.delete',
+                    'vaccination.create', 'vaccination.read', 'vaccination.update', 'vaccination.delete')
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM role_permissions
+                WHERE permission_id IN (
+                    SELECT id FROM permissions
+                    WHERE code IN (
+                        'clinicalHistory.read', 'consultation.create', 'consultation.read',
+                        'deworming.create', 'deworming.read', 'deworming.update', 'deworming.delete',
+                        'diagnosticimaging.create', 'diagnosticimaging.read', 'diagnosticimaging.update', 'diagnosticimaging.delete',
+                        'hospitalization.create', 'hospitalization.read', 'hospitalization.update', 'hospitalization.delete',
+                        'laboratoryTest.create', 'laboratoryTest.read', 'laboratoryTest.update', 'laboratoryTest.delete',
+                        'medicamentPrescription.create', 'prescription.create', 'prescription.read', 'prescription.update', 'prescription.delete',
+                        'spa.create', 'spa.read', 'spa.update', 'spa.delete',
+                        'surgery.create', 'surgery.read', 'surgery.update', 'surgery.delete',
+                        'vaccination.create', 'vaccination.read', 'vaccination.update', 'vaccination.delete'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

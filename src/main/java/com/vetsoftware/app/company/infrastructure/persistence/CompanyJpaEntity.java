@@ -1,7 +1,6 @@
 package com.vetsoftware.app.company.infrastructure.persistence;
 
 import com.vetsoftware.app.city.infrastructure.persistence.CityJpaEntity;
-import com.vetsoftware.app.membership.infrastructure.persistence.MembershipJpaEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.SQLDelete;
@@ -31,10 +30,6 @@ public class CompanyJpaEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "city_id", nullable = false)
     private CityJpaEntity city;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "membership_id", nullable = false)
-    private MembershipJpaEntity membership;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
@@ -95,14 +90,6 @@ public class CompanyJpaEntity {
 
     public void setCity(CityJpaEntity city) {
         this.city = city;
-    }
-
-    public MembershipJpaEntity getMembership() {
-        return membership;
-    }
-
-    public void setMembership(MembershipJpaEntity membership) {
-        this.membership = membership;
     }
 
     public LocalDateTime getCreatedDate() {

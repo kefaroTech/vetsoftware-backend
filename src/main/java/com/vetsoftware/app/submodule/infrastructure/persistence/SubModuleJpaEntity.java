@@ -25,6 +25,17 @@ public class SubModuleJpaEntity {
     @JoinColumn(name = "module_id", nullable = false)
     private ModuleJpaEntity module;
 
+    /**
+     * Sin {@code columnDefinition}: el proyecto fija
+     * {@code preferred_boolean_jdbc_type: TINYINT}, y un {@code TINYINT(1)} el
+     * driver lo reporta como {@code BIT} y rompe {@code ddl-auto: validate}.
+     */
+    @Column(name = "is_sellable", nullable = false)
+    private boolean sellable = false;
+
+    @Column(name = "read_only_capable", nullable = false)
+    private boolean readOnlyCapable = false;
+
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
@@ -68,6 +79,22 @@ public class SubModuleJpaEntity {
 
     public void setModule(ModuleJpaEntity module) {
         this.module = module;
+    }
+
+    public boolean isSellable() {
+        return sellable;
+    }
+
+    public void setSellable(boolean sellable) {
+        this.sellable = sellable;
+    }
+
+    public boolean isReadOnlyCapable() {
+        return readOnlyCapable;
+    }
+
+    public void setReadOnlyCapable(boolean readOnlyCapable) {
+        this.readOnlyCapable = readOnlyCapable;
     }
 
     public LocalDateTime getCreatedDate() {

@@ -56,11 +56,31 @@ public class WebMvcSliceConfig {
      */
     public static final Long EMPLOYEE_ID = 4L;
 
+    /**
+     * Cuenta de plataforma del contexto en las rodajas. Se stubea por la misma
+     * razon que {@link #EMPLOYEE_ID} y con una consecuencia peor: el modelo de
+     * suscripciones guarda quien tomo cada decision comercial
+     * —{@code price_lists.published_by_system_user_id},
+     * {@code subscription_amendments.requested_by_system_user_id},
+     * {@code subscription_billing_documents.external_registered_by_system_user_id}—
+     * y esos controllers leen {@code currentSystemUserId()}.
+     *
+     * <p>
+     * Sin stub, Mockito devuelve 0L para un {@code Long} —no null— y una rodaja que
+     * afirma la firma pasa en VERDE con una tarifa publicada por un usuario de
+     * sistema inexistente. El test no falla: miente. Un valor propio y distinto de
+     * {@code EMPLOYEE_ID} deja ver en la asercion cual de los dos actores firmo.
+     */
+    public static final Long SYSTEM_USER_ID = 6L;
+
     @Bean
     Authz authz() {
         Authz authz = mock(Authz.class);
         org.mockito.Mockito.lenient().when(authz.currentCompanyId()).thenReturn(COMPANY_ID);
         org.mockito.Mockito.lenient().when(authz.currentEmployeeIdOrNull()).thenReturn(EMPLOYEE_ID);
+        org.mockito.Mockito.lenient().when(authz.currentSystemUserId()).thenReturn(SYSTEM_USER_ID);
+        org.mockito.Mockito.lenient().when(authz.currentSystemUserIdOrNull())
+                .thenReturn(SYSTEM_USER_ID);
         org.mockito.Mockito.lenient().when(authz.isMyCompany(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(true);
         return authz;

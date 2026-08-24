@@ -3,11 +3,9 @@ package com.vetsoftware.app.submodule.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
@@ -40,6 +38,8 @@ class SubModuleTest {
         private String name = "Reportes";
         private String code = "REP";
         private ModuleRef module = FACTURACION;
+        private boolean sellable = true;
+        private boolean readOnlyCapable = true;
         private LocalDateTime createdDate = CREADO;
         private boolean enabled = true;
 
@@ -58,8 +58,19 @@ class SubModuleTest {
             return this;
         }
 
+        private Builder sellable(boolean v) {
+            this.sellable = v;
+            return this;
+        }
+
+        private Builder readOnlyCapable(boolean v) {
+            this.readOnlyCapable = v;
+            return this;
+        }
+
         private SubModule build() {
-            return new SubModule(id, name, code, module, createdDate, null, enabled);
+            return new SubModule(id, name, code, module, sellable, readOnlyCapable, createdDate,
+                    null, enabled);
         }
     }
 
@@ -76,25 +87,35 @@ class SubModuleTest {
             assertThat(subModule.getName()).isEqualTo("Reportes");
             assertThat(subModule.getCode()).isEqualTo("REP");
             assertThat(subModule.getModule()).isEqualTo(FACTURACION);
+            assertThat(subModule.isSellable()).isTrue();
+            assertThat(subModule.isReadOnlyCapable()).isTrue();
             assertThat(subModule.getCreatedDate()).isEqualTo(CREADO);
             assertThat(subModule.isEnabled()).isTrue();
         }
 
         @Test
+        @DisplayName("las dos banderas comerciales no se cruzan entre si")
+        void las_dos_banderas_comerciales_no_se_cruzan() {
+            SubModule interno = valido().sellable(false).readOnlyCapable(true).build();
+
+            assertThat(interno.isSellable()).isFalse();
+            assertThat(interno.isReadOnlyCapable()).isTrue();
+        }
+
+        @Test
         @DisplayName("create() nace sin id, habilitado y con el modulo dado")
         void create_nace_sin_id_habilitado_y_con_el_modulo_dado() {
-            SubModule subModule = SubModule.create("Reportes", "REP", FACTURACION);
+            SubModule subModule = SubModule.create("Reportes", "REP", FACTURACION, true, false,
+                    CREADO);
 
             assertThat(subModule.getId()).isNull();
             assertThat(subModule.getName()).isEqualTo("Reportes");
             assertThat(subModule.getCode()).isEqualTo("REP");
             assertThat(subModule.getModule()).isEqualTo(FACTURACION);
+            assertThat(subModule.isSellable()).isTrue();
+            assertThat(subModule.isReadOnlyCapable()).isFalse();
             assertThat(subModule.isEnabled()).isTrue();
-            // createdDate lo pone LocalDateTime.now() dentro del factory: no hay Clock
-            // inyectable, asi que la asercion tiene que ser una ventana. Deuda anotada en
-            // "Determinismo" del CLAUDE.md.
-            assertThat(subModule.getCreatedDate()).isCloseTo(LocalDateTime.now(),
-                    within(10, ChronoUnit.SECONDS));
+            assertThat(subModule.getCreatedDate()).isEqualTo(CREADO);
         }
 
         @ParameterizedTest(name = "longitud {0}")
@@ -160,28 +181,30 @@ class SubModuleTest {
         static Stream<Arguments> casosInvalidos() {
             return Stream.of(
                     arguments("name null",
-                            (Consumer<SubModule>) s -> s.update(null, "REP", FACTURACION),
+                            (Consumer<SubModule>) s -> s
+                                    .update(null, "REP", FACTURACION, true, true),
                             "name is required"),
                     arguments("name vacio",
-                            (Consumer<SubModule>) s -> s.update("", "REP", FACTURACION),
+                            (Consumer<SubModule>) s -> s.update("", "REP", FACTURACION, true, true),
                             "name is required"),
                     arguments("name de 101 chars",
-                            (Consumer<SubModule>) s -> s.update("x".repeat(101), "REP",
-                                    FACTURACION),
+                            (Consumer<SubModule>) s -> s.update("x".repeat(101), "REP", FACTURACION,
+                                    true, true),
                             "name must be 100 chars or less"),
                     arguments("code null",
-                            (Consumer<SubModule>) s -> s.update("Reportes", null, FACTURACION),
+                            (Consumer<SubModule>) s -> s.update("Reportes", null, FACTURACION, true,
+                                    true),
                             "code is required"),
                     arguments("code vacio",
-                            (Consumer<SubModule>) s -> s.update("Reportes", "", FACTURACION),
+                            (Consumer<SubModule>) s -> s.update("Reportes", "", FACTURACION, true,
+                                    true),
                             "code is required"),
                     arguments("code de 51 chars",
                             (Consumer<SubModule>) s -> s.update("Reportes", "x".repeat(51),
-                                    FACTURACION),
+                                    FACTURACION, true, true),
                             "code must be 50 chars or less"),
-                    arguments("module null",
-                            (Consumer<SubModule>) s -> s.update("Reportes", "REP", null),
-                            "module is required"));
+                    arguments("module null", (Consumer<SubModule>) s -> s.update("Reportes", "REP",
+                            null, true, true), "module is required"));
         }
 
         @Test
@@ -189,7 +212,7 @@ class SubModuleTest {
         void reemplaza_nombre_codigo_y_modulo_conserva_el_resto() {
             SubModule subModule = valido().build();
 
-            subModule.update("Facturacion Avanzada", "FACT-AV", INVENTARIO);
+            subModule.update("Facturacion Avanzada", "FACT-AV", INVENTARIO, false, false);
 
             assertThat(subModule.getName()).isEqualTo("Facturacion Avanzada");
             assertThat(subModule.getCode()).isEqualTo("FACT-AV");

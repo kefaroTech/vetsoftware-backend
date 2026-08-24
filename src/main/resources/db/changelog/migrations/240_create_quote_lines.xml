@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 3 (suscripciones-tablas.md #11). Renglón congelado de la
+         oferta: los campos item_* son copias, no referencias. Sin company_id (frontera de tenant en
+         quotes, ver suscripciones-modelo.md §4.7). Exenta de @Version (E1_APPEND_ONLY):
+         line_number y tax_treatment son [AÑADIDOS].
+
+         Issue #388: contracted_quantity e included_quantity son [AÑADIDOS] respecto de la primera
+         redacción de esta ficha, que daba por buena una sola `quantity`. El configurador devuelve
+         la cantidad BRUTA que pidió el cliente, pero lo que se factura es esa cantidad menos las
+         unidades ya incluidas en el tramo de la tarifa (2 usuarios incluidos + 3 pedidos = se cobra
+         1). Un solo campo no puede guardar a la vez lo que el cliente contrató y lo que se le
+         cobra, y esas dos cifras van CONGELADAS -mismo motivo que unit_amount e item_name: editar
+         un tramo de la tarifa no puede cambiar retroactivamente cuántas unidades le sobran a quien
+         firmó hace un año (la causa número uno de sobrefacturación, tal como ya lo dice esta misma
+         especificación para subscription_items). Este changeset todavía no se había aplicado en
+         ningún entorno, así que se corrige in situ en vez de con un ALTER aparte. -->
+    <changeSet id="240_create_quote_lines" author="orlando">
+        <createTable tableName="quote_lines">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="quote_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_quote_lines_quote"
+                             references="quotes(id)"/>
+            </column>
+            <column name="catalog_item_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_quote_lines_item"
+                             references="catalog_items(id)"/>
+            </column>
+            <column name="line_number" type="INT"><constraints nullable="false"/></column>
+            <column name="item_code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+            <column name="item_name" type="VARCHAR(120)"><constraints nullable="false"/></column>
+            <column name="item_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="quantity" type="INT"><constraints nullable="false"/></column>
+            <column name="contracted_quantity" type="INT"><constraints nullable="false"/></column>
+            <column name="included_quantity" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="discount_percent" type="DECIMAL(5,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="discount_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_rate" type="DECIMAL(5,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_treatment" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="tax_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="line_total" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="quote_lines" columnNames="quote_id, line_number"
+                             constraintName="uq_quote_lines_number"/>
+        <addUniqueConstraint tableName="quote_lines" columnNames="quote_id, catalog_item_id"
+                             constraintName="uq_quote_lines_item"/>
+
+        <sql><![CDATA[
+            ALTER TABLE quote_lines
+                ADD CONSTRAINT chk_quote_lines_quantity CHECK (quantity > 0),
+                ADD CONSTRAINT chk_quote_lines_contracted_quantity CHECK (contracted_quantity > 0),
+                ADD CONSTRAINT chk_quote_lines_included_quantity CHECK (included_quantity >= 0),
+                ADD CONSTRAINT chk_quote_lines_amounts
+                    CHECK (unit_amount >= 0 AND discount_amount >= 0 AND tax_amount >= 0
+                           AND line_total >= 0),
+                ADD CONSTRAINT chk_quote_lines_discount_percent
+                    CHECK (discount_percent >= 0 AND discount_percent <= 100),
+                ADD CONSTRAINT chk_quote_lines_tax_rate
+                    CHECK (tax_rate >= 0 AND tax_rate <= 100),
+                ADD CONSTRAINT chk_quote_lines_item_type
+                    CHECK (item_type IN ('MODULE','CAPACITY','ONE_TIME','BUNDLE')),
+                ADD CONSTRAINT chk_quote_lines_tax_treatment
+                    CHECK (tax_treatment IN ('TAXED','EXEMPT','EXCLUDED'))
+        ]]></sql>
+
+        <rollback>
+            <dropTable tableName="quote_lines"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

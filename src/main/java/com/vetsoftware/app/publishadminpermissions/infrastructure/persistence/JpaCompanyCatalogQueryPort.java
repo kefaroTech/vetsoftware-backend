@@ -1,6 +1,5 @@
 package com.vetsoftware.app.publishadminpermissions.infrastructure.persistence;
 
-import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.CompanyAdminContext;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.CompanyCatalogQueryPort;
 import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaEntity;
@@ -25,8 +24,6 @@ public class JpaCompanyCatalogQueryPort implements CompanyCatalogQueryPort {
     }
 
     private CompanyAdminContext toContext(RoleJpaEntity role) {
-        CompanyJpaEntity company = role.getCompany();
-        return new CompanyAdminContext(company.getId(), company.getMembership().getId(),
-                role.getId());
+        return new CompanyAdminContext(role.getCompany().getId(), role.getId());
     }
 }

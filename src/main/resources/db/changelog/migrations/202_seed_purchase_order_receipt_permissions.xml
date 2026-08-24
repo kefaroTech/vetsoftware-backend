@@ -7,7 +7,7 @@
     <!-- F2 compras. Siembra los permisos de orden de compra y recepción (purchaseOrder.* / goodsReceipt.*) bajo el
          sub_module PURCHASES ya creado en la migración 199 (proveedores). Mismo patrón que 191/199: base_permissions +
          base_role_permissions al rol base ADMIN + backfill a empresas existentes (permissions + role_permissions ADMIN).
-         El sub_module PURCHASES y su membership_sub_modules ya existen (199) — no se recrean aquí.
+         El sub_module PURCHASES ya existe (199) — no se recrea aquí.
          Todas las sentencias son idempotentes (NOT EXISTS / claves por code).
          OJO (memoria): sembrar por SQL NO invalida la cache Redis `employee-permissions`; hace falta rebuild/restart. -->
 

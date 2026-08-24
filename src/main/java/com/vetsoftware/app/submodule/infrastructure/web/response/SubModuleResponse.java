@@ -8,6 +8,8 @@ public record SubModuleResponse(@Schema(requiredMode = Schema.RequiredMode.REQUI
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ModuleSummary module,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean sellable,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean readOnlyCapable,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

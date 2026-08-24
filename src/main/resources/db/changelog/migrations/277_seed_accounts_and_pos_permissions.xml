@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #517 (cuarta tanda: cuentas por cobrar y punto de venta). Mismo patron
+         de 268/270/273/275/276. Siembra las 12 autoridades de cuentas abiertas
+         (fiado), sus cargos, y ventas de POS/reportes de venta.
+
+         Verificado uno a uno contra el @PreAuthorize real:
+
+         OPEN_ACCOUNTS (openaccount/, generalchargeopenaccount/,
+           productchargeopenaccount/, servicechargeopenaccount/,
+           debtopenaccount/): 'openAccount.create/read/update/delete' (la cuenta en
+           si -no hay openAccount.update aparte del que expone
+           ChangeOpenAccountStatusUseCase-), 'chargeOpenAccount.create/read/delete'
+           -mismo codigo reutilizado por TRES features de cargo (general/producto/
+           servicio), sin 'chargeOpenAccount.update': ningun @PreAuthorize real lo
+           exige, los cargos se anulan (Void*), no se editan- y
+           'debtOpenAccount.create/read/delete' -mismo patron, sin update-.
+
+         CASH (electronicdocument/, salesreport/): 'pos.create' -seis casos de uso
+           que emiten documentos de venta desde el POS (RegisterPosSaleUseCase,
+           ConvertPosToInvoiceUseCase, IssueCreditNoteUseCase, IssueDebitNoteUseCase,
+           EmitElectronicDocumentFromAccountUseCase,
+           TransmitElectronicDocumentUseCase); el propio Javadoc de
+           RegisterPosSaleUseCase dice "el gate del modulo BILLING (transmision a la
+           DIAN) es independiente: sin el modulo el documento igual se persiste
+           PENDIENTE", asi que 'pos.*' es deliberadamente CASH, no BILLING- y
+           'pos.read' (consulta de documentos emitidos). 'salesreport.read' -mismo
+           criterio que 'purchasereport.read' en PURCHASES: el reporte de ventas
+           vive junto a caja/POS, no en un submodulo de reportes aparte que no
+           existe-.
+
+         SIN CONTEXTO A PROPOSITO, mismo argumento que 266/267/268/270/273/275/276.
+
+         Backfill a empresas EXISTENTES acotado por company_entitlements: *.read con
+         FULL o READ_ONLY; el resto solo FULL. OPEN_ACCOUNTS y CASH son
+         is_sellable=TRUE (258) y no estan atadas a CORE (269/274) -CASH_REGISTER SI
+         es un articulo comercial de catalogo (263) atado a CASH, asi que el
+         backfill de 'pos.*'/'salesreport.read' insertara filas para las empresas
+         que ya tengan CASH_REGISTER contratado-.
+
+         Todas las sentencias son idempotentes (guardas NOT EXISTS, nunca
+         INSERT IGNORE). -->
+
+    <changeSet id="277_accounts_and_pos_base_permissions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT seed.name, seed.code, sm.id, TRUE
+            FROM (
+                SELECT 'Crear cuentas abiertas' AS name, 'openAccount.create' AS code, 'OPEN_ACCOUNTS' AS sub_module_code
+                UNION ALL SELECT 'Ver cuentas abiertas', 'openAccount.read', 'OPEN_ACCOUNTS'
+                UNION ALL SELECT 'Editar cuentas abiertas', 'openAccount.update', 'OPEN_ACCOUNTS'
+                UNION ALL SELECT 'Eliminar cuentas abiertas', 'openAccount.delete', 'OPEN_ACCOUNTS'
+                UNION ALL SELECT 'Crear cargos a cuenta abierta', 'chargeOpenAccount.create', 'OPEN_ACCOUNTS'
+                UNION ALL SELECT 'Ver cargos a cuenta abierta', 'chargeOpenAccount.read', 'OPEN_ACCOUNTS'
+                UNION ALL SELECT 'Anular cargos a cuenta abierta', 'chargeOpenAccount.delete', 'OPEN_ACCOUNTS'
+                UNION ALL SELECT 'Crear abonos de deuda', 'debtOpenAccount.create', 'OPEN_ACCOUNTS'
+                UNION ALL SELECT 'Ver abonos de deuda', 'debtOpenAccount.read', 'OPEN_ACCOUNTS'
+                UNION ALL SELECT 'Anular abonos de deuda', 'debtOpenAccount.delete', 'OPEN_ACCOUNTS'
+
+                UNION ALL SELECT 'Emitir documentos de POS', 'pos.create', 'CASH'
+                UNION ALL SELECT 'Ver documentos de POS', 'pos.read', 'CASH'
+                UNION ALL SELECT 'Ver reporte de ventas', 'salesreport.read', 'CASH'
+            ) seed
+            JOIN sub_modules sm ON sm.code = seed.sub_module_code
+            LEFT JOIN base_permissions existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_permissions
+                WHERE code IN (
+                    'openAccount.create', 'openAccount.read', 'openAccount.update', 'openAccount.delete',
+                    'chargeOpenAccount.create', 'chargeOpenAccount.read', 'chargeOpenAccount.delete',
+                    'debtOpenAccount.create', 'debtOpenAccount.read', 'debtOpenAccount.delete',
+                    'pos.create', 'pos.read', 'salesreport.read');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="277_accounts_and_pos_base_role_permissions_admin" author="orlando">
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN (
+                'openAccount.create', 'openAccount.read', 'openAccount.update', 'openAccount.delete',
+                'chargeOpenAccount.create', 'chargeOpenAccount.read', 'chargeOpenAccount.delete',
+                'debtOpenAccount.create', 'debtOpenAccount.read', 'debtOpenAccount.delete',
+                'pos.create', 'pos.read', 'salesreport.read')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id FROM base_permissions
+                    WHERE code IN (
+                        'openAccount.create', 'openAccount.read', 'openAccount.update', 'openAccount.delete',
+                        'chargeOpenAccount.create', 'chargeOpenAccount.read', 'chargeOpenAccount.delete',
+                        'debtOpenAccount.create', 'debtOpenAccount.read', 'debtOpenAccount.delete',
+                        'pos.create', 'pos.read', 'salesreport.read'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="277_accounts_and_pos_permissions_backfill_companies_read" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, bp.sub_module_id, 1
+            FROM company_entitlements ce
+            JOIN base_permissions bp ON bp.sub_module_id = ce.sub_module_id
+            JOIN sub_modules sm ON sm.id = bp.sub_module_id AND sm.code IN ('OPEN_ACCOUNTS', 'CASH')
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code IN ('openAccount.read', 'chargeOpenAccount.read',
+                               'debtOpenAccount.read', 'pos.read', 'salesreport.read')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM permissions
+                WHERE code IN ('openAccount.read', 'chargeOpenAccount.read',
+                                'debtOpenAccount.read', 'pos.read', 'salesreport.read');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="277_accounts_and_pos_permissions_backfill_companies_write" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, bp.sub_module_id, 1
+            FROM company_entitlements ce
+            JOIN base_permissions bp ON bp.sub_module_id = ce.sub_module_id
+            JOIN sub_modules sm ON sm.id = bp.sub_module_id AND sm.code IN ('OPEN_ACCOUNTS', 'CASH')
+            WHERE ce.access_level = 'FULL'
+              AND bp.code IN ('openAccount.create', 'openAccount.update', 'openAccount.delete',
+                               'chargeOpenAccount.create', 'chargeOpenAccount.delete',
+                               'debtOpenAccount.create', 'debtOpenAccount.delete',
+                               'pos.create')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM permissions
+                WHERE code IN ('openAccount.create', 'openAccount.update', 'openAccount.delete',
+                                'chargeOpenAccount.create', 'chargeOpenAccount.delete',
+                                'debtOpenAccount.create', 'debtOpenAccount.delete',
+                                'pos.create');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="277_accounts_and_pos_role_permissions_backfill_admin" author="orlando">
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id
+                AND p.code IN (
+                    'openAccount.create', 'openAccount.read', 'openAccount.update', 'openAccount.delete',
+                    'chargeOpenAccount.create', 'chargeOpenAccount.read', 'chargeOpenAccount.delete',
+                    'debtOpenAccount.create', 'debtOpenAccount.read', 'debtOpenAccount.delete',
+                    'pos.create', 'pos.read', 'salesreport.read')
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM role_permissions
+                WHERE permission_id IN (
+                    SELECT id FROM permissions
+                    WHERE code IN (
+                        'openAccount.create', 'openAccount.read', 'openAccount.update', 'openAccount.delete',
+                        'chargeOpenAccount.create', 'chargeOpenAccount.read', 'chargeOpenAccount.delete',
+                        'debtOpenAccount.create', 'debtOpenAccount.read', 'debtOpenAccount.delete',
+                        'pos.create', 'pos.read', 'salesreport.read'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

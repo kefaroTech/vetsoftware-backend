@@ -12,7 +12,6 @@ import com.vetsoftware.app.company.application.command.UpdateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.out.CityQueryPort;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
-import com.vetsoftware.app.company.application.port.out.MembershipQueryPort;
 import com.vetsoftware.app.company.domain.Company;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.company.testsupport.CompanyMother;
@@ -35,8 +34,6 @@ class UpdateCompanyServiceTest {
     private CompanyRepository repository;
     @Mock
     private CityQueryPort cityQueryPort;
-    @Mock
-    private MembershipQueryPort membershipQueryPort;
 
     @InjectMocks
     private UpdateCompanyService service;
@@ -44,11 +41,9 @@ class UpdateCompanyServiceTest {
     @Captor
     private ArgumentCaptor<Company> companyCaptor;
 
-    private void nuevasReferenciasExisten() {
+    private void laNuevaCiudadExiste() {
         when(cityQueryPort.findById(CompanyMother.MEDELLIN.id()))
                 .thenReturn(Optional.of(CompanyMother.MEDELLIN));
-        when(membershipQueryPort.findById(CompanyMother.BASICA.id()))
-                .thenReturn(Optional.of(CompanyMother.BASICA));
     }
 
     @Nested
@@ -60,7 +55,7 @@ class UpdateCompanyServiceTest {
         void muta_el_agregado_cargado_con_los_valores_del_comando() {
             Company existente = CompanyMother.clinicaNorte();
             when(repository.findById(CompanyMother.COMPANY_ID)).thenReturn(Optional.of(existente));
-            nuevasReferenciasExisten();
+            laNuevaCiudadExiste();
             when(repository.save(any())).thenReturn(existente);
 
             service.execute(CompanyMother.comandoActualizar());
@@ -73,7 +68,6 @@ class UpdateCompanyServiceTest {
             assertThat(guardada.getAddress()).isEqualTo("Carrera 45 #10-20");
             assertThat(guardada.getContactNumber()).isEqualTo("3009876543");
             assertThat(guardada.getCity()).isEqualTo(CompanyMother.MEDELLIN);
-            assertThat(guardada.getMembership()).isEqualTo(CompanyMother.BASICA);
         }
 
         @Test
@@ -81,7 +75,7 @@ class UpdateCompanyServiceTest {
         void conserva_id_fecha_y_estado() {
             Company existente = CompanyMother.clinicaNorte();
             when(repository.findById(CompanyMother.COMPANY_ID)).thenReturn(Optional.of(existente));
-            nuevasReferenciasExisten();
+            laNuevaCiudadExiste();
             when(repository.save(any())).thenReturn(existente);
 
             service.execute(CompanyMother.comandoActualizar());
@@ -97,7 +91,7 @@ class UpdateCompanyServiceTest {
         void devuelve_el_dto_de_la_empresa_guardada() {
             Company existente = CompanyMother.clinicaNorte();
             when(repository.findById(CompanyMother.COMPANY_ID)).thenReturn(Optional.of(existente));
-            nuevasReferenciasExisten();
+            laNuevaCiudadExiste();
             when(repository.save(any())).thenReturn(existente);
 
             CompanyDto dto = service.execute(CompanyMother.comandoActualizar());
@@ -106,7 +100,6 @@ class UpdateCompanyServiceTest {
             assertThat(dto.name()).isEqualTo("Clinica Sur");
             assertThat(dto.identifier()).isEqualTo("NIT-901");
             assertThat(dto.city().id()).isEqualTo(CompanyMother.MEDELLIN.id());
-            assertThat(dto.membership().status()).isEqualTo("TRIAL");
         }
     }
 
@@ -115,7 +108,7 @@ class UpdateCompanyServiceTest {
     class Errores {
 
         @Test
-        @DisplayName("empresa inexistente: no resuelve referencias ni escribe")
+        @DisplayName("empresa inexistente: no resuelve la ciudad ni escribe")
         void empresa_inexistente_no_escribe() {
             when(repository.findById(CompanyMother.COMPANY_ID)).thenReturn(Optional.empty());
 
@@ -124,11 +117,11 @@ class UpdateCompanyServiceTest {
                     .hasMessageContaining("Company not found: 9");
 
             verify(repository, never()).save(any());
-            verifyNoInteractions(cityQueryPort, membershipQueryPort);
+            verifyNoInteractions(cityQueryPort);
         }
 
         @Test
-        @DisplayName("ciudad inexistente: no escribe y ni siquiera consulta la membresia")
+        @DisplayName("ciudad inexistente: no escribe")
         void ciudad_inexistente_no_escribe() {
             when(repository.findById(CompanyMother.COMPANY_ID))
                     .thenReturn(Optional.of(CompanyMother.clinicaNorte()));
@@ -139,24 +132,6 @@ class UpdateCompanyServiceTest {
                     .hasMessageContaining("City not found: 12");
 
             verify(repository, never()).save(any());
-            verifyNoInteractions(membershipQueryPort);
-        }
-
-        @Test
-        @DisplayName("membresia inexistente: no escribe")
-        void membresia_inexistente_no_escribe() {
-            when(repository.findById(CompanyMother.COMPANY_ID))
-                    .thenReturn(Optional.of(CompanyMother.clinicaNorte()));
-            when(cityQueryPort.findById(CompanyMother.MEDELLIN.id()))
-                    .thenReturn(Optional.of(CompanyMother.MEDELLIN));
-            when(membershipQueryPort.findById(CompanyMother.BASICA.id()))
-                    .thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.execute(CompanyMother.comandoActualizar()))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Membership not found: 22");
-
-            verify(repository, never()).save(any());
         }
 
         @Test
@@ -164,9 +139,9 @@ class UpdateCompanyServiceTest {
         void comando_invalido_no_escribe_y_deja_el_agregado_intacto() {
             Company existente = CompanyMother.clinicaNorte();
             when(repository.findById(CompanyMother.COMPANY_ID)).thenReturn(Optional.of(existente));
-            nuevasReferenciasExisten();
+            laNuevaCiudadExiste();
             UpdateCompanyCommand comando = new UpdateCompanyCommand(CompanyMother.COMPANY_ID, "",
-                    "NIT-901", null, null, CompanyMother.MEDELLIN.id(), CompanyMother.BASICA.id());
+                    "NIT-901", null, null, CompanyMother.MEDELLIN.id());
 
             assertThatThrownBy(() -> service.execute(comando))
                     .isInstanceOf(IllegalArgumentException.class)

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
-import com.vetsoftware.app.membership.infrastructure.persistence.MembershipJpaEntity;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.CompanyAdminContext;
 import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaEntity;
 import com.vetsoftware.app.role.infrastructure.persistence.RoleJpaRepository;
@@ -32,8 +31,6 @@ class JpaCompanyCatalogQueryPortTest {
     private RoleJpaEntity rolAdmin;
     @Mock
     private CompanyJpaEntity empresa;
-    @Mock
-    private MembershipJpaEntity membresia;
     @InjectMocks
     private JpaCompanyCatalogQueryPort port;
 
@@ -47,13 +44,11 @@ class JpaCompanyCatalogQueryPortTest {
             when(rolAdmin.getId()).thenReturn(200L);
             when(rolAdmin.getCompany()).thenReturn(empresa);
             when(empresa.getId()).thenReturn(1L);
-            when(empresa.getMembership()).thenReturn(membresia);
-            when(membresia.getId()).thenReturn(10L);
             when(roleJpaRepository.findAllByCode("ADMIN")).thenReturn(List.of(rolAdmin));
 
             List<CompanyAdminContext> resultado = port.findAllWithAdminRole();
 
-            assertThat(resultado).containsExactly(new CompanyAdminContext(1L, 10L, 200L));
+            assertThat(resultado).containsExactly(new CompanyAdminContext(1L, 200L));
         }
 
         @Test

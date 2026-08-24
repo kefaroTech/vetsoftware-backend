@@ -21,18 +21,22 @@ import com.vetsoftware.app.registration.application.port.out.CompanyCreator;
 import com.vetsoftware.app.registration.application.port.out.CompanyCreator.CompanyResult;
 import com.vetsoftware.app.registration.application.port.out.CompanyIdentifierChecker;
 import com.vetsoftware.app.registration.application.port.out.CompanyTaxProfileCreator;
-import com.vetsoftware.app.registration.application.port.out.DefaultMembershipProvider;
 import com.vetsoftware.app.registration.application.port.out.EmailVerificationTokenRepository;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCodeChecker;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCreator;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCreator.EmployeeResult;
 import com.vetsoftware.app.registration.application.port.out.EmployeeRoleAssigner;
+import com.vetsoftware.app.registration.application.port.out.InitialSubscriptionCreator;
+import com.vetsoftware.app.registration.application.port.out.OwnerBranchAssigner;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator.RoleResult;
 import com.vetsoftware.app.registration.application.port.out.RolePermissionInitializationPort;
 import com.vetsoftware.app.registration.application.port.out.VerificationEmailSender;
 import com.vetsoftware.app.registration.domain.EmailVerificationToken;
 import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
+import com.vetsoftware.app.registration.domain.OwnerWithoutBranchException;
+import com.vetsoftware.app.registration.domain.PlatformCatalogNotConfiguredException;
+import com.vetsoftware.app.registration.domain.PlatformRoleCatalogNotConfiguredException;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -60,7 +64,7 @@ class RegisterUserServiceTest {
 
     private static final Long COMPANY = 9L;
     private static final Long EMPLOYEE = 55L;
-    private static final Long MEMBERSHIP = 1L;
+    private static final Long BRANCH = 7L;
 
     @Mock
     private CaptchaVerifier captchaVerifier;
@@ -83,7 +87,9 @@ class RegisterUserServiceTest {
     @Mock
     private EmployeeRoleAssigner employeeRoleAssigner;
     @Mock
-    private DefaultMembershipProvider defaultMembershipProvider;
+    private OwnerBranchAssigner ownerBranchAssigner;
+    @Mock
+    private InitialSubscriptionCreator initialSubscriptionCreator;
     @Mock
     private RolePermissionInitializationPort rolePermissionInitializationPort;
     @Mock
@@ -128,16 +134,16 @@ class RegisterUserServiceTest {
     void setUp() {
         service = new RegisterUserService(captchaVerifier, companyCreator, companyTaxProfileCreator,
                 branchCreator, employeeCreator, companyIdentifierChecker, employeeCodeChecker,
-                baseRoleProvider, roleCreator, employeeRoleAssigner, defaultMembershipProvider,
-                rolePermissionInitializationPort, emailVerificationTokenRepository,
-                verificationEmailSender, directTransactionTemplate(), 24L);
+                baseRoleProvider, roleCreator, employeeRoleAssigner, ownerBranchAssigner,
+                initialSubscriptionCreator, rolePermissionInitializationPort,
+                emailVerificationTokenRepository, verificationEmailSender,
+                directTransactionTemplate(), 24L);
 
         lenient().when(companyIdentifierChecker.exists(anyString())).thenReturn(false);
         lenient().when(employeeCodeChecker.exists(anyString())).thenReturn(false);
-        lenient().when(defaultMembershipProvider.getDefaultMembershipId()).thenReturn(MEMBERSHIP);
         lenient()
                 .when(companyCreator.create(anyString(), anyString(), anyString(), anyString(),
-                        anyLong(), anyLong()))
+                        anyLong()))
                 .thenReturn(new CompanyResult(COMPANY, "Veterinaria Vetrina", "900123456"));
         lenient().when(employeeCreator.create(anyString(), anyString(), anyString(), anyString(),
                 anyLong())).thenReturn(new EmployeeResult(EMPLOYEE));
@@ -146,6 +152,8 @@ class RegisterUserServiceTest {
                         new BaseRoleData(2L, "Veterinario", "VET", false)));
         lenient().when(roleCreator.create(anyString(), anyString(), anyLong()))
                 .thenAnswer(i -> new RoleResult("ADMIN".equals(i.getArgument(1)) ? 100L : 200L));
+        lenient().when(ownerBranchAssigner.assignAllCompanyBranches(anyLong(), anyLong()))
+                .thenReturn(List.of(BRANCH));
     }
 
     @Nested
@@ -202,13 +210,203 @@ class RegisterUserServiceTest {
 
             verify(roleCreator).create("Administrador", "ADMIN", COMPANY);
             verify(roleCreator).create("Veterinario", "VET", COMPANY);
-            verify(rolePermissionInitializationPort).initializeForRole(100L, COMPANY, 1L,
-                    MEMBERSHIP);
-            verify(rolePermissionInitializationPort).initializeForRole(200L, COMPANY, 2L,
-                    MEMBERSHIP);
+            verify(rolePermissionInitializationPort).initializeForRole(100L, COMPANY, 1L);
+            verify(rolePermissionInitializationPort).initializeForRole(200L, COMPANY, 2L);
 
             verify(employeeRoleAssigner).assign(EMPLOYEE, 100L);
             verify(employeeRoleAssigner, never()).assign(EMPLOYEE, 200L);
+        }
+    }
+
+    /**
+     * <b>Regla del modelo, no negociable:</b> toda empresa nace con un contrato, y
+     * nace con el en la misma transaccion del alta. Estos dos tests fijan el orden
+     * y la consecuencia de que el contrato no se pueda crear.
+     */
+    @Nested
+    class ContratoInicial {
+
+        @Test
+        void crea_el_contrato_en_el_acto_y_antes_de_repartir_permisos() {
+            service.execute(command());
+
+            InOrder order = inOrder(companyCreator, initialSubscriptionCreator, roleCreator,
+                    rolePermissionInitializationPort);
+            order.verify(companyCreator).create(anyString(), anyString(), anyString(), anyString(),
+                    anyLong());
+            order.verify(initialSubscriptionCreator).createInitialContract(COMPANY,
+                    "Veterinaria Vetrina");
+            order.verify(roleCreator).create(anyString(), anyString(), anyLong());
+            order.verify(rolePermissionInitializationPort).initializeForRole(anyLong(), anyLong(),
+                    anyLong());
+        }
+
+        /**
+         * El escenario del dia 1 con el catalogo sin sembrar: el alta falla entera con
+         * un error legible en vez de dejar una empresa sin contrato que entra al
+         * sistema y no puede hacer nada. Nada posterior al contrato llega a ejecutarse,
+         * y la transaccion revierte lo anterior.
+         */
+        @Test
+        void sin_catalogo_comercial_el_alta_falla_entera_y_no_deja_nada_a_medias() {
+            org.mockito.Mockito
+                    .doThrow(new PlatformCatalogNotConfiguredException("Veterinaria Vetrina"))
+                    .when(initialSubscriptionCreator).createInitialContract(anyLong(), anyString());
+
+            assertThatThrownBy(() -> service.execute(command()))
+                    .isInstanceOf(PlatformCatalogNotConfiguredException.class)
+                    .hasMessageContaining("Veterinaria Vetrina")
+                    .hasMessageContaining("catalog_items").hasMessageContaining("price_lists")
+                    .hasMessageContaining("platform_billing_config");
+
+            verify(companyTaxProfileCreator, never()).create(anyLong(), anyString(), anyString(),
+                    anyString(), anyString(), anyString());
+            verify(branchCreator, never()).create(anyString(), anyString(), anyString(),
+                    anyString(), anyLong(), anyLong());
+            verify(employeeCreator, never()).create(anyString(), anyString(), anyString(),
+                    anyString(), anyLong());
+            verify(roleCreator, never()).create(anyString(), anyString(), anyLong());
+            verify(emailVerificationTokenRepository, never()).save(any());
+            verify(verificationEmailSender, never()).send(anyString(), anyString(), anyString(),
+                    anyString());
+        }
+    }
+
+    /**
+     * <b>La otra mitad de la misma regla, y el defecto del issue #500.</b> El
+     * catalogo comercial tenia guarda desde #364; el de roles no la tenia, asi que
+     * el bucle que reparte los base roles iteraba sobre una lista vacia, no lanzaba
+     * nada y el alta devolvia 201 con el dueño sin un solo rol. Estos tests fijan
+     * que ahora falla igual de ruidoso que su hermano de tres lineas mas arriba, y
+     * que nada posterior al reparto llega a ejecutarse.
+     */
+    @Nested
+    class CatalogoDeRoles {
+
+        @Test
+        void sin_ningun_rol_base_el_alta_falla_entera_y_enumera_lo_que_falta() {
+            when(baseRoleProvider.findAll()).thenReturn(List.of());
+
+            assertThatThrownBy(() -> service.execute(command()))
+                    .isInstanceOf(PlatformRoleCatalogNotConfiguredException.class)
+                    .hasMessageContaining("Veterinaria Vetrina").hasMessageContaining("base_roles")
+                    .hasMessageContaining("ADMIN").hasMessageContaining("base_role_permissions");
+
+            verify(roleCreator, never()).create(anyString(), anyString(), anyLong());
+            verify(rolePermissionInitializationPort, never()).initializeForRole(anyLong(),
+                    anyLong(), anyLong());
+            verify(employeeRoleAssigner, never()).assign(anyLong(), anyLong());
+            verify(emailVerificationTokenRepository, never()).save(any());
+            verify(verificationEmailSender, never()).send(anyString(), anyString(), anyString(),
+                    anyString());
+        }
+
+        /**
+         * La mitad del defecto que comprobar solo {@code isEmpty()} dejaria viva: con
+         * plantillas pero sin ninguna obligatoria el dueño se queda igual de vacio, y
+         * el mensaje tiene que decir que la tabla NO esta vacia para que nadie vuelva a
+         * sembrarla.
+         */
+        @Test
+        void con_roles_base_pero_ninguno_obligatorio_tampoco_nace_la_empresa() {
+            when(baseRoleProvider.findAll())
+                    .thenReturn(List.of(new BaseRoleData(2L, "Veterinario", "VET", false),
+                            new BaseRoleData(3L, "Recepción", "RECEP", false)));
+
+            assertThatThrownBy(() -> service.execute(command()))
+                    .isInstanceOf(PlatformRoleCatalogNotConfiguredException.class)
+                    .hasMessageContaining("Veterinaria Vetrina").hasMessageContaining("VET")
+                    .hasMessageContaining("RECEP").hasMessageContaining("mandatory");
+
+            verify(roleCreator, never()).create(anyString(), anyString(), anyLong());
+            verify(employeeRoleAssigner, never()).assign(anyLong(), anyLong());
+        }
+
+        /**
+         * La guarda se evalua ANTES de crear el primer rol: si fallara a mitad del
+         * reparto, el error describiria el rol numero tres en vez de la causa.
+         */
+        @Test
+        void la_guarda_corre_antes_de_crear_el_primer_rol() {
+            when(baseRoleProvider.findAll()).thenReturn(List.of());
+
+            assertThatThrownBy(() -> service.execute(command()))
+                    .isInstanceOf(PlatformRoleCatalogNotConfiguredException.class);
+
+            InOrder order = inOrder(employeeCreator, baseRoleProvider, roleCreator);
+            order.verify(employeeCreator).create(anyString(), anyString(), anyString(), anyString(),
+                    anyLong());
+            order.verify(baseRoleProvider).findAll();
+            order.verify(roleCreator, never()).create(anyString(), anyString(), anyLong());
+        }
+    }
+
+    /**
+     * <b>El defecto del issue #510.</b> El alta creaba la sede "Principal" y creaba
+     * al dueño, y nadie escribia la fila de {@code employee_branches} que los une:
+     * {@code Authz.currentBranchIds()} —que sale de esa tabla y de ninguna otra—
+     * devolvia el conjunto vacio, y la primera invitacion de personal moria con 403
+     * BRANCH_NOT_ALLOWED rechazando la unica sede que existia. Estos tests fijan
+     * que la atadura se escribe, cuando, y que si no queda escrita el alta se
+     * cancela entera en vez de devolver un 201 que falla tres pantallas despues.
+     */
+    @Nested
+    class SedeDelDueno {
+
+        @Test
+        void ata_al_dueno_con_todas_las_sedes_de_su_empresa() {
+            service.execute(command());
+
+            verify(ownerBranchAssigner).assignAllCompanyBranches(EMPLOYEE, COMPANY);
+        }
+
+        /**
+         * La sede tiene que existir antes de poder atarla, y el dueño tambien: el orden
+         * no es cosmetico.
+         */
+        @Test
+        void la_atadura_va_despues_de_crear_la_sede_y_el_empleado() {
+            service.execute(command());
+
+            InOrder order = inOrder(branchCreator, employeeCreator, ownerBranchAssigner);
+            order.verify(branchCreator).create(anyString(), anyString(), anyString(), anyString(),
+                    anyLong(), anyLong());
+            order.verify(employeeCreator).create(anyString(), anyString(), anyString(), anyString(),
+                    anyLong());
+            order.verify(ownerBranchAssigner).assignAllCompanyBranches(anyLong(), anyLong());
+        }
+
+        /**
+         * La guarda gemela de {@code requireOwnerRole}: si el dueño se queda sin sede,
+         * no nace la empresa. Y no llega a enviarse el correo de verificacion, porque
+         * invitaria a entrar a una cuenta que no puede trabajar.
+         */
+        @Test
+        void si_el_dueno_queda_sin_ninguna_sede_el_alta_falla_entera() {
+            when(ownerBranchAssigner.assignAllCompanyBranches(anyLong(), anyLong()))
+                    .thenReturn(List.of());
+
+            assertThatThrownBy(() -> service.execute(command()))
+                    .isInstanceOf(OwnerWithoutBranchException.class)
+                    .hasMessageContaining("Veterinaria Vetrina")
+                    .hasMessageContaining("employee_branches")
+                    .hasMessageContaining("BRANCH_NOT_ALLOWED");
+
+            verify(emailVerificationTokenRepository, never()).save(any());
+            verify(verificationEmailSender, never()).send(anyString(), anyString(), anyString(),
+                    anyString());
+        }
+
+        /**
+         * Un puerto que devuelve {@code null} es el mismo defecto, no una excepcion.
+         */
+        @Test
+        void una_lista_nula_de_sedes_se_trata_igual_que_una_vacia() {
+            when(ownerBranchAssigner.assignAllCompanyBranches(anyLong(), anyLong()))
+                    .thenReturn(null);
+
+            assertThatThrownBy(() -> service.execute(command()))
+                    .isInstanceOf(OwnerWithoutBranchException.class);
         }
     }
 
@@ -284,7 +482,7 @@ class RegisterUserServiceTest {
             order.verify(captchaVerifier).verify("captcha-token", "10.0.0.1");
             order.verify(companyIdentifierChecker).exists("900123456");
             order.verify(companyCreator).create(anyString(), anyString(), anyString(), anyString(),
-                    anyLong(), anyLong());
+                    anyLong());
         }
 
         @Test
@@ -296,7 +494,7 @@ class RegisterUserServiceTest {
                     .isInstanceOf(IllegalArgumentException.class);
 
             verify(companyCreator, never()).create(anyString(), anyString(), anyString(),
-                    anyString(), anyLong(), anyLong());
+                    anyString(), anyLong());
             verify(employeeCreator, never()).create(anyString(), anyString(), anyString(),
                     anyString(), anyLong());
         }
@@ -310,7 +508,7 @@ class RegisterUserServiceTest {
                     .hasMessageContaining("already in use");
 
             verify(companyCreator, never()).create(anyString(), anyString(), anyString(),
-                    anyString(), anyLong(), anyLong());
+                    anyString(), anyLong());
         }
 
         @Test

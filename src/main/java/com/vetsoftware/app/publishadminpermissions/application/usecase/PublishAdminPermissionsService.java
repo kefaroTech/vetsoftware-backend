@@ -7,7 +7,7 @@ import com.vetsoftware.app.publishadminpermissions.application.port.out.AdminBas
 import com.vetsoftware.app.publishadminpermissions.application.port.out.AdminBaseRoleQueryPort;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.CompanyAdminContext;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.CompanyCatalogQueryPort;
-import com.vetsoftware.app.publishadminpermissions.application.port.out.MembershipSubModuleIdsQueryPort;
+import com.vetsoftware.app.publishadminpermissions.application.port.out.CompanyGrantedSubModuleIdsQueryPort;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.PermissionUpsertPort;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.RolePermissionUpsertPort;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.UpsertedPermission;
@@ -27,20 +27,20 @@ public class PublishAdminPermissionsService implements PublishAdminPermissionsUs
     private final AdminBaseRoleQueryPort adminBaseRoleQueryPort;
     private final AdminBasePermissionsQueryPort adminBasePermissionsQueryPort;
     private final CompanyCatalogQueryPort companyCatalogQueryPort;
-    private final MembershipSubModuleIdsQueryPort membershipSubModuleIdsQueryPort;
+    private final CompanyGrantedSubModuleIdsQueryPort companyGrantedSubModuleIdsQueryPort;
     private final PermissionUpsertPort permissionUpsertPort;
     private final RolePermissionUpsertPort rolePermissionUpsertPort;
 
     public PublishAdminPermissionsService(AdminBaseRoleQueryPort adminBaseRoleQueryPort,
             AdminBasePermissionsQueryPort adminBasePermissionsQueryPort,
             CompanyCatalogQueryPort companyCatalogQueryPort,
-            MembershipSubModuleIdsQueryPort membershipSubModuleIdsQueryPort,
+            CompanyGrantedSubModuleIdsQueryPort companyGrantedSubModuleIdsQueryPort,
             PermissionUpsertPort permissionUpsertPort,
             RolePermissionUpsertPort rolePermissionUpsertPort) {
         this.adminBaseRoleQueryPort = adminBaseRoleQueryPort;
         this.adminBasePermissionsQueryPort = adminBasePermissionsQueryPort;
         this.companyCatalogQueryPort = companyCatalogQueryPort;
-        this.membershipSubModuleIdsQueryPort = membershipSubModuleIdsQueryPort;
+        this.companyGrantedSubModuleIdsQueryPort = companyGrantedSubModuleIdsQueryPort;
         this.permissionUpsertPort = permissionUpsertPort;
         this.rolePermissionUpsertPort = rolePermissionUpsertPort;
     }
@@ -60,17 +60,17 @@ public class PublishAdminPermissionsService implements PublishAdminPermissionsUs
                     .from(new PublishAdminPermissionsResult(companies.size(), 0, 0, 0));
         }
 
-        Set<Long> membershipIds = companies.stream().map(CompanyAdminContext::membershipId)
+        Set<Long> companyIds = companies.stream().map(CompanyAdminContext::companyId)
                 .collect(Collectors.toSet());
-        Map<Long, Set<Long>> subModulesByMembership = membershipSubModuleIdsQueryPort
-                .findSubModuleIdsByMembershipIds(membershipIds);
+        Map<Long, Set<Long>> subModulesByCompany = companyGrantedSubModuleIdsQueryPort
+                .findGrantedSubModuleIdsByCompanyIds(companyIds);
 
         int companiesUpdated = 0;
         int permissionsCreated = 0;
         int rolePermissionsCreated = 0;
 
         for (CompanyAdminContext ctx : companies) {
-            Set<Long> allowedSubModules = subModulesByMembership.getOrDefault(ctx.membershipId(),
+            Set<Long> allowedSubModules = subModulesByCompany.getOrDefault(ctx.companyId(),
                     Set.of());
             boolean changedHere = false;
             for (AdminBasePermission tpl : adminBasePermissions) {

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 4 (suscripciones-tablas.md #16). La película del contrato.
+         Exenta de @Version (E1_APPEND_ONLY), sin enabled (bitácora). occurred_at es DATETIME(6):
+         dos transiciones del mismo segundo tienen que poder ordenarse (suscripciones-modelo.md §1.4).
+         FK compuesta fk_ssh_subscription: el índice de listado se crea antes para que MySQL no
+         genere uno redundante (Apéndice C). -->
+    <changeSet id="245_create_subscription_status_history" author="orlando">
+        <createTable tableName="subscription_status_history">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_ssh_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="subscription_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="from_status" type="VARCHAR(20)"/>
+            <column name="to_status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="reason" type="VARCHAR(255)"/>
+            <column name="occurred_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="actor" type="VARCHAR(120)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE subscription_status_history
+                ADD CONSTRAINT chk_ssh_to_status
+                    CHECK (to_status IN ('TRIALING','ACTIVE','PAST_DUE','READ_ONLY','CANCELLED','EXPIRED')),
+                ADD CONSTRAINT chk_ssh_from_status
+                    CHECK (from_status IS NULL
+                           OR from_status IN ('TRIALING','ACTIVE','PAST_DUE','READ_ONLY','CANCELLED','EXPIRED')),
+                ADD CONSTRAINT chk_ssh_change
+                    CHECK (from_status IS NULL OR from_status <> to_status)
+        ]]></sql>
+
+        <createIndex tableName="subscription_status_history" indexName="ix_ssh_subscription_occurred">
+            <column name="company_id"/>
+            <column name="subscription_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="subscription_status_history"
+                                 baseColumnNames="company_id, subscription_id"
+                                 referencedTableName="subscriptions"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_ssh_subscription"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="subscription_status_history"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

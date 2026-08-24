@@ -10,9 +10,8 @@ import java.time.LocalDateTime;
  * Fixtures del modulo submodule.
  *
  * <p>
- * Se construyen con el constructor publico y no con
- * {@code SubModule.create(...)}: el factory pone {@code LocalDateTime.now()} y
- * haria no deterministas las aserciones sobre {@code createdDate}.
+ * Se construyen con fecha fija para que las aserciones sobre
+ * {@code createdDate} sean deterministas.
  */
 public final class SubModuleMother {
 
@@ -32,21 +31,31 @@ public final class SubModuleMother {
     }
 
     public static SubModule reportes(Long id) {
-        return new SubModule(id, "Reportes", "REP", FACTURACION, CREADO, null, true);
+        return new SubModule(id, "Reportes", "REP", FACTURACION, true, true, CREADO, null, true);
     }
 
     public static SubModule deshabilitado() {
-        return new SubModule(SUB_MODULE_ID, "Reportes", "REP", FACTURACION, CREADO, null, false);
+        return new SubModule(SUB_MODULE_ID, "Reportes", "REP", FACTURACION, true, true, CREADO,
+                null, false);
+    }
+
+    /**
+     * Submodulo de infraestructura interna: ni se vende ni sabe funcionar en solo
+     * lectura. Es el caso de los dos defaults en {@code false}.
+     */
+    public static SubModule infraestructuraInterna() {
+        return new SubModule(SUB_MODULE_ID, "Configuracion del sistema", "SYS_CONFIG", FACTURACION,
+                false, false, CREADO, null, true);
     }
 
     /** Comando de creacion coherente con las refs de arriba. */
     public static CreateSubModuleCommand comandoCrear() {
-        return new CreateSubModuleCommand("Reportes", "REP", FACTURACION.id());
+        return new CreateSubModuleCommand("Reportes", "REP", FACTURACION.id(), true, true);
     }
 
     /** Comando de actualizacion que cambia nombre, codigo y modulo. */
     public static UpdateSubModuleCommand comandoActualizar() {
         return new UpdateSubModuleCommand(SUB_MODULE_ID, "Facturacion Avanzada", "FACT-AV",
-                INVENTARIO.id());
+                INVENTARIO.id(), true, true);
     }
 }

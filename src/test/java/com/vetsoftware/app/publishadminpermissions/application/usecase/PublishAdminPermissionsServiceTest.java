@@ -12,7 +12,7 @@ import com.vetsoftware.app.publishadminpermissions.application.port.out.AdminBas
 import com.vetsoftware.app.publishadminpermissions.application.port.out.AdminBaseRoleQueryPort;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.CompanyAdminContext;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.CompanyCatalogQueryPort;
-import com.vetsoftware.app.publishadminpermissions.application.port.out.MembershipSubModuleIdsQueryPort;
+import com.vetsoftware.app.publishadminpermissions.application.port.out.CompanyGrantedSubModuleIdsQueryPort;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.PermissionUpsertPort;
 import com.vetsoftware.app.publishadminpermissions.application.port.out.RolePermissionUpsertPort;
 import com.vetsoftware.app.publishadminpermissions.testsupport.PublishAdminPermissionsMother;
@@ -42,7 +42,7 @@ class PublishAdminPermissionsServiceTest {
     @Mock
     private CompanyCatalogQueryPort companyCatalogQueryPort;
     @Mock
-    private MembershipSubModuleIdsQueryPort membershipSubModuleIdsQueryPort;
+    private CompanyGrantedSubModuleIdsQueryPort companyGrantedSubModuleIdsQueryPort;
     @Mock
     private PermissionUpsertPort permissionUpsertPort;
     @Mock
@@ -63,7 +63,7 @@ class PublishAdminPermissionsServiceTest {
                     .hasMessageContaining("BaseRole 'ADMIN' not configured");
 
             verifyNoInteractions(adminBasePermissionsQueryPort, companyCatalogQueryPort,
-                    membershipSubModuleIdsQueryPort, permissionUpsertPort,
+                    companyGrantedSubModuleIdsQueryPort, permissionUpsertPort,
                     rolePermissionUpsertPort);
         }
     }
@@ -86,7 +86,7 @@ class PublishAdminPermissionsServiceTest {
             PublishAdminPermissionsDto dto = service.execute();
 
             assertThat(dto).isEqualTo(new PublishAdminPermissionsDto(2, 0, 0, 0));
-            verifyNoInteractions(membershipSubModuleIdsQueryPort, permissionUpsertPort,
+            verifyNoInteractions(companyGrantedSubModuleIdsQueryPort, permissionUpsertPort,
                     rolePermissionUpsertPort);
         }
 
@@ -102,12 +102,12 @@ class PublishAdminPermissionsServiceTest {
             PublishAdminPermissionsDto dto = service.execute();
 
             assertThat(dto).isEqualTo(new PublishAdminPermissionsDto(0, 0, 0, 0));
-            verifyNoInteractions(membershipSubModuleIdsQueryPort, permissionUpsertPort,
+            verifyNoInteractions(companyGrantedSubModuleIdsQueryPort, permissionUpsertPort,
                     rolePermissionUpsertPort);
         }
 
         @Test
-        @DisplayName("una empresa sin el submodulo habilitado no publica el permiso")
+        @DisplayName("una empresa cuyo contrato no concede el submodulo no publica el permiso")
         void empresa_sin_el_submodulo_habilitado_no_publica_el_permiso() {
             CompanyAdminContext clinica = PublishAdminPermissionsMother.clinicaNorte();
             AdminBasePermission plantilla = PublishAdminPermissionsMother.verAnimales();
@@ -116,8 +116,8 @@ class PublishAdminPermissionsServiceTest {
             when(adminBasePermissionsQueryPort.findByAdminBaseRoleId(ADMIN_BASE_ROLE_ID))
                     .thenReturn(List.of(plantilla));
             when(companyCatalogQueryPort.findAllWithAdminRole()).thenReturn(List.of(clinica));
-            when(membershipSubModuleIdsQueryPort.findSubModuleIdsByMembershipIds(Set.of(10L)))
-                    .thenReturn(Map.of());
+            when(companyGrantedSubModuleIdsQueryPort
+                    .findGrantedSubModuleIdsByCompanyIds(Set.of(1L))).thenReturn(Map.of());
 
             PublishAdminPermissionsDto dto = service.execute();
 
@@ -140,8 +140,9 @@ class PublishAdminPermissionsServiceTest {
             when(adminBasePermissionsQueryPort.findByAdminBaseRoleId(ADMIN_BASE_ROLE_ID))
                     .thenReturn(List.of(plantilla));
             when(companyCatalogQueryPort.findAllWithAdminRole()).thenReturn(List.of(clinica));
-            when(membershipSubModuleIdsQueryPort.findSubModuleIdsByMembershipIds(Set.of(10L)))
-                    .thenReturn(Map.of(10L, Set.of(5L)));
+            when(companyGrantedSubModuleIdsQueryPort
+                    .findGrantedSubModuleIdsByCompanyIds(Set.of(1L)))
+                    .thenReturn(Map.of(1L, Set.of(5L)));
             when(permissionUpsertPort.upsert(1L, plantilla))
                     .thenReturn(PublishAdminPermissionsMother.creado(900L));
             when(rolePermissionUpsertPort.linkIfAbsent(100L, 900L)).thenReturn(true);
@@ -169,8 +170,9 @@ class PublishAdminPermissionsServiceTest {
             when(adminBasePermissionsQueryPort.findByAdminBaseRoleId(ADMIN_BASE_ROLE_ID))
                     .thenReturn(List.of(plantilla));
             when(companyCatalogQueryPort.findAllWithAdminRole()).thenReturn(List.of(clinica));
-            when(membershipSubModuleIdsQueryPort.findSubModuleIdsByMembershipIds(Set.of(10L)))
-                    .thenReturn(Map.of(10L, Set.of(5L)));
+            when(companyGrantedSubModuleIdsQueryPort
+                    .findGrantedSubModuleIdsByCompanyIds(Set.of(1L)))
+                    .thenReturn(Map.of(1L, Set.of(5L)));
             when(permissionUpsertPort.upsert(1L, plantilla))
                     .thenReturn(PublishAdminPermissionsMother.existente(900L));
             when(rolePermissionUpsertPort.linkIfAbsent(100L, 900L)).thenReturn(true);
@@ -190,8 +192,9 @@ class PublishAdminPermissionsServiceTest {
             when(adminBasePermissionsQueryPort.findByAdminBaseRoleId(ADMIN_BASE_ROLE_ID))
                     .thenReturn(List.of(plantilla));
             when(companyCatalogQueryPort.findAllWithAdminRole()).thenReturn(List.of(clinica));
-            when(membershipSubModuleIdsQueryPort.findSubModuleIdsByMembershipIds(Set.of(10L)))
-                    .thenReturn(Map.of(10L, Set.of(5L)));
+            when(companyGrantedSubModuleIdsQueryPort
+                    .findGrantedSubModuleIdsByCompanyIds(Set.of(1L)))
+                    .thenReturn(Map.of(1L, Set.of(5L)));
             when(permissionUpsertPort.upsert(1L, plantilla))
                     .thenReturn(PublishAdminPermissionsMother.existente(900L));
             when(rolePermissionUpsertPort.linkIfAbsent(100L, 900L)).thenReturn(false);
@@ -205,16 +208,17 @@ class PublishAdminPermissionsServiceTest {
         @DisplayName("cuenta solo las empresas que realmente cambiaron cuando hay varias")
         void cuenta_solo_las_empresas_que_realmente_cambiaron() {
             CompanyAdminContext clinicaConCambios = PublishAdminPermissionsMother.clinicaNorte();
-            CompanyAdminContext clinicaSinSubmodulo = PublishAdminPermissionsMother.clinicaSur();
+            CompanyAdminContext clinicaSinConcesion = PublishAdminPermissionsMother.clinicaSur();
             AdminBasePermission plantilla = PublishAdminPermissionsMother.verAnimales();
             when(adminBaseRoleQueryPort.findAdminBaseRoleId())
                     .thenReturn(Optional.of(ADMIN_BASE_ROLE_ID));
             when(adminBasePermissionsQueryPort.findByAdminBaseRoleId(ADMIN_BASE_ROLE_ID))
                     .thenReturn(List.of(plantilla));
             when(companyCatalogQueryPort.findAllWithAdminRole())
-                    .thenReturn(List.of(clinicaConCambios, clinicaSinSubmodulo));
-            when(membershipSubModuleIdsQueryPort.findSubModuleIdsByMembershipIds(Set.of(10L, 20L)))
-                    .thenReturn(Map.of(10L, Set.of(5L)));
+                    .thenReturn(List.of(clinicaConCambios, clinicaSinConcesion));
+            when(companyGrantedSubModuleIdsQueryPort
+                    .findGrantedSubModuleIdsByCompanyIds(Set.of(1L, 2L)))
+                    .thenReturn(Map.of(1L, Set.of(5L)));
             when(permissionUpsertPort.upsert(1L, plantilla))
                     .thenReturn(PublishAdminPermissionsMother.creado(900L));
             when(rolePermissionUpsertPort.linkIfAbsent(100L, 900L)).thenReturn(true);

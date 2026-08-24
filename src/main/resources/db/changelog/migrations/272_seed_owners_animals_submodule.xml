@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #517. Completa el catalogo tecnico de 258: en mas de 271 changesets
+         nunca se sembro un sub_modules para "clientes y mascotas" -el propio 269 lo
+         dejo escrito: "263 ato CORE solo a AGENDA, por falta de un sub_modules
+         dedicado a clientes y mascotas"-, y sin esa fila colgar owner.read/
+         animal.read de un submodulo real es imposible: el filtro de
+         company_entitlements no puede conceder algo que no existe.
+
+         Sin contexto a proposito, mismo argumento que 258 (el propio catalogo
+         tecnico): sub_modules es estructura de plataforma -que capacidades existen
+         en el backend-, no oferta comercial. La pausa de "nada de semillas de
+         catalogo comercial en produccion" protege precios y paquetes (262-265/269),
+         no el inventario tecnico de submodulos.
+
+         is_sellable = FALSE, read_only_capable = TRUE: mismo criterio que BRANCH/
+         EMPLOYEES/ROLES/COMPANY en 258 -administracion de la propia cuenta, no una
+         feature clinica que se vende aparte-. Un cliente y su mascota no son un
+         addon opcional del catalogo comercial, son el nucleo del producto (issue
+         #517), asi que se tratan igual que BRANCH/EMPLOYEES/ROLES: estructural,
+         nunca vendible por separado. -->
+
+    <changeSet id="272_seed_owners_animals_submodule" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO sub_modules
+                    (name, code, module_id, enabled, is_sellable, read_only_capable)
+            SELECT 'Clientes y mascotas', 'OWNERS_ANIMALS', general.id, TRUE, FALSE, TRUE
+            FROM modules general
+            WHERE general.code = 'GENERAL'
+              AND NOT EXISTS (SELECT 1 FROM sub_modules WHERE code = 'OWNERS_ANIMALS');
+        ]]></sql>
+        <rollback>
+            <sql>DELETE FROM sub_modules WHERE code = 'OWNERS_ANIMALS';</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

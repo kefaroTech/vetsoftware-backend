@@ -2,6 +2,7 @@ package com.vetsoftware.app.branch.application.usecase;
 
 import com.vetsoftware.app.branch.application.dto.BranchDto;
 import com.vetsoftware.app.branch.application.port.in.DeactivateBranchUseCase;
+import com.vetsoftware.app.branch.application.port.out.BranchCapacityPort;
 import com.vetsoftware.app.branch.application.port.out.BranchRepository;
 import com.vetsoftware.app.branch.domain.Branch;
 import com.vetsoftware.app.branch.domain.BranchNotFoundException;
@@ -13,9 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DeactivateBranchService implements DeactivateBranchUseCase {
     private final BranchRepository repository;
+    private final BranchCapacityPort branchCapacityPort;
 
-    public DeactivateBranchService(BranchRepository repository) {
+    public DeactivateBranchService(BranchRepository repository,
+            BranchCapacityPort branchCapacityPort) {
         this.repository = repository;
+        this.branchCapacityPort = branchCapacityPort;
     }
 
     @Override
@@ -36,7 +40,12 @@ public class DeactivateBranchService implements DeactivateBranchUseCase {
             throw new IllegalStateException(
                     "No se puede desactivar la última sucursal activa de la empresa");
         }
+        if (!branch.isActive()) {
+            return BranchDto.from(branch);
+        }
         branch.deactivate();
-        return BranchDto.from(repository.save(branch));
+        Branch saved = repository.save(branch);
+        branchCapacityPort.release(companyId);
+        return BranchDto.from(saved);
     }
 }

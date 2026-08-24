@@ -21,10 +21,6 @@
                 <constraints nullable="false" foreignKeyName="fk_companies_city"
                              references="cities(id)"/>
             </column>
-            <column name="membership_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_companies_membership"
-                             references="memberships(id)"/>
-            </column>
             <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>

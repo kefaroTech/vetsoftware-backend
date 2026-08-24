@@ -92,10 +92,6 @@ import com.vetsoftware.app.medicamentprescription.infrastructure.persistence.Jpa
 import com.vetsoftware.app.medicamentprescription.infrastructure.persistence.MedicamentPrescriptionJpaMapper;
 import com.vetsoftware.app.medicationschedule.infrastructure.persistence.JpaMedicationScheduleRepository;
 import com.vetsoftware.app.medicationschedule.infrastructure.persistence.MedicationScheduleJpaMapper;
-import com.vetsoftware.app.membership.infrastructure.persistence.JpaMembershipRepository;
-import com.vetsoftware.app.membership.infrastructure.persistence.MembershipJpaMapper;
-import com.vetsoftware.app.membershipsubmodule.infrastructure.persistence.JpaMembershipSubModuleRepository;
-import com.vetsoftware.app.membershipsubmodule.infrastructure.persistence.MembershipSubModuleJpaMapper;
 import com.vetsoftware.app.module.infrastructure.persistence.JpaModuleRepository;
 import com.vetsoftware.app.module.infrastructure.persistence.ModuleJpaMapper;
 import com.vetsoftware.app.numberingresolution.infrastructure.persistence.JpaNumberingResolutionRepository;
@@ -163,7 +159,13 @@ import com.vetsoftware.app.vaccinationtype.infrastructure.persistence.JpaVaccina
 import com.vetsoftware.app.vaccinationtype.infrastructure.persistence.VaccinationTypeJpaMapper;
 import com.vetsoftware.app.withholdingconfig.infrastructure.persistence.JpaWithholdingConfigRepository;
 import com.vetsoftware.app.withholdingconfig.infrastructure.persistence.WithholdingConfigJpaMapper;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 
 /**
@@ -238,7 +240,6 @@ import org.springframework.context.annotation.Import;
         JpaLaboratoryTestQueryPort.class, JpaLaboratoryTestRepository.class,
         JpaLaboratoryTestTypeRepository.class, JpaMedicamentPrescriptionRepository.class,
         JpaMedicamentRepository.class, JpaMedicationScheduleRepository.class,
-        JpaMembershipRepository.class, JpaMembershipSubModuleRepository.class,
         JpaModuleRepository.class, JpaNumberingAllocationPort.class,
         JpaNumberingResolutionRepository.class, JpaOpenAccountRepository.class,
         JpaOpenAccountTotalsAdapter.class, JpaOwnerRepository.class,
@@ -260,24 +261,112 @@ import org.springframework.context.annotation.Import;
         LaboratoryTestFileJpaMapper.class, LaboratoryTestJpaMapper.class,
         LaboratoryTestTypeJpaMapper.class, MedicamentJpaMapper.class,
         MedicamentPrescriptionJpaMapper.class, MedicationScheduleJpaMapper.class,
-        MembershipJpaMapper.class, MembershipSubModuleJpaMapper.class, ModuleJpaMapper.class,
-        NumberingResolutionJpaMapper.class, OpenAccountJpaMapper.class, OwnerJpaMapper.class,
-        PasswordResetTokenJpaMapper.class, PermissionJpaMapper.class, PrescriptionJpaMapper.class,
-        ProcedureScheduleJpaMapper.class, ProductCategoryJpaMapper.class, ProductJpaMapper.class,
-        PromotionJpaMapper.class, PurchaseOrderJpaMapper.class, RoleJpaMapper.class,
-        RolePermissionJpaMapper.class, ServiceCategoryJpaMapper.class,
-        ServiceChargeOpenAccountJpaMapper.class, ServiceJpaMapper.class, SpaJpaMapper.class,
-        SpecieJpaMapper.class, StateJpaMapper.class, StockQueryAdapter.class,
-        SubModuleJpaMapper.class, SupplierInvoiceJpaMapper.class, SupplierJpaMapper.class,
-        SurgeryJpaMapper.class, SurgeryTypeJpaMapper.class, SystemConfigurationJpaMapper.class,
-        SystemPermissionJpaMapper.class, SystemUserJpaMapper.class,
-        SystemUserPermissionJpaMapper.class, TaxJpaMapper.class, VaccinationJpaMapper.class,
-        VaccinationTypeJpaMapper.class, WeightRecordJpaMapper.class,
+        ModuleJpaMapper.class, NumberingResolutionJpaMapper.class, OpenAccountJpaMapper.class,
+        OwnerJpaMapper.class, PasswordResetTokenJpaMapper.class, PermissionJpaMapper.class,
+        PrescriptionJpaMapper.class, ProcedureScheduleJpaMapper.class,
+        ProductCategoryJpaMapper.class, ProductJpaMapper.class, PromotionJpaMapper.class,
+        PurchaseOrderJpaMapper.class, RoleJpaMapper.class, RolePermissionJpaMapper.class,
+        ServiceCategoryJpaMapper.class, ServiceChargeOpenAccountJpaMapper.class,
+        ServiceJpaMapper.class, SpaJpaMapper.class, SpecieJpaMapper.class, StateJpaMapper.class,
+        StockQueryAdapter.class, SubModuleJpaMapper.class, SupplierInvoiceJpaMapper.class,
+        SupplierJpaMapper.class, SurgeryJpaMapper.class, SurgeryTypeJpaMapper.class,
+        SystemConfigurationJpaMapper.class, SystemPermissionJpaMapper.class,
+        SystemUserJpaMapper.class, SystemUserPermissionJpaMapper.class, TaxJpaMapper.class,
+        VaccinationJpaMapper.class, VaccinationTypeJpaMapper.class, WeightRecordJpaMapper.class,
         WithholdingConfigJpaMapper.class,
+        com.vetsoftware.app.catalogitem.infrastructure.persistence.BundleComponentJpaMapper.class,
+        com.vetsoftware.app.catalogitem.infrastructure.persistence.CatalogItemDependencyJpaMapper.class,
+        com.vetsoftware.app.catalogitem.infrastructure.persistence.CatalogItemJpaMapper.class,
+        com.vetsoftware.app.catalogitem.infrastructure.persistence.CatalogItemSubModuleJpaMapper.class,
+        com.vetsoftware.app.catalogitem.infrastructure.persistence.JpaBundleComponentRepository.class,
+        com.vetsoftware.app.catalogitem.infrastructure.persistence.JpaCatalogItemDependencyRepository.class,
+        com.vetsoftware.app.catalogitem.infrastructure.persistence.JpaCatalogItemRepository.class,
+        com.vetsoftware.app.catalogitem.infrastructure.persistence.JpaCatalogItemSubModuleRepository.class,
+        com.vetsoftware.app.configurator.infrastructure.persistence.ConfiguratorEffectJpaMapper.class,
+        com.vetsoftware.app.configurator.infrastructure.persistence.ConfiguratorOptionJpaMapper.class,
+        com.vetsoftware.app.configurator.infrastructure.persistence.ConfiguratorQuestionJpaMapper.class,
+        com.vetsoftware.app.configurator.infrastructure.persistence.JpaConfiguratorEffectRepository.class,
+        com.vetsoftware.app.configurator.infrastructure.persistence.JpaConfiguratorOptionRepository.class,
+        com.vetsoftware.app.configurator.infrastructure.persistence.JpaConfiguratorQuestionRepository.class,
+        com.vetsoftware.app.cashterminal.infrastructure.persistence.JpaCashTerminalRepository.class,
+        com.vetsoftware.app.dunning.infrastructure.persistence.DunningEventJpaMapper.class,
+        com.vetsoftware.app.dunning.infrastructure.persistence.JpaDunningEventRepository.class,
+        com.vetsoftware.app.entitlement.infrastructure.persistence.CompanyCapacityJpaMapper.class,
+        com.vetsoftware.app.entitlement.infrastructure.persistence.CompanyEntitlementJpaMapper.class,
+        com.vetsoftware.app.entitlement.infrastructure.persistence.JpaEntitlementEffectivePermissionResolver.class,
+        com.vetsoftware.app.entitlement.infrastructure.persistence.JpaCompanyCapacityRepository.class,
+        com.vetsoftware.app.entitlement.infrastructure.persistence.JpaCompanyEntitlementRepository.class,
+        com.vetsoftware.app.platformbillingconfig.infrastructure.persistence.JpaPlatformBillingConfigRepository.class,
+        com.vetsoftware.app.platformbillingconfig.infrastructure.persistence.JpaPriceListQueryPort.class,
+        com.vetsoftware.app.platformbillingconfig.infrastructure.persistence.PlatformBillingConfigJpaMapper.class,
+        com.vetsoftware.app.pricelist.infrastructure.persistence.CatalogPriceJpaMapper.class,
+        com.vetsoftware.app.pricelist.infrastructure.persistence.JpaCatalogPriceRepository.class,
+        com.vetsoftware.app.pricelist.infrastructure.persistence.JpaPriceListRepository.class,
+        com.vetsoftware.app.pricelist.infrastructure.persistence.PriceListJpaMapper.class,
+        com.vetsoftware.app.quote.infrastructure.persistence.JpaQuoteRepository.class,
+        com.vetsoftware.app.quote.infrastructure.persistence.QuoteJpaMapper.class,
+        com.vetsoftware.app.subscription.infrastructure.persistence.JpaSubscriptionAmendmentRepository.class,
+        com.vetsoftware.app.subscription.infrastructure.persistence.JpaSubscriptionItemRepository.class,
+        com.vetsoftware.app.subscription.infrastructure.persistence.JpaSubscriptionRepository.class,
+        com.vetsoftware.app.subscription.infrastructure.persistence.JpaSubscriptionStatusHistoryRepository.class,
+        com.vetsoftware.app.subscription.infrastructure.persistence.SubscriptionAmendmentJpaMapper.class,
+        com.vetsoftware.app.subscription.infrastructure.persistence.SubscriptionItemJpaMapper.class,
+        com.vetsoftware.app.subscription.infrastructure.persistence.SubscriptionJpaMapper.class,
+        com.vetsoftware.app.subscription.infrastructure.persistence.SubscriptionStatusHistoryJpaMapper.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.BillingDocumentSequenceJpaMapper.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.JpaBillingDocumentRepository.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.JpaBillingPolicyPort.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.JpaBillingDocumentSequenceRepository.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.JpaSubscriptionAmendmentValidationPort.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.JpaSubscriptionChargeRepository.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.JpaSubscriptionItemValidationPort.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.JpaSubscriptionQueryPort.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.SubscriptionBillingDocumentJpaMapper.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.SubscriptionBillingDocumentTaxJpaMapper.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.SubscriptionChargeJpaMapper.class,
+        com.vetsoftware.app.subscriptionpayment.infrastructure.persistence.BillingDocumentApplicationJpaMapper.class,
+        com.vetsoftware.app.subscriptionpayment.infrastructure.persistence.JpaBillingDocumentApplicationRepository.class,
+        com.vetsoftware.app.subscriptionpayment.infrastructure.persistence.JpaBillingDocumentSettlementPort.class,
+        com.vetsoftware.app.subscriptionpayment.infrastructure.persistence.JpaSubscriptionPaymentRepository.class,
+        com.vetsoftware.app.subscriptionpayment.infrastructure.persistence.SubscriptionPaymentJpaMapper.class,
         com.vetsoftware.app.debtopenaccount.infrastructure.persistence.JpaOpenAccountQueryPort.class,
         com.vetsoftware.app.generalchargeopenaccount.infrastructure.persistence.JpaOpenAccountQueryPort.class,
         com.vetsoftware.app.hospitalizationobservation.infrastructure.persistence.JpaEmployeeQueryPort.class,
         com.vetsoftware.app.laboratorytestfile.infrastructure.persistence.JpaEmployeeQueryPort.class,
-        com.vetsoftware.app.servicechargeopenaccount.infrastructure.persistence.JpaOpenAccountQueryPort.class})
+        com.vetsoftware.app.servicechargeopenaccount.infrastructure.persistence.JpaOpenAccountQueryPort.class,
+        com.vetsoftware.app.submodule.infrastructure.persistence.JpaCompanyEntitlementChildrenQueryPort.class,
+        // BE-10, ultimas nueve rodajas: los siete adaptadores que quedaban en el
+        // store congelado de ADAPTADOR_JPA_CON_RODAJA. Entran aqui y no con un
+        // @Import propio en cada *IT porque un @Import distinto por clase es una
+        // clave de contexto distinta y la cache no acierta nunca (#279, #285).
+        com.vetsoftware.app.spatype.infrastructure.persistence.JpaSpaTypeRepository.class,
+        com.vetsoftware.app.spatype.infrastructure.persistence.SpaTypeJpaMapper.class,
+        com.vetsoftware.app.auth.infrastructure.persistence.JpaAuthEmployeeRepository.class,
+        com.vetsoftware.app.auth.infrastructure.persistence.JpaAuthSystemUserRepository.class,
+        com.vetsoftware.app.auth.infrastructure.persistence.JpaEmployeeCredentialsRepository.class,
+        com.vetsoftware.app.auth.infrastructure.persistence.JpaRefreshTokenRepository.class,
+        com.vetsoftware.app.registration.infrastructure.persistence.JpaEmailVerificationTokenRepository.class,
+        com.vetsoftware.app.registration.infrastructure.persistence.EmailVerificationTokenJpaMapper.class,
+        com.vetsoftware.app.productchargeopenaccount.infrastructure.persistence.JpaProductChargeOpenAccountRepository.class,
+        com.vetsoftware.app.productchargeopenaccount.infrastructure.persistence.ProductChargeOpenAccountJpaMapper.class})
 public class PersistenceSliceConfig {
+
+    /**
+     * {@code JpaEntitlementEffectivePermissionResolver} pide un
+     * {@code MeterRegistry} desde #410 —el contador que separa "esta empresa no
+     * tiene entitlements calculados" de "los tiene y este empleado no alcanza
+     * ninguno"—, y {@code @DataJpaTest} no trae la autoconfiguracion de Micrometer.
+     * Sin este bean el contexto de TODAS las rodajas de persistencia falla al
+     * arrancar, no solo el de esa. El registro simple basta: aqui nadie exporta
+     * nada, solo hace falta que los contadores tengan donde registrarse.
+     */
+    @Bean
+    MeterRegistry persistenceTestMeterRegistry() {
+        return new SimpleMeterRegistry();
+    }
+
+    @Bean
+    Clock persistenceTestClock() {
+        return Clock.fixed(Instant.parse("2026-01-15T10:15:30Z"), ZoneOffset.UTC);
+    }
 }

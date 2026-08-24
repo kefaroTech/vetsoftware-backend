@@ -4,8 +4,6 @@ import com.vetsoftware.app.city.infrastructure.persistence.CityJpaEntity;
 import com.vetsoftware.app.city.infrastructure.persistence.CityJpaRepository;
 import com.vetsoftware.app.company.application.port.out.CompanyRepository;
 import com.vetsoftware.app.company.domain.Company;
-import com.vetsoftware.app.membership.infrastructure.persistence.MembershipJpaEntity;
-import com.vetsoftware.app.membership.infrastructure.persistence.MembershipJpaRepository;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.shared.pagination.Pages;
 import java.util.Optional;
@@ -28,23 +26,19 @@ public class JpaCompanyRepository implements CompanyRepository {
     private final CompanyJpaRepository jpaRepository;
     private final CompanyJpaMapper mapper;
     private final CityJpaRepository cityJpaRepository;
-    private final MembershipJpaRepository membershipJpaRepository;
 
     public JpaCompanyRepository(CompanyJpaRepository jpaRepository, CompanyJpaMapper mapper,
-            CityJpaRepository cityJpaRepository, MembershipJpaRepository membershipJpaRepository) {
+            CityJpaRepository cityJpaRepository) {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.cityJpaRepository = cityJpaRepository;
-        this.membershipJpaRepository = membershipJpaRepository;
     }
 
     @Override
     public Company save(Company company) {
         CityJpaEntity city = cityJpaRepository.getReferenceById(company.getCity().id());
-        MembershipJpaEntity membership = membershipJpaRepository
-                .getReferenceById(company.getMembership().id());
-        CompanyJpaEntity saved = jpaRepository.save(mapper.toJpa(company, city, membership));
-        return mapper.toDomain(saved, company.getCity(), company.getMembership());
+        CompanyJpaEntity saved = jpaRepository.save(mapper.toJpa(company, city));
+        return mapper.toDomain(saved, company.getCity());
     }
 
     @Override

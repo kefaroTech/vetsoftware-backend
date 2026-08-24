@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #504 (mitad de nucleo). Semilla de LABORATORIO, solo local y e2e -mismo
+         contexto que 262/263/264/265, NUNCA se aplica en dev ni en produccion-: la
+         pausa del usuario protege precios y paquetes comerciales, y el puente
+         catalog_item_sub_modules de esta semilla concreta es exactamente eso -el
+         catalogo comercial de laboratorio que 263 sembro-.
+
+         263_seed_local_e2e_commercial_catalog.xml ato CORE solo a AGENDA, por falta
+         de un sub_modules dedicado a "clientes y mascotas". El 268 ya tapa el agujero
+         de permisos de AGENDA, pero el diagnostico de #504 pide algo mas: el dueno de
+         una empresa recien registrada tiene que poder operar el minimo de su propia
+         cuenta -crear una sede, dar de alta un empleado- sin haber contratado nada
+         mas que el nucleo. Ese minimo no esta en AGENDA.
+
+         Que submodulos son estructurales, con los 29 sub_modules de 258 delante:
+
+           BRANCH      'Sucursales'    is_sellable=FALSE  <- administracion de la propia cuenta
+           EMPLOYEES   'Empleados'     is_sellable=FALSE  <- administracion de la propia cuenta
+           ROLES       'Roles y permisos' is_sellable=FALSE <- administracion de la propia cuenta
+           COMPANY     'Empresa'       is_sellable=FALSE  <- datos de la propia empresa, no una feature clinica
+           MEDICAMENTS 'Medicamentos'  is_sellable=FALSE  <- catalogo tecnico compartido, no self-service de cuenta
+
+         Frente a CASH, INVENTORY, PURCHASES y las diez capacidades clinicas
+         (CLINICAL_HISTORY, VACCINATION, HOSPITALIZATION, LABORATORY,
+         DIAGNOSTIC_IMAGING, DEWORMING, SURGERY, SPA, DAYCARE), todas is_sellable=TRUE:
+         son lo que la clinica vende a sus clientes o gestiona como stock, no lo que
+         necesita para administrarse a si misma. Esa es la linea, y coincide al
+         caracter con is_sellable=FALSE salvo por MEDICAMENTS, que se deja fuera
+         -ningun endpoint de alta exige "dar de alta un medicamento" para operar-.
+
+         De los cinco is_sellable=FALSE, esta semilla solo ata BRANCH, EMPLOYEES y
+         ROLES: son los tres que el enunciado de #504 pide como minimo operable
+         (crear sede + dar de alta empleado, que en este backend siempre pasa por
+         asignar un rol -RegisterUserService ya asigna el rol ADMIN mandatory al
+         dueno-). COMPANY queda fuera: no hay un caso de uso "editar mi empresa" que
+         dependa de un sub_modules propio hoy (los datos de company se editan en el
+         alta, no despues), y anadirlo sin un permiso real que lo use seria inflar el
+         nucleo sin necesidad. Ver el informe de cierre de esta sesion para el hallazgo
+         de que EMPLOYEES y ROLES no tienen HOY ni un solo base_permission sembrado
+         -ni 'employee.create' ni 'rolePermissions.*' existen en ningun changeset-, asi
+         que este changeSet ata el submodulo pero la capacidad real de dar de alta un
+         empleado sigue pendiente de un seed de permisos que no es parte de este
+         cambio (issue nuevo abierto en el cierre).
+
+         Deliberadamente NO se atan aqui SUBSCRIPTION, QUOTE, SUBSCRIPTION_BILLING,
+         SUBSCRIPTION_PAYMENT, DUNNING ni ENTITLEMENT: 256/257/259/260 sembraron sus
+         permisos de autoservicio para ADMIN tenant -"Es del cliente", segun el
+         @PreAuthorize real de subscription.update/cancel y quote.accept/reject-, asi
+         que SI son visibles para un inquilino cuando tiene el contrato correspondiente,
+         pero no son el minimo ESTRUCTURAL que este changeSet cubre: crear una sede o un
+         empleado no depende de ver la propia suscripcion. Vincularlos a CORE es un
+         cambio de catalogo distinto -y ya lo pedian los comentarios de 256/259/260
+         antes de esta sesion-, fuera del alcance de "atar el nucleo a lo estructural".
+         Tampoco CASH, INVENTORY ni PURCHASES: son modulos que se venden aparte, y
+         concederlos gratis en CORE anularia el propio catalogo comercial.
+
+         Que debe replicar el catalogo REAL de produccion cuando se siembre (no via
+         Liquibase, via consola de plataforma segun el comentario de
+         223_seed_appointment_overlap_force_permission.xml): el articulo que juegue el
+         papel de CORE en el catalogo comercial real tiene que atar, ademas de su
+         submodulo clinico principal, los submodulos BRANCH, EMPLOYEES y ROLES -mismo
+         razonamiento que aqui-, y los permisos de EMPLOYEES/ROLES tienen que existir
+         en base_permissions antes de que esa vinculacion sirva de algo.
+
+         Sin enabled=FALSE aqui: son filas nuevas, no reactivaciones, asi que el
+         NOT EXISTS de mas abajo comprueba la pareja (catalog_item_id, sub_module_id)
+         completa -no solo enabled=1-, tal como exige el borrado logico con clave
+         unica de esta tabla puente (uq_catalog_item_sub_modules, 230). -->
+
+    <changeSet id="269_seed_local_e2e_catalog_core_structural_submodules"
+               author="orlando" context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_sub_modules (catalog_item_id, sub_module_id)
+            SELECT ci.id, sm.id
+              FROM (
+                SELECT 'CORE' AS item_code, 'BRANCH' AS sub_module_code
+                UNION ALL SELECT 'CORE', 'EMPLOYEES'
+                UNION ALL SELECT 'CORE', 'ROLES'
+              ) seed
+              JOIN catalog_items ci ON ci.code = seed.item_code
+              JOIN sub_modules sm ON sm.code = seed.sub_module_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM catalog_item_sub_modules x
+                  WHERE x.catalog_item_id = ci.id AND x.sub_module_id = sm.id);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM catalog_item_sub_modules
+                 WHERE catalog_item_id IN (SELECT id FROM catalog_items WHERE code = 'CORE')
+                   AND sub_module_id IN (
+                       SELECT id FROM sub_modules WHERE code IN ('BRANCH', 'EMPLOYEES', 'ROLES'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

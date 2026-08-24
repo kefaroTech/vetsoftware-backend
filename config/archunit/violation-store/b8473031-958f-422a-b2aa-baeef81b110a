@@ -1,2 +1,0 @@
-ProductChargeOpenAccountController no tiene rodaja web: falta ProductChargeOpenAccountControllerTest (@WebMvcTest) en com.vetsoftware.app.productchargeopenaccount.infrastructure.web
-SpaTypeController no tiene rodaja web: falta SpaTypeControllerTest (@WebMvcTest) en com.vetsoftware.app.spatype.infrastructure.web

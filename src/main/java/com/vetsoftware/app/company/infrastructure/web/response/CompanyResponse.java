@@ -8,7 +8,6 @@ public record CompanyResponse(@Schema(requiredMode = Schema.RequiredMode.REQUIRE
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String identifier, String address,
         String contactNumber, @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CitySummary city,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CompanyMembershipSummary membership,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

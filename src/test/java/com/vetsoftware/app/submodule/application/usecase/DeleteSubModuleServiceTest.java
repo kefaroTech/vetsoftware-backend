@@ -6,7 +6,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.vetsoftware.app.submodule.application.port.out.MembershipSubModuleChildrenQueryPort;
+import com.vetsoftware.app.submodule.application.port.out.CatalogItemChildrenQueryPort;
+import com.vetsoftware.app.submodule.application.port.out.CompanyEntitlementChildrenQueryPort;
 import com.vetsoftware.app.submodule.application.port.out.SubModuleRepository;
 import com.vetsoftware.app.submodule.domain.SubModuleHasActiveChildrenException;
 import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
@@ -27,7 +28,9 @@ class DeleteSubModuleServiceTest {
     @Mock
     private SubModuleRepository repository;
     @Mock
-    private MembershipSubModuleChildrenQueryPort membershipSubModuleChildrenQueryPort;
+    private CatalogItemChildrenQueryPort catalogItemChildrenQueryPort;
+    @Mock
+    private CompanyEntitlementChildrenQueryPort companyEntitlementChildrenQueryPort;
     @InjectMocks
     private DeleteSubModuleService service;
 
@@ -36,11 +39,13 @@ class DeleteSubModuleServiceTest {
     class Eliminacion {
 
         @Test
-        @DisplayName("elimina el submodulo cuando no tiene membershipSubModule activos")
+        @DisplayName("elimina el submodulo cuando ningun articulo del catalogo lo abre")
         void elimina_el_submodulo_cuando_no_tiene_hijos_activos() {
             when(repository.findById(SubModuleMother.SUB_MODULE_ID))
                     .thenReturn(Optional.of(SubModuleMother.reportes()));
-            when(membershipSubModuleChildrenQueryPort
+            when(catalogItemChildrenQueryPort
+                    .existsActiveBySubModuleId(SubModuleMother.SUB_MODULE_ID)).thenReturn(false);
+            when(companyEntitlementChildrenQueryPort
                     .existsActiveBySubModuleId(SubModuleMother.SUB_MODULE_ID)).thenReturn(false);
 
             service.execute(SubModuleMother.SUB_MODULE_ID);
@@ -62,20 +67,38 @@ class DeleteSubModuleServiceTest {
                     .isInstanceOf(SubModuleNotFoundException.class)
                     .hasMessageContaining("SubModule not found: " + SubModuleMother.SUB_MODULE_ID);
 
-            verifyNoInteractions(membershipSubModuleChildrenQueryPort);
+            verifyNoInteractions(catalogItemChildrenQueryPort, companyEntitlementChildrenQueryPort);
         }
 
         @Test
-        @DisplayName("no elimina si el submodulo tiene membershipSubModule activos")
+        @DisplayName("no elimina si algun articulo vivo del catalogo abre el submodulo")
         void no_elimina_si_tiene_hijos_activos() {
             when(repository.findById(SubModuleMother.SUB_MODULE_ID))
                     .thenReturn(Optional.of(SubModuleMother.reportes()));
-            when(membershipSubModuleChildrenQueryPort
+            when(catalogItemChildrenQueryPort
                     .existsActiveBySubModuleId(SubModuleMother.SUB_MODULE_ID)).thenReturn(true);
 
             assertThatThrownBy(() -> service.execute(SubModuleMother.SUB_MODULE_ID))
                     .isInstanceOf(SubModuleHasActiveChildrenException.class)
-                    .hasMessageContaining("membershipSubModule");
+                    .hasMessageContaining("catalogItemSubModule");
+
+            verify(repository, never()).delete(SubModuleMother.SUB_MODULE_ID);
+            verifyNoInteractions(companyEntitlementChildrenQueryPort);
+        }
+
+        @Test
+        @DisplayName("no elimina si alguna empresa lo tiene concedido, aunque el catalogo este limpio")
+        void no_elimina_si_alguna_empresa_lo_tiene_concedido() {
+            when(repository.findById(SubModuleMother.SUB_MODULE_ID))
+                    .thenReturn(Optional.of(SubModuleMother.reportes()));
+            when(catalogItemChildrenQueryPort
+                    .existsActiveBySubModuleId(SubModuleMother.SUB_MODULE_ID)).thenReturn(false);
+            when(companyEntitlementChildrenQueryPort
+                    .existsActiveBySubModuleId(SubModuleMother.SUB_MODULE_ID)).thenReturn(true);
+
+            assertThatThrownBy(() -> service.execute(SubModuleMother.SUB_MODULE_ID))
+                    .isInstanceOf(SubModuleHasActiveChildrenException.class)
+                    .hasMessageContaining("companyEntitlement");
 
             verify(repository, never()).delete(SubModuleMother.SUB_MODULE_ID);
         }

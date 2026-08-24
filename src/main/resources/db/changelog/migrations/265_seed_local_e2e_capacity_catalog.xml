@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de LABORATORIO, solo para entorno local y e2e (issue #499). Contexto
+         local,e2e: ver el comentario de 262_seed_local_e2e_platform_credential.xml.
+         NUNCA se aplica en dev ni en produccion.
+
+         263_seed_local_e2e_commercial_catalog sembro el nucleo (CORE) y los modulos,
+         pero NINGUN articulo de tipo CAPACITY: el arreglo de #490
+         (StructuralCapacityMinimum) exige que el contrato inicial firme, como minimo
+         estructural, un conjunto de articulos CAPACITY is_core=TRUE para BRANCH y
+         USER. Sin ellos POST /api/v1/register no puede completar el alta en
+         local/e2e (PLATFORM_CATALOG_NOT_CONFIGURED).
+
+         chk_catalog_items_capacity_unit (229_create_catalog_items.xml) exige
+         capacity_unit NO NULA cuando item_type='CAPACITY' -y NULA en cualquier otro
+         caso-, de ahi que aqui SI se nombre la columna, al reves que en 263.
+
+         No hace falta catalog_item_sub_modules para estos dos: una capacidad no abre
+         pantallas, y PlatformCatalogTemplateJpaRepository.findInitialCapacityTemplates
+         no hace ese JOIN a proposito.
+
+         included_quantity=0 y min_quantity=1 dan un techo de 1 por unidad
+         (CapacityGrantLine.ceiling() = included + quantity): una sede y un usuario,
+         que es exactamente el minimo. Subirlo es decision comercial, no tecnica.
+         Los importes son marcadores de laboratorio, igual que los de 264; la decision
+         comercial sigue pendiente (docs/db/suscripciones-datos-semilla.md §5.3).
+
+         Aviso: en algun contenedor local puede que estas dos filas ya existan porque
+         se sembraron a mano para demostrar el 201 de #490 antes de que este changeSet
+         existiera. Por eso todo va guardado con WHERE NOT EXISTS -nunca INSERT
+         IGNORE- para convivir con lo que ya haya sin duplicar ni fallar. -->
+
+    <changeSet id="265_seed_local_e2e_capacity_catalog_items" author="orlando" context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_items
+                    (code, name, short_description, item_type, capacity_unit, is_core,
+                     min_quantity, max_quantity, sort_order, status)
+            SELECT seed.code, seed.name, seed.short_description, 'CAPACITY',
+                   seed.capacity_unit, TRUE, 1, NULL, seed.sort_order, 'ACTIVE'
+              FROM (
+                SELECT 'CAPACITY_BRANCH' AS code, 'Sede incluida' AS name,
+                       'Una sede de trabajo (laboratorio)' AS short_description,
+                       'BRANCH' AS capacity_unit, 11 AS sort_order
+                UNION ALL SELECT 'CAPACITY_USER', 'Usuario incluido',
+                       'Un usuario de acceso (laboratorio)', 'USER', 12
+              ) seed
+             WHERE NOT EXISTS (SELECT 1 FROM catalog_items x WHERE x.code = seed.code);
+        ]]></sql>
+        <rollback>
+            <sql>DELETE FROM catalog_items WHERE code IN ('CAPACITY_BRANCH','CAPACITY_USER');</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="265_seed_local_e2e_capacity_catalog_prices" author="orlando" context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_prices
+                    (price_list_id, catalog_item_id, billing_cycle, tier_min, tier_max,
+                     included_quantity, unit_amount, setup_amount, tax_rate, tax_treatment)
+            SELECT pl.id, ci.id, 'MONTHLY', 1, NULL, 0, seed.unit_amount, 0.00, 19.00, 'TAXED'
+              FROM price_lists pl
+              JOIN (
+                SELECT 'CAPACITY_BRANCH' AS code, 25000.00 AS unit_amount
+                UNION ALL SELECT 'CAPACITY_USER', 15000.00
+              ) seed ON 1 = 1
+              JOIN catalog_items ci ON ci.code = seed.code
+             WHERE pl.code = 'LISTA-LOCAL-LAB'
+               AND NOT EXISTS (
+                   SELECT 1 FROM catalog_prices x
+                    WHERE x.price_list_id = pl.id AND x.catalog_item_id = ci.id
+                      AND x.billing_cycle = 'MONTHLY' AND x.tier_min = 1);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM catalog_prices
+                 WHERE price_list_id IN (SELECT id FROM price_lists WHERE code = 'LISTA-LOCAL-LAB')
+                   AND catalog_item_id IN (
+                       SELECT id FROM catalog_items WHERE code IN ('CAPACITY_BRANCH','CAPACITY_USER'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

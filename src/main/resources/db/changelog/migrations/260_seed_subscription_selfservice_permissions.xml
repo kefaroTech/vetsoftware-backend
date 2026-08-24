@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #421. Mismo caso que #385 (entitlement, 256) y #395 (pagos/cobranza, 257): con
+         #411 se reabrieron tres puertos de `subscription` al tenant y sus @PreAuthorize exigen
+         autoridades que no existen sembradas, así que el 403 no se puede resolver desde la
+         interfaz. Los dos códigos se verificaron uno a uno contra el @PreAuthorize real:
+           - subscription.update  RemoveSubscriptionItemUseCase.java:27-28,
+                                   ChangeSubscriptionItemQuantityUseCase.java:34-35
+           - subscription.cancel  CancelSubscriptionUseCase.java:27-28
+         Los tres puertos comparten guard `hasRole('SYSTEM') or (hasAuthority('<codigo>') and
+         @authz.isMyCompany(#command.companyId))` y sus javadoc son explícitos: "Es del cliente".
+         No hay una tercera autoridad que sembrar: los dos códigos cubren los tres puertos.
+
+         Reutiliza el sub_module SUBSCRIPTION (creado en 258_seed_technical_catalog, ya usado por
+         subscription.read en 259): son las mismas subscription_items/subscriptions, no una
+         superficie nueva. No hace falta un changeSet de sub_module aquí.
+
+         Los dos códigos van al rol base ADMIN: cancelar el contrato o cambiar sus líneas son
+         operaciones de consecuencia comercial pero del propio tenant, igual que quote.accept y
+         quote.reject en 259.
+
+         Backfill ACOTADO por company_entitlements.access_level = 'FULL', no un CROSS JOIN ciego
+         a companies como en 184: JpaRolePermissionInitializationPort.reconcile()
+         (registration/infrastructure/persistence/JpaRolePermissionInitializationPort.java:277-280)
+         solo concede una plantilla que no termina en `.read` cuando el access_level de su
+         sub_module es FULL; en READ_ONLY el propio reconcile lo filtra. Un backfill sin ese
+         filtro dejaría subscription.update/subscription.cancel en `permissions` para empresas en
+         READ_ONLY, escritura de plataforma que el motor de entitlements nunca les concedería. Las
+         empresas nuevas ya lo reciben vía base_role_permissions en el alta; las existentes con
+         FULL en SUBSCRIPTION lo reciben aquí sin esperar a la próxima recalculación de
+         entitlements. Todas las sentencias son idempotentes (guardas NOT EXISTS, nunca
+         INSERT IGNORE). -->
+
+    <changeSet id="260_subscription_selfservice_base_permissions" author="orlando">
+        <sql>
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Modificar líneas de la suscripción', 'subscription.update',
+                   (SELECT id FROM sub_modules WHERE code = 'SUBSCRIPTION'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM base_permissions WHERE code = 'subscription.update');
+
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Cancelar la suscripción', 'subscription.cancel',
+                   (SELECT id FROM sub_modules WHERE code = 'SUBSCRIPTION'), 1
+            WHERE NOT EXISTS (SELECT 1 FROM base_permissions WHERE code = 'subscription.cancel');
+        </sql>
+        <rollback>
+            DELETE FROM base_permissions WHERE code IN ('subscription.update', 'subscription.cancel');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="260_subscription_selfservice_base_role_permissions_admin" author="orlando">
+        <!-- ADMIN tenant recibe las dos mutaciones de autoservicio: así toda empresa NUEVA
+             las hereda al registrarse. -->
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN ('subscription.update', 'subscription.cancel')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            DELETE FROM base_role_permissions
+            WHERE base_permission_id IN (
+                SELECT id FROM base_permissions WHERE code IN ('subscription.update', 'subscription.cancel'));
+        </rollback>
+    </changeSet>
+
+    <changeSet id="260_subscription_selfservice_permissions_backfill_companies" author="orlando">
+        <!-- Backfill acotado: solo empresas con company_entitlements.access_level = 'FULL' en
+             SUBSCRIPTION, igual que exige JpaRolePermissionInitializationPort.reconcile(). -->
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'SUBSCRIPTION'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level = 'FULL'
+              AND bp.code IN ('subscription.update', 'subscription.cancel')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE code IN ('subscription.update', 'subscription.cancel');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="260_subscription_selfservice_role_permissions_backfill_admin" author="orlando">
+        <!-- Asigna esos permisos al rol ADMIN (code = 'ADMIN') de cada empresa backfillada. -->
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id
+                AND p.code IN ('subscription.update', 'subscription.cancel')
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            DELETE FROM role_permissions
+            WHERE permission_id IN (
+                SELECT id FROM permissions WHERE code IN ('subscription.update', 'subscription.cancel'));
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -10,6 +10,7 @@ import com.vetsoftware.app.auth.application.dto.EmployeeContext;
 import com.vetsoftware.app.auth.application.exception.SessionReplacedException;
 import com.vetsoftware.app.auth.application.port.out.AuthEmployeeRepository;
 import com.vetsoftware.app.auth.application.port.out.BranchAccessResolver;
+import com.vetsoftware.app.auth.application.port.out.EffectivePermissionResolver;
 import com.vetsoftware.app.auth.application.port.out.PermissionResolver;
 import com.vetsoftware.app.auth.testsupport.AuthMother;
 import java.util.Optional;
@@ -36,6 +37,8 @@ class ResolveAuthContextServiceTest {
     @Mock
     private BranchAccessResolver branchAccessResolver;
     @Mock
+    private EffectivePermissionResolver effectivePermissionResolver;
+    @Mock
     private AuthEmployeeRepository employeeRepository;
     @InjectMocks
     private ResolveAuthContextService service;
@@ -51,14 +54,16 @@ class ResolveAuthContextServiceTest {
                     .thenReturn(Optional.of(AuthMother.sesionEmpleado()));
             when(permissionResolver.resolveFor(AuthMother.EMPLOYEE_ID))
                     .thenReturn(AuthMother.PERMISOS_EMPLEADO);
+            Set<String> efectivos = Set.of("animal.read");
+            when(effectivePermissionResolver.resolveFor(AuthMother.COMPANY_ID,
+                    AuthMother.PERMISOS_EMPLEADO)).thenReturn(efectivos);
             when(branchAccessResolver.resolveFor(AuthMother.EMPLOYEE_ID))
                     .thenReturn(Set.of(AuthMother.BRANCH_ID));
 
             AuthContext result = service.execute(AuthMother.EMPLOYEE_ID, AuthMother.AUTH_VERSION);
 
-            assertThat(result)
-                    .isEqualTo(new EmployeeContext(AuthMother.EMPLOYEE_ID, AuthMother.COMPANY_ID,
-                            AuthMother.PERMISOS_EMPLEADO, Set.of(AuthMother.BRANCH_ID)));
+            assertThat(result).isEqualTo(new EmployeeContext(AuthMother.EMPLOYEE_ID,
+                    AuthMother.COMPANY_ID, efectivos, Set.of(AuthMother.BRANCH_ID)));
         }
 
         @Test
@@ -66,7 +71,8 @@ class ResolveAuthContextServiceTest {
         void employee_id_nulo_no_consulta_nada() {
             assertThat(service.execute(null, AuthMother.AUTH_VERSION)).isNull();
 
-            verifyNoInteractions(employeeRepository, permissionResolver, branchAccessResolver);
+            verifyNoInteractions(employeeRepository, permissionResolver,
+                    effectivePermissionResolver, branchAccessResolver);
         }
 
         @Test
@@ -77,7 +83,8 @@ class ResolveAuthContextServiceTest {
 
             assertThat(service.execute(AuthMother.EMPLOYEE_ID, AuthMother.AUTH_VERSION)).isNull();
 
-            verifyNoInteractions(permissionResolver, branchAccessResolver);
+            verifyNoInteractions(permissionResolver, effectivePermissionResolver,
+                    branchAccessResolver);
         }
     }
 
@@ -94,7 +101,8 @@ class ResolveAuthContextServiceTest {
             assertThatThrownBy(() -> service.execute(AuthMother.EMPLOYEE_ID, 999L))
                     .isInstanceOf(SessionReplacedException.class);
 
-            verifyNoInteractions(permissionResolver, branchAccessResolver);
+            verifyNoInteractions(permissionResolver, effectivePermissionResolver,
+                    branchAccessResolver);
         }
     }
 }

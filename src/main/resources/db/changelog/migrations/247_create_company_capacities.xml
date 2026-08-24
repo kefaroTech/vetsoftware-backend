@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Modelo de suscripciones, fase 5 (suscripciones-tablas.md #18). Techo contratado y consumo
+         actual por unidad de capacidad. Derivada: sin enabled ni @Version (E6_YA_PROTEGIDO);
+         used_quantity se mueve con UPDATE ... SET used_quantity = used_quantity + ? atómico en el
+         motor, nunca leer-modificar-guardar desde Java. Sin CHECK (used_quantity <= limit_quantity)
+         a propósito: bajar de plan deja legítimamente a un cliente por encima de su nuevo techo, y
+         eso tiene que poder registrarse. subscription_id es [AÑADIDO]. -->
+    <changeSet id="247_create_company_capacities" author="orlando">
+        <createTable tableName="company_capacities">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_company_capacities_company"
+                             references="companies(id)"/>
+            </column>
+            <column name="capacity_unit" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="limit_quantity" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="used_quantity" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="subscription_id" type="BIGINT"/>
+            <column name="recalculated_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="company_capacities" columnNames="company_id, capacity_unit"
+                             constraintName="uq_company_capacities"/>
+
+        <sql><![CDATA[
+            ALTER TABLE company_capacities
+                ADD CONSTRAINT chk_company_capacities_unit
+                    CHECK (capacity_unit IN ('USER','BRANCH','TERMINAL','STORAGE_GB')),
+                ADD CONSTRAINT chk_company_capacities_quantities
+                    CHECK (limit_quantity >= 0 AND used_quantity >= 0)
+        ]]></sql>
+
+        <createIndex tableName="company_capacities" indexName="ix_company_capacities_stale">
+            <column name="recalculated_at"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="company_capacities"
+                                 baseColumnNames="company_id, subscription_id"
+                                 referencedTableName="subscriptions"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_company_capacities_subscription"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="company_capacities"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

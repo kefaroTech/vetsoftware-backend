@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #517 (tercera tanda: catalogo comercial). Mismo patron de 268/270/273/
+         275. Siembra las 24 autoridades de producto, categoria de producto,
+         servicio, categoria de servicio, promocion e impuesto -lo que un tenant
+         vende y como lo clasifica-.
+
+         Verificado uno a uno contra el @PreAuthorize real:
+
+         INVENTORY (product/, productcategory/): 'product.*' y 'productCategory.*'
+           -CRUD completo en las dos features-. El dominio de Product deja explicito
+           en su Javadoc que el STOCK vive en la feature inventory (stock_balance/
+           stock_lot/stock_movement) y Product es solo la ficha de catalogo
+           (identidad, precio, clasificacion fiscal); por eso comparte submodulo con
+           'inventory.adjust'/'inventory.read'/'inventory.transfer' -ya sembrados en
+           184/191-: es el mismo dominio de "lo que hay para vender", separado del
+           registro de movimientos.
+
+         SERVICES (service/, servicecategory/): 'service.*' y 'serviceCategory.*'
+           -CRUD completo en las dos features-.
+
+         PROMOTIONS (promotion/): CRUD completo.
+
+         TAXES (tax/): CRUD completo.
+
+         SIN CONTEXTO A PROPOSITO, mismo argumento que 266/267/268/270/273/275:
+         base_permissions y base_role_permissions son estructura de plataforma.
+
+         Backfill a empresas EXISTENTES acotado por company_entitlements: *.read con
+         FULL o READ_ONLY; el resto solo FULL. INVENTORY, SERVICES, PROMOTIONS y
+         TAXES son is_sellable=TRUE (258) y no estan atadas a CORE (269/274), asi que
+         el backfill solo inserta donde una empresa ya tenga el entitlement -hoy
+         ninguna empresa de laboratorio local,e2e lo tiene salvo la propia INVENTORY
+         si algun changeset anterior la sembro; se deja el backfill listo, igual que
+         268/270/273/275, en vez de asumir que no hace falta-.
+
+         Todas las sentencias son idempotentes (guardas NOT EXISTS, nunca
+         INSERT IGNORE). -->
+
+    <changeSet id="276_commercial_catalog_base_permissions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT seed.name, seed.code, sm.id, TRUE
+            FROM (
+                SELECT 'Crear productos' AS name, 'product.create' AS code, 'INVENTORY' AS sub_module_code
+                UNION ALL SELECT 'Ver productos', 'product.read', 'INVENTORY'
+                UNION ALL SELECT 'Editar productos', 'product.update', 'INVENTORY'
+                UNION ALL SELECT 'Eliminar productos', 'product.delete', 'INVENTORY'
+                UNION ALL SELECT 'Crear categorias de producto', 'productCategory.create', 'INVENTORY'
+                UNION ALL SELECT 'Ver categorias de producto', 'productCategory.read', 'INVENTORY'
+                UNION ALL SELECT 'Editar categorias de producto', 'productCategory.update', 'INVENTORY'
+                UNION ALL SELECT 'Eliminar categorias de producto', 'productCategory.delete', 'INVENTORY'
+
+                UNION ALL SELECT 'Crear servicios', 'service.create', 'SERVICES'
+                UNION ALL SELECT 'Ver servicios', 'service.read', 'SERVICES'
+                UNION ALL SELECT 'Editar servicios', 'service.update', 'SERVICES'
+                UNION ALL SELECT 'Eliminar servicios', 'service.delete', 'SERVICES'
+                UNION ALL SELECT 'Crear categorias de servicio', 'serviceCategory.create', 'SERVICES'
+                UNION ALL SELECT 'Ver categorias de servicio', 'serviceCategory.read', 'SERVICES'
+                UNION ALL SELECT 'Editar categorias de servicio', 'serviceCategory.update', 'SERVICES'
+                UNION ALL SELECT 'Eliminar categorias de servicio', 'serviceCategory.delete', 'SERVICES'
+
+                UNION ALL SELECT 'Crear promociones', 'promotion.create', 'PROMOTIONS'
+                UNION ALL SELECT 'Ver promociones', 'promotion.read', 'PROMOTIONS'
+                UNION ALL SELECT 'Editar promociones', 'promotion.update', 'PROMOTIONS'
+                UNION ALL SELECT 'Eliminar promociones', 'promotion.delete', 'PROMOTIONS'
+
+                UNION ALL SELECT 'Crear impuestos', 'tax.create', 'TAXES'
+                UNION ALL SELECT 'Ver impuestos', 'tax.read', 'TAXES'
+                UNION ALL SELECT 'Editar impuestos', 'tax.update', 'TAXES'
+                UNION ALL SELECT 'Eliminar impuestos', 'tax.delete', 'TAXES'
+            ) seed
+            JOIN sub_modules sm ON sm.code = seed.sub_module_code
+            LEFT JOIN base_permissions existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_permissions
+                WHERE code IN (
+                    'product.create', 'product.read', 'product.update', 'product.delete',
+                    'productCategory.create', 'productCategory.read', 'productCategory.update', 'productCategory.delete',
+                    'service.create', 'service.read', 'service.update', 'service.delete',
+                    'serviceCategory.create', 'serviceCategory.read', 'serviceCategory.update', 'serviceCategory.delete',
+                    'promotion.create', 'promotion.read', 'promotion.update', 'promotion.delete',
+                    'tax.create', 'tax.read', 'tax.update', 'tax.delete');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="276_commercial_catalog_base_role_permissions_admin" author="orlando">
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN (
+                'product.create', 'product.read', 'product.update', 'product.delete',
+                'productCategory.create', 'productCategory.read', 'productCategory.update', 'productCategory.delete',
+                'service.create', 'service.read', 'service.update', 'service.delete',
+                'serviceCategory.create', 'serviceCategory.read', 'serviceCategory.update', 'serviceCategory.delete',
+                'promotion.create', 'promotion.read', 'promotion.update', 'promotion.delete',
+                'tax.create', 'tax.read', 'tax.update', 'tax.delete')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id FROM base_permissions
+                    WHERE code IN (
+                        'product.create', 'product.read', 'product.update', 'product.delete',
+                        'productCategory.create', 'productCategory.read', 'productCategory.update', 'productCategory.delete',
+                        'service.create', 'service.read', 'service.update', 'service.delete',
+                        'serviceCategory.create', 'serviceCategory.read', 'serviceCategory.update', 'serviceCategory.delete',
+                        'promotion.create', 'promotion.read', 'promotion.update', 'promotion.delete',
+                        'tax.create', 'tax.read', 'tax.update', 'tax.delete'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="276_commercial_catalog_permissions_backfill_companies_read" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, bp.sub_module_id, 1
+            FROM company_entitlements ce
+            JOIN base_permissions bp ON bp.sub_module_id = ce.sub_module_id
+            JOIN sub_modules sm ON sm.id = bp.sub_module_id
+                AND sm.code IN ('INVENTORY', 'SERVICES', 'PROMOTIONS', 'TAXES')
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code IN ('product.read', 'productCategory.read', 'service.read',
+                               'serviceCategory.read', 'promotion.read', 'tax.read')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM permissions
+                WHERE code IN ('product.read', 'productCategory.read', 'service.read',
+                                'serviceCategory.read', 'promotion.read', 'tax.read');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="276_commercial_catalog_permissions_backfill_companies_write" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, bp.sub_module_id, 1
+            FROM company_entitlements ce
+            JOIN base_permissions bp ON bp.sub_module_id = ce.sub_module_id
+            JOIN sub_modules sm ON sm.id = bp.sub_module_id
+                AND sm.code IN ('INVENTORY', 'SERVICES', 'PROMOTIONS', 'TAXES')
+            WHERE ce.access_level = 'FULL'
+              AND bp.code IN ('product.create', 'product.update', 'product.delete',
+                               'productCategory.create', 'productCategory.update', 'productCategory.delete',
+                               'service.create', 'service.update', 'service.delete',
+                               'serviceCategory.create', 'serviceCategory.update', 'serviceCategory.delete',
+                               'promotion.create', 'promotion.update', 'promotion.delete',
+                               'tax.create', 'tax.update', 'tax.delete')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM permissions
+                WHERE code IN ('product.create', 'product.update', 'product.delete',
+                                'productCategory.create', 'productCategory.update', 'productCategory.delete',
+                                'service.create', 'service.update', 'service.delete',
+                                'serviceCategory.create', 'serviceCategory.update', 'serviceCategory.delete',
+                                'promotion.create', 'promotion.update', 'promotion.delete',
+                                'tax.create', 'tax.update', 'tax.delete');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="276_commercial_catalog_role_permissions_backfill_admin" author="orlando">
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id
+                AND p.code IN (
+                    'product.create', 'product.read', 'product.update', 'product.delete',
+                    'productCategory.create', 'productCategory.read', 'productCategory.update', 'productCategory.delete',
+                    'service.create', 'service.read', 'service.update', 'service.delete',
+                    'serviceCategory.create', 'serviceCategory.read', 'serviceCategory.update', 'serviceCategory.delete',
+                    'promotion.create', 'promotion.read', 'promotion.update', 'promotion.delete',
+                    'tax.create', 'tax.read', 'tax.update', 'tax.delete')
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM role_permissions
+                WHERE permission_id IN (
+                    SELECT id FROM permissions
+                    WHERE code IN (
+                        'product.create', 'product.read', 'product.update', 'product.delete',
+                        'productCategory.create', 'productCategory.read', 'productCategory.update', 'productCategory.delete',
+                        'service.create', 'service.read', 'service.update', 'service.delete',
+                        'serviceCategory.create', 'serviceCategory.read', 'serviceCategory.update', 'serviceCategory.delete',
+                        'promotion.create', 'promotion.read', 'promotion.update', 'promotion.delete',
+                        'tax.create', 'tax.read', 'tax.update', 'tax.delete'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -45,7 +45,7 @@ class JpaCashTerminalQueryPortTest {
         @Test
         @DisplayName("mapea la entidad activa encontrada a TerminalRef")
         void mapea_la_entidad_activa_encontrada_a_terminal_ref() {
-            var entity = CashTerminalMother.activa(TERMINAL_ID, COMPANY_ID, BRANCH_ID,
+            var entity = CashTerminalMother.entityActiva(TERMINAL_ID, COMPANY_ID, BRANCH_ID,
                     "Caja principal", "CAJA-1");
             when(repository.findByIdAndCompanyIdAndBranchIdAndActiveTrue(TERMINAL_ID, COMPANY_ID,
                     BRANCH_ID)).thenReturn(Optional.of(entity));

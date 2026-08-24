@@ -4,13 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
-import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
-import com.vetsoftware.app.electronicdocument.testsupport.ReflectionEntities;
-import com.vetsoftware.app.membership.infrastructure.persistence.MembershipJpaEntity;
-import com.vetsoftware.app.membershipsubmodule.infrastructure.persistence.MembershipSubModuleJpaRepository;
-import java.lang.reflect.Field;
-import java.util.Optional;
+import com.vetsoftware.app.entitlement.infrastructure.persistence.CompanyEntitlementJpaRepository;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,36 +14,29 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+/**
+ * El derecho a facturar sale ahora del contrato, no del plan: un solo lookup
+ * sobre {@code company_entitlements} por {@code (companyId, subModuleCode)}.
+ *
+ * <p>
+ * El puerto devuelve un {@code long} y no un {@code boolean} a proposito
+ * ({@code PROYECCION_SIN_LITERAL_BOOLEANO}, #196), asi que estos tests stubean
+ * conteos, no banderas.
+ */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("JpaBillingEntitlementQueryPort — resuelve el derecho a facturacion electronica")
 class JpaBillingEntitlementQueryPortTest {
 
+    private static final List<String> SOLO_FULL = List.of("FULL");
+
     @Mock
-    private CompanyJpaRepository companyJpaRepository;
-    @Mock
-    private MembershipSubModuleJpaRepository membershipSubModuleJpaRepository;
+    private CompanyEntitlementJpaRepository companyEntitlementJpaRepository;
 
     private JpaBillingEntitlementQueryPort port;
 
     @BeforeEach
     void montar() {
-        port = new JpaBillingEntitlementQueryPort(companyJpaRepository,
-                membershipSubModuleJpaRepository);
-    }
-
-    private static MembershipJpaEntity membresia(Long id) throws Exception {
-        MembershipJpaEntity membership = ReflectionEntities.newInstance(MembershipJpaEntity.class);
-        Field idField = MembershipJpaEntity.class.getDeclaredField("id");
-        idField.setAccessible(true);
-        idField.set(membership, id);
-        return membership;
-    }
-
-    private static CompanyJpaEntity empresaConMembresia(MembershipJpaEntity membership)
-            throws Exception {
-        CompanyJpaEntity company = ReflectionEntities.newInstance(CompanyJpaEntity.class);
-        company.setMembership(membership);
-        return company;
+        port = new JpaBillingEntitlementQueryPort(companyEntitlementJpaRepository);
     }
 
     @Test
@@ -56,41 +44,51 @@ class JpaBillingEntitlementQueryPortTest {
     void company_id_null_nunca_esta_habilitada() {
         assertThat(port.isElectronicInvoicingEnabled(null)).isFalse();
 
-        verifyNoInteractions(companyJpaRepository, membershipSubModuleJpaRepository);
-    }
-
-    @Test
-    @DisplayName("una empresa inexistente no esta habilitada")
-    void empresa_inexistente_no_esta_habilitada() {
-        when(companyJpaRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThat(port.isElectronicInvoicingEnabled(1L)).isFalse();
+        verifyNoInteractions(companyEntitlementJpaRepository);
     }
 
     @Nested
-    @DisplayName("empresa existente — depende del submodulo BILLING de su membresia")
-    class EmpresaExistente {
+    @DisplayName("segun lo que el contrato de la empresa conceda sobre BILLING")
+    class SegunElContrato {
 
         @Test
-        @DisplayName("con el submodulo BILLING habilitado en la membresia, esta habilitada")
-        void con_billing_habilitado() throws Exception {
-            CompanyJpaEntity company = empresaConMembresia(membresia(3L));
-            when(companyJpaRepository.findById(9L)).thenReturn(Optional.of(company));
-            when(membershipSubModuleJpaRepository.hasEnabledSubModuleCode(3L, "BILLING"))
-                    .thenReturn(true);
+        @DisplayName("con BILLING concedido en nivel FULL, esta habilitada")
+        void con_billing_concedido_en_full() {
+            when(companyEntitlementJpaRepository.countGrantedByCompanyIdAndSubModuleCode(9L,
+                    "BILLING", SOLO_FULL)).thenReturn(1L);
 
             assertThat(port.isElectronicInvoicingEnabled(9L)).isTrue();
         }
 
+        /**
+         * Cubre a la vez la empresa sin contrato, la que nunca compro facturacion y la
+         * que la dio de baja: en las tres el conteo es cero, que es exactamente lo que
+         * el modelo quiere decir con «este submodulo no existe para esta empresa».
+         */
         @Test
-        @DisplayName("sin el submodulo BILLING en la membresia, no esta habilitada")
-        void sin_billing_habilitado() throws Exception {
-            CompanyJpaEntity company = empresaConMembresia(membresia(4L));
-            when(companyJpaRepository.findById(9L)).thenReturn(Optional.of(company));
-            when(membershipSubModuleJpaRepository.hasEnabledSubModuleCode(4L, "BILLING"))
-                    .thenReturn(false);
+        @DisplayName("sin ninguna concesion FULL sobre BILLING, no esta habilitada")
+        void sin_concesion_full_sobre_billing() {
+            when(companyEntitlementJpaRepository.countGrantedByCompanyIdAndSubModuleCode(9L,
+                    "BILLING", SOLO_FULL)).thenReturn(0L);
 
             assertThat(port.isElectronicInvoicingEnabled(9L)).isFalse();
+        }
+
+        /**
+         * READ_ONLY es consulta e impresion, no crear. Emitir ante la DIAN es crear, y
+         * por eso el nivel solo lectura no entra en la consulta: si entrara, un modulo
+         * de facturacion dado de baja seguiria emitiendo documentos fiscales.
+         */
+        @Test
+        @DisplayName("el nivel READ_ONLY no cuenta: la consulta solo pregunta por FULL")
+        void el_nivel_read_only_no_cuenta() {
+            when(companyEntitlementJpaRepository.countGrantedByCompanyIdAndSubModuleCode(9L,
+                    "BILLING", SOLO_FULL)).thenReturn(0L);
+
+            assertThat(port.isElectronicInvoicingEnabled(9L)).isFalse();
+
+            // El stub es estricto: si el adaptador consultara con otra lista de niveles
+            // —incluyendo READ_ONLY— Mockito fallaria por argumentos no coincidentes.
         }
     }
 }

@@ -25,19 +25,17 @@ class CompanyTest {
     private static final String IDENTIFICADOR_51 = "i".repeat(51);
 
     /**
-     * Construye una empresa dejando variar solo los cuatro campos con invariante.
-     * Evita repetir nueve argumentos por escenario, que es como se cuela un test
-     * que valida un campo distinto del que dice validar.
+     * Construye una empresa dejando variar solo los tres campos con invariante.
+     * Evita repetir ocho argumentos por escenario, que es como se cuela un test que
+     * valida un campo distinto del que dice validar.
      */
-    private static Company nueva(String name, String identifier, CityRef city,
-            MembershipRef membership) {
-        return new Company(1L, name, identifier, "Calle 123", "3001234567", city, membership,
+    private static Company nueva(String name, String identifier, CityRef city) {
+        return new Company(1L, name, identifier, "Calle 123", "3001234567", city,
                 CompanyMother.CREADO, null, true);
     }
 
-    private static void actualizar(Company company, String name, String identifier, CityRef city,
-            MembershipRef membership) {
-        company.update(name, identifier, "Calle 123", "3001234567", city, membership);
+    private static void actualizar(Company company, String name, String identifier, CityRef city) {
+        company.update(name, identifier, "Calle 123", "3001234567", city);
     }
 
     @Nested
@@ -48,8 +46,7 @@ class CompanyTest {
         @DisplayName("acepta los campos validos y los expone tal cual")
         void acepta_los_campos_validos() {
             Company company = new Company(7L, "Clinica Norte", "NIT-900", "Calle 123 #45-67",
-                    "3001234567", CompanyMother.BOGOTA, CompanyMother.PREMIUM, CompanyMother.CREADO,
-                    null, true);
+                    "3001234567", CompanyMother.BOGOTA, CompanyMother.CREADO, null, true);
 
             assertThat(company.getId()).isEqualTo(7L);
             assertThat(company.getName()).isEqualTo("Clinica Norte");
@@ -57,7 +54,6 @@ class CompanyTest {
             assertThat(company.getAddress()).isEqualTo("Calle 123 #45-67");
             assertThat(company.getContactNumber()).isEqualTo("3001234567");
             assertThat(company.getCity()).isEqualTo(CompanyMother.BOGOTA);
-            assertThat(company.getMembership()).isEqualTo(CompanyMother.PREMIUM);
             assertThat(company.getCreatedDate()).isEqualTo(CompanyMother.CREADO);
             assertThat(company.isEnabled()).isTrue();
         }
@@ -66,7 +62,7 @@ class CompanyTest {
         @DisplayName("direccion y telefono son opcionales: admite null en ambos")
         void direccion_y_telefono_son_opcionales() {
             Company company = new Company(7L, "Clinica Norte", "NIT-900", null, null,
-                    CompanyMother.BOGOTA, CompanyMother.PREMIUM, CompanyMother.CREADO, null, true);
+                    CompanyMother.BOGOTA, CompanyMother.CREADO, null, true);
 
             assertThat(company.getAddress()).isNull();
             assertThat(company.getContactNumber()).isNull();
@@ -76,7 +72,7 @@ class CompanyTest {
         @DisplayName("admite id nulo: la empresa aun no persistida es valida")
         void admite_id_nulo() {
             Company company = new Company(null, "Clinica Norte", "NIT-900", null, null,
-                    CompanyMother.BOGOTA, CompanyMother.PREMIUM, CompanyMother.CREADO, null, true);
+                    CompanyMother.BOGOTA, CompanyMother.CREADO, null, true);
 
             assertThat(company.getId()).isNull();
             assertThat(company.getName()).isEqualTo("Clinica Norte");
@@ -85,45 +81,37 @@ class CompanyTest {
         static Stream<Arguments> camposInvalidos() {
             return Stream.of(
                     arguments("nombre nulo",
-                            (ThrowingCallable) () -> nueva(null, "NIT-900", CompanyMother.BOGOTA,
-                                    CompanyMother.PREMIUM),
+                            (ThrowingCallable) () -> nueva(null, "NIT-900", CompanyMother.BOGOTA),
                             "name is required"),
                     arguments("nombre vacio",
-                            (ThrowingCallable) () -> nueva("", "NIT-900", CompanyMother.BOGOTA,
-                                    CompanyMother.PREMIUM),
+                            (ThrowingCallable) () -> nueva("", "NIT-900", CompanyMother.BOGOTA),
                             "name is required"),
                     arguments("nombre en blanco",
-                            (ThrowingCallable) () -> nueva("   ", "NIT-900", CompanyMother.BOGOTA,
-                                    CompanyMother.PREMIUM),
+                            (ThrowingCallable) () -> nueva("   ", "NIT-900", CompanyMother.BOGOTA),
                             "name is required"),
                     arguments("nombre de 101 caracteres",
                             (ThrowingCallable) () -> nueva(NOMBRE_101, "NIT-900",
-                                    CompanyMother.BOGOTA, CompanyMother.PREMIUM),
+                                    CompanyMother.BOGOTA),
                             "name must be 100 chars or less"),
                     arguments("identificador nulo",
                             (ThrowingCallable) () -> nueva("Clinica Norte", null,
-                                    CompanyMother.BOGOTA, CompanyMother.PREMIUM),
+                                    CompanyMother.BOGOTA),
                             "identifier is required"),
                     arguments("identificador vacio",
                             (ThrowingCallable) () -> nueva("Clinica Norte", "",
-                                    CompanyMother.BOGOTA, CompanyMother.PREMIUM),
+                                    CompanyMother.BOGOTA),
                             "identifier is required"),
                     arguments("identificador en blanco",
                             (ThrowingCallable) () -> nueva("Clinica Norte", "  ",
-                                    CompanyMother.BOGOTA, CompanyMother.PREMIUM),
+                                    CompanyMother.BOGOTA),
                             "identifier is required"),
                     arguments("identificador de 51 caracteres",
                             (ThrowingCallable) () -> nueva("Clinica Norte", IDENTIFICADOR_51,
-                                    CompanyMother.BOGOTA, CompanyMother.PREMIUM),
+                                    CompanyMother.BOGOTA),
                             "identifier must be 50 chars or less"),
                     arguments("ciudad nula",
-                            (ThrowingCallable) () -> nueva("Clinica Norte", "NIT-900", null,
-                                    CompanyMother.PREMIUM),
-                            "city is required"),
-                    arguments(
-                            "membresia nula", (ThrowingCallable) () -> nueva("Clinica Norte",
-                                    "NIT-900", CompanyMother.BOGOTA, null),
-                            "membership is required"));
+                            (ThrowingCallable) () -> nueva("Clinica Norte", "NIT-900", null),
+                            "city is required"));
         }
 
         @ParameterizedTest(name = "{0}")
@@ -138,16 +126,24 @@ class CompanyTest {
         @Test
         @DisplayName("acepta el nombre en el limite exacto de 100 caracteres")
         void acepta_el_nombre_en_el_limite_de_100() {
-            assertThatCode(
-                    () -> nueva(NOMBRE_100, "NIT-900", CompanyMother.BOGOTA, CompanyMother.PREMIUM))
+            assertThatCode(() -> nueva(NOMBRE_100, "NIT-900", CompanyMother.BOGOTA))
                     .doesNotThrowAnyException();
         }
 
         @Test
         @DisplayName("acepta el identificador en el limite exacto de 50 caracteres")
         void acepta_el_identificador_en_el_limite_de_50() {
-            assertThatCode(() -> nueva("Clinica Norte", IDENTIFICADOR_50, CompanyMother.BOGOTA,
-                    CompanyMother.PREMIUM)).doesNotThrowAnyException();
+            assertThatCode(() -> nueva("Clinica Norte", IDENTIFICADOR_50, CompanyMother.BOGOTA))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("la empresa ya no declara plan: no hay invariante de membresia que romper")
+        void la_empresa_ya_no_declara_plan() {
+            assertThatCode(() -> nueva("Clinica Norte", "NIT-900", CompanyMother.BOGOTA))
+                    .doesNotThrowAnyException();
+            assertThat(Company.class.getDeclaredFields())
+                    .noneMatch(campo -> campo.getName().toLowerCase().contains("membership"));
         }
     }
 
@@ -159,25 +155,24 @@ class CompanyTest {
         @DisplayName("nace sin id, habilitada y con fecha de creacion asignada")
         void nace_sin_id_habilitada_y_con_fecha() {
             Company company = Company.create("Clinica Norte", "NIT-900", "Calle 123", "3001234567",
-                    CompanyMother.BOGOTA, CompanyMother.PREMIUM);
+                    CompanyMother.BOGOTA, CompanyMother.CREADO);
 
             assertThat(company.getId()).isNull();
             assertThat(company.isEnabled()).isTrue();
-            assertThat(company.getCreatedDate()).isNotNull();
+            assertThat(company.getCreatedDate()).isEqualTo(CompanyMother.CREADO);
         }
 
         @Test
         @DisplayName("copia cada argumento en su campo sin cruzarlos")
         void copia_cada_argumento_en_su_campo() {
             Company company = Company.create("Clinica Norte", "NIT-900", "Calle 123", "3001234567",
-                    CompanyMother.BOGOTA, CompanyMother.PREMIUM);
+                    CompanyMother.BOGOTA, CompanyMother.CREADO);
 
             assertThat(company.getName()).isEqualTo("Clinica Norte");
             assertThat(company.getIdentifier()).isEqualTo("NIT-900");
             assertThat(company.getAddress()).isEqualTo("Calle 123");
             assertThat(company.getContactNumber()).isEqualTo("3001234567");
             assertThat(company.getCity()).isEqualTo(CompanyMother.BOGOTA);
-            assertThat(company.getMembership()).isEqualTo(CompanyMother.PREMIUM);
         }
 
         @ParameterizedTest
@@ -185,7 +180,7 @@ class CompanyTest {
         @DisplayName("el factory aplica las mismas invariantes que el constructor")
         void el_factory_aplica_las_mismas_invariantes(String nombre) {
             assertThatThrownBy(() -> Company.create(nombre, "NIT-900", null, null,
-                    CompanyMother.BOGOTA, CompanyMother.PREMIUM))
+                    CompanyMother.BOGOTA, CompanyMother.CREADO))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("name is required");
         }
@@ -196,19 +191,18 @@ class CompanyTest {
     class Actualizacion {
 
         @Test
-        @DisplayName("reemplaza los campos mutables incluidas las dos referencias")
+        @DisplayName("reemplaza los campos mutables incluida la ciudad")
         void reemplaza_los_campos_mutables() {
             Company company = CompanyMother.clinicaNorte();
 
             company.update("Clinica Sur", "NIT-901", "Carrera 45", "3009876543",
-                    CompanyMother.MEDELLIN, CompanyMother.BASICA);
+                    CompanyMother.MEDELLIN);
 
             assertThat(company.getName()).isEqualTo("Clinica Sur");
             assertThat(company.getIdentifier()).isEqualTo("NIT-901");
             assertThat(company.getAddress()).isEqualTo("Carrera 45");
             assertThat(company.getContactNumber()).isEqualTo("3009876543");
             assertThat(company.getCity()).isEqualTo(CompanyMother.MEDELLIN);
-            assertThat(company.getMembership()).isEqualTo(CompanyMother.BASICA);
         }
 
         @Test
@@ -217,7 +211,7 @@ class CompanyTest {
             Company company = CompanyMother.deshabilitada();
 
             company.update("Clinica Sur", "NIT-901", "Carrera 45", "3009876543",
-                    CompanyMother.MEDELLIN, CompanyMother.BASICA);
+                    CompanyMother.MEDELLIN);
 
             assertThat(company.getId()).isEqualTo(CompanyMother.COMPANY_ID);
             assertThat(company.getCreatedDate()).isEqualTo(CompanyMother.CREADO);
@@ -229,8 +223,7 @@ class CompanyTest {
         void permite_borrar_direccion_y_telefono() {
             Company company = CompanyMother.clinicaNorte();
 
-            company.update("Clinica Norte", "NIT-900", null, null, CompanyMother.BOGOTA,
-                    CompanyMother.PREMIUM);
+            company.update("Clinica Norte", "NIT-900", null, null, CompanyMother.BOGOTA);
 
             assertThat(company.getAddress()).isNull();
             assertThat(company.getContactNumber()).isNull();
@@ -240,40 +233,32 @@ class CompanyTest {
             return Stream.of(
                     arguments("nombre nulo",
                             (ThrowingCallable) () -> actualizar(CompanyMother.clinicaNorte(), null,
-                                    "NIT-900", CompanyMother.BOGOTA, CompanyMother.PREMIUM),
+                                    "NIT-900", CompanyMother.BOGOTA),
                             "name is required"),
                     arguments("nombre en blanco",
                             (ThrowingCallable) () -> actualizar(CompanyMother.clinicaNorte(), "  ",
-                                    "NIT-900", CompanyMother.BOGOTA, CompanyMother.PREMIUM),
+                                    "NIT-900", CompanyMother.BOGOTA),
                             "name is required"),
                     arguments("nombre de 101 caracteres",
                             (ThrowingCallable) () -> actualizar(CompanyMother.clinicaNorte(),
-                                    NOMBRE_101, "NIT-900", CompanyMother.BOGOTA,
-                                    CompanyMother.PREMIUM),
+                                    NOMBRE_101, "NIT-900", CompanyMother.BOGOTA),
                             "name must be 100 chars or less"),
                     arguments("identificador nulo",
                             (ThrowingCallable) () -> actualizar(CompanyMother.clinicaNorte(),
-                                    "Clinica Sur", null, CompanyMother.BOGOTA,
-                                    CompanyMother.PREMIUM),
+                                    "Clinica Sur", null, CompanyMother.BOGOTA),
                             "identifier is required"),
                     arguments("identificador en blanco",
                             (ThrowingCallable) () -> actualizar(CompanyMother.clinicaNorte(),
-                                    "Clinica Sur", " ", CompanyMother.BOGOTA,
-                                    CompanyMother.PREMIUM),
+                                    "Clinica Sur", " ", CompanyMother.BOGOTA),
                             "identifier is required"),
                     arguments("identificador de 51 caracteres",
                             (ThrowingCallable) () -> actualizar(CompanyMother.clinicaNorte(),
-                                    "Clinica Sur", IDENTIFICADOR_51, CompanyMother.BOGOTA,
-                                    CompanyMother.PREMIUM),
+                                    "Clinica Sur", IDENTIFICADOR_51, CompanyMother.BOGOTA),
                             "identifier must be 50 chars or less"),
                     arguments("ciudad nula",
                             (ThrowingCallable) () -> actualizar(CompanyMother.clinicaNorte(),
-                                    "Clinica Sur", "NIT-901", null, CompanyMother.PREMIUM),
-                            "city is required"),
-                    arguments("membresia nula",
-                            (ThrowingCallable) () -> actualizar(CompanyMother.clinicaNorte(),
-                                    "Clinica Sur", "NIT-901", CompanyMother.BOGOTA, null),
-                            "membership is required"));
+                                    "Clinica Sur", "NIT-901", null),
+                            "city is required"));
         }
 
         @ParameterizedTest(name = "{0}")
@@ -290,8 +275,9 @@ class CompanyTest {
         void acepta_los_limites_exactos() {
             Company company = CompanyMother.clinicaNorte();
 
-            assertThatCode(() -> actualizar(company, NOMBRE_100, IDENTIFICADOR_50,
-                    CompanyMother.MEDELLIN, CompanyMother.BASICA)).doesNotThrowAnyException();
+            assertThatCode(
+                    () -> actualizar(company, NOMBRE_100, IDENTIFICADOR_50, CompanyMother.MEDELLIN))
+                    .doesNotThrowAnyException();
             assertThat(company.getName()).isEqualTo(NOMBRE_100);
             assertThat(company.getIdentifier()).isEqualTo(IDENTIFICADOR_50);
         }
@@ -302,13 +288,11 @@ class CompanyTest {
             Company company = CompanyMother.clinicaNorte();
 
             assertThatThrownBy(() -> company.update("Clinica Sur", "NIT-901", "Carrera 45",
-                    "3009876543", CompanyMother.MEDELLIN, null))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    "3009876543", null)).isInstanceOf(IllegalArgumentException.class);
 
             assertThat(company.getName()).isEqualTo("Clinica Norte");
             assertThat(company.getIdentifier()).isEqualTo("NIT-900");
             assertThat(company.getCity()).isEqualTo(CompanyMother.BOGOTA);
-            assertThat(company.getMembership()).isEqualTo(CompanyMother.PREMIUM);
         }
     }
 

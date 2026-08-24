@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #500 (mitad de datos). base_roles se crea en 005_create_base_roles.xml y
+         se altera en 068 (enabled) y 225 (version), pero en mas de 260 changesets
+         NUNCA se sembro: no hay un solo INSERT INTO base_roles anterior a este. En
+         cadena, los nueve seeds que atan permisos al rol base ADMIN
+         (184/191/196/199/202/204/205/209/223/256/257/259/260, todos
+         "INSERT ... SELECT ... FROM base_roles br ... WHERE br.code = 'ADMIN'")
+         insertaron CERO filas sin error, porque el JOIN nunca encontro esa fila. De
+         ahi que haya 36 base_permissions y 0 base_role_permissions, y que
+         RegisterUserService.register itere sobre baseRoleProvider.findAll() vacio: el
+         alta de empresa devuelve 201 con el dueno sin ningun rol.
+
+         SIN CONTEXTO A PROPOSITO -no local,e2e-, y no es un descuido: los 36
+         base_permissions que este changeset da por sentado (004_create_base_permissions
+         y los trece seeds de arriba) tampoco llevan contexto, así que YA se aplican en
+         dev y produccion. base_permissions y base_roles son estructura de plataforma
+         -el catalogo de QUE puede hacer un empleado-, no oferta comercial: la pausa de
+         "nada de semillas de catalogo comercial en produccion" (262/263/264) protege
+         precios y paquetes, una decision del usuario que no se extiende a roles y
+         permisos. Sin este changeset, CUALQUIER instalacion -incluida produccion el
+         dia que reciba su primera alta real- entrega inquilinos sin administrador.
+
+         Un solo rol hoy: ADMIN, mandatory=TRUE (es el unico codigo que buscan los
+         trece seeds de arriba y el unico que RegisterUserService necesita para que
+         employeeRoleAssigner.assign se dispare). No se inventa una taxonomia de roles
+         adicional -RECEPTIONIST, VETERINARIAN...- porque ningun seed ni caso de uso la
+         pide todavia; anadirla es decision de producto, no un vacio tecnico. -->
+
+    <changeSet id="266_seed_base_role_admin" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_roles (name, code, mandatory, enabled, version)
+            SELECT 'Administrador', 'ADMIN', TRUE, TRUE, 0
+             WHERE NOT EXISTS (SELECT 1 FROM base_roles WHERE code = 'ADMIN');
+        ]]></sql>
+        <rollback>
+            <sql>DELETE FROM base_roles WHERE code = 'ADMIN';</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -3,6 +3,7 @@ package com.vetsoftware.app.employee.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -11,10 +12,13 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.employee.application.command.CreateEmployeeCommand;
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
 import com.vetsoftware.app.employee.application.port.out.CompanyQueryPort;
+import com.vetsoftware.app.employee.application.port.out.EmployeeCapacityPort;
+import com.vetsoftware.app.employee.application.port.out.EmployeePasswordHasherPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.employee.testsupport.EmployeeMother;
-import com.vetsoftware.app.infrastructure.security.PasswordHasher;
+import com.vetsoftware.app.entitlement.domain.CapacityUnit;
+import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,7 +42,9 @@ class CreateEmployeeServiceTest {
     @Mock
     private CompanyQueryPort companyQueryPort;
     @Mock
-    private PasswordHasher passwordHasher;
+    private EmployeePasswordHasherPort passwordHasher;
+    @Mock
+    private EmployeeCapacityPort employeeCapacityPort;
     @InjectMocks
     private CreateEmployeeService service;
 
@@ -58,6 +64,7 @@ class CreateEmployeeServiceTest {
             ArgumentCaptor<Employee> captor = ArgumentCaptor.forClass(Employee.class);
             verify(repository).save(captor.capture());
             assertThat(captor.getValue().getHashPassword()).isEqualTo("$2a$10$hashed");
+            verify(employeeCapacityPort).reserve(EmployeeMother.COMPANY_ID);
         }
 
         @Test
@@ -105,6 +112,25 @@ class CreateEmployeeServiceTest {
                     .hasMessageContaining("Company not found");
 
             verifyNoInteractions(passwordHasher);
+            verifyNoInteractions(employeeCapacityPort);
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("el limite USER aborta el alta antes de persistir")
+        void el_limite_user_aborta_antes_de_persistir() {
+            CreateEmployeeCommand command = EmployeeMother.comandoCrear(true);
+            when(companyQueryPort.findById(command.companyId()))
+                    .thenReturn(Optional.of(EmployeeMother.VETRINA));
+            when(passwordHasher.hash(command.password())).thenReturn("$2a$10$hashed");
+            doThrow(new CompanyCapacityLimitExceededException(command.companyId(),
+                    CapacityUnit.USER, 3, 3, 1)).when(employeeCapacityPort)
+                    .reserve(command.companyId());
+
+            assertThatThrownBy(() -> service.execute(command))
+                    .isInstanceOf(CompanyCapacityLimitExceededException.class)
+                    .hasMessageContaining("USER");
+
             verify(repository, never()).save(any());
         }
     }

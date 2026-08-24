@@ -43,22 +43,29 @@ import org.springframework.web.bind.annotation.RestController;
  * {@link FreezingArchRule} con menos garantías.
  *
  * <p>
- * <strong>Las dos reglas de BE-10 nacen congeladas</strong> (la tercera no:
- * nació con una sola violación y se arregló). Quedan 74 adaptadores y 78
- * controllers sin rodaja; en duro dejarían el build en rojo permanente, que es
- * la forma habitual de acabar borrando una regla. Congeladas hacen exactamente
- * lo que pedía el defecto: el número está en
- * {@code config/archunit/violation-store}, se ve en el diff y <strong>solo
- * puede bajar</strong>. Un adaptador o un controller nuevo sin su rodaja rompe
- * el build el mismo día que entra.
+ * <strong>Las dos reglas de BE-10 nacieron congeladas y ya no lo
+ * están.</strong> Empezaron con 74 adaptadores y 78 controllers sin rodaja: en
+ * duro habrían dejado el build en rojo permanente, que es la forma habitual de
+ * acabar borrando una regla. El congelado hizo lo que pedía el defecto — el
+ * número vivía en {@code config/archunit/violation-store}, se veía en el diff y
+ * solo podía bajar. El 2026-08-24 llegó a cero y se les quitó el
+ * {@code FreezingArchRule.freeze(...)}, igual que se hizo con
+ * {@code SIN_IO_EXTERNO_EN_TRANSACCION}. Sus dos ficheros de línea base se
+ * borraron: un almacén vacío de una regla que ya no congela no es una foto de
+ * deuda, es un sitio donde volver a esconderla.
  *
  * <p>
- * <strong>Cuando el store llegue a cero</strong> se les quita el
- * {@code FreezingArchRule.freeze(...)} y pasan a duras, igual que se hizo con
- * {@code SIN_IO_EXTERNO_EN_TRANSACCION}. Y mientras tanto, cuidado con la
- * descripción: el store indexa por el texto completo de la regla, así que
- * cambiar un predicado o el {@code because} huérfana la foto y la deuda vuelve
- * a aparecer entera.
+ * <strong>Por qué importa que sean duras y no congeladas en cero.</strong> No
+ * es lo mismo. Congelada en cero, añadir un adaptador sin rodaja actualiza el
+ * almacén y el build sigue verde si nadie mira el diff; dura, rompe el build el
+ * mismo día que entra. Ese es el trinquete: lo que costó 117 pruebas contra
+ * MySQL real no se puede perder por un fichero que alguien regenera sin leerlo.
+ *
+ * <p>
+ * <strong>Cuidado si tocas la descripción.</strong> El almacén indexa por el
+ * texto completo de la regla. Mientras quede alguna congelada en este proyecto,
+ * cambiar un predicado o un {@code because} huérfana su foto y hace reaparecer
+ * la deuda entera.
  *
  * @see VetSoftwareConditions#tenerRodajaDePersistencia()
  * @see VetSoftwareConditions#tenerRodajaWeb()
@@ -82,12 +89,12 @@ class PiramideDeTestsTest {
      * a propósito: ver {@link VetSoftwareConditions#tenerRodajaDePersistencia()}.
      */
     @ArchTest
-    static final ArchRule ADAPTADOR_JPA_CON_RODAJA = FreezingArchRule.freeze(classes().that()
+    static final ArchRule ADAPTADOR_JPA_CON_RODAJA = classes().that()
             .resideInAPackage("..infrastructure.persistence").and()
             .haveSimpleNameStartingWith("Jpa").and().haveSimpleNameEndingWith("Repository")
             .and(VetSoftwareConditions.sonCodigoDeProduccion())
             .should(VetSoftwareConditions.tenerRodajaDePersistencia())
-            .because("sin rodaja, el SQL del adaptador no lo ejecuta nadie hasta produccion"));
+            .because("sin rodaja, el SQL del adaptador no lo ejecuta nadie hasta produccion");
 
     /**
      * Un controller sin rodaja no tiene comprobado nada de lo que solo vive en él:
@@ -110,12 +117,12 @@ class PiramideDeTestsTest {
      * mete también sus fixtures en el universo analizado.
      */
     @ArchTest
-    static final ArchRule CONTROLLER_CON_RODAJA = FreezingArchRule
-            .freeze(classes().that().areAnnotatedWith(RestController.class)
-                    .and(VetSoftwareConditions.sonCodigoDeProduccion())
-                    .should(VetSoftwareConditions.tenerRodajaWeb())
-                    .because("el gate, la validacion y la forma del JSON solo se ven"
-                            + " desde un @WebMvcTest"));
+    static final ArchRule CONTROLLER_CON_RODAJA = classes().that()
+            .areAnnotatedWith(RestController.class)
+            .and(VetSoftwareConditions.sonCodigoDeProduccion())
+            .should(VetSoftwareConditions.tenerRodajaWeb())
+            .because("el gate, la validacion y la forma del JSON solo se ven"
+                    + " desde un @WebMvcTest");
 
     /**
      * Ningún doble de test puede ser candidato al escaneo de producción: todo lo

@@ -10,7 +10,6 @@ import com.vetsoftware.app.auth.infrastructure.security.SystemAuthRunner;
 import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CitySummaryDto;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
-import com.vetsoftware.app.company.application.dto.MembershipSummaryDto;
 import com.vetsoftware.app.company.application.port.in.CreateCompanyUseCase;
 import com.vetsoftware.app.registration.application.port.out.CompanyCreator.CompanyResult;
 import java.time.LocalDateTime;
@@ -49,9 +48,7 @@ class CreateCompanyAdapterTest {
 
     private static CompanyDto dto() {
         return new CompanyDto(9L, "Veterinaria Vetrina", "900123456", "Calle 1 # 2-3", "3001234567",
-                new CitySummaryDto(11001L, "Bogotá"),
-                new MembershipSummaryDto(1L, "Estándar", "ACTIVE"),
-                LocalDateTime.of(2026, 1, 15, 10, 30), true);
+                new CitySummaryDto(11001L, "Bogotá"), LocalDateTime.of(2026, 1, 15, 10, 30), true);
     }
 
     @Test
@@ -60,7 +57,7 @@ class CreateCompanyAdapterTest {
         when(createCompanyUseCase.execute(any(CreateCompanyCommand.class))).thenReturn(dto());
 
         CompanyResult result = adapter.create("Veterinaria Vetrina", "900123456", "Calle 1 # 2-3",
-                "3001234567", 11001L, 1L);
+                "3001234567", 11001L);
 
         ArgumentCaptor<CreateCompanyCommand> captor = ArgumentCaptor
                 .forClass(CreateCompanyCommand.class);
@@ -71,7 +68,6 @@ class CreateCompanyAdapterTest {
         assertThat(command.address()).isEqualTo("Calle 1 # 2-3");
         assertThat(command.contactNumber()).isEqualTo("3001234567");
         assertThat(command.cityId()).isEqualTo(11001L);
-        assertThat(command.membershipId()).isEqualTo(1L);
 
         assertThat(result.id()).isEqualTo(9L);
         assertThat(result.name()).isEqualTo("Veterinaria Vetrina");
@@ -86,7 +82,7 @@ class CreateCompanyAdapterTest {
                 new IllegalArgumentException("Company identifier already in use: 900123456"));
 
         assertThatThrownBy(() -> adapter.create("Veterinaria Vetrina", "900123456", "Calle 1 # 2-3",
-                "3001234567", 11001L, 1L)).isInstanceOf(IllegalArgumentException.class)
+                "3001234567", 11001L)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("already in use");
     }
 }

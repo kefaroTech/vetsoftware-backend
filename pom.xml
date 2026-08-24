@@ -85,8 +85,29 @@
              OJO AL COMPARAR LA PENULTIMA CON LA ULTIMA: 98,83 -> 98,36 no es cobertura
              perdida sino denominador movido (28.214 lineas medidas entonces, 26.791
              ahora). El suelo se queda en 0.98 porque las dos lo superan; el trinquete no
-             sube al 0,9836 justamente porque ese decimal depende del denominador. -->
-        <jacoco.line.minimum>0.98</jacoco.line.minimum>
+             sube al 0,9836 justamente porque ese decimal depende del denominador.
+
+             BAJADA DELIBERADA A 0.90 (2026-08-24), decidida por el usuario. El repositorio
+             exige justificar por escrito toda bajada del trinquete, asi que aqui esta:
+
+             El modelo de suscripciones anadio diez slices verticales y 26 tablas de una sola
+             vez -catalogo, precios, configurador, cotizaciones, contratos, entitlements y la
+             capa de dinero- y elimino el concepto de membresia. La medicion real tras esa
+             entrega es 0,9393 (31.374/33.400 lineas), con el deficit concentrado en lo nuevo:
+             subscription 0,73 - configurator 0,51 - subscriptionbilling 0,75 - quote 0,82 -
+             entitlement 0,77. Los slices preexistentes siguen altos.
+
+             OJO, Y ESTO ES LO QUE HAY QUE VIGILAR: 0.90 queda POR DEBAJO del 0,9393 medido,
+             asi que el suelo deja tres puntos de holgura y la cobertura puede degradarse sin
+             que el build lo note. Eso es exactamente lo que el trinquete existe para impedir.
+             Es una concesion temporal mientras se escriben los tests de los slices nuevos, no
+             el nivel al que este proyecto aspira.
+
+             COMO SE DESHACE: cuando la suite de los slices nuevos este escrita, subir el suelo
+             al valor medido y estable, y volver a la regla de que solo puede subir. El valor
+             anterior era 0.98 y lo sostenia una suite de 10.771 tests unitarios y 1.130 de
+             integracion; hoy son 11.022 y 1.082 sobre un denominador mucho mayor. -->
+        <jacoco.line.minimum>0.90</jacoco.line.minimum>
 
         <!-- LOS DOS INTERRUPTORES QUE PERMITEN PARTIR `mvn verify` EN VARIOS JOBS DE CI.
              Los dos valen `false`, asi que un `mvn verify` local o de cualquier otro

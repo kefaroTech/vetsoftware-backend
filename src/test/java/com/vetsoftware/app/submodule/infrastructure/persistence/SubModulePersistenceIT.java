@@ -8,6 +8,7 @@ import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
 import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,8 +49,9 @@ class SubModulePersistenceIT extends AbstractDataJpaTest {
 
     private void sembrarModulo(Long id, String nombre, String codigo) {
         entityManager.createNativeQuery("""
-                INSERT IGNORE INTO modules (id, name, code, created_date, enabled)
+                INSERT INTO modules (id, name, code, created_date, enabled)
                 VALUES (:id, :nombre, :codigo, '2026-01-01 00:00:00', true)
+                ON DUPLICATE KEY UPDATE id = id
                 """).setParameter("id", id).setParameter("nombre", nombre)
                 .setParameter("codigo", codigo).executeUpdate();
     }
@@ -57,7 +59,8 @@ class SubModulePersistenceIT extends AbstractDataJpaTest {
     private SubModule nuevoSubModulo(String nombre, String codigo, Long moduleId, String moduleName,
             String moduleCode) {
         return repository.save(
-                SubModule.create(nombre, codigo, new ModuleRef(moduleId, moduleName, moduleCode)));
+                SubModule.create(nombre, codigo, new ModuleRef(moduleId, moduleName, moduleCode),
+                        true, true, LocalDateTime.of(2026, 1, 15, 10, 30)));
     }
 
     @Nested

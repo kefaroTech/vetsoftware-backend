@@ -7,7 +7,7 @@
 
     <!--
       Soft-delete uniforme: añade columna `enabled BOOLEAN NOT NULL DEFAULT TRUE`
-      a las 41 tablas del schema. Hibernate `@SoftDelete` reescribe DELETE→UPDATE
+      a las 39 tablas del schema. Hibernate `@SoftDelete` reescribe DELETE→UPDATE
       y añade WHERE enabled=true a todas las consultas automáticamente.
     -->
 
@@ -165,22 +165,6 @@
 
     <changeSet id="068-medicament_prescriptions-enabled" author="claude">
         <addColumn tableName="medicament_prescriptions">
-            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
-                <constraints nullable="false"/>
-            </column>
-        </addColumn>
-    </changeSet>
-
-    <changeSet id="068-memberships-enabled" author="claude">
-        <addColumn tableName="memberships">
-            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
-                <constraints nullable="false"/>
-            </column>
-        </addColumn>
-    </changeSet>
-
-    <changeSet id="068-membership_sub_modules-enabled" author="claude">
-        <addColumn tableName="membership_sub_modules">
             <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>

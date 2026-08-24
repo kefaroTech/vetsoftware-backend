@@ -4,14 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.employee.application.dto.EmployeeDto;
+import com.vetsoftware.app.employee.application.port.out.EmployeeCapacityPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employee.testsupport.EmployeeMother;
+import com.vetsoftware.app.entitlement.domain.CapacityUnit;
+import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -36,6 +41,8 @@ class ReactivateEmployeeServiceTest {
 
     @Mock
     private EmployeeRepository repository;
+    @Mock
+    private EmployeeCapacityPort employeeCapacityPort;
     @InjectMocks
     private ReactivateEmployeeService service;
 
@@ -45,6 +52,8 @@ class ReactivateEmployeeServiceTest {
         @Test
         @DisplayName("reactiva y devuelve el empleado releido tras el UPDATE")
         void reactiva_y_devuelve_el_empleado_releido() {
+            when(repository.findByIdIncludingDisabledAndCompanyId(ID, EMPRESA))
+                    .thenReturn(Optional.of(EmployeeMother.deshabilitado()));
             when(repository.reactivate(ID, EMPRESA)).thenReturn(1);
             when(repository.findByIdAndCompanyId(ID, EMPRESA))
                     .thenReturn(Optional.of(EmployeeMother.activo()));
@@ -53,17 +62,32 @@ class ReactivateEmployeeServiceTest {
 
             assertThat(dto.id()).isEqualTo(ID);
             assertThat(dto.enabled()).isTrue();
+            verify(employeeCapacityPort).reserve(EMPRESA);
         }
 
         @Test
         @DisplayName("sin empresa en el contexto (SYSTEM) reactiva sin acotar")
         void sin_empresa_reactiva_sin_acotar() {
+            when(repository.findByIdIncludingDisabled(ID))
+                    .thenReturn(Optional.of(EmployeeMother.deshabilitado()));
             when(repository.reactivate(ID)).thenReturn(1);
             when(repository.findById(ID)).thenReturn(Optional.of(EmployeeMother.activo()));
 
             assertThat(service.execute(ID, null).id()).isEqualTo(ID);
 
             verify(repository, never()).reactivate(anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("reactivar un empleado ya activo es idempotente y no reserva otra plaza")
+        void reactivar_un_empleado_activo_es_idempotente() {
+            when(repository.findByIdIncludingDisabledAndCompanyId(ID, EMPRESA))
+                    .thenReturn(Optional.of(EmployeeMother.activo()));
+
+            assertThat(service.execute(ID, EMPRESA).enabled()).isTrue();
+
+            verify(repository, never()).reactivate(anyLong(), anyLong());
+            verifyNoInteractions(employeeCapacityPort);
         }
     }
 
@@ -78,15 +102,18 @@ class ReactivateEmployeeServiceTest {
         @Test
         @DisplayName("un empleado de otra empresa no se reactiva ni se relee")
         void un_empleado_de_otra_empresa_no_se_reactiva() {
-            when(repository.reactivate(ID, EMPRESA)).thenReturn(0);
+            when(repository.findByIdIncludingDisabledAndCompanyId(ID, EMPRESA))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(ID, EMPRESA))
                     .isInstanceOf(EmployeeNotFoundException.class)
                     .hasMessageContaining(String.valueOf(ID));
 
             verify(repository, never()).reactivate(anyLong());
+            verify(repository, never()).reactivate(anyLong(), anyLong());
             verify(repository, never()).findById(any());
             verify(repository, never()).findByIdAndCompanyId(any(), any());
+            verifyNoInteractions(employeeCapacityPort);
         }
     }
 
@@ -94,13 +121,18 @@ class ReactivateEmployeeServiceTest {
     class Rechazos {
 
         @Test
-        @DisplayName("cero filas actualizadas significa que el empleado no existe")
-        void cero_filas_actualizadas_significa_que_no_existe() {
-            when(repository.reactivate(ID, EMPRESA)).thenReturn(0);
+        @DisplayName("el limite USER aborta antes del UPDATE de reactivacion")
+        void el_limite_user_aborta_antes_del_update() {
+            when(repository.findByIdIncludingDisabledAndCompanyId(ID, EMPRESA))
+                    .thenReturn(Optional.of(EmployeeMother.deshabilitado()));
+            doThrow(new CompanyCapacityLimitExceededException(EMPRESA, CapacityUnit.USER, 3, 3, 1))
+                    .when(employeeCapacityPort).reserve(EMPRESA);
 
             assertThatThrownBy(() -> service.execute(ID, EMPRESA))
-                    .isInstanceOf(EmployeeNotFoundException.class);
+                    .isInstanceOf(CompanyCapacityLimitExceededException.class)
+                    .hasMessageContaining("USER");
 
+            verify(repository, never()).reactivate(anyLong(), anyLong());
             verify(repository, never()).findByIdAndCompanyId(ID, EMPRESA);
         }
     }

@@ -11,20 +11,24 @@ import com.vetsoftware.app.registration.application.port.out.CompanyCreator;
 import com.vetsoftware.app.registration.application.port.out.CompanyCreator.CompanyResult;
 import com.vetsoftware.app.registration.application.port.out.CompanyIdentifierChecker;
 import com.vetsoftware.app.registration.application.port.out.CompanyTaxProfileCreator;
-import com.vetsoftware.app.registration.application.port.out.DefaultMembershipProvider;
 import com.vetsoftware.app.registration.application.port.out.EmailVerificationTokenRepository;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCodeChecker;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCreator;
 import com.vetsoftware.app.registration.application.port.out.EmployeeCreator.EmployeeResult;
 import com.vetsoftware.app.registration.application.port.out.EmployeeRoleAssigner;
+import com.vetsoftware.app.registration.application.port.out.InitialSubscriptionCreator;
+import com.vetsoftware.app.registration.application.port.out.OwnerBranchAssigner;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator.RoleResult;
 import com.vetsoftware.app.registration.application.port.out.RolePermissionInitializationPort;
 import com.vetsoftware.app.registration.application.port.out.VerificationEmailSender;
 import com.vetsoftware.app.registration.domain.EmailVerificationToken;
 import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
+import com.vetsoftware.app.registration.domain.OwnerWithoutBranchException;
+import com.vetsoftware.app.registration.domain.PlatformRoleCatalogNotConfiguredException;
 import io.micrometer.observation.annotation.Observed;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -45,7 +49,8 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final BaseRoleProvider baseRoleProvider;
     private final RoleCreator roleCreator;
     private final EmployeeRoleAssigner employeeRoleAssigner;
-    private final DefaultMembershipProvider defaultMembershipProvider;
+    private final OwnerBranchAssigner ownerBranchAssigner;
+    private final InitialSubscriptionCreator initialSubscriptionCreator;
     private final RolePermissionInitializationPort rolePermissionInitializationPort;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final VerificationEmailSender verificationEmailSender;
@@ -57,7 +62,8 @@ public class RegisterUserService implements RegisterUserUseCase {
             EmployeeCreator employeeCreator, CompanyIdentifierChecker companyIdentifierChecker,
             EmployeeCodeChecker employeeCodeChecker, BaseRoleProvider baseRoleProvider,
             RoleCreator roleCreator, EmployeeRoleAssigner employeeRoleAssigner,
-            DefaultMembershipProvider defaultMembershipProvider,
+            OwnerBranchAssigner ownerBranchAssigner,
+            InitialSubscriptionCreator initialSubscriptionCreator,
             RolePermissionInitializationPort rolePermissionInitializationPort,
             EmailVerificationTokenRepository emailVerificationTokenRepository,
             VerificationEmailSender verificationEmailSender,
@@ -73,7 +79,8 @@ public class RegisterUserService implements RegisterUserUseCase {
         this.baseRoleProvider = baseRoleProvider;
         this.roleCreator = roleCreator;
         this.employeeRoleAssigner = employeeRoleAssigner;
-        this.defaultMembershipProvider = defaultMembershipProvider;
+        this.ownerBranchAssigner = ownerBranchAssigner;
+        this.initialSubscriptionCreator = initialSubscriptionCreator;
         this.rolePermissionInitializationPort = rolePermissionInitializationPort;
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
         this.verificationEmailSender = verificationEmailSender;
@@ -114,10 +121,17 @@ public class RegisterUserService implements RegisterUserUseCase {
                     "Company identifier already in use: " + command.companyIdentifier());
         }
 
-        Long membershipId = defaultMembershipProvider.getDefaultMembershipId();
         CompanyResult company = companyCreator.create(command.companyName(),
                 command.companyIdentifier(), command.companyAddress(),
-                command.companyContactNumber(), command.cityId(), membershipId);
+                command.companyContactNumber(), command.cityId());
+
+        // Toda empresa nace con un contrato, y nace con el AQUI: el alta y la creacion
+        // de la suscripcion ocurren en la misma transaccion. Si el contrato no se puede
+        // crear —hoy, porque el catalogo comercial todavia no esta sembrado— esto lanza
+        // y revierte el alta entera. Es deliberado: una empresa sin contrato no tiene
+        // company_entitlements, entra al sistema y no puede hacer nada, sin ningun
+        // mensaje que lo explique.
+        initialSubscriptionCreator.createInitialContract(company.id(), company.name());
 
         // Identidad fiscal del emisor: toda venta (incluido el tiquete POS) la
         // requiere. Tipo NIT,
@@ -159,16 +173,28 @@ public class RegisterUserService implements RegisterUserUseCase {
                 command.employeeName(), command.employeeEmail(), company.id());
 
         // Se instancian TODOS los base roles en la empresa (permisos filtrados por
-        // la membresía). El dueño solo se auto-asigna a los mandatory (ADMIN); el
-        // resto quedan como plantillas listas para asignar al personal.
-        for (BaseRoleData baseRole : baseRoleProvider.findAll()) {
+        // los submódulos que el CONTRATO de la empresa le concede, vía
+        // company_entitlements). El dueño solo se auto-asigna a los mandatory (ADMIN);
+        // el resto quedan como plantillas listas para asignar al personal.
+        List<BaseRoleData> baseRoles = baseRoleProvider.findAll();
+        requireOwnerRole(company.name(), baseRoles);
+        for (BaseRoleData baseRole : baseRoles) {
             RoleResult role = roleCreator.create(baseRole.name(), baseRole.code(), company.id());
             rolePermissionInitializationPort.initializeForRole(role.id(), company.id(),
-                    baseRole.id(), membershipId);
+                    baseRole.id());
             if (baseRole.mandatory()) {
                 employeeRoleAssigner.assign(employee.id(), role.id());
             }
         }
+
+        // La otra mitad de la linea de arriba, y la que faltaba: el rol dice QUE puede
+        // hacer el dueño, la sede dice DONDE. Mismo orden que InviteEmployeeService
+        // —roles y despues sedes, en la misma transaccion—, y por el mismo camino que
+        // usa el alta de staff, no con un INSERT propio: ver
+        // SetEmployeeBranchesAdapter.
+        List<Long> ownerBranchIds = ownerBranchAssigner.assignAllCompanyBranches(employee.id(),
+                company.id());
+        requireOwnerBranch(company.name(), ownerBranchIds);
 
         // 2) Token de verificación de un solo uso: se guarda el HASH, se envía el valor
         // plano por
@@ -183,5 +209,81 @@ public class RegisterUserService implements RegisterUserUseCase {
 
         return new RegistrationDto(company.id(), employee.id(), command.employeeEmail(),
                 STATUS_PENDING_VERIFICATION);
+    }
+
+    /**
+     * Una empresa cuyo dueño no puede recibir ningun rol no nace.
+     *
+     * <p>
+     * <strong>Es la misma guarda que
+     * {@code initialSubscriptionCreator.createInitialContract}, cuarenta lineas mas
+     * arriba, en la otra mitad del mismo problema.</strong> Aquella declara que la
+     * plataforma sin catalogo comercial no puede dar de alta a nadie y lanza
+     * enumerando las siete piezas que hay que sembrar; esta declara lo mismo del
+     * catalogo de roles. Sin ella, el bucle de abajo sobre una lista vacia es un
+     * <em>no-op</em> silencioso: no se crea ningun {@code roles}, no se llama a
+     * {@code initializeForRole}, {@code employeeRoleAssigner.assign} no se ejecuta
+     * jamas, nada lanza y el alta devuelve <strong>201</strong>. El estado que
+     * produce es palabra por palabra el que la guarda del contrato existe para
+     * impedir —una cuenta que entra al sistema y no puede hacer nada, sin ningun
+     * mensaje que lo explique—, y encima se investiga literalmente como un problema
+     * de permisos del usuario. Razonado en el issue <b>#500</b>.
+     *
+     * <p>
+     * <strong>Se comprueba antes de iterar, y no dentro del bucle.</strong> Es el
+     * mismo criterio de
+     * {@code CreateInitialSubscriptionService.requireOperableMinimum}: se falla
+     * mientras no hay nada creado, no a mitad del reparto. La transaccion
+     * revertiria igual —esto corre dentro del {@code TransactionTemplate} del
+     * alta—, pero un fallo a mitad de reparto describe el sintoma del rol numero
+     * tres en vez de la causa, que es que el catalogo no esta sembrado.
+     *
+     * <p>
+     * <strong>Y mira los obligatorios, no solo que la lista traiga algo.</strong>
+     * Una tabla con roles pero sin ninguno {@code mandatory} produce exactamente el
+     * mismo desenlace —plantillas creadas, dueño con cero roles, 201—, asi que
+     * comprobar unicamente {@code isEmpty()} dejaria la mitad del defecto viva.
+     */
+    private static void requireOwnerRole(String companyName, List<BaseRoleData> baseRoles) {
+        if (baseRoles.isEmpty()) {
+            throw new PlatformRoleCatalogNotConfiguredException(companyName);
+        }
+        if (baseRoles.stream().noneMatch(BaseRoleData::mandatory)) {
+            throw new PlatformRoleCatalogNotConfiguredException(companyName,
+                    baseRoles.stream().map(BaseRoleData::code).toList());
+        }
+    }
+
+    /**
+     * Una empresa cuyo dueño no puede operar en ninguna sede tampoco nace.
+     *
+     * <p>
+     * <strong>Es exactamente la misma guarda que {@link #requireOwnerRole}, quince
+     * lineas mas arriba, sobre la otra dimension del mismo acceso.</strong> Aquella
+     * declara que el dueño sin un solo rol no es un dueño; esta declara lo mismo
+     * del dueño sin una sola sede. Las dos protegen el mismo desenlace —un
+     * <b>201</b> que entrega una cuenta que no puede trabajar y que se investiga
+     * como un problema de permisos del usuario— y las dos lo hacen en el alta, que
+     * es donde el estado se produce, en vez de dejarlo salir y fallar tres
+     * pantallas despues.
+     *
+     * <p>
+     * <strong>Lo que cambia es de donde sale el dato que se comprueba, y ese es
+     * todo el punto.</strong> {@code requireOwnerRole} valida una <em>entrada</em>
+     * —el catalogo que acaba de leer, antes de repartir nada— porque alli el fallo
+     * posible es que falte la semilla. Aqui la entrada no sirve: la sede y el
+     * empleado los acaba de crear este mismo metodo, asi que mirarlos solo
+     * confirmaria lo que ya sabemos. Lo que puede fallar es la <em>union</em>, y el
+     * {@code INSERT … SELECT} que la escribe no produce ninguna fila —y no lanza—
+     * si alguna de las dos puntas no es de la empresa. Por eso esto valida la
+     * <em>salida</em> releida de {@code employee_branches}, que es la unica fuente
+     * de la que {@code Authz.currentBranchIds()} construye el conjunto del 403.
+     * Comprobar lo que se pidio en vez de lo que quedo escrito seria el «verde que
+     * miente» de siempre. Razonado en el issue <b>#510</b>.
+     */
+    private static void requireOwnerBranch(String companyName, List<Long> ownerBranchIds) {
+        if (ownerBranchIds == null || ownerBranchIds.isEmpty()) {
+            throw new OwnerWithoutBranchException(companyName);
+        }
     }
 }

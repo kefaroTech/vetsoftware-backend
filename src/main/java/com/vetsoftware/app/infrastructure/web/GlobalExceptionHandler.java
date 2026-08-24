@@ -27,12 +27,34 @@ import com.vetsoftware.app.cashregister.domain.CashSessionNotFoundException;
 import com.vetsoftware.app.cashregister.domain.EmployeeCashSessionAlreadyOpenException;
 import com.vetsoftware.app.cashregister.domain.EmployeeCashSessionRequiredException;
 import com.vetsoftware.app.cashregister.domain.NoOpenCashSessionException;
+import com.vetsoftware.app.catalogitem.domain.BundleComponentAlreadyExistsException;
+import com.vetsoftware.app.catalogitem.domain.BundleComponentNotFoundException;
+import com.vetsoftware.app.catalogitem.domain.CatalogItemCodeAlreadyExistsException;
+import com.vetsoftware.app.catalogitem.domain.CatalogItemDependencyAlreadyExistsException;
+import com.vetsoftware.app.catalogitem.domain.CatalogItemDependencyCycleException;
+import com.vetsoftware.app.catalogitem.domain.CatalogItemDependencyNotFoundException;
+import com.vetsoftware.app.catalogitem.domain.CatalogItemHasActiveChildrenException;
+import com.vetsoftware.app.catalogitem.domain.CatalogItemNotFoundException;
+import com.vetsoftware.app.catalogitem.domain.CatalogItemSubModuleAlreadyExistsException;
+import com.vetsoftware.app.catalogitem.domain.CatalogItemSubModuleNotFoundException;
+import com.vetsoftware.app.catalogitem.domain.InvalidBundleCompositionException;
 import com.vetsoftware.app.city.domain.CityHasActiveChildrenException;
 import com.vetsoftware.app.city.domain.CityNotFoundException;
 import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundException;
+import com.vetsoftware.app.configurator.domain.ConditionalQuestionCycleException;
+import com.vetsoftware.app.configurator.domain.ConfiguratorCodeAlreadyExistsException;
+import com.vetsoftware.app.configurator.domain.ConfiguratorEffectAlreadyExistsException;
+import com.vetsoftware.app.configurator.domain.ConfiguratorEffectNotFoundException;
+import com.vetsoftware.app.configurator.domain.ConfiguratorOptionNotFoundException;
+import com.vetsoftware.app.configurator.domain.ConfiguratorQuestionHasActiveChildrenException;
+import com.vetsoftware.app.configurator.domain.ConfiguratorQuestionNotFoundException;
+import com.vetsoftware.app.configurator.domain.MissingRequiredAnswerException;
+import com.vetsoftware.app.configurator.domain.NumberQuestionCannotHaveOptionsException;
+import com.vetsoftware.app.configurator.domain.QuantityFromAnswerRequiresNumberQuestionException;
+import com.vetsoftware.app.configurator.domain.UnreachableAnswerException;
 import com.vetsoftware.app.consultation.domain.ConsultationHasActiveChildrenException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeHasActiveChildrenException;
@@ -47,6 +69,7 @@ import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImagingNotFoundExc
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeHasActiveChildrenException;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNotFoundException;
 import com.vetsoftware.app.dianprovider.domain.DianProviderConfigNotFoundException;
+import com.vetsoftware.app.dunning.domain.DunningEventNotFoundException;
 import com.vetsoftware.app.economicactivity.domain.EconomicActivityNotFoundException;
 import com.vetsoftware.app.electronicdocument.domain.DocumentAlreadyReversedException;
 import com.vetsoftware.app.electronicdocument.domain.DocumentNotValidatedException;
@@ -57,6 +80,9 @@ import com.vetsoftware.app.employee.domain.AdminEmployeeCannotBeDisabledExceptio
 import com.vetsoftware.app.employee.domain.EmployeeHasActiveChildrenException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
+import com.vetsoftware.app.entitlement.domain.CompanyCapacityNotFoundException;
+import com.vetsoftware.app.entitlement.domain.CompanyEntitlementNotFoundException;
+import com.vetsoftware.app.entitlement.domain.CompanyWithoutContractException;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountAlreadyVoidedException;
 import com.vetsoftware.app.generalchargeopenaccount.domain.GeneralChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.goodsreceipt.domain.GoodsReceiptNotFoundException;
@@ -79,9 +105,6 @@ import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeNotFoundE
 import com.vetsoftware.app.medicament.domain.MedicamentHasActiveChildrenException;
 import com.vetsoftware.app.medicament.domain.MedicamentNotFoundException;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescriptionNotFoundException;
-import com.vetsoftware.app.membership.domain.MembershipHasActiveChildrenException;
-import com.vetsoftware.app.membership.domain.MembershipNotFoundException;
-import com.vetsoftware.app.membershipsubmodule.domain.MembershipSubModuleNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleHasActiveChildrenException;
 import com.vetsoftware.app.module.domain.ModuleNotFoundException;
 import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionAlreadyActiveException;
@@ -97,8 +120,17 @@ import com.vetsoftware.app.permission.domain.PermissionHasActiveChildrenExceptio
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
 import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
 import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogNotFoundException;
+import com.vetsoftware.app.platformbillingconfig.domain.PlatformBillingConfigNotConfiguredException;
 import com.vetsoftware.app.prescription.domain.PrescriptionHasActiveChildrenException;
 import com.vetsoftware.app.prescription.domain.PrescriptionNotFoundException;
+import com.vetsoftware.app.pricelist.domain.CatalogPriceNotFoundException;
+import com.vetsoftware.app.pricelist.domain.CatalogPriceTierGapException;
+import com.vetsoftware.app.pricelist.domain.CatalogPriceTierOverlapException;
+import com.vetsoftware.app.pricelist.domain.InvalidPriceListTransitionException;
+import com.vetsoftware.app.pricelist.domain.PriceListCodeAlreadyExistsException;
+import com.vetsoftware.app.pricelist.domain.PriceListHasActivePricesException;
+import com.vetsoftware.app.pricelist.domain.PriceListNotEditableException;
+import com.vetsoftware.app.pricelist.domain.PriceListNotFoundException;
 import com.vetsoftware.app.problem.domain.ProblemNotFoundException;
 import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
 import com.vetsoftware.app.product.domain.ProductNameAlreadyExistsException;
@@ -111,9 +143,17 @@ import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAcco
 import com.vetsoftware.app.promotion.domain.PromotionNotFoundException;
 import com.vetsoftware.app.purchaseorder.domain.InvalidPurchaseOrderStatusTransitionException;
 import com.vetsoftware.app.purchaseorder.domain.PurchaseOrderNotFoundException;
+import com.vetsoftware.app.quote.domain.InvalidQuoteStatusTransitionException;
+import com.vetsoftware.app.quote.domain.QuoteExpiredException;
+import com.vetsoftware.app.quote.domain.QuoteLineArithmeticException;
+import com.vetsoftware.app.quote.domain.QuoteNotFoundException;
+import com.vetsoftware.app.quote.domain.QuoteTotalsMismatchException;
 import com.vetsoftware.app.registration.application.exception.CaptchaVerificationException;
 import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
 import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
+import com.vetsoftware.app.registration.domain.OwnerWithoutBranchException;
+import com.vetsoftware.app.registration.domain.PlatformCatalogNotConfiguredException;
+import com.vetsoftware.app.registration.domain.PlatformRoleCatalogNotConfiguredException;
 import com.vetsoftware.app.registration.infrastructure.security.CaptchaConfigurationException;
 import com.vetsoftware.app.registration.infrastructure.security.CaptchaProviderUnavailableException;
 import com.vetsoftware.app.role.domain.RoleHasActiveChildrenException;
@@ -134,6 +174,29 @@ import com.vetsoftware.app.state.domain.StateHasActiveChildrenException;
 import com.vetsoftware.app.state.domain.StateNotFoundException;
 import com.vetsoftware.app.submodule.domain.SubModuleHasActiveChildrenException;
 import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
+import com.vetsoftware.app.subscription.domain.CompanyAlreadyHasActiveSubscriptionException;
+import com.vetsoftware.app.subscription.domain.InvalidSubscriptionStatusTransitionException;
+import com.vetsoftware.app.subscription.domain.PlatformCatalogNotConfiguredForSubscriptionException;
+import com.vetsoftware.app.subscription.domain.SubscriptionItemAlreadyEndedException;
+import com.vetsoftware.app.subscription.domain.SubscriptionItemNotFoundException;
+import com.vetsoftware.app.subscription.domain.SubscriptionItemOverlapException;
+import com.vetsoftware.app.subscription.domain.SubscriptionNotFoundException;
+import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentAlreadyIssuedException;
+import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentAlreadyVoidedException;
+import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentSequenceAlreadyExistsException;
+import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentSequenceNotFoundException;
+import com.vetsoftware.app.subscriptionbilling.domain.DuplicateBillingCycleException;
+import com.vetsoftware.app.subscriptionbilling.domain.EmptyBillingDocumentException;
+import com.vetsoftware.app.subscriptionbilling.domain.MixedSignChargesException;
+import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionBillingDocumentNotFoundException;
+import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionChargeAlreadyInvoicedException;
+import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionChargeNotFoundException;
+import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentApplicationNotFoundException;
+import com.vetsoftware.app.subscriptionpayment.domain.InvalidSubscriptionPaymentStatusTransitionException;
+import com.vetsoftware.app.subscriptionpayment.domain.OverAppliedSourceException;
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotConfirmedException;
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentHasActiveApplicationsException;
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotFoundException;
 import com.vetsoftware.app.supplier.domain.SupplierNameAlreadyExistsException;
 import com.vetsoftware.app.supplier.domain.SupplierNotFoundException;
 import com.vetsoftware.app.supplierinvoice.domain.InvalidSupplierInvoiceStateException;
@@ -300,7 +363,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // ---------------------------------------------------------------------------------------------
 
     @ExceptionHandler({CompanyNotFoundException.class, EmployeeNotFoundException.class,
-            MembershipNotFoundException.class, MembershipSubModuleNotFoundException.class,
             ModuleNotFoundException.class, PermissionNotFoundException.class,
             SubModuleNotFoundException.class, BasePermissionNotFoundException.class,
             BaseRoleNotFoundException.class, BaseRolePermissionNotFoundException.class,
@@ -340,7 +402,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             BranchNotFoundException.class, InventoryCountNotFoundException.class,
             CashSessionNotFoundException.class, SupplierNotFoundException.class,
             PurchaseOrderNotFoundException.class, GoodsReceiptNotFoundException.class,
-            SupplierInvoiceNotFoundException.class, PetshopCatalogNotFoundException.class})
+            SupplierInvoiceNotFoundException.class, PetshopCatalogNotFoundException.class,
+            ConfiguratorQuestionNotFoundException.class, ConfiguratorOptionNotFoundException.class,
+            ConfiguratorEffectNotFoundException.class, PriceListNotFoundException.class,
+            CatalogPriceNotFoundException.class, QuoteNotFoundException.class,
+            CatalogItemNotFoundException.class, CatalogItemSubModuleNotFoundException.class,
+            CatalogItemDependencyNotFoundException.class, BundleComponentNotFoundException.class,
+            CompanyEntitlementNotFoundException.class, CompanyCapacityNotFoundException.class,
+            SubscriptionNotFoundException.class, SubscriptionItemNotFoundException.class,
+            SubscriptionPaymentNotFoundException.class,
+            BillingDocumentApplicationNotFoundException.class, DunningEventNotFoundException.class,
+            SubscriptionChargeNotFoundException.class,
+            SubscriptionBillingDocumentNotFoundException.class,
+            BillingDocumentSequenceNotFoundException.class})
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.info("Resource not found: {}", ex.getMessage());
         return problem(HttpStatus.NOT_FOUND, errorCode(ex), ex.getMessage());
@@ -359,14 +433,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             PrescriptionHasActiveChildrenException.class, CountryHasActiveChildrenException.class,
             StateHasActiveChildrenException.class, CityHasActiveChildrenException.class,
             ModuleHasActiveChildrenException.class, SubModuleHasActiveChildrenException.class,
-            MembershipHasActiveChildrenException.class,
             BasePermissionHasActiveChildrenException.class,
             BaseRoleHasActiveChildrenException.class, RoleHasActiveChildrenException.class,
             PermissionHasActiveChildrenException.class, SystemUserHasActiveChildrenException.class,
             SystemPermissionHasActiveChildrenException.class,
             CompanyHasActiveChildrenException.class, EmployeeHasActiveChildrenException.class,
             TaxHasActiveChildrenException.class, ProductCategoryHasActiveChildrenException.class,
-            ServiceCategoryHasActiveChildrenException.class})
+            ServiceCategoryHasActiveChildrenException.class,
+            ConfiguratorQuestionHasActiveChildrenException.class,
+            CatalogItemHasActiveChildrenException.class})
     public ProblemDetail handleHasActiveChildren(RuntimeException ex) {
         log.info("Cannot delete entity with active children: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "ENTITY_HAS_ACTIVE_CHILDREN", ex.getMessage());
@@ -592,6 +667,382 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleCashSessionConflict(RuntimeException ex) {
         log.info("Cash session conflict: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Modelo de suscripciones: conflictos de negocio (409) y respuestas inválidas
+    // del configurador (400).
+    //
+    // Todas estas reglas son las que la base NO puede imponer —solapes por rango de
+    // fechas, ciclos en grafos de dependencias, transiciones de estado, unicidad
+    // condicionada— y por eso llegan hasta aquí en vez de salir como
+    // DATA_INTEGRITY_VIOLATION. Cada una lleva código propio: quien firma un
+    // contrato necesita distinguir "esa empresa ya tiene uno activo" de "el ítem se
+    // solapa con otro periodo", y un INVALID_STATE común no le dice ninguna de las
+    // dos.
+    //
+    // INFO en todas: son 4xx atribuibles a quien llama, el mismo criterio del resto
+    // del archivo (#89).
+    // ---------------------------------------------------------------------------------------------
+
+    // Los cuatro conflictos de pricelist salen con SUS DATOS como propiedades, no
+    // solo interpolados en la frase (#407). El argumento es el mismo que ya
+    // sostiene
+    // handleCatalogItemDependencyCycle: sacar el id del precio en conflicto de un
+    // texto como "Tier [1, 10] overlaps catalog price 44 for price list 3" obliga
+    // al
+    // front a parsearlo, y se rompe el dia que alguien reescriba el mensaje. Son
+    // ids
+    // del catalogo global de plataforma, no datos de ningun tenant.
+    @ExceptionHandler(PriceListNotEditableException.class)
+    public ProblemDetail handlePriceListNotEditable(PriceListNotEditableException ex) {
+        log.info("Price list is not editable: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "PRICE_LIST_NOT_EDITABLE", ex.getMessage());
+        pd.setProperty("priceListId", ex.getPriceListId());
+        pd.setProperty("status", ex.getStatus());
+        return pd;
+    }
+
+    @ExceptionHandler(InvalidPriceListTransitionException.class)
+    public ProblemDetail handleInvalidPriceListTransition(InvalidPriceListTransitionException ex) {
+        log.info("Invalid price list transition: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "INVALID_PRICE_LIST_TRANSITION",
+                ex.getMessage());
+        pd.setProperty("from", ex.getFrom());
+        pd.setProperty("to", ex.getTo());
+        return pd;
+    }
+
+    // conflictingPriceId es el que de verdad importa: con el la consola puede
+    // ofrecer "ver el tramo que estorba"; sin el, el administrador lo busca a mano
+    // entre los tramos de la lista.
+    @ExceptionHandler(CatalogPriceTierOverlapException.class)
+    public ProblemDetail handleCatalogPriceTierOverlap(CatalogPriceTierOverlapException ex) {
+        log.info("Catalog price tier overlap: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "CATALOG_PRICE_TIER_OVERLAP",
+                ex.getMessage());
+        pd.setProperty("priceListId", ex.getPriceListId());
+        pd.setProperty("catalogItemId", ex.getCatalogItemId());
+        pd.setProperty("billingCycle", ex.getBillingCycle());
+        pd.setProperty("conflictingPriceId", ex.getConflictingPriceId());
+        return pd;
+    }
+
+    // Sale del @ExceptionHandler agrupado de ENTITY_HAS_ACTIVE_CHILDREN para poder
+    // leer sus getters —aquel recibe un RuntimeException pelado— pero CONSERVA ese
+    // mismo errorCode: el front ya sabe tratarlo y cambiarlo por uno propio le
+    // obligaria a escribir un segundo camino para el mismo suceso. Lo que gana es
+    // activePrices, que es lo que separa un "no se puede borrar" sin salida de un
+    // "tiene 3 precios activos, ¿los archivo?" (#407).
+    @ExceptionHandler(PriceListHasActivePricesException.class)
+    public ProblemDetail handlePriceListHasActivePrices(PriceListHasActivePricesException ex) {
+        log.info("Cannot delete price list with active prices: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "ENTITY_HAS_ACTIVE_CHILDREN",
+                ex.getMessage());
+        pd.setProperty("priceListId", ex.getPriceListId());
+        pd.setProperty("activePrices", ex.getActivePrices());
+        return pd;
+    }
+
+    // R9 tiene dos mitades y esta es la segunda: los tramos de un articulo no se
+    // pisan (arriba) y no dejan huecos (aqui). 409 y no 400 porque lo que no encaja
+    // no es el cuerpo de la peticion de publicar —que va vacio— sino el estado de
+    // la
+    // tarifa que se pide congelar. El hueco viaja como dato para que la consola
+    // pueda senalar el articulo y el rango en vez de decir "hay un hueco" (#378).
+    @ExceptionHandler(CatalogPriceTierGapException.class)
+    public ProblemDetail handleCatalogPriceTierGap(CatalogPriceTierGapException ex) {
+        log.info("Catalog price tier gap: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "CATALOG_PRICE_TIER_GAP", ex.getMessage());
+        pd.setProperty("priceListId", ex.getPriceListId());
+        pd.setProperty("catalogItemId", ex.getCatalogItemId());
+        pd.setProperty("billingCycle", ex.getBillingCycle());
+        pd.setProperty("gapFrom", ex.getGapFrom());
+        pd.setProperty("gapTo", ex.getGapTo());
+        return pd;
+    }
+
+    @ExceptionHandler(ConfiguratorCodeAlreadyExistsException.class)
+    public ProblemDetail handleConfiguratorCodeAlreadyExists(
+            ConfiguratorCodeAlreadyExistsException ex) {
+        log.info("Configurator code already exists: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_CODE_ALREADY_EXISTS", ex.getMessage());
+    }
+
+    @ExceptionHandler(ConfiguratorEffectAlreadyExistsException.class)
+    public ProblemDetail handleConfiguratorEffectAlreadyExists(
+            ConfiguratorEffectAlreadyExistsException ex) {
+        log.info("Configurator effect already exists: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_EFFECT_ALREADY_EXISTS", ex.getMessage());
+    }
+
+    @ExceptionHandler(PriceListCodeAlreadyExistsException.class)
+    public ProblemDetail handlePriceListCodeAlreadyExists(PriceListCodeAlreadyExistsException ex) {
+        log.info("Price list code already exists: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "PRICE_LIST_CODE_ALREADY_EXISTS", ex.getMessage());
+    }
+
+    @ExceptionHandler(ConditionalQuestionCycleException.class)
+    public ProblemDetail handleConditionalQuestionCycle(ConditionalQuestionCycleException ex) {
+        log.info("Configurator question cycle: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_QUESTION_CYCLE", ex.getMessage());
+    }
+
+    @ExceptionHandler(QuantityFromAnswerRequiresNumberQuestionException.class)
+    public ProblemDetail handleQuantityFromAnswerRequiresNumber(
+            QuantityFromAnswerRequiresNumberQuestionException ex) {
+        log.info("Quantity from answer requires a NUMBER question: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "QUANTITY_FROM_ANSWER_REQUIRES_NUMBER",
+                ex.getMessage());
+    }
+
+    // 409 y no 400: lo que está en conflicto no es el cuerpo que acaba de llegar
+    // —una opción o un answerType perfectamente válidos por sí solos— sino el
+    // estado guardado del cuestionario contra el que se aplican. Es el mismo
+    // criterio con el que va QUANTITY_FROM_ANSWER_REQUIRES_NUMBER, y el contrario
+    // al de CONFIGURATOR_ANSWER_UNREACHABLE, que sí culpa al cuerpo.
+    @ExceptionHandler(NumberQuestionCannotHaveOptionsException.class)
+    public ProblemDetail handleNumberQuestionCannotHaveOptions(
+            NumberQuestionCannotHaveOptionsException ex) {
+        log.info("NUMBER question cannot have options: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_NUMBER_QUESTION_CANNOT_HAVE_OPTIONS",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(CatalogItemCodeAlreadyExistsException.class)
+    public ProblemDetail handleCatalogItemCodeAlreadyExists(
+            CatalogItemCodeAlreadyExistsException ex) {
+        log.info("Catalog item code already exists: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "CATALOG_ITEM_CODE_ALREADY_EXISTS", ex.getMessage());
+    }
+
+    @ExceptionHandler(CatalogItemSubModuleAlreadyExistsException.class)
+    public ProblemDetail handleCatalogItemSubModuleAlreadyExists(
+            CatalogItemSubModuleAlreadyExistsException ex) {
+        log.info("Catalog item sub-module link already exists: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "CATALOG_ITEM_SUB_MODULE_ALREADY_EXISTS",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(CatalogItemDependencyAlreadyExistsException.class)
+    public ProblemDetail handleCatalogItemDependencyAlreadyExists(
+            CatalogItemDependencyAlreadyExistsException ex) {
+        log.info("Catalog item dependency already exists: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "CATALOG_ITEM_DEPENDENCY_ALREADY_EXISTS",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(BundleComponentAlreadyExistsException.class)
+    public ProblemDetail handleBundleComponentAlreadyExists(
+            BundleComponentAlreadyExistsException ex) {
+        log.info("Bundle component already exists: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "BUNDLE_COMPONENT_ALREADY_EXISTS", ex.getMessage());
+    }
+
+    // El ciclo sale también como dato estructurado, no solo dentro del mensaje: el
+    // front necesita enlazar los artículos del bucle uno a uno, y sacarlos de un
+    // texto con formato "12 > 44 > 12" obliga a parsearlo y se rompe en cuanto el
+    // mensaje cambie. Son ids del catálogo de plataforma, no datos de ningún
+    // tenant.
+    @ExceptionHandler(CatalogItemDependencyCycleException.class)
+    public ProblemDetail handleCatalogItemDependencyCycle(CatalogItemDependencyCycleException ex) {
+        log.info("Catalog item dependency cycle: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "CATALOG_ITEM_DEPENDENCY_CYCLE",
+                ex.getMessage());
+        pd.setProperty("cycle", ex.getCycle());
+        return pd;
+    }
+
+    @ExceptionHandler(InvalidBundleCompositionException.class)
+    public ProblemDetail handleInvalidBundleComposition(InvalidBundleCompositionException ex) {
+        log.info("Invalid bundle composition: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "INVALID_BUNDLE_COMPOSITION", ex.getMessage());
+    }
+
+    @ExceptionHandler(CompanyWithoutContractException.class)
+    public ProblemDetail handleCompanyWithoutContract(CompanyWithoutContractException ex) {
+        log.info("Company has no contract: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "COMPANY_WITHOUT_CONTRACT", ex.getMessage());
+    }
+
+    @ExceptionHandler(CompanyAlreadyHasActiveSubscriptionException.class)
+    public ProblemDetail handleCompanyAlreadyHasActiveSubscription(
+            CompanyAlreadyHasActiveSubscriptionException ex) {
+        log.info("Company already has an active subscription: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "COMPANY_ALREADY_HAS_ACTIVE_SUBSCRIPTION",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(SubscriptionItemOverlapException.class)
+    public ProblemDetail handleSubscriptionItemOverlap(SubscriptionItemOverlapException ex) {
+        log.info("Subscription item overlap: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "SUBSCRIPTION_ITEM_OVERLAP", ex.getMessage());
+    }
+
+    @ExceptionHandler(SubscriptionItemAlreadyEndedException.class)
+    public ProblemDetail handleSubscriptionItemAlreadyEnded(
+            SubscriptionItemAlreadyEndedException ex) {
+        log.info("Subscription item already ended: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "SUBSCRIPTION_ITEM_ALREADY_ENDED", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidSubscriptionStatusTransitionException.class)
+    public ProblemDetail handleInvalidSubscriptionStatusTransition(
+            InvalidSubscriptionStatusTransitionException ex) {
+        log.info("Invalid subscription status transition: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "INVALID_SUBSCRIPTION_STATUS_TRANSITION",
+                ex.getMessage());
+    }
+
+    // 409 y no 503, al revés que su gemela de registration (abajo, con los 5xx):
+    // aquí el catálogo mínimo sí existe y lo que no encaja es el contrato concreto
+    // que se pide firmar sobre él. Comparte errorCode con aquella por decisión de
+    // producto — ver el comentario de handlePlatformNotConfigured.
+    @ExceptionHandler(PlatformCatalogNotConfiguredForSubscriptionException.class)
+    public ProblemDetail handlePlatformCatalogNotConfiguredForSubscription(
+            PlatformCatalogNotConfiguredForSubscriptionException ex) {
+        log.info("Platform catalog not configured for subscription: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "PLATFORM_CATALOG_NOT_CONFIGURED", ex.getMessage());
+    }
+
+    // available y requested salen como propiedades porque "no cabe" no es
+    // accionable: quien concilia necesita saber cuánto quedaba del pago o de la
+    // nota
+    // crédito para aplicar la diferencia sin volver a consultarlo.
+    @ExceptionHandler(OverAppliedSourceException.class)
+    public ProblemDetail handleOverAppliedSource(OverAppliedSourceException ex) {
+        log.info("Source over-applied: available={} requested={}", ex.getAvailable(),
+                ex.getRequested());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "SOURCE_OVER_APPLIED", ex.getMessage());
+        pd.setProperty("available", ex.getAvailable());
+        pd.setProperty("requested", ex.getRequested());
+        return pd;
+    }
+
+    @ExceptionHandler(InvalidSubscriptionPaymentStatusTransitionException.class)
+    public ProblemDetail handleInvalidSubscriptionPaymentStatusTransition(
+            InvalidSubscriptionPaymentStatusTransitionException ex) {
+        log.info("Invalid subscription payment status transition: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "INVALID_PAYMENT_STATUS_TRANSITION", ex.getMessage());
+    }
+
+    @ExceptionHandler(SubscriptionPaymentNotConfirmedException.class)
+    public ProblemDetail handleSubscriptionPaymentNotConfirmed(
+            SubscriptionPaymentNotConfirmedException ex) {
+        log.info("Subscription payment is not confirmed: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "PAYMENT_NOT_CONFIRMED", ex.getMessage());
+    }
+
+    @ExceptionHandler(SubscriptionPaymentHasActiveApplicationsException.class)
+    public ProblemDetail handleSubscriptionPaymentHasActiveApplications(
+            SubscriptionPaymentHasActiveApplicationsException ex) {
+        log.info("Subscription payment still has active applications: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "PAYMENT_HAS_ACTIVE_APPLICATIONS", ex.getMessage());
+    }
+
+    // DOCUMENT_ALREADY_ISSUED, no BILLING_DOCUMENT_ALREADY_ISSUED: el código lo
+    // fija
+    // la especificación y NO se deriva del nombre de la clase. Quien lo cambie a
+    // errorCode(ex) "para unificar" rompe al front en silencio.
+    @ExceptionHandler(BillingDocumentAlreadyIssuedException.class)
+    public ProblemDetail handleBillingDocumentAlreadyIssued(
+            BillingDocumentAlreadyIssuedException ex) {
+        log.info("Billing document already issued: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "DOCUMENT_ALREADY_ISSUED", ex.getMessage());
+    }
+
+    @ExceptionHandler(BillingDocumentAlreadyVoidedException.class)
+    public ProblemDetail handleBillingDocumentAlreadyVoided(
+            BillingDocumentAlreadyVoidedException ex) {
+        log.info("Billing document already voided: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "DOCUMENT_ALREADY_VOIDED", ex.getMessage());
+    }
+
+    @ExceptionHandler(SubscriptionChargeAlreadyInvoicedException.class)
+    public ProblemDetail handleSubscriptionChargeAlreadyInvoiced(
+            SubscriptionChargeAlreadyInvoicedException ex) {
+        log.info("Subscription charge already invoiced: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "CHARGE_ALREADY_INVOICED", ex.getMessage());
+    }
+
+    @ExceptionHandler(MixedSignChargesException.class)
+    public ProblemDetail handleMixedSignCharges(MixedSignChargesException ex) {
+        log.info("Mixed sign charges in one document: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "MIXED_SIGN_CHARGES", ex.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateBillingCycleException.class)
+    public ProblemDetail handleDuplicateBillingCycle(DuplicateBillingCycleException ex) {
+        log.info("Duplicate billing cycle: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "DUPLICATE_BILLING_CYCLE", ex.getMessage());
+    }
+
+    @ExceptionHandler(EmptyBillingDocumentException.class)
+    public ProblemDetail handleEmptyBillingDocument(EmptyBillingDocumentException ex) {
+        log.info("Empty billing document: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "EMPTY_BILLING_DOCUMENT", ex.getMessage());
+    }
+
+    @ExceptionHandler(BillingDocumentSequenceAlreadyExistsException.class)
+    public ProblemDetail handleBillingDocumentSequenceAlreadyExists(
+            BillingDocumentSequenceAlreadyExistsException ex) {
+        log.info("Billing document sequence already exists: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "BILLING_DOCUMENT_SEQUENCE_ALREADY_EXISTS",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidQuoteStatusTransitionException.class)
+    public ProblemDetail handleInvalidQuoteStatusTransition(
+            InvalidQuoteStatusTransitionException ex) {
+        log.info("Invalid quote status transition: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "INVALID_QUOTE_STATUS_TRANSITION", ex.getMessage());
+    }
+
+    @ExceptionHandler(QuoteExpiredException.class)
+    public ProblemDetail handleQuoteExpired(QuoteExpiredException ex) {
+        log.info("Quote expired: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "QUOTE_EXPIRED", ex.getMessage());
+    }
+
+    // Configurador: las dos son 400 y no 409 porque el conflicto está en el cuerpo
+    // que acaba de enviarse —una respuesta a una pregunta que las condiciones del
+    // propio envío dejan inalcanzable, o una obligatoria que falta—, no en el
+    // estado
+    // de nada guardado. Se arregla corrigiendo el envío, que es la definición de un
+    // 400.
+    // Las dos llevan la pregunta y la opcion como propiedades ademas de dentro del
+    // mensaje (#449). El detail sale en ingles y nombrando ids internos —"Answer
+    // refers to option 42, which does not exist…"— y el front lo pinta tal cual
+    // dentro de un aviso en español, a un operador de la consola y tambien al
+    // PROSPECTO ANONIMO, porque /configurator/resolve es publico por diseño. Nadie
+    // puede actuar sobre "la opcion 42". Con questionCode el cliente escribe la
+    // frase nombrando la pregunta con las mismas palabras que hay en pantalla, sin
+    // volver a pedir nada al servidor. No se traduce el backend: se le dan los
+    // datos
+    // a quien sí sabe el idioma de su usuario.
+    //
+    // Las propiedades solo se ponen si existen: un ProblemDetail con
+    // "questionCode": null le hace creer al front que la pregunta no tiene codigo,
+    // en vez de que este rechazo no señala a ninguna pregunta concreta.
+    @ExceptionHandler(UnreachableAnswerException.class)
+    public ProblemDetail handleUnreachableAnswer(UnreachableAnswerException ex) {
+        log.info("Unreachable configurator answer: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "CONFIGURATOR_ANSWER_UNREACHABLE",
+                ex.getMessage());
+        setIfPresent(pd, "questionId", ex.getQuestionId());
+        setIfPresent(pd, "questionCode", ex.getQuestionCode());
+        setIfPresent(pd, "optionId", ex.getOptionId());
+        return pd;
+    }
+
+    @ExceptionHandler(MissingRequiredAnswerException.class)
+    public ProblemDetail handleMissingRequiredAnswer(MissingRequiredAnswerException ex) {
+        log.info("Missing required configurator answer: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "CONFIGURATOR_REQUIRED_ANSWER_MISSING",
+                ex.getMessage());
+        setIfPresent(pd, "questionId", ex.getQuestionId());
+        setIfPresent(pd, "questionCode", ex.getQuestionCode());
+        return pd;
     }
 
     // Red de seguridad de los guards de estado que todavía lanzan
@@ -1312,6 +1763,44 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         // concurrente que pasó el check del service la atrapa la BD. Se mapea al mismo
         // código de
         // negocio.
+        // Las seis constraints del catalogo de plataforma (#437). Las altas de
+        // configurator y pricelist ya tienen guarda previa —consultan la fila ignorando
+        // el borrado logico y la reactivan en vez de insertar—, pero una guarda previa
+        // no puede cerrar la CARRERA: dos administradores dan de alta a la vez el mismo
+        // codigo de pregunta desde dos pestañas, los dos leen antes de que el otro
+        // escriba, y el segundo INSERT muere contra el indice. Sin mapeo eso sale como
+        // un 409 con el detail "Database constraint violation" —sobre catalog_prices,
+        // hablando de dinero— y deja un WARN indistinguible de un problema real de
+        // integridad.
+        //
+        // MISMO errorCode que el guard sincrono de cada caso, igual que en las tres
+        // ramas de arriba: al front le da igual si el choque lo detecto Java o lo
+        // detecto la base, y un codigo distinto le obligaria a escribir dos veces el
+        // mismo tratamiento.
+        //
+        // uq_catalog_prices_tier va incluida aunque CreateCatalogPriceService bloquee
+        // la lista con PESSIMISTIC_WRITE y ahi la carrera este serializada: es red, y
+        // cuesta un if. En las tres tablas de configurator y en price_lists no hay
+        // bloqueo y la carrera esta abierta de verdad.
+        if (cause != null && (cause.contains("uq_configurator_questions_code")
+                || cause.contains("uq_configurator_options_code"))) {
+            return problem(HttpStatus.CONFLICT, "CONFIGURATOR_CODE_ALREADY_EXISTS",
+                    "Ese código ya está en uso en el cuestionario.");
+        }
+        if (cause != null && (cause.contains("uq_configurator_effects_option")
+                || cause.contains("uq_configurator_effects_question"))) {
+            return problem(HttpStatus.CONFLICT, "CONFIGURATOR_EFFECT_ALREADY_EXISTS",
+                    "Esa respuesta ya tiene un efecto sobre ese artículo.");
+        }
+        if (cause != null && cause.contains("uq_price_lists_code")) {
+            return problem(HttpStatus.CONFLICT, "PRICE_LIST_CODE_ALREADY_EXISTS",
+                    "Ya existe una lista de precios con ese código.");
+        }
+        if (cause != null && cause.contains("uq_catalog_prices_tier")) {
+            return problem(HttpStatus.CONFLICT, "CATALOG_PRICE_TIER_OVERLAP",
+                    "Ese tramo de precio acaba de ser creado por otra persona."
+                            + " Recarga la tarifa y revisa los tramos del artículo.");
+        }
         if (cause != null && cause.contains("uq_products_company_active_code")) {
             return problem(HttpStatus.CONFLICT, "PRODUCT_CODE_ALREADY_EXISTS",
                     "Ya existe un producto activo con ese código en esta empresa.");
@@ -1463,6 +1952,118 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return ex.getClass().getSimpleName() + " field=" + typeMismatchFieldName(mismatch);
         }
         return ex.getMessage();
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // La plataforma no está configurada para servir la operación: 503 en las dos, y
+    // el mismo código.
+    //
+    // Son la misma condición vista desde dos slices —falta la fila única de
+    // platform_billing_config, o falta el catálogo comercial mínimo con el que
+    // firmar el contrato inicial—, y responder con dos códigos distintos a lo mismo
+    // obliga a quien depura a aprenderse dos vocabularios para un solo problema.
+    //
+    // 503 y no 500: la petición del cliente es correcta y el servidor no se ha
+    // caído; falta sembrar un dato de despliegue, y el intento vuelve a funcionar
+    // en
+    // cuanto un operador lo siembre. 503 y no 404: no falta el recurso de negocio
+    // que se pidió, falta el suelo sobre el que la operación se apoya, y un 404
+    // mandaría a buscar el registro equivocado.
+    //
+    // El detail propaga el mensaje TAL CUAL a propósito: las dos excepciones lo
+    // redactaron con el INSERT (o con los cinco pasos) que lo arreglan, y ese texto
+    // es lo único que separa un 503 opaco de uno accionable.
+    //
+    // log.error y markObservationError: es un despliegue incompleto, pide acción
+    // humana y tiene que contar como request fallido en las métricas, no diluirse
+    // entre los 4xx normales.
+    // ---------------------------------------------------------------------------------------------
+
+    @ExceptionHandler(PlatformBillingConfigNotConfiguredException.class)
+    public ProblemDetail handlePlatformBillingConfigNotConfigured(
+            PlatformBillingConfigNotConfiguredException ex, HttpServletRequest request) {
+        markObservationError(request, ex);
+        log.error("Platform billing config row is missing; billing cannot run", ex);
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "PLATFORM_BILLING_CONFIG_NOT_CONFIGURED",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(PlatformCatalogNotConfiguredException.class)
+    public ProblemDetail handlePlatformNotConfigured(PlatformCatalogNotConfiguredException ex,
+            HttpServletRequest request) {
+        markObservationError(request, ex);
+        log.error("Platform commercial catalog is not seeded; registration cannot complete", ex);
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "PLATFORM_CATALOG_NOT_CONFIGURED",
+                ex.getMessage());
+    }
+
+    // La gemela de la de arriba en la dimension de los permisos, y va aqui —503,
+    // log.error, markObservationError— por lo mismo: es un despliegue incompleto,
+    // no una entrada mala del cliente, y pide accion humana antes de que llegue el
+    // siguiente registro.
+    //
+    // errorCode PROPIO y no el compartido de las dos de catalogo comercial: no es
+    // una decision de producto sino de diagnostico. Aquellas se arreglan sembrando
+    // catalog_items/price_lists; esta se arregla en base_roles, que es otra tabla,
+    // otro changeset y otro dueño. Compartir codigo mandaria a quien lo lea a
+    // sembrar el catalogo comercial —que puede estar perfecto— y a no mirar la
+    // tabla que de verdad esta vacia. Razonado en #500.
+    @ExceptionHandler(PlatformRoleCatalogNotConfiguredException.class)
+    public ProblemDetail handlePlatformRoleCatalogNotConfigured(
+            PlatformRoleCatalogNotConfiguredException ex, HttpServletRequest request) {
+        markObservationError(request, ex);
+        log.error("Platform base roles are not seeded; registration cannot complete", ex);
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "PLATFORM_ROLE_CATALOG_NOT_CONFIGURED",
+                ex.getMessage());
+    }
+
+    // La tercera de la familia, y la unica que NO es 503: ver el javadoc de
+    // OwnerWithoutBranchException. Las dos de arriba denuncian un despliegue
+    // incompleto —faltan filas de catalogo, un humano las siembra y el siguiente
+    // registro pasa—; esta denuncia que el alta dejo de cuadrar consigo misma sobre
+    // dos filas que ella misma acaba de crear. No hay nada que sembrar ni nada que
+    // el cliente pueda reintentar, asi que 500 y no 503, con el mismo log.error y
+    // el mismo markObservationError porque pide accion humana igual de urgente:
+    // mientras dure, TODA empresa nueva nace sin poder invitar a nadie (#510).
+    @ExceptionHandler(OwnerWithoutBranchException.class)
+    public ProblemDetail handleOwnerWithoutBranch(OwnerWithoutBranchException ex,
+            HttpServletRequest request) {
+        markObservationError(request, ex);
+        log.error("Registered owner ended with no branch assigned; registration rolled back", ex);
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "REGISTRATION_OWNER_WITHOUT_BRANCH",
+                ex.getMessage());
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Autochequeos de integridad de una cotización: 500, no 409.
+    //
+    // Las dos saltan cuando un documento YA GUARDADO deja de cuadrar consigo mismo:
+    // los cuatro totales de la cabecera no son la suma de las líneas, o la
+    // aritmética congelada de una línea no se sostiene. Nadie envía esos importes —
+    // los calcula el servidor desde las líneas —, así que si no cuadran es
+    // corrupción del dato o un defecto propio, nunca una entrada mala.
+    //
+    // No es 409 aunque las dos hereden de IllegalStateException, y por eso llevan
+    // handler propio: es más específico que handleConflictState y Spring lo elige.
+    // Un 409 le dice al cliente que el estado cambió y que reintente, y aquí el
+    // reintento vuelve a fallar igual porque no hay nada que el cliente pueda
+    // hacer.
+    //
+    // log.error y no el log.info de los 4xx de negocio: esto pide que un humano
+    // mire
+    // la fila. El detalle que sale al cliente es constante —los importes solo
+    // sirven
+    // para diagnosticar y se quedan en el log—, igual que en el resto de 5xx.
+    // ---------------------------------------------------------------------------------------------
+
+    @ExceptionHandler({QuoteTotalsMismatchException.class, QuoteLineArithmeticException.class})
+    public ProblemDetail handleQuoteIntegrity(IllegalStateException ex,
+            HttpServletRequest request) {
+        markObservationError(request, ex);
+        log.error("Quote integrity self-check failed", ex);
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "QUOTE_DATA_CORRUPTED",
+                "La cotización tiene importes inconsistentes y no se puede usar. Contacta a"
+                        + " soporte.");
     }
 
     @ExceptionHandler(PdfRenderException.class)
