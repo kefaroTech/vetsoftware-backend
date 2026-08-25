@@ -8,6 +8,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +30,9 @@ public class ResendAppointmentConfirmationEmailSender
         implements
             AppointmentConfirmationEmailSender {
 
+    private static final Logger log = LoggerFactory
+            .getLogger(ResendAppointmentConfirmationEmailSender.class);
+
     private static final Locale ES_CO = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter
             .ofPattern("EEEE, d 'de' MMMM 'de' yyyy", ES_CO);
@@ -36,10 +41,15 @@ public class ResendAppointmentConfirmationEmailSender
     private final ResendEmailClient email;
     private final String templateId;
 
+    // El default vacio de la configuracion NO es la politica: es lo que permite que
+    // el contrato OpenAPI, las rodajas de test y el perfil local arranquen sin
+    // declarar nada. Quien decide si un valor ausente es tolerable es
+    // requireConfiguredWhenEmailIsEnabled(), abajo.
     public ResendAppointmentConfirmationEmailSender(ResendEmailClient email,
             @Value("${vetsoftware.appointment.confirmation-template-id:}") String templateId) {
         this.email = email;
         this.templateId = templateId;
+        requireConfiguredWhenEmailIsEnabled();
     }
 
     @Override
@@ -61,6 +71,42 @@ public class ResendAppointmentConfirmationEmailSender
         variables.put("NOTES", nz(d.notes(), "Sin observaciones."));
 
         email.sendTemplate(d.recipientEmail(), null, subject, templateId, variables);
+    }
+
+    /**
+     * Fallo al arrancar, y solo cuando el correo esta habilitado.
+     *
+     * <p>
+     * Con {@code confirmation-template-id} vacio, {@code sendTemplate} escribe un
+     * warning y retorna: la app levanta, la cita queda agendada, y el propietario
+     * no recibe nada. El unico acuse de que la cita existe es ese correo, asi que
+     * el resultado es una agenda con una cita a la que nadie se presenta y una
+     * clinica que no sabe por que. Mientras el identificador viajo commiteado como
+     * default, esa red existia por accidente; con el valor fuera de la imagen, la
+     * unica red es esta.
+     *
+     * <p>
+     * El default vacio existe para que el contrato OpenAPI, las rodajas de test y
+     * el perfil local, que declaran {@code vetsoftware.email.enabled=false},
+     * arranquen sin declarar nada; ninguno de ellos pasa por aqui. Los unicos que
+     * si lo hacen son dev y prod, que declaran {@code enabled: true}, que es
+     * exactamente donde el silencio cuesta.
+     */
+    private void requireConfiguredWhenEmailIsEnabled() {
+        if (!email.isEnabled()) {
+            return;
+        }
+        requireConfigured(templateId, "vetsoftware.appointment.confirmation-template-id");
+    }
+
+    private static void requireConfigured(String value, String key) {
+        if (value == null || value.isBlank()) {
+            log.error("{} sin valor con el correo habilitado; la aplicacion no arrancara: la"
+                    + " confirmacion no saldria y el propietario no sabria que su cita quedo"
+                    + " agendada, sin que nadie se entere", key);
+            throw new IllegalStateException(
+                    "Configuracion del correo de confirmacion de cita incompleta: " + key);
+        }
     }
 
     private static String typeLabel(AppointmentType type) {

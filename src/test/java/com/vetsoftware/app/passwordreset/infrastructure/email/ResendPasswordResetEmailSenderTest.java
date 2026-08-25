@@ -1,6 +1,8 @@
 package com.vetsoftware.app.passwordreset.infrastructure.email;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
@@ -131,6 +133,52 @@ class ResendPasswordResetEmailSenderTest {
             Map<String, Object> variables = variablesCaptor.getValue();
             assertThat(variables).containsEntry("EMPLOYEE_NAME", "")
                     .containsEntry("COMPANY_NAME", "").containsEntry("EMPLOYEE_CODE", "");
+        }
+    }
+
+    /**
+     * Sin el default commiteado en application.yml, una clave ausente ya no degrada
+     * a "correo que no sale": tumba el arranque. Aqui el silencio es especialmente
+     * caro porque la respuesta del endpoint es identica por diseno
+     * anti-enumeracion: nadie, ni el usuario ni el operador, puede distinguir el
+     * correo perdido del enviado.
+     */
+    @Nested
+    @DisplayName("configuracion incompleta: el arranque falla antes que el correo")
+    class ConfiguracionIncompleta {
+
+        private ResendPasswordResetEmailSender sinPlantilla() {
+            return new ResendPasswordResetEmailSender(email, "https://app.vetrina.co/reset", "");
+        }
+
+        private ResendPasswordResetEmailSender sinUrlBase() {
+            return new ResendPasswordResetEmailSender(email, "   ", "tpl-1");
+        }
+
+        @Test
+        @DisplayName("con el correo habilitado, la plantilla vacia TUMBA el arranque")
+        void la_plantilla_vacia_tumba_el_arranque() {
+            when(email.isEnabled()).thenReturn(true);
+
+            assertThatThrownBy(this::sinPlantilla).isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("password-reset.template-id");
+        }
+
+        @Test
+        @DisplayName("la URL base tambien es obligatoria: es el destino del enlace del correo")
+        void la_url_base_tambien_es_obligatoria() {
+            when(email.isEnabled()).thenReturn(true);
+
+            assertThatThrownBy(this::sinUrlBase).isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("reset-base-url");
+        }
+
+        @Test
+        @DisplayName("con el correo deshabilitado no exige nada: es el modo de las rodajas y del contrato OpenAPI")
+        void con_el_correo_deshabilitado_no_exige_nada() {
+            when(email.isEnabled()).thenReturn(false);
+
+            assertThatCode(this::sinPlantilla).doesNotThrowAnyException();
         }
     }
 }
