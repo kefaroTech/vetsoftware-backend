@@ -298,7 +298,7 @@ class ResendPlatformAccessEmailSenderTest {
         void el_motivo_con_saltos_de_linea_no_abre_etiquetas() {
             dadoElCorreoHabilitado();
             String motivoConControles = "Primera linea\r\n<a href=\"https://atacante.invalid\">"
-                    + "Aprobar acceso</a> Segunda linea";
+                    + "Aprobar acceso</a>\0\033Segunda linea";
 
             crearRemitente().sendAccessRequested(solicitud("Ana Ramirez", motivoConControles));
 
@@ -311,7 +311,7 @@ class ResendPlatformAccessEmailSenderTest {
             // escapado. El dominio los rechaza en fullName y NO en reason; la
             // asimetria esta registrada como incidencia y este caso la fija: si
             // alguien la cierra, cae aqui y hay que actualizarlo a proposito.
-            assertThat(reason).contains("\r\n").contains(" ");
+            assertThat(reason).contains("\r\n").contains("\0");
         }
 
         @Test
