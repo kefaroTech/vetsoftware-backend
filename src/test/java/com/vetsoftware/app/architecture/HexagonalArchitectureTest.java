@@ -485,14 +485,17 @@ class HexagonalArchitectureTest {
      *
      * <p>
      * <b>La cuenta cierra al dígito, y esa es la prueba de que la lista es
-     * exhaustiva y no una muestra</b>: 128 clases {@code @Entity} = 82 versionadas
-     * + estas 46 exentas. El modelo de suscripciones movió las dos mitades a la
+     * exhaustiva y no una muestra</b>: 130 clases {@code @Entity} = 83 versionadas
+     * + estas 47 exentas. El modelo de suscripciones movió las dos mitades a la
      * vez: se fueron {@code memberships} y {@code membership_sub_modules} —una
      * versionada y otra exenta— y entraron las 26 tablas nuevas, 12 versionadas y
-     * 14 exentas. Que las dos restas y las dos sumas cuadren es lo que prueba que
-     * ninguna entidad del modelo nuevo se coló sin decidir su bloqueo. Cualquier
-     * entidad nueva desequilibra la suma y {@link #ENTIDADES_CON_BLOQUEO_OPTIMISTA}
-     * la caza el mismo día.
+     * 14 exentas. El alta de superadministradores de plataforma sumó después una a
+     * cada lado, y ese reparto es en sí mismo la decisión: la solicitud se versiona
+     * porque su fila se reescribe hasta seis veces —cinco intentos de código más la
+     * decisión—, y la invitación queda exenta porque se emite, se consume una vez y
+     * caduca. Que las restas y las sumas cuadren es lo que prueba que ninguna
+     * entidad se coló sin decidir su bloqueo. Cualquier entidad nueva desequilibra
+     * la suma y {@link #ENTIDADES_CON_BLOQUEO_OPTIMISTA} la caza el mismo día.
      *
      * <p>
      * <b>Cómo se añade una entrada.</b> Nunca «para que pase el test». El código
@@ -595,6 +598,16 @@ class HexagonalArchitectureTest {
                     "token de un solo uso con caducidad corta"),
             exenta("EmailVerificationTokenJpaEntity", E3_TOKEN,
                     "token de un solo uso con caducidad corta"),
+            exenta("PlatformAccessInvitationJpaEntity", E3_TOKEN,
+                    "invitacion de plataforma: se emite al aprobar, se consume una vez al crear"
+                            + " la cuenta y caduca; nadie la edita. Su unico cambio es el consumo,"
+                            + " y va por un UPDATE condicional cuyo WHERE es la invariante"
+                            + " (consumed_at IS NULL), respaldado por el indice unico sobre la"
+                            + " columna generada consumed_request_id: dos consumos concurrentes no"
+                            + " se pisan, el segundo choca y aborta. Su hermana"
+                            + " PlatformAccessRequestJpaEntity SI se versiona, y por el contraste"
+                            + " se ve el criterio: aquella se reescribe hasta seis veces y aprobar"
+                            + " y rechazar pueden llegar a la vez desde dos pestanas"),
 
             // E4 — no hay fila que actualizar.
             exenta("ClinicalEventViewJpaEntity", E4_VISTA,

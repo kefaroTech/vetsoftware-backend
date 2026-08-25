@@ -21,6 +21,17 @@ vetsoftware:
     login-url: http://localhost/login
   employee:
     login-url: http://localhost/login
+  # Alta de superadministradores de plataforma. Los adaptadores de esta feature declaran default
+  # vacio en todos sus @Value, asi que el contexto arrancaria igual sin este bloque; se declara de
+  # todas formas porque los perfiles dev y prod SI exigen valor para estas tres claves —arrancar sin
+  # aprobador configurado mandaria el enlace a ninguna parte— y este fichero es el espejo de los
+  # perfiles. Sin el, anadir manana un @Value sin default aqui tumbaria OpenApiContractIT con un
+  # error que no senala a la causa.
+  platform-access:
+    approver-email: plataforma@test.invalid
+    review-base-url: http://localhost/aprobar-acceso
+    invitation-base-url: http://localhost/aceptar-invitacion
+    login-url: http://localhost/login
   recaptcha:
     enabled: false
     secret: ""

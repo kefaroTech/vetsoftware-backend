@@ -81,10 +81,20 @@ public final class BusinessMetricCardinalityFilter implements MeterFilter, Meter
             // "failed" lo emite vetsoftware.business.document.delivery (issue #85). El
             // camino
             // feliz de esa entrega usa "success", ya declarado.
+            // Los doce ultimos los emite el alta de superadministradores de plataforma
+            // (vetsoftware.business.system.user.*, contrato en
+            // docs/TELEMETRIA_ALTA_SUPERADMIN.md 4.3). Olvidar uno solo no degrada la
+            // serie: deniega el medidor ENTERO, y el hueco del panel es
+            // indistinguible de "no hubo actividad". "rejected", "duplicate_ignored",
+            // "success" y "failed" ya estaban y se reutilizan a proposito, en vez de
+            // abrir un vocabulario paralelo para el mismo concepto.
             Map.entry("result",
                     Set.of("completed", "rejected", "cancelled", "error", "validated",
                             "contingency", "pending", "success", "failed", "insufficient_stock",
-                            "duplicate_ignored", "validation_error", "difference")),
+                            "duplicate_ignored", "validation_error", "difference", "form_closed",
+                            "approved", "token_invalid", "token_expired", "token_consumed",
+                            "code_mismatch", "attempts_exhausted", "sent", "skipped", "accepted",
+                            "expired", "email_already_provisioned")),
             Map.entry("channel", Set.of("pos", "open_account", "staff", "public")),
             Map.entry("document.type",
                     Set.of("fe_venta", "doc_equiv_pos", "nota_credito", "nota_debito", "unknown")),

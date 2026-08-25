@@ -11,6 +11,7 @@ import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.inventory.application.port.out.InventoryMetrics;
 import com.vetsoftware.app.inventory.domain.StockMovementType;
+import com.vetsoftware.app.platformaccess.application.port.out.PlatformAccessMetrics;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
@@ -201,5 +202,92 @@ class MicrometerBusinessMetricsTest {
 
         assertThat(registry.get(BusinessMetricNames.CASH_CLOSING_DIFFERENCE)
                 .tag("direction", "surplus").summary().totalAmount()).isEqualTo(5000);
+    }
+
+    @Test
+    @DisplayName("los cuatro contadores del alta de plataforma se registran con su nombre estable")
+    void registraLosCuatroContadoresDelAltaDePlataforma() {
+        metrics.requested(PlatformAccessMetrics.RequestResult.SUCCESS);
+        metrics.resolved(PlatformAccessMetrics.ApprovalResult.APPROVED);
+        metrics.invitation(PlatformAccessMetrics.InvitationResult.SENT);
+        metrics.provisioned();
+
+        String scrape = registry.scrape();
+
+        assertThat(scrape).contains("vetsoftware_business_system_user_requests_total")
+                .contains("vetsoftware_business_system_user_approvals_total")
+                .contains("vetsoftware_business_system_user_invitations_total")
+                .contains("vetsoftware_business_system_user_provisioned_total");
+    }
+
+    @Test
+    @DisplayName("cada desenlace de la solicitud viaja en su propio tag result")
+    void cadaDesenlaceDeSolicitudViajaEnSuTag() {
+        metrics.requested(PlatformAccessMetrics.RequestResult.FORM_CLOSED);
+        metrics.requested(PlatformAccessMetrics.RequestResult.DUPLICATE_IGNORED);
+
+        assertThat(registry.get(BusinessMetricNames.SYSTEM_USER_REQUESTS)
+                .tag("result", "form_closed").counter().count()).isEqualTo(1);
+        assertThat(registry.get(BusinessMetricNames.SYSTEM_USER_REQUESTS)
+                .tag("result", "duplicate_ignored").counter().count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("los intentos fallidos del código se cuentan al instante, sin esperar a un commit que no habrá")
+    void cuentaLosIntentosFallidosAlInstante() {
+        // La denegacion viaja con una excepcion detras: la transaccion del caso de
+        // uso revierte, asi que un recordAfterCommit no publicaria NUNCA este
+        // contador — y es justo el que vigila la fuerza bruta sobre 10^6 codigos.
+        metrics.resolved(PlatformAccessMetrics.ApprovalResult.CODE_MISMATCH);
+        metrics.resolved(PlatformAccessMetrics.ApprovalResult.ATTEMPTS_EXHAUSTED);
+        metrics.resolved(PlatformAccessMetrics.ApprovalResult.TOKEN_INVALID);
+
+        assertThat(registry.get(BusinessMetricNames.SYSTEM_USER_APPROVALS)
+                .tag("result", "code_mismatch").counter().count()).isEqualTo(1);
+        assertThat(registry.get(BusinessMetricNames.SYSTEM_USER_APPROVALS)
+                .tag("result", "attempts_exhausted").counter().count()).isEqualTo(1);
+        assertThat(registry.get(BusinessMetricNames.SYSTEM_USER_APPROVALS)
+                .tag("result", "token_invalid").counter().count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("los desenlaces del correo de invitación se cuentan al instante: llegan del pool de correo, ya tras el commit")
+    void cuentaLosDesenlacesDelCorreoAlInstante() {
+        metrics.invitation(PlatformAccessMetrics.InvitationResult.SENT);
+        metrics.invitation(PlatformAccessMetrics.InvitationResult.FAILED);
+        metrics.invitation(PlatformAccessMetrics.InvitationResult.SKIPPED);
+
+        // Alli no queda transaccion que esperar y recordAfterCommit tomaria la rama
+        // equivocada: el envio perdido —el unico ERROR del flujo— se quedaria sin
+        // contador.
+        assertThat(registry.get(BusinessMetricNames.SYSTEM_USER_INVITATIONS).tag("result", "failed")
+                .counter().count()).isEqualTo(1);
+        assertThat(registry.get(BusinessMetricNames.SYSTEM_USER_INVITATIONS)
+                .tag("result", "skipped").counter().count()).isEqualTo(1);
+        assertThat(registry.get(BusinessMetricNames.SYSTEM_USER_INVITATIONS).tag("result", "sent")
+                .counter().count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("el contador del alta no lleva ningún tag: es del que cuelga la única alerta del flujo")
+    void elContadorDelAltaNoLlevaTags() {
+        metrics.provisioned();
+
+        assertThat(registry.get(BusinessMetricNames.SYSTEM_USER_PROVISIONED).counter().getId()
+                .getTags()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("ningún contador del alta expone el correo, el token ni el id de la solicitud")
+    void ningunContadorDelAltaExponeDatosDeAltaCardinalidad() {
+        metrics.requested(PlatformAccessMetrics.RequestResult.SUCCESS);
+        metrics.resolved(PlatformAccessMetrics.ApprovalResult.CODE_MISMATCH);
+        metrics.invitation(PlatformAccessMetrics.InvitationResult.SENT);
+        metrics.provisioned();
+
+        // Un id de solicitud por peticion reventaria el numero de series. Ese dato
+        // vive en la traza y en el MDC, que es donde la cardinalidad no cuesta.
+        assertThat(registry.scrape()).doesNotContain("request_id").doesNotContain("email")
+                .doesNotContain("token");
     }
 }

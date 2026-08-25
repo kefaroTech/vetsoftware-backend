@@ -253,6 +253,33 @@ vetsoftware:
     token-ttl-hours: ${PASSWORD_RESET_TTL_HOURS:1}
     # ID de la plantilla de Resend (variables EMPLOYEE_NAME, COMPANY_NAME, EMPLOYEE_CODE, RESET_URL, EMPLOYEE_EMAIL).
     template-id: ${PASSWORD_RESET_TEMPLATE_ID:79e6eeea-ae6a-4475-b17d-beb39279705c}
+  # Alta de superadministradores de plataforma por invitacion (incidencia #360). Flujo publico en tres
+  # saltos y tres correos: solicitud -> aviso al aprobador -> invitacion (o rechazo) al solicitante.
+  # El correo del aprobador y las dos URLs base del front van por perfil (dev/local/prod), porque
+  # cambian con el entorno; aqui quedan solo los identificadores de plantilla de Resend.
+  # HELP_URL / PRIVACY_URL / TERMS_URL ya los aporta vetsoftware.email de mas arriba: no se duplican.
+  platform-access:
+    # IDs de plantilla de Resend. Las cuatro plantillas se crean A MANO en el panel de Resend y no
+    # las cubre ningun test. El default vacio de aqui NO es la politica: con el correo habilitado
+    # (dev y prod), ResendPlatformAccessEmailSender exige las ocho claves de este bloque al
+    # construirse y TUMBA EL ARRANQUE si falta una. Antes no lo hacia, y el resultado era que la app
+    # levantaba, el endpoint respondia 202, sendTemplate escribia un warning y retornaba, y la
+    # solicitud moria sin que nadie se enterase. El vacio solo sobrevive donde el correo esta
+    # apagado: contrato OpenAPI, rodajas de test y perfil local.
+    # Variables: FULL_NAME, REQUESTER_EMAIL, REASON, REQUESTED_AT, REVIEW_URL + los tres del pie.
+    request-template-id: ${PLATFORM_ACCESS_REQUEST_TEMPLATE_ID:}
+    # Variables: FULL_NAME, INVITATION_URL + los tres del pie.
+    approved-template-id: ${PLATFORM_ACCESS_APPROVED_TEMPLATE_ID:}
+    # Variables: FULL_NAME + los tres del pie.
+    rejected-template-id: ${PLATFORM_ACCESS_REJECTED_TEMPLATE_ID:}
+    # Correo de bienvenida, tras aceptar la invitacion. NO es cortesia: el login de system_users es
+    # por `code`, no por correo, asi que sin este correo la cuenta queda creada y su dueño sin saber
+    # con que usuario entrar. Variables: FULL_NAME, SYSTEM_USER_CODE, LOGIN_URL + los tres del pie.
+    welcome-template-id: ${PLATFORM_ACCESS_WELCOME_TEMPLATE_ID:}
+    # Variable LOGIN_URL de ese correo de bienvenida. Apunta a la CONSOLA DE PLATAFORMA
+    # (VetSoftwareFront), no a la app del tenant: la cuenta que nace es un superadministrador global.
+    # Como las otras URLs del front, su valor real va por perfil; aqui solo queda declarada.
+    login-url: ${PLATFORM_ACCESS_LOGIN_URL:}
   token-cleanup:
     enabled: ${TOKEN_CLEANUP_ENABLED:true}
     # Los tokens terminales o expirados se conservan brevemente para diagnóstico y luego se eliminan.

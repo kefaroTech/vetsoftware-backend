@@ -2,6 +2,7 @@ package com.vetsoftware.app.coderecovery.infrastructure.email;
 
 import com.vetsoftware.app.coderecovery.application.port.out.CodeRecoveryEmailSender;
 import com.vetsoftware.app.coderecovery.application.port.out.EmployeeAccountsByEmailPort.EmployeeAccount;
+import com.vetsoftware.app.infrastructure.email.HtmlEscaper;
 import com.vetsoftware.app.infrastructure.email.ResendEmailClient;
 import com.vetsoftware.app.infrastructure.logging.DevEmailPreview;
 import java.io.IOException;
@@ -67,10 +68,10 @@ public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
             DevEmailPreview.show(toEmail, "Códigos de usuario", preview);
             return;
         }
-        String html = template.replace("{{{EMPLOYEE_NAME}}}", htmlEscape(nz(employeeName)))
+        String html = template.replace("{{{EMPLOYEE_NAME}}}", HtmlEscaper.escape(nz(employeeName)))
                 .replace("{{{ACCOUNTS_HTML}}}", buildAccountsHtml(accounts))
-                .replace("{{{LOGIN_URL}}}", htmlEscape(nz(loginUrl)))
-                .replace("{{{EMPLOYEE_EMAIL}}}", htmlEscape(nz(toEmail)));
+                .replace("{{{LOGIN_URL}}}", HtmlEscaper.escape(nz(loginUrl)))
+                .replace("{{{EMPLOYEE_EMAIL}}}", HtmlEscaper.escape(nz(toEmail)));
 
         email.send(toEmail, null, SUBJECT, html, null);
     }
@@ -97,22 +98,11 @@ public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
         boolean first = true;
         for (EmployeeAccount a : accounts) {
             sb.append(ROW_TEMPLATE.replace("{DIV}", first ? "" : " acct-div")
-                    .replace("{COMPANY}", htmlEscape(a.companyName()))
-                    .replace("{CODE}", htmlEscape(a.code())));
+                    .replace("{COMPANY}", HtmlEscaper.escape(a.companyName()))
+                    .replace("{CODE}", HtmlEscaper.escape(a.code())));
             first = false;
         }
         return sb.toString();
-    }
-
-    /**
-     * Escapa el texto que se inyecta como HTML (nombres de
-     * veterinaria/códigos/nombre) para no romper el markup.
-     */
-    private static String htmlEscape(String s) {
-        if (s == null)
-            return "";
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                .replace("\"", "&quot;").replace("'", "&#39;");
     }
 
     private static String nz(String s) {

@@ -61,5 +61,11 @@ public final class RequestLoggingContextFilter extends OncePerRequestFilter {
         MDC.remove(MdcKeys.HTTP_PATH);
         MDC.remove(MdcKeys.CLIENT_IP);
         MDC.remove(MdcKeys.USER_AGENT);
+        // Faltaba. Hoy no fuga porque los seis servicios de platformaccess desatan en
+        // su propio finally, pero este filtro existe justamente para no depender de
+        // que todos ellos lo hagan siempre: el hilo es del pool de Tomcat y una clave
+        // que sobreviva etiqueta la peticion del siguiente usuario con el id de una
+        // solicitud de alta de superadministrador ajena.
+        MDC.remove(MdcKeys.SYSTEM_USER_REQUEST_ID);
     }
 }

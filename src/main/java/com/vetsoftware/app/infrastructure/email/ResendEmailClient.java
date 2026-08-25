@@ -30,7 +30,7 @@ import org.springframework.web.client.RestClientResponseException;
  * <ul>
  * <li>{@link #send} — cuerpo HTML propio (con adjuntos), p. ej. la factura.
  * <li>{@link #sendTemplate} — plantilla server-side de Resend por {@code id} +
- * {@code variables}.
+ * {@code variables}. También devuelve su desenlace.
  * </ul>
  *
  * <p>
@@ -158,17 +158,25 @@ public class ResendEmailClient {
      */
     @Async("emailTaskExecutor")
     @Observed(name = "email.send.template", contextualName = "send email template")
-    public void sendTemplate(String to, String cc, String subject, String templateId,
-            Map<String, Object> variables) {
-        // Sigue siendo void: ningún flujo de plantilla tiene hoy contador de negocio
-        // que alimentar, y cambiarle la firma movería cuatro adaptadores sin ganar
-        // nada. Si alguno lo necesita, se replica lo hecho en send().
-        if (notReady(to, subject).isPresent())
-            return;
+    public CompletableFuture<EmailDispatchOutcome> sendTemplate(String to, String cc,
+            String subject, String templateId, Map<String, Object> variables) {
+        // Devuelve el desenlace, igual que send(). Era void mientras ningún flujo de
+        // plantilla tuvo un contador de negocio que alimentar; el alta de
+        // superadministradores sí lo tiene, y ahí perder el correo de invitación en
+        // silencio significa que la cuenta aprobada nunca llega a existir y nadie se
+        // entera. Los cuatro adaptadores que ignoran el retorno siguen siendo
+        // fire-and-forget exactos: ignorar un CompletableFuture no cambia nada.
+        Optional<EmailDispatchOutcome> early = notReady(to, subject);
+        if (early.isPresent())
+            return CompletableFuture.completedFuture(early.get());
         if (templateId == null || templateId.isBlank()) {
             recordOutcome("invalid");
+            // FAILED y no SKIPPED: para el destinatario es indistinguible de una caída
+            // del proveedor —no le llegó y nadie lo va a reintentar—, y contarlo como
+            // omisión escondería exactamente el despliegue mal configurado que este
+            // valor existe para delatar.
             log.warn("No se envía correo a {}: templateId de Resend no configurado", to);
-            return;
+            return CompletableFuture.completedFuture(EmailDispatchOutcome.FAILED);
         }
 
         Map<String, Object> body = baseBody(to, cc, subject);
@@ -176,7 +184,7 @@ public class ResendEmailClient {
         template.put("id", templateId);
         template.put("variables", variables == null ? Map.of() : variables);
         body.put("template", template);
-        dispatch(to, body);
+        return CompletableFuture.completedFuture(dispatch(to, body));
     }
 
     /**

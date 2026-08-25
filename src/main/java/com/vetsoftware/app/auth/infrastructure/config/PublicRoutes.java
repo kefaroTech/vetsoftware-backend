@@ -80,9 +80,30 @@ public final class PublicRoutes {
             // ruta publica POST este limitada, y esa prueba es lo que hace de esto una
             // invariante y no una buena intencion.
             new Route(HttpMethod.GET, "/configurator/questionnaire"),
-            new Route(HttpMethod.POST, "/configurator/resolve"), new Route(null, "/swagger-ui/**"),
-            new Route(null, "/v3/api-docs/**"), new Route(null, "/swagger-resources/**"),
-            new Route(null, "/webjars/**"));
+            new Route(HttpMethod.POST, "/configurator/resolve"),
+            // Alta de superadministradores de plataforma por invitacion (#360). Las seis
+            // son anonimas por construccion, no por comodidad: quien solicita el acceso
+            // todavia no tiene cuenta, y quien aprueba, rechaza o acepta se acredita con
+            // la posesion de un token de un solo uso —mas un codigo de 6 digitos en los
+            // dos primeros—, nunca con un JWT.
+            //
+            // Se listan una a una, con metodo explicito y patron literal. /platform/**
+            // NO vale: el mismo prefijo acabara colgando endpoints SYSTEM de
+            // administracion de plataforma, y un comodin los abriria al mundo sin que
+            // nadie lo vea en el diff. Es el razonamiento que ya dejo /configurator con
+            // sus dos rutas exactas en vez de /configurator/**.
+            //
+            // Los cuatro POST llevan limite propio en LoginRateLimitFilter —el test
+            // toda_ruta_publica_post_esta_limitada lo exige—. Los dos GET de validacion
+            // hoy no lo llevan: hueco conocido y acotado en la incidencia #527.
+            new Route(HttpMethod.POST, "/platform/access-request"),
+            new Route(HttpMethod.GET, "/platform/access-request/validate"),
+            new Route(HttpMethod.POST, "/platform/access-request/approve"),
+            new Route(HttpMethod.POST, "/platform/access-request/reject"),
+            new Route(HttpMethod.GET, "/platform/invitation/validate"),
+            new Route(HttpMethod.POST, "/platform/invitation/accept"),
+            new Route(null, "/swagger-ui/**"), new Route(null, "/v3/api-docs/**"),
+            new Route(null, "/swagger-resources/**"), new Route(null, "/webjars/**"));
 
     /**
      * Rutas que resuelve otra {@code SecurityFilterChain} —hoy solo Actuator, con

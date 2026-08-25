@@ -93,6 +93,19 @@ vetsoftware:
     verification-base-url: ${REGISTRATION_VERIFICATION_URL}
   password-reset:
     reset-base-url: ${PASSWORD_RESET_URL}
+  platform-access:
+    # Sin default a proposito, como el resto de este perfil: arrancar sin aprobador configurado
+    # mandaria el correo de la solicitud a ninguna parte, y nadie se enteraria. Nunca un literal:
+    # quien pueda nombrar al aprobador puede aprobarse a si mismo un superadministrador.
+    approver-email: ${PLATFORM_APPROVER_EMAIL}
+    # Paginas de la consola de plataforma (VetSoftwareFront), no de la app del tenant: reciben
+    # ?token=... y llaman a /platform/access-request/approve|reject y a /platform/invitation/accept.
+    review-base-url: ${PLATFORM_ACCESS_REVIEW_BASE_URL}
+    invitation-base-url: ${PLATFORM_INVITATION_BASE_URL}
+    # Tercera pagina de la consola de plataforma, y la mas facil de olvidar. Es el unico canal por
+    # el que el superadministrador recien creado conoce su `code`, que es su usuario de login: sin
+    # ella el correo de bienvenida sale con un enlace vacio y la cuenta queda inaccesible.
+    login-url: ${PLATFORM_ACCESS_LOGIN_URL}
   code-recovery:
     login-url: ${CODE_RECOVERY_LOGIN_URL}
   employee:

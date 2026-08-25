@@ -33,6 +33,26 @@ public class SystemUserJpaEntity {
     @Column(name = "auth_version", nullable = false)
     private Long authVersion = 0L;
 
+    /**
+     * Correo de la cuenta. Nullable: las filas heredadas no lo tienen y no se les
+     * puede inventar uno. El UNIQUE de la base convive con todos esos NULL —MySQL
+     * admite multiples nulos en un indice unico— y esa propiedad del motor es lo
+     * que permite desplegar la columna sin backfill y sin parar nada.
+     *
+     * <p>
+     * VARCHAR(150) y no 100 como employees.email: el formulario publico acepta 150
+     * y la solicitud los guarda, asi que con 100 aqui un correo de 101 a 150
+     * caracteres pasaria la solicitud, pasaria la aprobacion, llegaria a la
+     * pantalla de crear contrasena y reventaria en el INSERT final, que es el unico
+     * momento del flujo en el que ya no hay reintento posible.
+     */
+    @Column(name = "email", length = 150, unique = true)
+    private String email;
+
+    /** Nombre real. Antes se perdia y /auth/me devolvia el codigo como nombre. */
+    @Column(name = "full_name", length = 120)
+    private String fullName;
+
     protected SystemUserJpaEntity() {
     }
 
@@ -90,5 +110,21 @@ public class SystemUserJpaEntity {
 
     public void setAuthVersion(Long authVersion) {
         this.authVersion = authVersion;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
 }

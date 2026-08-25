@@ -351,4 +351,18 @@
     <include file="db/changelog/migrations/278_seed_electronic_billing_permissions.xml"/>
     <include file="db/changelog/migrations/279_seed_company_self_service_permissions.xml"/>
 
+    <!-- 280-284: alta de superadministradores por invitación
+         (docs/db/superadmin-invitacion-modelo.md §12). GLOBAL de plataforma, sin company_id ni FK
+         a companies. 280+281 dan a system_users una identidad (email VARCHAR(150) NULL + UNIQUE
+         sin backfill, full_name) en dos changesets separados -INSTANT vs IN PLACE-; 282+283 crean
+         las dos tablas nuevas, con la columna generada STORED de 283 declarada dentro de su propio
+         createTable para no pagar un ALGORITHM=COPY sobre datos; 284 siembra el interruptor del
+         formulario en system_configurations, cerrado (open=false) hasta que el resto del slice
+         esté probado de punta a punta. -->
+    <include file="db/changelog/migrations/280_add_identity_to_system_users.xml"/>
+    <include file="db/changelog/migrations/281_add_unique_email_to_system_users.xml"/>
+    <include file="db/changelog/migrations/282_create_platform_access_requests.xml"/>
+    <include file="db/changelog/migrations/283_create_platform_access_invitations.xml"/>
+    <include file="db/changelog/migrations/284_seed_platform_access_switch.xml"/>
+
 </databaseChangeLog>

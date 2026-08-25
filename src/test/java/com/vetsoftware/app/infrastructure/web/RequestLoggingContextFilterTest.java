@@ -48,4 +48,30 @@ class RequestLoggingContextFilterTest {
         assertThat(MDC.get(MdcKeys.USER_AGENT)).isNull();
         assertThat(MDC.get(MdcKeys.ACTOR_TYPE)).isNull();
     }
+
+    @Test
+    void clearsTheSuperadminRequestIdEvenWhenTheServiceForgotToUnbindIt() throws Exception {
+        // Hoy ningun servicio lo olvida: los seis de platformaccess desatan en su
+        // propio finally. Este filtro existe justamente para no depender de que
+        // todos ellos sigan haciendolo: el hilo es del pool de Tomcat y una clave
+        // que sobreviva etiqueta la peticion del siguiente usuario con el id de una
+        // solicitud de alta de superadministrador ajena.
+        MDC.put(MdcKeys.SYSTEM_USER_REQUEST_ID, "4271");
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST",
+                "/platform/access-request");
+        request.setRemoteAddr("192.0.2.10");
+        AtomicReference<Map<String, String>> inside = new AtomicReference<>();
+
+        filter.doFilter(request, new MockHttpServletResponse(),
+                (ignoredRequest, ignoredResponse) -> {
+                    inside.set(MDC.getCopyOfContextMap());
+                    MDC.put(MdcKeys.SYSTEM_USER_REQUEST_ID, "9999");
+                });
+
+        // Entrando: la clave rancia ya se fue antes de la cadena.
+        assertThat(inside.get()).doesNotContainKey(MdcKeys.SYSTEM_USER_REQUEST_ID);
+        // Saliendo: lo que la cadena dejo puesto tampoco sobrevive.
+        assertThat(MDC.get(MdcKeys.SYSTEM_USER_REQUEST_ID)).isNull();
+    }
 }

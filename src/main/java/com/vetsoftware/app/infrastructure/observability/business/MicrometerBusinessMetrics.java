@@ -10,6 +10,7 @@ import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.inventory.application.port.out.InventoryMetrics;
 import com.vetsoftware.app.inventory.domain.StockMovementType;
+import com.vetsoftware.app.platformaccess.application.port.out.PlatformAccessMetrics;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Meter;
@@ -34,7 +35,8 @@ public class MicrometerBusinessMetrics
             DocumentDeliveryMetrics,
             InventoryMetrics,
             AppointmentMetrics,
-            CashMetrics {
+            CashMetrics,
+            PlatformAccessMetrics {
 
     private final AfterCommitMetricRecorder recorder;
 
@@ -49,6 +51,18 @@ public class MicrometerBusinessMetrics
     private final Meter.MeterProvider<Counter> appointmentTransitions;
     private final Meter.MeterProvider<Counter> cashSessions;
     private final Meter.MeterProvider<DistributionSummary> cashClosingDifference;
+    private final Meter.MeterProvider<Counter> systemUserRequests;
+    private final Meter.MeterProvider<Counter> systemUserApprovals;
+    private final Meter.MeterProvider<Counter> systemUserInvitations;
+    /**
+     * Sin {@code MeterProvider}: se registra de una vez en el constructor. No tiene
+     * etiquetas, así que no hay nada que diferir, y pre-registrarlo a cero es lo
+     * que hace que la alerta {@code increase(...) > 0} funcione desde el primer
+     * scrape en lugar de depender de que la serie nazca justo durante el incidente.
+     * Es el mismo argumento con el que el filtro de cardinalidad pre-registra sus
+     * contadores de descarte.
+     */
+    private final Counter systemUserProvisioned;
 
     public MicrometerBusinessMetrics(MeterRegistry registry, AfterCommitMetricRecorder recorder) {
         this.recorder = recorder;
@@ -101,6 +115,26 @@ public class MicrometerBusinessMetrics
                 .builder(BusinessMetricNames.CASH_CLOSING_DIFFERENCE).baseUnit("cop")
                 .description("Valor absoluto de diferencias encontradas al cerrar caja")
                 .withRegistry(registry);
+        systemUserRequests = Counter.builder(BusinessMetricNames.SYSTEM_USER_REQUESTS)
+                .baseUnit("requests")
+                .description("Solicitudes publicas de alta de superadministrador, por resultado")
+                .withRegistry(registry);
+        systemUserApprovals = Counter.builder(BusinessMetricNames.SYSTEM_USER_APPROVALS)
+                .baseUnit("approvals")
+                .description("Resoluciones del enlace del aprobador, por resultado")
+                .withRegistry(registry);
+        systemUserInvitations = Counter.builder(BusinessMetricNames.SYSTEM_USER_INVITATIONS)
+                .baseUnit("invitations")
+                .description("Ciclo de vida de las invitaciones de plataforma, por resultado")
+                .withRegistry(registry);
+        // Sin baseUnit, y por el mismo motivo que document.delivery: el nombre no
+        // termina en un sustantivo de unidad, asi que declarar una produciria
+        // ..._provisioned_admins_total, un nombre que nadie adivina al escribir la
+        // alerta. Sin ella queda vetsoftware_business_system_user_provisioned_total,
+        // que es literalmente lo que dice la alerta.
+        systemUserProvisioned = Counter.builder(BusinessMetricNames.SYSTEM_USER_PROVISIONED)
+                .description("Cuentas con control total de la plataforma creadas por invitacion")
+                .register(registry);
     }
 
     /**
@@ -260,6 +294,53 @@ public class MicrometerBusinessMetrics
                         .record(difference.abs().doubleValue());
             }
         });
+    }
+
+    // ── Alta de superadministradores de plataforma ──────────────────────────
+    //
+    // Los exitos van con recordAfterCommit y las denegaciones con recordNow.
+    // Publicar un alta de superadministrador que luego hace rollback es contar
+    // una cuenta que no existe; una denegacion, en cambio, no tiene transaccion
+    // que esperar.
+
+    @Override
+    public void requested(PlatformAccessMetrics.RequestResult result) {
+        Runnable action = () -> systemUserRequests.withTags("result", result.value()).increment();
+        if (result == PlatformAccessMetrics.RequestResult.SUCCESS) {
+            recorder.recordAfterCommit(action);
+        } else {
+            recorder.recordNow(action);
+        }
+    }
+
+    @Override
+    public void resolved(PlatformAccessMetrics.ApprovalResult result) {
+        Runnable action = () -> systemUserApprovals.withTags("result", result.value()).increment();
+        if (result == PlatformAccessMetrics.ApprovalResult.APPROVED
+                || result == PlatformAccessMetrics.ApprovalResult.REJECTED) {
+            recorder.recordAfterCommit(action);
+        } else {
+            recorder.recordNow(action);
+        }
+    }
+
+    @Override
+    public void invitation(PlatformAccessMetrics.InvitationResult result) {
+        Runnable action = () -> systemUserInvitations.withTags("result", result.value())
+                .increment();
+        if (result == PlatformAccessMetrics.InvitationResult.ACCEPTED) {
+            recorder.recordAfterCommit(action);
+        } else {
+            // sent / failed / skipped se publican desde el hilo del pool de correo,
+            // ya despues del commit: alli no queda transaccion que esperar y
+            // recordAfterCommit tomaria la rama equivocada.
+            recorder.recordNow(action);
+        }
+    }
+
+    @Override
+    public void provisioned() {
+        recorder.recordAfterCommit(systemUserProvisioned::increment);
     }
 
     private static String documentType(ElectronicDocumentType type) {

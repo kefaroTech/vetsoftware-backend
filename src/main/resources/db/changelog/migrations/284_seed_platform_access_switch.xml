@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Alta de superadministradores por invitación (docs/db/superadmin-invitacion-modelo.md §7 y
+         §10, paso 3). El interruptor del formulario de solicitud de acceso NO es una tabla nueva:
+         es una fila del almacén clave-valor genérico que ya existe
+         (149_alter_system_configurations_to_key_value.xml), igual que el UVT.
+
+         Nace en 'false' a propósito -el formulario nace CERRADO-: el front ya sabe pintar el 404
+         de "formulario cerrado" (usePlatformAccess.ts:113), así que POST /platform/access-request
+         puede desplegarse en producción antes de que backend-feature termine el resto del slice,
+         sin exponer nada. Se pasa a 'true' cuando el flujo esté probado de punta a punta -ese
+         UPDATE de una sola fila es a la vez el interruptor de encendido y el de emergencia-.
+
+         Precondición MARK_RAN (no HALT): hace el changeset idempotente sin romper un reintento en
+         una base donde la fila ya exista por cualquier motivo. -->
+    <changeSet id="284_seed_platform_access_switch" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM system_configurations
+                 WHERE property_name = 'platform.access-request.open'
+            </sqlCheck>
+        </preConditions>
+
+        <insert tableName="system_configurations">
+            <column name="property_name" value="platform.access-request.open"/>
+            <column name="value" value="false"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="system_configurations">
+                <where>property_name = 'platform.access-request.open'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
