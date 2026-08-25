@@ -73,9 +73,15 @@ public final class LogFieldPolicy {
             // Contexto de request y actor — MdcKeys
             MdcKeys.ACTOR_TYPE, MdcKeys.ACTOR_EMPLOYEE_ID, MdcKeys.ACTOR_COMPANY_ID,
             MdcKeys.ACTOR_SYSTEM_USER_ID, MdcKeys.CLIENT_IP, MdcKeys.HTTP_METHOD,
+            MdcKeys.SYSTEM_USER_REQUEST_ID,
             // Campos propios de los eventos AUDIT
             "event", "outcome", "reason", "code", "http.status", "http.durationMs", "company.id",
-            "company.identifier", "employee.id", "actor.id", "seconds_since_revocation");
+            "company.identifier", "employee.id", "actor.id", "seconds_since_revocation",
+            // Alta de superadministradores de plataforma: un contador pequeño de
+            // intentos restantes y una antigüedad en segundos, hermana de
+            // seconds_since_revocation. Los dos son números que produce el sistema, no
+            // texto que teclea nadie.
+            "attempts.remaining", "seconds_since_consumption");
 
     /**
      * Claves permitidas cuyo valor sí se somete al enmascarado de texto.
@@ -111,7 +117,7 @@ public final class LogFieldPolicy {
      * exactamente lo que debe pasarle a un documento personal.
      */
     private static final Set<String> SCANNED = Set.of(MdcKeys.HTTP_PATH, MdcKeys.USER_AGENT,
-            "company.name", "actor.identifier", "employee.identifier");
+            "company.name", "actor.identifier", "employee.identifier", "email.domain");
 
     /**
      * {@code true} si el valor de {@code key} se emite sin transformación alguna.

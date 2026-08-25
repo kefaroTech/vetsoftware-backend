@@ -116,6 +116,11 @@ import com.vetsoftware.app.openaccount.domain.OwnerAlreadyHasOpenAccountExceptio
 import com.vetsoftware.app.owner.domain.OwnerHasActiveChildrenException;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
 import com.vetsoftware.app.passwordreset.domain.InvalidPasswordResetTokenException;
+import com.vetsoftware.app.platformaccess.domain.InvalidApprovalTokenException;
+import com.vetsoftware.app.platformaccess.domain.InvalidInvitationTokenException;
+import com.vetsoftware.app.platformaccess.domain.PlatformAccessBlockedException;
+import com.vetsoftware.app.platformaccess.domain.PlatformAccessClosedException;
+import com.vetsoftware.app.platformaccess.domain.PlatformAccessCodeMismatchException;
 import com.vetsoftware.app.permission.domain.PermissionHasActiveChildrenException;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
 import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
@@ -1230,6 +1235,83 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.info("Invalid email verification token: {}", ex.getMessage());
         return problem(HttpStatus.BAD_REQUEST, "INVALID_VERIFICATION_TOKEN",
                 "El enlace de verificación no es válido o expiró.");
+    }
+
+    // ── Alta de superadministradores de plataforma (#360) ──────────────────────
+    //
+    // Las tres excepciones de token de esta feature NO están en la lista del
+    // handleNotFound de arriba, y eso es el control anti-enumeración, no un
+    // olvido. Aquel handler deriva el `code` del nombre de la clase y devuelve
+    // `ex.getMessage()` crudo: con él, un token caducado y uno inexistente
+    // saldrían con textos distintos y quien probara tokens al azar sabría cuáles
+    // existieron alguna vez. Aquí cada familia tiene UN código y UN detail
+    // constante, y el motivo real vive solo en el evento de auditoría.
+    //
+    // 404 y no 410, en las tres. El front colapsa los dos en el mismo estado de
+    // pantalla, así que el 410 sería superficie nueva sin ninguna ganancia.
+
+    /**
+     * Formulario cerrado. El detail NO explica por qué: ver el javadoc de la clase.
+     */
+    @ExceptionHandler(PlatformAccessClosedException.class)
+    public ProblemDetail handlePlatformAccessClosed(PlatformAccessClosedException ex) {
+        log.info("Platform access request rejected: {}", ex.getMessage());
+        return problem(HttpStatus.NOT_FOUND, "PLATFORM_ACCESS_UNAVAILABLE",
+                "El recurso solicitado no está disponible.");
+    }
+
+    /** Token del aprobador: inexistente, caducado, ya usado o bloqueado. */
+    @ExceptionHandler(InvalidApprovalTokenException.class)
+    public ProblemDetail handleInvalidApprovalToken(InvalidApprovalTokenException ex) {
+        log.info("Invalid platform access approval token: {}", ex.getMessage());
+        return problem(HttpStatus.NOT_FOUND, "INVALID_PLATFORM_ACCESS_TOKEN",
+                "El enlace no es válido o ya no está disponible.");
+    }
+
+    /**
+     * Token de invitación: inexistente, caducado o ya consumido — y también «ya
+     * existe una cuenta con ese correo», que tiene que ser indistinguible de los
+     * otros tres. Responder ahí otra cosa convertiría el endpoint en un reseteo de
+     * contraseña de superadministrador desde una ruta pública.
+     */
+    @ExceptionHandler(InvalidInvitationTokenException.class)
+    public ProblemDetail handleInvalidInvitationToken(InvalidInvitationTokenException ex) {
+        log.info("Invalid platform invitation token: {}", ex.getMessage());
+        return problem(HttpStatus.NOT_FOUND, "INVALID_PLATFORM_INVITATION_TOKEN",
+                "El enlace no es válido o ya no está disponible.");
+    }
+
+    /**
+     * Código de verificación incorrecto. 422, que este flujo introduce en el
+     * repositorio: no es un error de forma del cuerpo —el código tiene sus seis
+     * dígitos— sino un valor que no casa con el recurso.
+     *
+     * <p>
+     * {@code remainingAttempts} viaja como propiedad opcional. El front la usa para
+     * la cuenta atrás si viene y la omite si no, y trata el valor cero como
+     * bloqueo: por eso el caso de uso nunca llega a mandar cero por aquí, ese
+     * camino sale como 429.
+     */
+    @ExceptionHandler(PlatformAccessCodeMismatchException.class)
+    public ProblemDetail handlePlatformAccessCodeMismatch(PlatformAccessCodeMismatchException ex) {
+        log.info("Platform access verification code mismatch");
+        ProblemDetail pd = problem(HttpStatus.UNPROCESSABLE_ENTITY, "PLATFORM_ACCESS_CODE_MISMATCH",
+                "El código de verificación no es correcto.");
+        setIfPresent(pd, "remainingAttempts", ex.getRemainingAttempts());
+        return pd;
+    }
+
+    /**
+     * Intentos agotados. 429 y permanente: no hay espera que lo revierta, solo
+     * pedir acceso de nuevo. Sigue siendo 429 después de que el enlace caduque —el
+     * front evalúa el 429 antes que el 422, y si degradara a otro estado volvería a
+     * ofrecer el formulario de código.
+     */
+    @ExceptionHandler(PlatformAccessBlockedException.class)
+    public ProblemDetail handlePlatformAccessBlocked(PlatformAccessBlockedException ex) {
+        log.info("Platform access request is blocked: {}", ex.getMessage());
+        return problem(HttpStatus.TOO_MANY_REQUESTS, "PLATFORM_ACCESS_BLOCKED",
+                "Se agotaron los intentos para este enlace.");
     }
 
     // Token de restablecimiento de contraseña inválido, expirado o ya usado.

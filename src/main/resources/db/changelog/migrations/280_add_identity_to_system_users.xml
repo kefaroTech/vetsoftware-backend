@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Alta de superadministradores por invitación (docs/db/superadmin-invitacion-modelo.md §4.3).
+         system_users no tenía email ni full_name: SystemUserProfile solo exponía id+code
+         (JpaSystemUserProfileQueryPort.java:19) y /auth/me devolvía el code como nombre. code
+         sigue siendo el identificador de login y NO se reutiliza para el correo.
+
+         VARCHAR(150), no VARCHAR(100) como employees.email (015_create_employees.xml:21): el
+         front ya valida hasta 150 (SolicitarAccesoView.vue:71) y platform_access_requests.email
+         también es VARCHAR(150) -ver 282-. Copiar el 100 de employees truncaría un correo largo
+         justo en el INSERT final de /platform/invitation/accept, con la contraseña ya escrita.
+
+         Ambas columnas nacen NULL a propósito, sin backfill: las filas heredadas de system_users
+         no tienen correo y no se les va a inventar uno. Es el paso "expand" de Parallel Change
+         (Fowler) -las N filas existentes conviven con email IS NULL bajo el futuro índice único
+         del 281-. El paso "contract" (email NOT NULL) NO está planificado: solo tendría sentido
+         el día que alguien decida qué correo tienen los superadministradores heredados.
+
+         ADD COLUMN sin DEFAULT es ALGORITHM=INSTANT en MySQL 8.4, sin reconstruir la tabla y con
+         DML concurrente permitido -se despliega con la aplicación en marcha y sin tocar src/-. -->
+    <changeSet id="280_add_identity_to_system_users" author="orlando">
+        <addColumn tableName="system_users">
+            <column name="email" type="VARCHAR(150)"/>
+            <column name="full_name" type="VARCHAR(120)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="system_users" columnName="email"/>
+            <dropColumn tableName="system_users" columnName="full_name"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -251,4 +251,209 @@ class AuditLoggerTest {
                     "PUBLIC_ROUTE_RATE_LIMITED", "outcome", "DENIED"));
         }
     }
+
+    @Nested
+    @DisplayName("alta de superadministradores de plataforma (#360)")
+    class AltaDeSuperadministradores {
+
+        private static final Long SOLICITUD = 4271L;
+
+        @Test
+        @DisplayName("la solicitud recibida emite el dominio del correo y NADA del solicitante")
+        void la_solicitud_recibida_emite_solo_el_dominio() {
+            logger.systemUserRequested(SOLICITUD, "vetrina.co");
+
+            assertThat(emitted().getLevel()).isEqualTo(Level.INFO);
+            // Ni nombre, ni motivo, ni la direccion entera: son datos personales de
+            // alguien que quiza nunca fue aprobado y no consintio nada. El dominio
+            // es lo unico que responde una pregunta operativa —cuarenta dominios
+            // desechables o tres personas de la misma empresa—.
+            assertThat(fields())
+                    .isEqualTo(Map.of("event", "system_user_requested", "system.user.request.id",
+                            SOLICITUD, "email.domain", "vetrina.co", "outcome", "SUCCESS"));
+            assertThat(emitted().getFormattedMessage()).doesNotContain("@")
+                    .doesNotContain("vetrina.co");
+        }
+
+        @Test
+        @DisplayName("el formulario cerrado se registra aqui, que es el unico sitio donde consta el motivo")
+        void el_formulario_cerrado_se_registra_con_su_motivo() {
+            logger.systemUserRequestDenied("form_closed", null, "vetrina.co");
+
+            assertThat(emitted().getLevel()).isEqualTo(Level.INFO);
+            assertThat(fields()).containsEntry("event", "system_user_request_denied")
+                    .containsEntry("reason", "form_closed").containsEntry("outcome", "DENIED");
+        }
+
+        @Test
+        @DisplayName("la solicitud duplicada apunta a la solicitud viva que ya existia")
+        void la_solicitud_duplicada_apunta_a_la_viva() {
+            logger.systemUserRequestDenied("duplicate_request", SOLICITUD, "vetrina.co");
+
+            assertThat(fields()).containsEntry("reason", "duplicate_request")
+                    .containsEntry("system.user.request.id", SOLICITUD);
+        }
+
+        @Test
+        @DisplayName("el token invalido sale en INFO y sin id: no hay solicitud a la que atribuirlo")
+        void el_token_invalido_sale_en_info_y_sin_id() {
+            logger.systemUserApprovalDenied("token_invalid", null);
+
+            // INFO y no WARN: cualquier anonimo puede provocarlo a voluntad y el
+            // sistema funciono como debia. Lo que importa es la tasa, y la tasa es
+            // una metrica.
+            assertThat(emitted().getLevel()).isEqualTo(Level.INFO);
+            assertThat(fields()).containsEntry("event", "system_user_approval_denied")
+                    .containsEntry("reason", "token_invalid").containsEntry("outcome", "DENIED");
+        }
+
+        @Test
+        @DisplayName("el token caducado reutiliza el vocabulario ya vivo token_expired")
+        void el_token_caducado_reutiliza_el_vocabulario_vivo() {
+            logger.systemUserApprovalDenied("token_expired", SOLICITUD);
+
+            // No «approval_token_expired»: un vocabulario paralelo impide preguntar
+            // «cuantos rechazos por token caducado hubo hoy» en todo el sistema.
+            assertThat(fields()).containsEntry("reason", "token_expired");
+        }
+
+        @Test
+        @DisplayName("la reproduccion del token sale en WARN con los segundos desde el consumo")
+        void la_reproduccion_sale_en_warn_con_los_segundos() {
+            logger.systemUserApprovalReplayed(SOLICITUD, 86_400L);
+
+            // WARN, misma semantica que refresh_token_reuse_detected: describe un
+            // ataque en curso, no una decision rutinaria. Los segundos separan el
+            // doble clic del aprobador de la reproduccion de un correo filtrado.
+            assertThat(emitted().getLevel()).isEqualTo(Level.WARN);
+            assertThat(fields()).containsEntry("event", "system_user_approval_denied")
+                    .containsEntry("reason", "token_consumed")
+                    .containsEntry("seconds_since_consumption", 86_400L);
+        }
+
+        @Test
+        @DisplayName("el codigo incorrecto emite el margen restante y NUNCA el codigo")
+        void el_codigo_incorrecto_emite_el_margen_y_nunca_el_codigo() {
+            logger.systemUserApprovalCodeMismatch(SOLICITUD, 3);
+
+            assertThat(emitted().getLevel()).isEqualTo(Level.INFO);
+            assertThat(fields()).containsEntry("reason", "code_mismatch")
+                    .containsEntry("attempts.remaining", 3);
+            // LogRedactor solo suprime corridas de 10 digitos o mas: un codigo de 6
+            // saldria entero y no hay red que lo pare. La garantia es que el evento
+            // no tiene donde meterlo, ni como campo ni en el mensaje.
+            assertThat(fields()).doesNotContainKey("code").doesNotContainKey("verification.code");
+            assertThat(emitted().getFormattedMessage()).doesNotContainPattern("\\d{6}");
+        }
+
+        @Test
+        @DisplayName("los intentos agotados salen en WARN: alguien prueba codigos y un aprobador quedo fuera")
+        void los_intentos_agotados_salen_en_warn() {
+            logger.systemUserApprovalLocked(SOLICITUD);
+
+            assertThat(emitted().getLevel()).isEqualTo(Level.WARN);
+            assertThat(fields()).isEqualTo(
+                    Map.of("event", "system_user_approval_locked", "reason", "attempts_exhausted",
+                            "system.user.request.id", SOLICITUD, "outcome", "DENIED"));
+        }
+
+        @Test
+        @DisplayName("aprobar y rechazar emiten dos eventos distintos, no uno con bandera")
+        void aprobar_y_rechazar_emiten_dos_eventos_distintos() {
+            logger.systemUserRequestApproved(SOLICITUD);
+
+            assertThat(fields()).isEqualTo(Map.of("event", "system_user_request_approved",
+                    "system.user.request.id", SOLICITUD, "outcome", "SUCCESS"));
+        }
+
+        @Test
+        @DisplayName("el rechazo tiene su propio evento y su outcome es SUCCESS: el sistema hizo lo pedido")
+        void el_rechazo_tiene_su_propio_evento() {
+            logger.systemUserRequestRejected(SOLICITUD);
+
+            assertThat(fields()).isEqualTo(Map.of("event", "system_user_request_rejected",
+                    "system.user.request.id", SOLICITUD, "outcome", "SUCCESS"));
+        }
+
+        @Test
+        @DisplayName("la invitacion enviada no lleva el token ni el enlace")
+        void la_invitacion_enviada_no_lleva_el_token() {
+            logger.systemUserInvited(SOLICITUD, "vetrina.co");
+
+            assertThat(emitted().getLevel()).isEqualTo(Level.INFO);
+            assertThat(fields())
+                    .isEqualTo(Map.of("event", "system_user_invited", "system.user.request.id",
+                            SOLICITUD, "email.domain", "vetrina.co", "outcome", "SUCCESS"));
+        }
+
+        @Test
+        @DisplayName("el correo de invitacion perdido es un ERROR: no hay reintento ni outbox")
+        void el_correo_perdido_es_el_unico_error_del_flujo() {
+            logger.systemUserInvitationUndelivered(SOLICITUD, "vetrina.co");
+
+            // ERROR porque no hay reintento ni outbox: el mensaje se perdio
+            // definitivamente aunque Resend respondiera 200, y nadie lo recupera sin
+            // que una persona reemita la invitacion.
+            assertThat(emitted().getLevel()).isEqualTo(Level.ERROR);
+            assertThat(fields()).containsEntry("event", "system_user_invitation_undelivered")
+                    .containsEntry("reason", "email_failed").containsEntry("outcome", "FAILURE");
+            assertThat(emitted().getFormattedMessage()).contains("reissue it manually");
+        }
+
+        @Test
+        @DisplayName("el correo de bienvenida perdido es el segundo ERROR, y un hecho distinto")
+        void el_correo_de_bienvenida_perdido_es_su_propio_error() {
+            logger.systemUserWelcomeUndelivered(SOLICITUD, "vetrina.co");
+
+            // Mismo motivo que el de la invitacion: sin reintento ni outbox, el
+            // mensaje se perdio. Pero el arreglo es otro —el codigo sigue en
+            // system_users y se puede comunicar a mano, no hay que reemitir nada—,
+            // asi que mezclarlos en un solo evento haria imposible saber cual toca.
+            assertThat(emitted().getLevel()).isEqualTo(Level.ERROR);
+            assertThat(fields()).containsEntry("event", "system_user_welcome_undelivered")
+                    .containsEntry("reason", "email_failed").containsEntry("outcome", "FAILURE");
+            assertThat(emitted().getFormattedMessage()).contains("cannot sign in");
+        }
+
+        @Test
+        @DisplayName("aceptar con un correo que ya tiene cuenta deja el UNICO rastro del intento")
+        void aceptar_con_un_correo_ya_tomado_deja_rastro() {
+            logger.systemUserInvitationDenied("email_already_provisioned", SOLICITUD);
+
+            // La respuesta es un 404 indistinguible de un token muerto, a proposito.
+            // Sin este evento el intento no ocurre en ningun registro del sistema —y
+            // para provocarlo hay que poseer una invitacion valida—.
+            assertThat(emitted().getLevel()).isEqualTo(Level.INFO);
+            assertThat(fields()).isEqualTo(Map.of("event", "system_user_invitation_denied",
+                    "reason", "email_already_provisioned", "system.user.request.id", SOLICITUD,
+                    "outcome", "DENIED"));
+        }
+
+        @Test
+        @DisplayName("el token de invitacion inexistente sale sin id, como su gemelo del aprobador")
+        void el_token_de_invitacion_inexistente_sale_sin_id() {
+            logger.systemUserInvitationDenied("token_invalid", null);
+
+            // La clave viaja con valor nulo, igual que en el gemelo del aprobador:
+            // addKeyValue la escribe siempre. Lo que se fija aqui es que NO se
+            // inventa un id, no que el campo desaparezca del evento.
+            assertThat(fields()).containsEntry("event", "system_user_invitation_denied")
+                    .containsEntry("reason", "token_invalid")
+                    .containsEntry("system.user.request.id", null);
+        }
+
+        @Test
+        @DisplayName("el alta del superadministrador sale en INFO y ata solicitud con cuenta creada")
+        void el_alta_sale_en_info_y_ata_solicitud_con_cuenta() {
+            logger.systemUserProvisioned(SOLICITUD, 9001L);
+
+            // INFO deliberadamente: es un hecho normal de un flujo que funciono.
+            // Subirlo a WARN «para que destaque» seria usar la severidad como
+            // resaltador. Su visibilidad viene del contador y de la unica alerta.
+            assertThat(emitted().getLevel()).isEqualTo(Level.INFO);
+            assertThat(fields())
+                    .isEqualTo(Map.of("event", "system_user_provisioned", "system.user.request.id",
+                            SOLICITUD, "actor.systemUserId", 9001L, "outcome", "SUCCESS"));
+        }
+    }
 }

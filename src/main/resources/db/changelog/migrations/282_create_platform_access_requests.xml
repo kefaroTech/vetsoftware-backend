@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Alta de superadministradores por invitación (docs/db/superadmin-invitacion-modelo.md §4.1).
+         GLOBAL de plataforma: sin company_id, sin FK a companies -una FK a companies en un slice
+         nuevo enciende las cuatro reglas duras BE-COV de ArchUnit sobre la feature entera-.
+
+         Sin columna status (§3): el estado se deriva de la fila y del instante de lectura
+         -BLOCKED (verification_attempts >= max_attempts) > EXPIRED (decision IS NULL AND
+         now > expires_at) > PENDING, o APPROVED/REJECTED por decision-. Una quinta columna de
+         estado sería una fuente de verdad más que desincronizar de las otras cuatro.
+
+         El aprobador NO se modela (§7, decisión humana): sin approver_id, sin approver_email, sin
+         tabla ni rol de aprobación. El destinatario del enlace es
+         ${VETSOFTWARE_PLATFORM_APPROVER_EMAIL} en application.yml; la autorización para aprobar es
+         la posesión del approval_token_hash más el código de 6 dígitos.
+
+         verification_code_hash es BCRYPT, no SHA-256 (§5.2): un código de 6 dígitos son solo ~20
+         bits de entropía y SHA-256 sin salt sería recorrible en milisegundos desde un volcado.
+         approval_token_hash sí es SHA-256 hex de 256 bits (patrón PasswordResetTokens.java:24-42,
+         179_create_password_reset_tokens.xml) porque ahí el secreto es aleatorio y no hay
+         diccionario que atacar.
+
+         max_attempts vive en la fila, no en application.yml (§6): el límite con el que se emitió
+         una credencial es propiedad de esa credencial, no del despliegue actual. El bloqueo es
+         TERMINAL Y PERMANENTE -sin blocked_until-: verification_attempts >= max_attempts es un
+         predicado sobre datos, no sobre el reloj, y ninguna espera lo revierte.
+
+         decision es VARCHAR(10) + CHECK, nunca ENUM de MySQL: añadir un valor sería un ALTER de
+         tabla. version BIGINT + @Version en la @Entity (no exención E3_TOKEN): esta fila se edita
+         hasta seis veces -cinco incrementos del contador más la decisión- con concurrencia real
+         (aprobar/rechazar desde dos pestañas), así que "nadie la edita" sería un motivo falso.
+
+         SIN createIndex, a propósito: la única consulta de esta tabla que no es un INSERT o un
+         UPDATE por PK es el acceso por approval_token_hash (uq_par_approval_token_hash), y crece
+         decenas de filas al año -no miles al día como refresh_tokens-. Ver §4.1 y §11. -->
+    <changeSet id="282_create_platform_access_requests" author="orlando">
+        <createTable tableName="platform_access_requests">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="full_name" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="approval_token_hash" type="VARCHAR(64)">
+                <constraints nullable="false" unique="true"
+                             uniqueConstraintName="uq_par_approval_token_hash"/>
+            </column>
+            <column name="verification_code_hash" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="verification_attempts" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="max_attempts" type="SMALLINT" defaultValueNumeric="5">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expires_at" type="DATETIME(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="decision" type="VARCHAR(10)"/>
+            <column name="decided_at" type="DATETIME(6)"/>
+            <column name="created_date" type="DATETIME(6)" defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE platform_access_requests
+                ADD CONSTRAINT chk_par_decision_values
+                    CHECK (decision IS NULL OR decision IN ('APPROVED','REJECTED')),
+                ADD CONSTRAINT chk_par_decision_pair
+                    CHECK ((decision IS NULL     AND decided_at IS NULL)
+                        OR (decision IS NOT NULL AND decided_at IS NOT NULL)),
+                ADD CONSTRAINT chk_par_attempts
+                    CHECK (verification_attempts >= 0 AND verification_attempts <= max_attempts),
+                ADD CONSTRAINT chk_par_max_attempts
+                    CHECK (max_attempts BETWEEN 1 AND 10),
+                ADD CONSTRAINT chk_par_expiry
+                    CHECK (expires_at > created_date),
+                ADD CONSTRAINT chk_par_decided_after
+                    CHECK (decided_at IS NULL OR decided_at >= created_date),
+                ADD CONSTRAINT chk_par_reason_min
+                    CHECK (CHAR_LENGTH(reason) >= 20),
+                ADD CONSTRAINT chk_par_full_name_min
+                    CHECK (CHAR_LENGTH(full_name) >= 3)
+        ]]></sql>
+
+        <rollback>
+            <dropTable tableName="platform_access_requests"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

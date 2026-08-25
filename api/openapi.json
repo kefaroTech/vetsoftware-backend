@@ -7150,6 +7150,90 @@
         }
       }
     },
+    "/platform/invitation/accept" : {
+      "post" : {
+        "tags" : [ "platform-access-controller" ],
+        "operationId" : "acceptInvitation",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AcceptInvitationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/platform/access-request" : {
+      "post" : {
+        "tags" : [ "platform-access-controller" ],
+        "operationId" : "createAccessRequest",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateAccessRequestRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Accepted"
+          }
+        }
+      }
+    },
+    "/platform/access-request/reject" : {
+      "post" : {
+        "tags" : [ "platform-access-controller" ],
+        "operationId" : "rejectAccessRequest",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResolveAccessRequestRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/platform/access-request/approve" : {
+      "post" : {
+        "tags" : [ "platform-access-controller" ],
+        "operationId" : "approveAccessRequest",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResolveAccessRequestRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/permissions" : {
       "get" : {
         "tags" : [ "permission-controller" ],
@@ -13929,6 +14013,58 @@
                 "schema" : {
                   "type" : "string",
                   "format" : "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/invitation/validate" : {
+      "get" : {
+        "tags" : [ "platform-access-controller" ],
+        "operationId" : "validateInvitation",
+        "parameters" : [ {
+          "name" : "token",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InvitationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/access-request/validate" : {
+      "get" : {
+        "tags" : [ "platform-access-controller" ],
+        "operationId" : "validateAccessRequest",
+        "parameters" : [ {
+          "name" : "token",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccessRequestResponse"
                 }
               }
             }
@@ -23893,6 +24029,60 @@
         },
         "required" : [ "animal", "company", "consultation", "createdDate", "date", "enabled", "id", "medicaments", "observations" ]
       },
+      "AcceptInvitationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          },
+          "password" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 12
+          }
+        },
+        "required" : [ "password", "token" ]
+      },
+      "CreateAccessRequestRequest" : {
+        "type" : "object",
+        "properties" : {
+          "fullName" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 3
+          },
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 150,
+            "minLength" : 0
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 20
+          }
+        },
+        "required" : [ "email", "fullName", "reason" ]
+      },
+      "ResolveAccessRequestRequest" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          },
+          "code" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "\\d{6}"
+          }
+        },
+        "required" : [ "code", "token" ]
+      },
       "CreatePermissionRequest" : {
         "type" : "object",
         "properties" : {
@@ -28844,6 +29034,34 @@
             "format" : "int32"
           }
         }
+      },
+      "InvitationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "email" ]
+      },
+      "AccessRequestResponse" : {
+        "type" : "object",
+        "properties" : {
+          "fullName" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "requestedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "email", "fullName", "reason", "requestedAt" ]
       },
       "SubscriptionItemOverlapResponse" : {
         "type" : "object",

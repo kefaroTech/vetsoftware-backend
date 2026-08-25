@@ -87,6 +87,45 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             "configurator-resolve-rl:", "/configurator/resolve", 60, Duration.ofMinutes(1),
             "CONFIGURATOR_RESOLVE_RATE_LIMITED", "Too many configurator requests. Try again later.",
             List.of());
+    // Alta de superadministradores de plataforma (#360). Los cuatro POST son
+    // anonimos y
+    // su desenlace es una cuenta con control total sobre la plataforma, asi que
+    // aqui el
+    // limite no es higiene: es lo unico que separa un token de 32 bytes de un
+    // ataque por
+    // fuerza bruta sostenido.
+    //
+    // 3/h y por "email", igual que /register y /auth/forgot-password: el endpoint
+    // dispara
+    // un correo hacia un tercero (el aprobador), que es el recurso que hay que
+    // proteger.
+    private static final RouteLimit PLATFORM_ACCESS_REQUEST_LIMIT = new RouteLimit(
+            "platform-access-request-rl:", "/platform/access-request", 3, Duration.ofHours(1),
+            "PLATFORM_ACCESS_REQUEST_RATE_LIMITED", "Too many access requests. Try again later.",
+            List.of("email"));
+    // 10/h y por "token", mismo argumento que /auth/reset-password: consumen un
+    // token de
+    // un solo uso y hay que dejar margen a que el codigo de 6 digitos se teclee mal
+    // varias veces antes de agotar los 5 intentos del propio flujo.
+    //
+    // El "code" NO va en accountFields a proposito: es el secreto que este limite
+    // existe
+    // para proteger, y contarlo por bucket lo escribiria como parte de una clave de
+    // Redis. El token ya identifica la solicitud, asi que el bucket por cuenta no
+    // pierde
+    // precision.
+    private static final RouteLimit PLATFORM_ACCESS_APPROVE_LIMIT = new RouteLimit(
+            "platform-access-approve-rl:", "/platform/access-request/approve", 10,
+            Duration.ofHours(1), "PLATFORM_ACCESS_APPROVE_RATE_LIMITED",
+            "Too many approval attempts. Try again later.", List.of("token"));
+    private static final RouteLimit PLATFORM_ACCESS_REJECT_LIMIT = new RouteLimit(
+            "platform-access-reject-rl:", "/platform/access-request/reject", 10,
+            Duration.ofHours(1), "PLATFORM_ACCESS_REJECT_RATE_LIMITED",
+            "Too many rejection attempts. Try again later.", List.of("token"));
+    private static final RouteLimit PLATFORM_INVITATION_ACCEPT_LIMIT = new RouteLimit(
+            "platform-invitation-accept-rl:", "/platform/invitation/accept", 10,
+            Duration.ofHours(1), "PLATFORM_INVITATION_ACCEPT_RATE_LIMITED",
+            "Too many invitation attempts. Try again later.", List.of("token"));
 
     /**
      * Campos cuyo valor es un secreto opaco y NO se normaliza a minusculas: dos
@@ -175,6 +214,20 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             return VERIFY_EMAIL_LIMIT;
         if (uri.equals(CONFIGURATOR_RESOLVE_LIMIT.path()))
             return CONFIGURATOR_RESOLVE_LIMIT;
+        // equals y no startsWith: /platform/access-request es el prefijo textual de
+        // /approve, de /reject y del GET /validate. Con startsWith los tres caerian en
+        // el
+        // bucket de la solicitud (3/h), y ademas /approve consumiria el cupo que
+        // protege
+        // al endpoint que manda correo.
+        if (uri.equals(PLATFORM_ACCESS_REQUEST_LIMIT.path()))
+            return PLATFORM_ACCESS_REQUEST_LIMIT;
+        if (uri.equals(PLATFORM_ACCESS_APPROVE_LIMIT.path()))
+            return PLATFORM_ACCESS_APPROVE_LIMIT;
+        if (uri.equals(PLATFORM_ACCESS_REJECT_LIMIT.path()))
+            return PLATFORM_ACCESS_REJECT_LIMIT;
+        if (uri.equals(PLATFORM_INVITATION_ACCEPT_LIMIT.path()))
+            return PLATFORM_INVITATION_ACCEPT_LIMIT;
         if (uri.startsWith(DIAN_WEBHOOK_LIMIT.path() + "/"))
             return DIAN_WEBHOOK_LIMIT;
         return null;

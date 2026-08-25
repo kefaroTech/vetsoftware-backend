@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Alta de superadministradores por invitación (docs/db/superadmin-invitacion-modelo.md §4.2).
+         Tabla separada de platform_access_requests (§2): la cardinalidad real es 1:0..N -una
+         invitación caducada se reemite con un token NUEVO, y reemitir es un INSERT, no un UPDATE
+         que destruya el registro de qué token se envió antes-.
+
+         email NO se duplica aquí (§4.2): el email de invitation/validate se resuelve por JOIN a
+         platform_access_requests vía access_request_id, una fila, un acceso al índice clustered.
+         Duplicarlo sería un segundo sitio donde el correo puede acabar siendo otro -y el correo
+         con el que se crea la cuenta SIEMPRE sale de esta cadena, nunca del cuerpo de
+         POST /platform/invitation/accept, que no lo lleva-.
+
+         consumed_request_id es la constraint más importante del documento (§4.2): emula el índice
+         único parcial que MySQL no tiene -mismo patrón que 226_add_unique_active_appointment_slot,
+         210 y 206-, vale NULL mientras la invitación no está consumida y el access_request_id en
+         cuanto lo está. Sin uq_pai_consumed_request, reemitir una invitación aprobada dejaría DOS
+         tokens vivos para la misma solicitud y, si se usan los dos, DOS superadministradores.
+
+         La columna generada STORED va DENTRO de este changeset de creación, NUNCA en un ALTER
+         posterior sobre la tabla ya poblada: en MySQL 8.4 un ADD COLUMN ... GENERATED ... STORED
+         es ALGORITHM=COPY -reconstruye la tabla entera y bloquea la escritura mientras dura
+         (issue #532)-. Aquí la tabla está vacía en el mismo changeset que la crea, así que la
+         copia cuesta cero. Ver también docs/db/suscripciones-tablas.md.
+
+         Orden dentro del changeset, y el orden importa: 1) createTable con las columnas normales
+         -SIN consumed_request_id, sin unique/FK inline: se añaden después en el mismo bloque ALTER
+         que la columna generada, para no fundir COPY con IN PLACE-; 2) un solo ALTER TABLE con la
+         columna generada + los tres UNIQUE + los tres CHECK; 3) las dos FK, después, con
+         ON DELETE RESTRICT ON UPDATE RESTRICT explícito -nunca CASCADE: borrar la solicitud o el
+         system_user de una invitación viva debe fallar, no arrastrar filas-. uq_pai_system_user ya
+         existe para cuando se añade fk_pai_system_user, así que InnoDB NO crea un índice propio
+         para ella; para fk_pai_request sí lo crea, y es el único acceso por padre que hace falta
+         (no se declara a mano: sys.schema_redundant_indexes lo marcaría). -->
+    <changeSet id="283_create_platform_access_invitations" author="orlando">
+        <createTable tableName="platform_access_invitations">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="access_request_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="token_hash" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expires_at" type="DATETIME(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="consumed_at" type="DATETIME(6)"/>
+            <column name="system_user_id" type="BIGINT"/>
+            <column name="created_date" type="DATETIME(6)" defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Tabla todavía vacía en este punto del changeset: el ADD COLUMN ... STORED que sigue es
+             COPY pero reconstruye cero filas. -->
+        <sql><![CDATA[
+            ALTER TABLE platform_access_invitations
+                ADD COLUMN consumed_request_id BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE WHEN consumed_at IS NULL THEN NULL ELSE access_request_id END
+                    ) STORED,
+                ADD CONSTRAINT uq_pai_token_hash
+                    UNIQUE (token_hash),
+                ADD CONSTRAINT uq_pai_consumed_request
+                    UNIQUE (consumed_request_id),
+                ADD CONSTRAINT uq_pai_system_user
+                    UNIQUE (system_user_id),
+                ADD CONSTRAINT chk_pai_consumption_pair
+                    CHECK ((consumed_at IS NULL     AND system_user_id IS NULL)
+                        OR (consumed_at IS NOT NULL AND system_user_id IS NOT NULL)),
+                ADD CONSTRAINT chk_pai_expiry
+                    CHECK (expires_at > created_date),
+                ADD CONSTRAINT chk_pai_consumed_after
+                    CHECK (consumed_at IS NULL OR consumed_at >= created_date)
+        ]]></sql>
+
+        <addForeignKeyConstraint baseTableName="platform_access_invitations"
+                                 baseColumnNames="access_request_id"
+                                 constraintName="fk_pai_request"
+                                 referencedTableName="platform_access_requests"
+                                 referencedColumnNames="id"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <addForeignKeyConstraint baseTableName="platform_access_invitations"
+                                 baseColumnNames="system_user_id"
+                                 constraintName="fk_pai_system_user"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="platform_access_invitations"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

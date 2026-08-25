@@ -96,6 +96,19 @@ vetsoftware:
     verification-base-url: ${REGISTRATION_VERIFICATION_URL:http://localhost:5174/verify-email}
   password-reset:
     reset-base-url: ${PASSWORD_RESET_URL:http://localhost:5174/restablecer-contrasena}
+  platform-access:
+    # En local si hay default, como el resto del perfil: el stack tiene que levantar sin configurar
+    # nada. El dominio .test no existe y el correo va deshabilitado por defecto (EMAIL_ENABLED:false),
+    # asi que el flujo se revisa por DevEmailPreview y no sale nada hacia fuera.
+    approver-email: ${PLATFORM_APPROVER_EMAIL:plataforma@vetsoftware.test}
+    # Puerto 5173 = consola de plataforma (VetSoftwareFront). El 5174 de las claves de arriba es la
+    # app del tenant, que NO sirve estas tres pantallas.
+    review-base-url: ${PLATFORM_ACCESS_REVIEW_BASE_URL:http://localhost:5173/aprobar-acceso}
+    invitation-base-url: ${PLATFORM_INVITATION_BASE_URL:http://localhost:5173/aceptar-invitacion}
+    # 5173 tambien: la cuenta que nace es un superadministrador de plataforma y entra por la consola.
+    # Sin default aqui, con EMAIL_ENABLED=true el arranque falla: es una de las ocho claves que
+    # ResendPlatformAccessEmailSender exige cuando el correo esta habilitado.
+    login-url: ${PLATFORM_ACCESS_LOGIN_URL:http://localhost:5173/login}
   code-recovery:
     login-url: ${CODE_RECOVERY_LOGIN_URL:http://localhost:5174/login}
   employee:

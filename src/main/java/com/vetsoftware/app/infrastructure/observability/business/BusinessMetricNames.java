@@ -28,6 +28,17 @@ public final class BusinessMetricNames {
 
     public static final String SNAPSHOT_AGE = PREFIX + "metrics.snapshot.age";
 
+    // Alta de superadministradores de plataforma por invitacion (#360). El
+    // prefijo dice "business" y esto es administracion de plataforma: es el
+    // precio de heredar la lista blanca de cardinalidad, que solo actua dentro
+    // de este prefijo. Fuera de el no hay ninguna barrera y un identificador
+    // como etiqueta se publicaria sin mas. Un prefijo propio exigiria extender
+    // el filtro a un segundo catalogo, y eso es un cambio aparte.
+    public static final String SYSTEM_USER_REQUESTS = PREFIX + "system.user.requests";
+    public static final String SYSTEM_USER_APPROVALS = PREFIX + "system.user.approvals";
+    public static final String SYSTEM_USER_INVITATIONS = PREFIX + "system.user.invitations";
+    public static final String SYSTEM_USER_PROVISIONED = PREFIX + "system.user.provisioned";
+
     private BusinessMetricNames() {
     }
 }

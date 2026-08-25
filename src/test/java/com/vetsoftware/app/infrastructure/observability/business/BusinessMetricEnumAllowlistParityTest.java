@@ -10,6 +10,7 @@ import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.inventory.application.port.out.InventoryMetrics;
 import com.vetsoftware.app.inventory.domain.StockMovementType;
+import com.vetsoftware.app.platformaccess.application.port.out.PlatformAccessMetrics;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.config.MeterFilterReply;
@@ -254,6 +255,54 @@ class BusinessMetricEnumAllowlistParityTest {
                             + " rama al switch y ese valor hay que revisarlo antes de meterlo"
                             + " en la lista blanca.")
                     .isNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("los tres enums del alta de superadministradores de plataforma")
+    class EnumsDelAltaDePlataforma {
+
+        @ParameterizedTest(name = "RequestResult.{0}")
+        @EnumSource(PlatformAccessMetrics.RequestResult.class)
+        @DisplayName("todo desenlace de la solicitud está permitido como valor del tag result")
+        void todo_desenlace_de_solicitud_esta_en_la_lista_blanca(
+                PlatformAccessMetrics.RequestResult result) {
+            assertThat(replyFor(BusinessMetricNames.SYSTEM_USER_REQUESTS, "result", result.value()))
+                    .withFailMessage(
+                            mensajeHuerfano("result", result.value(),
+                                    "MicrometerBusinessMetrics.requested con RequestResult."
+                                            + result.name() + ".value()"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "ApprovalResult.{0}")
+        @EnumSource(PlatformAccessMetrics.ApprovalResult.class)
+        @DisplayName("todo desenlace de la resolución está permitido como valor del tag result")
+        void todo_desenlace_de_resolucion_esta_en_la_lista_blanca(
+                PlatformAccessMetrics.ApprovalResult result) {
+            // Este es el contador del que cuelga la vigilancia de fuerza bruta sobre
+            // el codigo de 6 digitos: si un valor nuevo lo denegara, el panel
+            // dejaria de ver los intentos fallidos y el hueco pareceria calma.
+            assertThat(
+                    replyFor(BusinessMetricNames.SYSTEM_USER_APPROVALS, "result", result.value()))
+                    .withFailMessage(
+                            mensajeHuerfano("result", result.value(),
+                                    "MicrometerBusinessMetrics.resolved con ApprovalResult."
+                                            + result.name() + ".value()"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "InvitationResult.{0}")
+        @EnumSource(PlatformAccessMetrics.InvitationResult.class)
+        @DisplayName("todo desenlace de la invitación está permitido como valor del tag result")
+        void todo_desenlace_de_invitacion_esta_en_la_lista_blanca(
+                PlatformAccessMetrics.InvitationResult result) {
+            assertThat(
+                    replyFor(BusinessMetricNames.SYSTEM_USER_INVITATIONS, "result", result.value()))
+                    .withFailMessage(mensajeHuerfano("result", result.value(),
+                            "MicrometerBusinessMetrics.invitation con InvitationResult."
+                                    + result.name() + ".value()"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
         }
     }
 }

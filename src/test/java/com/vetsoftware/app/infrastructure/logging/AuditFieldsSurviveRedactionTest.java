@@ -114,7 +114,40 @@ class AuditFieldsSurviveRedactionTest {
                         audit -> audit.unauthenticated("GET", "/api/v1/owners", "invalid_token")),
                 new AuditCase("loginRateLimited", "rate_limited", AuditLogger::loginRateLimited),
                 new AuditCase("rateLimited", "rate_limited",
-                        audit -> audit.rateLimited("REGISTER_RATE_LIMITED")));
+                        audit -> audit.rateLimited("REGISTER_RATE_LIMITED")),
+                // Alta de superadministradores de plataforma (#360). Los once eventos
+                // del flujo, uno por metodo declarado: la paridad razona por metodo, y
+                // los tres que comparten el evento system_user_approval_denied
+                // -motivo generico, reproduccion y codigo incorrecto- necesitan entrada
+                // propia porque cada uno emite un juego de campos distinto.
+                new AuditCase("systemUserRequested", "system_user_requested",
+                        audit -> audit.systemUserRequested(4271L, "clinica.com")),
+                new AuditCase("systemUserRequestDenied", "system_user_request_denied",
+                        audit -> audit.systemUserRequestDenied("form_closed", null, "clinica.com")),
+                new AuditCase("systemUserApprovalDenied", "system_user_approval_denied",
+                        audit -> audit.systemUserApprovalDenied("token_expired", 4271L)),
+                new AuditCase("systemUserApprovalReplayed", "system_user_approval_denied",
+                        audit -> audit.systemUserApprovalReplayed(4271L, 1800L)),
+                new AuditCase("systemUserApprovalCodeMismatch", "system_user_approval_denied",
+                        audit -> audit.systemUserApprovalCodeMismatch(4271L, 3)),
+                new AuditCase("systemUserApprovalLocked", "system_user_approval_locked",
+                        audit -> audit.systemUserApprovalLocked(4271L)),
+                new AuditCase("systemUserRequestApproved", "system_user_request_approved",
+                        audit -> audit.systemUserRequestApproved(4271L)),
+                new AuditCase("systemUserRequestRejected", "system_user_request_rejected",
+                        audit -> audit.systemUserRequestRejected(4271L)),
+                new AuditCase("systemUserInvited", "system_user_invited",
+                        audit -> audit.systemUserInvited(4271L, "clinica.com")),
+                new AuditCase("systemUserInvitationUndelivered",
+                        "system_user_invitation_undelivered",
+                        audit -> audit.systemUserInvitationUndelivered(4271L, "clinica.com")),
+                new AuditCase("systemUserInvitationDenied", "system_user_invitation_denied",
+                        audit -> audit.systemUserInvitationDenied("email_already_provisioned",
+                                4271L)),
+                new AuditCase("systemUserWelcomeUndelivered", "system_user_welcome_undelivered",
+                        audit -> audit.systemUserWelcomeUndelivered(4271L, "clinica.com")),
+                new AuditCase("systemUserProvisioned", "system_user_provisioned",
+                        audit -> audit.systemUserProvisioned(4271L, 9001L)));
     }
 
     /**
@@ -178,6 +211,20 @@ class AuditFieldsSurviveRedactionTest {
         MDC.put(MdcKeys.HTTP_METHOD, "POST");
         MDC.put(MdcKeys.HTTP_PATH, "/api/v1/owners");
         MDC.put(MdcKeys.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+
+        // Campos del alta de superadministradores de plataforma. Van en el MDC y no
+        // como
+        // KeyValuePair porque RedactingAppender aplica la MISMA LogFieldPolicy a los
+        // dos
+        // canales, así que esto ejercita la política de verdad sin depender de que los
+        // eventos AUDIT del flujo existan ya. Sin ellos declarados, salen como '***' y
+        // la
+        // correlación muere con la suite en verde — que es literalmente la incidencia
+        // #153.
+        MDC.put(MdcKeys.SYSTEM_USER_REQUEST_ID, "4271");
+        MDC.put("email.domain", "clinica.com");
+        MDC.put("attempts.remaining", "3");
+        MDC.put("seconds_since_consumption", "1800");
     }
 
     @AfterEach
@@ -317,6 +364,32 @@ class AuditFieldsSurviveRedactionTest {
                 .extracting(pair -> pair.key + "=" + pair.value)
                 .contains("actor.identifier=" + LogRedactor.MASK + "@clinica.com",
                         "actor.employeeId=77");
+    }
+
+    /**
+     * El id de solicitud es lo único que ata las tres peticiones del alta de
+     * superadministrador, separadas por horas y por tanto sin {@code traceId}
+     * común. Si sale enmascarado no hay nada que sustituya la consulta
+     * {@code | json | system_user_request_id="…"}, y el fallo no tiene ningún
+     * síntoma: los logs siguen llegando.
+     *
+     * <p>
+     * {@code email.domain} va en {@code SCANNED}, no en {@code VERBATIM} —la parte
+     * de la derecha de una dirección la elige el usuario—, así que aquí se
+     * comprueba además que el enmascarado por patrones lo deja intacto: un dominio
+     * suelto no casa con un correo ni con un documento.
+     */
+    @Test
+    @DisplayName("los campos del alta de superadministrador no salen enmascarados")
+    void keepsPlatformAccessFieldsIntact() {
+        sink.list.clear();
+        auditLogger.loginSuccess("EMPLOYEE", "EMP0042");
+
+        assertThat(sink.list.get(0).getMDCPropertyMap())
+                .containsEntry(MdcKeys.SYSTEM_USER_REQUEST_ID, "4271")
+                .containsEntry("email.domain", "clinica.com")
+                .containsEntry("attempts.remaining", "3")
+                .containsEntry("seconds_since_consumption", "1800");
     }
 
     @Test

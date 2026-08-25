@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- docs/db/superadmin-invitacion-modelo.md §4.3. UNIQUE(email) es la única forma de garantizar
+         bajo concurrencia que dos superadministradores no compartan correo (dos aceptaciones
+         simultáneas de dos invitaciones al mismo correo pasarían las dos un SELECT previo). Que el
+         índice único conviva con múltiples NULL es DELIBERADO, no un efecto tolerado: es lo que
+         permite este despliegue sin backfill -InnoDB admite varios NULL en un índice único
+         (manual MySQL 8.4, CREATE INDEX: "A UNIQUE index permits multiple NULL values for columns
+         that can contain NULL")-. Las filas heredadas quedan todas con email IS NULL bajo el mismo
+         índice, sin excepción.
+
+         En changeset APARTE del 280 a propósito: ADD COLUMN es INSTANT y ADD UNIQUE INDEX es IN
+         PLACE -dos algoritmos distintos-, y fundirlos en un solo ALTER degradaría toda la
+         sentencia al algoritmo más caro.
+
+         La precondición es trivialmente 0 justo después del 280 (todas las filas quedan a NULL),
+         pero deja el changeset seguro en una base que ya hubiera recibido correos por otra vía
+         -mismo patrón de guardia que 206_unique_open_cash_session_per_employee y
+         226_add_unique_active_appointment_slot-. El WHERE email IS NOT NULL no es decorativo: sin
+         él, GROUP BY agruparía todos los NULL en un solo grupo y la precondición fallaría con HALT
+         en una base perfectamente sana. -->
+    <changeSet id="281_add_unique_email_to_system_users" author="orlando">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                  FROM (
+                    SELECT email
+                      FROM system_users
+                     WHERE email IS NOT NULL
+                     GROUP BY email
+                    HAVING COUNT(*) &gt; 1
+                  ) d
+            </sqlCheck>
+        </preConditions>
+
+        <addUniqueConstraint tableName="system_users" columnNames="email"
+                             constraintName="uq_system_users_email"/>
+
+        <rollback>
+            <dropUniqueConstraint tableName="system_users" constraintName="uq_system_users_email"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

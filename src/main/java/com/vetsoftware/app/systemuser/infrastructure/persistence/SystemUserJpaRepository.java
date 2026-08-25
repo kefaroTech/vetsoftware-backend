@@ -64,4 +64,19 @@ public interface SystemUserJpaRepository extends JpaRepository<SystemUserJpaEnti
             WHERE id = :id
             """, nativeQuery = true)
     int reactivate(@Param("id") Long id);
+
+    // Las dos consultas de disponibilidad van en SQL nativo a proposito: el
+    // @SQLRestriction("enabled = true") de la entidad esconde las cuentas dadas
+    // de baja, y para decidir si un correo o un codigo estan libres hay que
+    // verlas TAMBIEN a ellas. Un superadministrador inactivo retiene su
+    // identidad —el camino correcto para su vuelta es reactivate(), no un
+    // segundo usuario con el mismo correo— y el UNIQUE de la base cuenta las
+    // filas deshabilitadas igual que las activas: preguntar por la vista
+    // filtrada devolveria "libre" justo antes de reventar en el INSERT.
+
+    @Query(value = "SELECT COUNT(*) FROM system_users WHERE email = :email", nativeQuery = true)
+    long countByEmailIncludingDisabled(@Param("email") String email);
+
+    @Query(value = "SELECT COUNT(*) FROM system_users WHERE code = :code", nativeQuery = true)
+    long countByCodeIncludingDisabled(@Param("code") String code);
 }

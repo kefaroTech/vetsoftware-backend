@@ -45,4 +45,27 @@ public final class MdcKeys {
     public static final String HTTP_METHOD = "http.method";
 
     public static final String HTTP_PATH = "http.path";
+
+    /**
+     * Id de la solicitud de alta de superadministrador de plataforma. Ata las tres
+     * peticiones del flujo —solicitud, aprobación e invitación aceptada—, que están
+     * separadas por horas o días y por eso <b>no</b> comparten {@code traceId}: W3C
+     * Trace Context identifica una operación distribuida, no un proceso de negocio
+     * con un humano dentro.
+     *
+     * <p>
+     * Es el {@code Long} de la clave primaria, como {@code company.id} o
+     * {@code employee.id}: su forma la garantiza el sistema, así que va
+     * {@code VERBATIM} en {@link LogFieldPolicy}. En Loki, tras {@code | json}, se
+     * consulta como {@code system_user_request_id}.
+     *
+     * <p>
+     * <b>Se declara en cuatro sitios y hay que poner los cuatro</b> (contrato en
+     * {@code docs/TELEMETRIA_ALTA_SUPERADMIN.md} §3.2): aquí,
+     * {@link LogFieldPolicy}, {@code
+     * RequestLoggingContextFilter.clearApplicationContext()} y la lista explícita
+     * de {@code AsyncConfig.contextPropagatingTaskDecorator()}. Faltar cualquiera
+     * rompe la correlación <b>en silencio</b>: sin error, sin alerta, solo huecos.
+     */
+    public static final String SYSTEM_USER_REQUEST_ID = "system.user.request.id";
 }

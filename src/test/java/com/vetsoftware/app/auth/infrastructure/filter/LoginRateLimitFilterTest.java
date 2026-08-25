@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -75,7 +76,9 @@ class LoginRateLimitFilterTest {
         @ParameterizedTest
         @ValueSource(strings = {"/auth/login/employee", "/auth/login/system", "/auth/refresh",
                 "/register", "/auth/forgot-password", "/dian/webhooks/matias", "/auth/recover-code",
-                "/auth/reset-password", "/register/verify", "/configurator/resolve"})
+                "/auth/reset-password", "/register/verify", "/configurator/resolve",
+                "/platform/access-request", "/platform/access-request/approve",
+                "/platform/access-request/reject", "/platform/invitation/accept"})
         @DisplayName("cada ruta pública sensible pasa por el limitador")
         void cada_ruta_publica_sensible_pasa_por_el_limitador(String path) {
             assertThat(filter.shouldNotFilter(request("POST", path))).isFalse();
@@ -110,6 +113,20 @@ class LoginRateLimitFilterTest {
             assertThat(filter.shouldNotFilter(request("GET", "/auth/reset-password/validate")))
                     .isTrue();
             assertThat(filter.shouldNotFilter(request("POST", "/auth/reset-password/validate")))
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("los GET de validación del alta de plataforma no los atrapa el límite del POST")
+        void los_get_de_validacion_de_plataforma_no_los_atrapa_el_limite_del_post() {
+            assertThat(filter.shouldNotFilter(request("GET", "/platform/access-request/validate")))
+                    .isTrue();
+            assertThat(filter.shouldNotFilter(request("GET", "/platform/invitation/validate")))
+                    .isTrue();
+            // La razón por la que las ramas nuevas usan equals y no startsWith: con
+            // startsWith, esta subruta caería en el bucket de /platform/access-request
+            // —3/h, el que protege el correo al aprobador— y lo agotaría desde fuera.
+            assertThat(filter.shouldNotFilter(request("POST", "/platform/access-request/validate")))
                     .isTrue();
         }
 
@@ -283,6 +300,31 @@ class LoginRateLimitFilterTest {
             filter.doFilterInternal(request, response, chain);
 
             assertThat(response.getStatus()).isEqualTo(429);
+        }
+
+        /**
+         * Que las cuatro rutas del alta de plataforma estén limitadas no basta: hay que
+         * demostrar que están limitadas <b>por separado</b>. Tres de las cuatro cuelgan
+         * del mismo prefijo textual, así que un {@code startsWith} las metería en el
+         * mismo bucket sin que ninguna prueba de selección se enterase. El código de
+         * auditoría es la única señal observable de qué {@code RouteLimit} se eligió.
+         */
+        @ParameterizedTest(name = "{0} → {1}")
+        @CsvSource({"/platform/access-request,PLATFORM_ACCESS_REQUEST_RATE_LIMITED",
+                "/platform/access-request/approve,PLATFORM_ACCESS_APPROVE_RATE_LIMITED",
+                "/platform/access-request/reject,PLATFORM_ACCESS_REJECT_RATE_LIMITED",
+                "/platform/invitation/accept,PLATFORM_INVITATION_ACCEPT_RATE_LIMITED"})
+        @DisplayName("cada ruta del alta de plataforma agota su propio cupo, no el del vecino")
+        void cada_ruta_del_alta_de_plataforma_tiene_su_propio_cupo(String path, String codigo)
+                throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(false);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request("POST", path), response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(429);
+            verify(auditLogger).rateLimited(codigo);
+            verifyNoInteractions(chain);
         }
 
         @Test
