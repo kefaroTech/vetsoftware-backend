@@ -244,15 +244,23 @@ vetsoftware:
     # Vigencia del enlace de verificación.
     verification-token-ttl-hours: ${REGISTRATION_VERIFICATION_TTL_HOURS:24}
     # ID de la plantilla de Resend para el correo de verificación (variables ADMIN_NAME, COMPANY_NAME,
-    # VERIFY_URL, EMPLOYEE_CODE, HELP_URL, PRIVACY_URL, TERMS_URL).
-    verification-template-id: ${REGISTRATION_VERIFICATION_TEMPLATE_ID:5a5ed501-4922-4e7d-8a3c-5d46406e6536}
+    # VERIFY_URL, EMPLOYEE_CODE, HELP_URL, PRIVACY_URL, TERMS_URL). El UUID ya NO viaja commiteado como
+    # default: llega por variable de entorno, igual que las cuatro de platform-access. Vacío con el
+    # correo habilitado (dev y prod) TUMBA EL ARRANQUE, y eso es lo que hace seguro haberlo sacado:
+    # ResendVerificationEmailSender lo exige al construirse. Sin esa red, la clave ausente convertía
+    # el correo en un descarte silencioso y la cuenta nacía sin poder iniciar sesión.
+    verification-template-id: ${REGISTRATION_VERIFICATION_TEMPLATE_ID:}
   # Restablecimiento de contraseña ("olvidé mi contraseña"). Se identifica por employeeCode; el enlace del
   # correo apunta a reset-base-url?token=... y el front llama a POST /auth/reset-password.
   password-reset:
     # Vigencia del enlace de restablecimiento.
     token-ttl-hours: ${PASSWORD_RESET_TTL_HOURS:1}
     # ID de la plantilla de Resend (variables EMPLOYEE_NAME, COMPANY_NAME, EMPLOYEE_CODE, RESET_URL, EMPLOYEE_EMAIL).
-    template-id: ${PASSWORD_RESET_TEMPLATE_ID:79e6eeea-ae6a-4475-b17d-beb39279705c}
+    # El UUID ya NO viaja commiteado como default: llega por variable de entorno. Vacío con el correo
+    # habilitado (dev y prod) TUMBA EL ARRANQUE: lo exige ResendPasswordResetEmailSender al construirse.
+    # Sin esa red, quien perdió su contraseña se quedaba sin ninguna vía de recuperarla y no podía
+    # saberlo, porque la respuesta es idéntica por diseño anti-enumeración.
+    template-id: ${PASSWORD_RESET_TEMPLATE_ID:}
   # Alta de superadministradores de plataforma por invitacion (incidencia #360). Flujo publico en tres
   # saltos y tres correos: solicitud -> aviso al aprobador -> invitacion (o rechazo) al solicitante.
   # El correo del aprobador y las dos URLs base del front van por perfil (dev/local/prod), porque
@@ -300,14 +308,21 @@ vetsoftware:
   # Alta de staff por un admin: invitación por correo (plantilla de Resend) con usuario + contraseña temporal.
   employee:
     # ID de la plantilla de Resend del correo de invitación (variables EMPLOYEE_NAME, COMPANY_NAME,
-    # EMPLOYEE_CODE, TEMP_PASSWORD, ROLE_NAME, LOGIN_URL, EMPLOYEE_EMAIL). Vacío = no se envía (warning).
-    invitation-template-id: ${EMPLOYEE_INVITATION_TEMPLATE_ID:cbf57a10-3f2c-439a-8fe1-fc0935778d52}
+    # EMPLOYEE_CODE, TEMP_PASSWORD, ROLE_NAME, LOGIN_URL, EMPLOYEE_EMAIL). El UUID ya NO viaja commiteado
+    # como default: llega por variable de entorno. Vacío con el correo habilitado (dev y prod) TUMBA EL
+    # ARRANQUE: lo exige ResendEmployeeInvitationEmailSender al construirse, junto con employee.login-url.
+    # Sin esa red el empleado quedaba creado sin conocer su código ni su contraseña temporal, que solo
+    # viajan por este correo.
+    invitation-template-id: ${EMPLOYEE_INVITATION_TEMPLATE_ID:}
   # Confirmación de cita: al agendar una cita nueva se notifica por correo al propietario (plantilla de Resend).
   appointment:
     # ID de la plantilla de Resend del correo de confirmación (variables RECIPIENT_NAME, RECIPIENT_EMAIL,
     # COMPANY_NAME, APPOINTMENT_DATE, APPOINTMENT_TIME, APPOINTMENT_TYPE, VET_NAME, PET_NAME, BRANCH_NAME,
-    # BRANCH_ADDRESS, NOTES). Vacío = no se envía (warning).
-    confirmation-template-id: ${APPOINTMENT_CONFIRMATION_TEMPLATE_ID:b9db56e1-3ebf-4764-ae5b-b59814e29ad8}
+    # BRANCH_ADDRESS, NOTES). El UUID ya NO viaja commiteado como default: llega por variable de entorno.
+    # Vacío con el correo habilitado (dev y prod) TUMBA EL ARRANQUE: lo exige
+    # ResendAppointmentConfirmationEmailSender al construirse. Sin esa red la cita quedaba agendada y el
+    # propietario no recibía el único acuse de que la cita existe.
+    confirmation-template-id: ${APPOINTMENT_CONFIRMATION_TEMPLATE_ID:}
   dian:
     qr-base-url: ${DIAN_QR_BASE_URL:https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=}
     # B6 - Datos operativos del documento equivalente POS (Res. 000165/2023). Parametrizar por despliegue con

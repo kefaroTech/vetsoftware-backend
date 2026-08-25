@@ -1,6 +1,8 @@
 package com.vetsoftware.app.registration.infrastructure.email;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -121,6 +123,61 @@ class ResendVerificationEmailSenderTest {
                     variables.capture());
             assertThat((String) variables.getValue().get("VERIFY_URL"))
                     .contains("token=a%2Bb%2Fc%3Dd");
+        }
+    }
+
+    /**
+     * Sin el default commiteado en application.yml, una clave ausente ya no degrada
+     * a "correo que no sale": tumba el arranque. Es el mismo fail-fast del alta de
+     * superadministradores y por el mismo motivo, porque el silencio de
+     * {@code sendTemplate} con la plantilla vacia es indistinguible del exito desde
+     * fuera.
+     */
+    @Nested
+    @DisplayName("Configuracion incompleta")
+    class ConfiguracionIncompleta {
+
+        private ResendVerificationEmailSender sinPlantilla() {
+            return new ResendVerificationEmailSender(email, "https://app.vetsoftware.co/verificar",
+                    "", "https://vetsoftware.co/ayuda", "https://vetsoftware.co/privacidad",
+                    "https://vetsoftware.co/terminos");
+        }
+
+        private ResendVerificationEmailSender sinUrlBase() {
+            return new ResendVerificationEmailSender(email, "   ", "template-123",
+                    "https://vetsoftware.co/ayuda", "https://vetsoftware.co/privacidad",
+                    "https://vetsoftware.co/terminos");
+        }
+
+        @Test
+        @DisplayName("con el correo habilitado, la plantilla vacia TUMBA el arranque")
+        void la_plantilla_vacia_tumba_el_arranque() {
+            when(email.isEnabled()).thenReturn(true);
+
+            // Antes arrancaba: POST /register respondia con exito, sendTemplate
+            // escribia un warning y retornaba, y el dueno nunca recibia el enlace. La
+            // cuenta quedaba creada y sin poder iniciar sesion, y nadie se enteraba.
+            assertThatThrownBy(this::sinPlantilla).isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("verification-template-id");
+        }
+
+        @Test
+        @DisplayName("la URL base tambien es obligatoria: sin ella el enlace no va a ningun sitio")
+        void la_url_base_tambien_es_obligatoria() {
+            when(email.isEnabled()).thenReturn(true);
+
+            assertThatThrownBy(this::sinUrlBase).isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("verification-base-url");
+        }
+
+        @Test
+        @DisplayName("con el correo deshabilitado no exige nada: es el modo de las rodajas y del contrato OpenAPI")
+        void con_el_correo_deshabilitado_no_exige_nada() {
+            when(email.isEnabled()).thenReturn(false);
+
+            // application-openapi.yml declara vetsoftware.email.enabled=false, asi que
+            // OpenApiContractIT y el perfil local siguen levantando sin una sola clave.
+            assertThatCode(this::sinPlantilla).doesNotThrowAnyException();
         }
     }
 }

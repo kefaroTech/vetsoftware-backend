@@ -7,6 +7,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -27,6 +29,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class ResendVerificationEmailSender implements VerificationEmailSender {
 
+    private static final Logger log = LoggerFactory.getLogger(ResendVerificationEmailSender.class);
+
     private static final String SUBJECT = "Verifica tu cuenta de VetSoftware";
 
     private final ResendEmailClient email;
@@ -36,6 +40,10 @@ public class ResendVerificationEmailSender implements VerificationEmailSender {
     private final String privacyUrl;
     private final String termsUrl;
 
+    // El default vacio de la configuracion NO es la politica: es lo que permite que
+    // el contrato OpenAPI, las rodajas de test y el perfil local arranquen sin
+    // declarar nada. Quien decide si un valor ausente es tolerable es
+    // requireConfiguredWhenEmailIsEnabled(), abajo.
     public ResendVerificationEmailSender(ResendEmailClient email,
             @Value("${vetsoftware.registration.verification-base-url}") String verificationBaseUrl,
             @Value("${vetsoftware.registration.verification-template-id:}") String templateId,
@@ -48,6 +56,7 @@ public class ResendVerificationEmailSender implements VerificationEmailSender {
         this.helpUrl = helpUrl;
         this.privacyUrl = privacyUrl;
         this.termsUrl = termsUrl;
+        requireConfiguredWhenEmailIsEnabled();
     }
 
     @Override
@@ -75,6 +84,43 @@ public class ResendVerificationEmailSender implements VerificationEmailSender {
         String separator = verificationBaseUrl.contains("?") ? "&" : "?";
         return verificationBaseUrl + separator + "token="
                 + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Fallo al arrancar, y solo cuando el correo esta habilitado.
+     *
+     * <p>
+     * Con {@code verification-template-id} vacio, {@code sendTemplate} escribe un
+     * warning y retorna: la app levanta, {@code POST /register} responde con exito,
+     * y el correo de verificacion nunca sale. La cuenta recien creada queda sin
+     * poder iniciar sesion (auto-registro Opcion B) y nadie se entera: ni el dueno,
+     * que no recibio nada, ni el operador, que solo tiene un warning en el log.
+     * Mientras el identificador viajo commiteado como default, esa red existia por
+     * accidente; con el valor fuera de la imagen, la unica red es esta.
+     *
+     * <p>
+     * El default vacio existe para que el contrato OpenAPI, las rodajas de test y
+     * el perfil local, que declaran {@code vetsoftware.email.enabled=false},
+     * arranquen sin declarar nada; ninguno de ellos pasa por aqui. Los unicos que
+     * si lo hacen son dev y prod, que declaran {@code enabled: true}, que es
+     * exactamente donde el silencio cuesta.
+     */
+    private void requireConfiguredWhenEmailIsEnabled() {
+        if (!email.isEnabled()) {
+            return;
+        }
+        requireConfigured(verificationBaseUrl, "vetsoftware.registration.verification-base-url");
+        requireConfigured(templateId, "vetsoftware.registration.verification-template-id");
+    }
+
+    private static void requireConfigured(String value, String key) {
+        if (value == null || value.isBlank()) {
+            log.error("{} sin valor con el correo habilitado; la aplicacion no arrancara: el correo"
+                    + " de verificacion del auto-registro no saldria y la cuenta naceria sin poder"
+                    + " iniciar sesion, sin que nadie se entere", key);
+            throw new IllegalStateException(
+                    "Configuracion del correo de verificacion incompleta: " + key);
+        }
     }
 
     private static String nz(String s) {

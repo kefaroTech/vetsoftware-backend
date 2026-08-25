@@ -1,10 +1,13 @@
 package com.vetsoftware.app.appointment.infrastructure.email;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.appointment.application.dto.AppointmentConfirmationData;
 import com.vetsoftware.app.appointment.domain.AppointmentType;
@@ -216,6 +219,38 @@ class ResendAppointmentConfirmationEmailSenderTest {
             Map<String, Object> variables = enviarYCapturarVariables(datos);
 
             assertThat(variables).containsEntry("APPOINTMENT_TYPE", "Cita");
+        }
+    }
+
+    /**
+     * Sin el default commiteado en application.yml, una clave ausente ya no degrada
+     * a "correo que no sale": tumba el arranque. Este correo es el unico acuse de
+     * que la cita existe, asi que perderlo produce una agenda con una cita a la que
+     * nadie se presenta.
+     */
+    @Nested
+    @DisplayName("configuracion incompleta")
+    class ConfiguracionIncompleta {
+
+        private ResendAppointmentConfirmationEmailSender sinPlantilla() {
+            return new ResendAppointmentConfirmationEmailSender(email, "");
+        }
+
+        @Test
+        @DisplayName("con el correo habilitado, la plantilla vacia TUMBA el arranque")
+        void la_plantilla_vacia_tumba_el_arranque() {
+            when(email.isEnabled()).thenReturn(true);
+
+            assertThatThrownBy(this::sinPlantilla).isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("confirmation-template-id");
+        }
+
+        @Test
+        @DisplayName("con el correo deshabilitado no exige nada: es el modo de las rodajas y del contrato OpenAPI")
+        void con_el_correo_deshabilitado_no_exige_nada() {
+            when(email.isEnabled()).thenReturn(false);
+
+            assertThatCode(this::sinPlantilla).doesNotThrowAnyException();
         }
     }
 }
