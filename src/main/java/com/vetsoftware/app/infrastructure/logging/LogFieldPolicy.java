@@ -81,7 +81,13 @@ public final class LogFieldPolicy {
             // intentos restantes y una antigüedad en segundos, hermana de
             // seconds_since_revocation. Los dos son números que produce el sistema, no
             // texto que teclea nadie.
-            "attempts.remaining", "seconds_since_consumption");
+            "attempts.remaining", "seconds_since_consumption",
+            // Señal de alcanzabilidad de la base de datos (DatabaseAvailabilityProbe):
+            // una duración en segundos y un contador de sondas. Mismo criterio que los
+            // dos anteriores — los produce el reloj y un bucle, no un humano — y por eso
+            // van VERBATIM: someterlos al enmascarado solo podría mutilarlos, porque una
+            // racha larga produce un número que el patrón de documento confundiría.
+            "database.outage.seconds", "database.failed.probes");
 
     /**
      * Claves permitidas cuyo valor sí se somete al enmascarado de texto.
