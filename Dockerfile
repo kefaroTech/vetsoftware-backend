@@ -122,3 +122,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD curl --fail --silent --show-error http://localhost:8080/api/v1/actuator/health/readiness >/dev/null || exit 1
 
 ENTRYPOINT ["java", "-jar", "/app/application.jar"]
+
