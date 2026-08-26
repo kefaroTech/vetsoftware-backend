@@ -15,6 +15,15 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaMedicamentRepository implements MedicamentRepository {
 
+    /**
+     * Orden por nombre, que es como se lee un catalogo, con el id de desempate para
+     * que la paginacion sea determinista: sin el, dos homonimos pueden cambiar de
+     * pagina entre dos peticiones y una fila se repite mientras otra no aparece
+     * nunca.
+     */
+    private static final Sort PAGE_ORDER = Sort.by(Sort.Direction.ASC, "name")
+            .and(Sort.by(Sort.Direction.ASC, "id"));
+
     private final MedicamentJpaRepository jpaRepository;
     private final MedicamentJpaMapper mapper;
     private final CompanyJpaRepository companyJpaRepository;
@@ -24,6 +33,32 @@ public class JpaMedicamentRepository implements MedicamentRepository {
         this.jpaRepository = jpaRepository;
         this.mapper = mapper;
         this.companyJpaRepository = companyJpaRepository;
+    }
+
+    /**
+     * El termino de busqueda, o {@code null} si no hay ninguno. En blanco equivale
+     * a ausente: {@code null} viaja a la consulta como «sin filtro» y el listado se
+     * comporta como antes de existir la busqueda, de modo que un campo de texto
+     * vacio en el front no cambia nada.
+     *
+     * <p>
+     * Los comodines NO se ponen aqui: los pone la consulta con
+     * {@code LIKE LOWER(CONCAT('%', :q, '%'))}, que es el precedente de
+     * {@code CompanyJpaRepository.searchByTerm} y
+     * {@code OwnerJpaRepository.searchByCompanyAndTerm}. Es SUBCADENA y no prefijo,
+     * y aqui la subcadena hace falta de verdad: media nomenclatura farmacologica es
+     * compuesta, asi que «clavulanico» tiene que encontrar «Amoxicilina + Acido
+     * clavulanico», invisible para un prefijo.
+     *
+     * <p>
+     * Lo unico que se toca es el recorte. Ni la caja ni los acentos se normalizan
+     * en Java a proposito: eso lo resuelve la base con la collation de la columna,
+     * que es el MISMO criterio con el que el indice unico decide si un nombre esta
+     * ocupado. Normalizar aqui es justamente como se consigue que buscar y chocar
+     * dejen de responder a lo mismo.
+     */
+    private static String termino(String q) {
+        return q == null || q.isBlank() ? null : q.trim();
     }
 
     @Override
@@ -51,11 +86,16 @@ public class JpaMedicamentRepository implements MedicamentRepository {
     }
 
     @Override
-    public PageResult<Medicament> findAll(int page, int pageSize) {
-        // Orden por nombre, que es como se lee un catalogo, con el id de desempate
-        // para que la paginacion sea determinista.
-        Page<MedicamentJpaEntity> result = jpaRepository.findAll(Pages.request(page, pageSize,
-                Sort.by(Sort.Direction.ASC, "name").and(Sort.by(Sort.Direction.ASC, "id"))));
+    public PageResult<Medicament> findAll(String q, int page, int pageSize) {
+        Page<MedicamentJpaEntity> result = jpaRepository.search(termino(q),
+                Pages.request(page, pageSize, PAGE_ORDER));
+        return Pages.result(result, mapper::toDomain);
+    }
+
+    @Override
+    public PageResult<Medicament> findAllGlobal(String q, int page, int pageSize) {
+        Page<MedicamentJpaEntity> result = jpaRepository.searchGlobal(termino(q),
+                Pages.request(page, pageSize, PAGE_ORDER));
         return Pages.result(result, mapper::toDomain);
     }
 
@@ -72,6 +112,11 @@ public class JpaMedicamentRepository implements MedicamentRepository {
     }
 
     @Override
+    public List<Medicament> findAllDisabledGlobal() {
+        return jpaRepository.findAllDisabledGlobal().stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }
@@ -79,6 +124,11 @@ public class JpaMedicamentRepository implements MedicamentRepository {
     @Override
     public int reactivate(Long id, Long companyId) {
         return jpaRepository.reactivate(id, companyId);
+    }
+
+    @Override
+    public int reactivateGlobal(Long id) {
+        return jpaRepository.reactivateGlobal(id);
     }
 
     @Override

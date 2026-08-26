@@ -2,6 +2,8 @@ package com.vetsoftware.app.medicament.infrastructure.persistence;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -45,6 +47,86 @@ public interface MedicamentJpaRepository extends JpaRepository<MedicamentJpaEnti
     @EntityGraph(attributePaths = "company")
     List<MedicamentJpaEntity> findAllByGeneralTrueOrCompany_Id(Long companyId);
 
+    /**
+     * Catalogo COMPLETO de la plataforma —globales mas los privados de cada
+     * empresa—, paginado y con busqueda opcional por nombre. Es la vista de
+     * contexto de la consola, cerrada a {@code ROLE_SYSTEM}.
+     *
+     * <p>
+     * {@code :q} nulo significa «sin filtro» y devuelve exactamente lo que devolvia
+     * antes de existir la busqueda; el adaptador solo recorta el termino y traduce
+     * el blanco a nulo. El {@code LOWER(...) LIKE LOWER(CONCAT('%', :q, '%'))} es
+     * literalmente el de {@code CompanyJpaRepository.searchByTerm} y
+     * {@code OwnerJpaRepository.searchByCompanyAndTerm}, que es como el repositorio
+     * resuelve la busqueda paginada en JPQL; el parametro se llama {@code q} porque
+     * es el que usan los catorce controladores que ya buscan.
+     *
+     * <p>
+     * JPQL y no SQL nativo —al reves que la de empleados— por dos cosas que aqui si
+     * importan: el {@code @SQLRestriction("enabled = true")} de la entidad se sigue
+     * aplicando (una nativa lo salta y habria que reescribir el filtro a mano), y
+     * el {@code @EntityGraph} tambien, que en esta consulta NO es decorativo: las
+     * filas privadas si tienen empresa y el mapper lee su nombre, asi que sin el
+     * son N+1 consultas por pagina. Spring Data deriva sola la de conteo.
+     *
+     * <p>
+     * <b>Buscar y chocar responden al mismo criterio, y eso es correccion y no
+     * gusto.</b> El indice unico decide un choque de nombre con la collation de la
+     * columna, y esta comparacion tambien: el {@code LIKE} sobre {@code e.name}
+     * toma la collation de la columna, no la del literal. Por eso NO se normaliza
+     * nada en Java —ni caja ni acentos—: seria el unico modo de que la busqueda
+     * fuera mas ESTRICTA que la guarda, y entonces el operador buscaria
+     * «Cloxacilina», no la encontraria, la crearia y recibiria un 409 sobre
+     * exactamente lo que acaba de buscar sin exito. El {@code LOWER} solo puede
+     * hacer la busqueda mas permisiva que la guarda, nunca al reves, que es la
+     * direccion inofensiva.
+     *
+     * <p>
+     * La collation efectiva NO esta declarada en ningun {@code CREATE TABLE} del
+     * repositorio: se hereda del servidor. Los indicios apuntan a
+     * {@code utf8mb4_0900_ai_ci} —insensible a caja y acentos— y el mas solido no
+     * es la documentacion sino el changeset {@code 292}, que tuvo que escribir
+     * {@code WHERE c.name COLLATE utf8mb4_bin = 'Cafe'} para distinguir la fila sin
+     * tilde de la que ya tenia «Café»: forzar binario solo hace falta cuando la
+     * collation ambiente las confunde. Pero el razonamiento de arriba no depende de
+     * eso: sea cual sea la collation, es la MISMA para el indice unico y para esta
+     * consulta.
+     */
+    @EntityGraph(attributePaths = "company")
+    @Query("""
+            SELECT e
+            FROM MedicamentJpaEntity e
+            WHERE (:q IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :q, '%')))
+            """)
+    Page<MedicamentJpaEntity> search(@Param("q") String q, Pageable pageable);
+
+    /**
+     * El catalogo GLOBAL activo, paginado y con busqueda opcional por nombre: la
+     * vista que administra la consola de plataforma. El
+     * {@code @SQLRestriction("enabled = true")} aplica, asi que los pausados salen
+     * por {@link #findAllDisabledGlobal()} y no por aqui.
+     *
+     * <p>
+     * Mismo contrato de busqueda que {@link #search(String, Pageable)}: {@code :q}
+     * nulo es «sin filtro», la subcadena la arma el adaptador y la insensibilidad a
+     * caja y acentos la pone la collation. Con 153 moleculas sembradas y paginas de
+     * 20, sin esto encontrar una es pasar seis paginas.
+     *
+     * <p>
+     * El {@code @EntityGraph} es formalmente inutil aqui —un general no tiene
+     * empresa que hidratar— y se declara igual: es la invariante que la regla de
+     * N+1 comprueba, y seguiria siendo correcta el dia que esta consulta deje de
+     * estar acotada a los generales.
+     */
+    @EntityGraph(attributePaths = "company")
+    @Query("""
+            SELECT e
+            FROM MedicamentJpaEntity e
+            WHERE e.general = true
+              AND (:q IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :q, '%')))
+            """)
+    Page<MedicamentJpaEntity> searchGlobal(@Param("q") String q, Pageable pageable);
+
     // Native: los pausados (enabled = false) NO pasan el @SQLRestriction; se listan
     // crudos para
     // reactivar.
@@ -55,6 +137,36 @@ public interface MedicamentJpaRepository extends JpaRepository<MedicamentJpaEnti
               AND company_id = :companyId
             """, nativeQuery = true)
     List<MedicamentJpaEntity> findAllDisabledForCompany(@Param("companyId") Long companyId);
+
+    /**
+     * La gemela del vademecum de PLATAFORMA, y la razon por la que va aparte en vez
+     * de aceptar un {@code companyId} nulable: {@code company_id = NULL} no casa
+     * NUNCA en SQL, ni siquiera con las filas que tienen la columna nula. Con la
+     * consulta acotada, esta lista salia siempre vacia y un global pausado se
+     * quedaba sin ninguna pantalla desde la que reactivarlo — invisible en el
+     * catalogo activo por el {@code @SQLRestriction} y ausente de aqui. Mismo
+     * motivo, mismo remedio y misma forma que
+     * {@link #findGlobalByNameIncludingDisabled(String)}.
+     *
+     * <p>
+     * El {@code ORDER BY} tampoco es cosmetico (#594). Esta consulta no pagina, y
+     * sin orden explicito MySQL devuelve las filas en el orden que le convenga —el
+     * del indice que acabe usando—, asi que la pantalla de pausados barajaba su
+     * contenido entre recargas mientras su hermana {@link #searchGlobal} si
+     * ordenaba. El {@code id} desempata porque aqui SI puede haber homonimos: el
+     * indice unico cubre solo las filas activas ({@code active_name} vale NULL
+     * cuando {@code enabled = false}), asi que la tabla admite N pausadas con el
+     * mismo nombre y sin el desempate el orden seguiria siendo arbitrario entre
+     * ellas.
+     */
+    @Query(value = """
+            SELECT *
+            FROM medicaments
+            WHERE enabled = false
+              AND company_id IS NULL
+            ORDER BY name ASC, id ASC
+            """, nativeQuery = true)
+    List<MedicamentJpaEntity> findAllDisabledGlobal();
 
     /**
      * El filtro por {@code company_id} no es defensa en profundidad: es LA defensa.
@@ -84,6 +196,60 @@ public interface MedicamentJpaRepository extends JpaRepository<MedicamentJpaEnti
               AND company_id = :companyId
             """, nativeQuery = true)
     int reactivate(@Param("id") Long id, @Param("companyId") Long companyId);
+
+    /**
+     * La gemela para el vademecum de PLATAFORMA. Existe por lo mismo que
+     * {@link #findGlobalByNameIncludingDisabled(String)} y
+     * {@link #findAllDisabledGlobal()}: {@code company_id = :companyId} con
+     * {@code companyId} nulo no casa ninguna fila, asi que reactivar un global por
+     * la consulta acotada afectaba cero filas y el servicio lo traducia a un 404
+     * sobre una fila que existe. El resultado practico era un global pausado
+     * IRRECUPERABLE.
+     *
+     * <p>
+     * El {@code company_id IS NULL} no es cosmetico: es lo que impide que este
+     * camino —que no recibe empresa alguna— alcance el medicamento privado de un
+     * tenant. Aqui no hay lectura previa que valide la propiedad, igual que en
+     * {@link #reactivate(Long, Long)}: el {@code WHERE} es toda la barrera.
+     *
+     * <p>
+     * Sube {@code version} por la misma razon que sus hermanas: una consulta nativa
+     * ni comprueba ni incrementa el bloqueo optimista, y sin el bump un
+     * {@code save} cargado antes reescribe la fila entera con su
+     * {@code enabled = false} y deshace la reactivacion en silencio.
+     *
+     * <p>
+     * <b>El {@code AND enabled = false} no sobra</b> (#484). Sin el, reactivar una
+     * fila que YA estaba activa cuenta como exito: afecta una fila, sube la
+     * {@code version} y el endpoint responde 200 sin haber recuperado nada. El dano
+     * no es el 200 sino el bump: quien tuviera la ficha abierta guarda su edicion
+     * con la version vieja, el {@code WHERE version = ?} de Hibernate no casa y
+     * recibe un 409 {@code CONCURRENT_MODIFICATION} que no corresponde a ninguna
+     * edicion concurrente real. Se alinea con {@code EmployeeJpaRepository}, que es
+     * quien ya hacia esta distincion: reactivar es deliberado y debe ejecutarse
+     * siempre, pero reactivar algo que ya esta activo no es una reactivacion.
+     *
+     * <p>
+     * A cambio, el servicio traduce las cero filas a un 404 tambien cuando el
+     * global existe y ya estaba activo. Es el precio de la semantica de
+     * {@code employees} y en esta pantalla apenas se paga: la consola solo ofrece
+     * reactivar sobre lo que le devuelve {@link #findAllDisabledGlobal()}, que por
+     * definicion esta pausado, asi que el 404 solo aparece en una carrera de dos
+     * clics — donde es mejor respuesta que el 409 fantasma de despues. Que el
+     * mensaje ideal seria «ya estaba activo» y no «no existe» es cierto, y es justo
+     * la decision transversal que #484 tiene abierta para los 34 {@code reactivate}
+     * del repositorio: no se resuelve en una sola rodaja.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query(value = """
+            UPDATE medicaments
+            SET enabled = true, version = version + 1
+            WHERE id = :id
+              AND company_id IS NULL
+              AND enabled = false
+            """, nativeQuery = true)
+    int reactivateGlobal(@Param("id") Long id);
 
     /**
      * El medicamento de la EMPRESA que ocupa ese nombre, activo o pausado. Nativa

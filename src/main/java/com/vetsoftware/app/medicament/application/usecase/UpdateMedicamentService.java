@@ -31,6 +31,17 @@ public class UpdateMedicamentService implements UpdateMedicamentUseCase {
      * el camino SYSTEM.
      *
      * <p>
+     * El camino SYSTEM filtra ademas por {@code isGeneral}, y el filtro no es
+     * defensa en profundidad: es la barrera (#590). Un principal de plataforma no
+     * tiene empresa que acotar, asi que sin el, un PUT con el id de una fila
+     * PRIVADA la cargaba y la reescribia. Aqui el dano es mas sutil que en el
+     * delete —este servicio conserva el scope de la fila, no lo reescribe—, pero
+     * sigue siendo una edicion del vademecum de una clinica hecha desde una consola
+     * que no deberia poder tocarlo. La administracion del catalogo global vive en
+     * {@code UpdateGlobalMedicamentService}. Un 404 y no un 403: no se revela de
+     * quien es la fila.
+     *
+     * <p>
      * La guarda de nombre mira el ambito de la FILA
      * —{@code medicament.getCompany()}— y no el del command: la edicion conserva el
      * scope del medicamento, asi que el nombre tiene que estar libre donde la fila
@@ -41,7 +52,7 @@ public class UpdateMedicamentService implements UpdateMedicamentUseCase {
     @Transactional
     public MedicamentDto execute(UpdateMedicamentCommand command) {
         Medicament medicament = (command.companyId() == null
-                ? repository.findById(command.id())
+                ? repository.findById(command.id()).filter(Medicament::isGeneral)
                 : repository.findByIdAndCompanyId(command.id(), command.companyId()))
                 .orElseThrow(() -> new MedicamentNotFoundException(command.id()));
         Long scopeCompanyId = medicament.getCompany() == null ? null : medicament.getCompany().id();

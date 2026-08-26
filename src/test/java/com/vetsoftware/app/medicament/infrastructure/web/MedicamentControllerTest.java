@@ -143,10 +143,26 @@ class MedicamentControllerTest {
         @Test
         @DisplayName("lista el catalogo paginado")
         void lista_el_catalogo_paginado() throws Exception {
-            when(listUseCase.listAll(0, 20))
+            when(listUseCase.listAll(null, 0, 20))
                     .thenReturn(PageResult.of(List.of(medicamentoGeneral()), 0, 20, 1L));
 
             mockMvc.perform(get("/medicaments")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].name").value("Amoxicilina"));
+        }
+
+        /**
+         * Sin {@code q} el caso de uso recibe {@code null} —lo afirma el stub del caso
+         * de arriba mas STRICT_STUBS—, y con {@code q} lo recibe tal cual: ni recortado
+         * ni normalizado. Esa decision vive en el adaptador de persistencia, que es
+         * quien conoce la collation con la que la base compara.
+         */
+        @Test
+        @DisplayName("el parametro q llega al caso de uso tal cual, sin recortar")
+        void el_parametro_q_llega_al_caso_de_uso() throws Exception {
+            when(listUseCase.listAll("  Amoxi  ", 0, 20))
+                    .thenReturn(PageResult.of(List.of(medicamentoGeneral()), 0, 20, 1L));
+
+            mockMvc.perform(get("/medicaments").param("q", "  Amoxi  ")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.content[0].name").value("Amoxicilina"));
         }
 
