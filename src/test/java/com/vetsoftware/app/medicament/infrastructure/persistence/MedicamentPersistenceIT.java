@@ -48,6 +48,27 @@ class MedicamentPersistenceIT extends AbstractDataJpaTest {
      */
     private static final String ALFA = "Alfamicina";
     private static final String ZETA = "Zetamicina";
+    /**
+     * Tercera molecula inventada, para el desempate por id entre pausadas
+     * homonimas.
+     */
+    private static final String BETA = "Betamicina";
+
+    /**
+     * Los dos nombres del buscador, inventados por el mismo motivo que los de
+     * arriba y con una exigencia mas: la semilla contiene «Amoxicilina +
+     * Clavulánico», asi que buscar «clavul» contra la base real encontraria ademas
+     * esa fila y el caso dejaria de poder afirmar el contenido exacto.
+     * «Betavulanico» no existe en ningun sitio.
+     *
+     * <p>
+     * {@link #COMPUESTO} es un nombre compuesto cuyo termino discriminante NO esta
+     * al principio: es lo que separa una busqueda por subcadena de una por prefijo,
+     * y media nomenclatura farmacologica es asi. {@link #ACENTUADO} lleva la tilde
+     * dentro de ese mismo termino, que es lo que pone a prueba la collation.
+     */
+    private static final String COMPUESTO = "Alfamicina con betavulanico sintetico";
+    private static final String ACENTUADO = "Gammamicina con Ácido betavulánico";
 
     @Autowired
     private JpaMedicamentRepository repository;
@@ -68,12 +89,23 @@ class MedicamentPersistenceIT extends AbstractDataJpaTest {
      */
     private long catalogoBase;
 
+    /**
+     * La misma linea base, pero del vademecum de PLATAFORMA: las filas que
+     * {@code findAllGlobal} devuelve antes de que el caso escriba nada. Se mide
+     * aparte de {@link #catalogoBase} porque la diferencia entre las dos —el numero
+     * de medicamentos privados de las empresas— es justamente lo que separa las dos
+     * consultas, y fijarla a mano volveria a atar estos casos al tamano de la
+     * semilla.
+     */
+    private long catalogoGlobalBase;
+
     @BeforeEach
     void sembrarLaEmpresa() {
         SchemaSeed.seed(entityManager);
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(COMPANY);
         companyRef = new CompanyRef(COMPANY, company.getName(), company.getIdentifier());
-        catalogoBase = repository.findAll(0, 1).totalElements();
+        catalogoBase = repository.findAll(null, 0, 1).totalElements();
+        catalogoGlobalBase = repository.findAllGlobal(null, 0, 1).totalElements();
     }
 
     private void releerDesdeLaBase() {
@@ -610,10 +642,10 @@ class MedicamentPersistenceIT extends AbstractDataJpaTest {
             repository.save(Medicament.create(ALFA, null, null, true));
             releerDesdeLaBase();
 
-            PageResult<Medicament> primera = repository.findAll(0, 5);
-            PageResult<Medicament> segunda = repository.findAll(1, 5);
-            List<String> catalogoEntero = repository.findAll(0, Pages.MAX_SIZE).content().stream()
-                    .map(Medicament::getName).toList();
+            PageResult<Medicament> primera = repository.findAll(null, 0, 5);
+            PageResult<Medicament> segunda = repository.findAll(null, 1, 5);
+            List<String> catalogoEntero = repository.findAll(null, 0, Pages.MAX_SIZE).content()
+                    .stream().map(Medicament::getName).toList();
             List<String> nombresDeLasDos = Stream
                     .concat(primera.content().stream(), segunda.content().stream())
                     .map(Medicament::getName).toList();
@@ -628,6 +660,570 @@ class MedicamentPersistenceIT extends AbstractDataJpaTest {
             assertThat(nombresDeLasDos).doesNotHaveDuplicates().hasSize(10)
                     .isEqualTo(catalogoEntero.subList(0, 10));
             assertThat(catalogoEntero).containsSubsequence(ALFA, ZETA).doesNotHaveDuplicates();
+        }
+    }
+
+    /**
+     * {@code findAllGlobal} — el catalogo que administra la consola de plataforma,
+     * frente a {@code findAll}, que devuelve ademas los privados de cada empresa
+     * para dar contexto. La diferencia entre los dos totales es la unica forma de
+     * ver que el {@code general = true} de la consulta esta puesto y funciona:
+     * contra una base sin filas privadas los dos finders devolverian lo mismo y el
+     * caso pasaria en verde con el filtro quitado.
+     */
+    @Nested
+    @DisplayName("findAllGlobal — el vademecum de plataforma, paginado")
+    class ListadoGlobal {
+
+        @Test
+        @DisplayName("trae los generales y deja fuera los privados de cualquier empresa")
+        void solo_trae_los_generales() {
+            repository.save(Medicament.create(ALFA, "Antibiotico", null, true));
+            repository.save(Medicament.create("Suero", "Formula propia", companyRef, false));
+            repository.save(Medicament.create("Exclusivo de otra", null, otraCompanyRef(), false));
+            releerDesdeLaBase();
+
+            PageResult<Medicament> globales = repository.findAllGlobal(null, 0, Pages.MAX_SIZE);
+
+            assertThat(globales.content()).extracting(Medicament::getName).contains(ALFA)
+                    .doesNotContain("Suero", "Exclusivo de otra");
+            assertThat(globales.content()).allSatisfy(m -> {
+                assertThat(m.isGeneral()).isTrue();
+                assertThat(m.getCompany()).isNull();
+            });
+            // Una fila global mas; las dos privadas no cuentan. El contraste con
+            // findAll -que suma las tres- es lo que demuestra el filtro.
+            assertThat(globales.totalElements()).isEqualTo(catalogoGlobalBase + 1);
+            assertThat(repository.findAll(null, 0, 1).totalElements()).isEqualTo(catalogoBase + 3);
+        }
+
+        /**
+         * Mismo criterio que el caso gemelo de {@code findAll}: se piden dos paginas de
+         * cinco porque con una sola que abarque el catalogo entero no se puede ver ni
+         * que el orden sea total ni que ninguna fila aparezca en las dos. El contraste
+         * va contra el listado completo y no contra un {@code isSorted()} de Java,
+         * porque la base ordena con {@code utf8mb4_0900_ai_ci} y
+         * {@code String.compareTo} no.
+         */
+        @Test
+        @DisplayName("ordena por nombre y no repite entre paginas")
+        void ordena_por_nombre_sin_repetir() {
+            repository.save(Medicament.create(ZETA, null, null, true));
+            repository.save(Medicament.create(ALFA, null, null, true));
+            releerDesdeLaBase();
+
+            PageResult<Medicament> primera = repository.findAllGlobal(null, 0, 5);
+            PageResult<Medicament> segunda = repository.findAllGlobal(null, 1, 5);
+            List<String> catalogoEntero = repository.findAllGlobal(null, 0, Pages.MAX_SIZE)
+                    .content().stream().map(Medicament::getName).toList();
+            List<String> nombresDeLasDos = Stream
+                    .concat(primera.content().stream(), segunda.content().stream())
+                    .map(Medicament::getName).toList();
+
+            assertThat(primera.totalElements()).isEqualTo(catalogoGlobalBase + 2);
+            assertThat(catalogoGlobalBase + 2)
+                    .as("el vademecum global tiene que caber en una pagina de Pages.MAX_SIZE")
+                    .isLessThanOrEqualTo(Pages.MAX_SIZE);
+            assertThat(nombresDeLasDos).doesNotHaveDuplicates().hasSize(10)
+                    .isEqualTo(catalogoEntero.subList(0, 10));
+            assertThat(catalogoEntero).containsSubsequence(ALFA, ZETA).doesNotHaveDuplicates();
+        }
+
+        @Test
+        @DisplayName("un global pausado sale del catalogo activo por el SQLRestriction")
+        void un_global_pausado_no_esta_en_el_catalogo_activo() {
+            Medicament global = repository.save(Medicament.create(ALFA, null, null, true));
+            releerDesdeLaBase();
+            repository.delete(global.getId());
+            releerDesdeLaBase();
+
+            assertThat(repository.findAllGlobal(null, 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getName).doesNotContain(ALFA);
+            assertThat(repository.findAllGlobal(null, 0, 1).totalElements())
+                    .isEqualTo(catalogoGlobalBase);
+        }
+    }
+
+    /**
+     * {@code findAllDisabledGlobal} — la mitad del defecto que se cerro. La
+     * consulta va aparte de {@code findAllDisabledForCompany} y no como un
+     * {@code companyId} nulable porque en SQL {@code company_id = NULL} no casa
+     * NUNCA, ni siquiera con las filas que tienen esa columna nula: con la consulta
+     * acotada esta lista salia siempre vacia y un global pausado se quedaba sin
+     * ninguna pantalla desde la que recuperarlo. Eso solo se puede probar contra
+     * MySQL: para un mock, {@code = null} e {@code IS NULL} son la misma cadena.
+     */
+    @Nested
+    @DisplayName("findAllDisabledGlobal — los globales pausados, que el IS NULL si encuentra")
+    class ListadoGlobalPausados {
+
+        /**
+         * Estos casos fijan el CONTENIDO EXACTO de la lista, no solo que contenga lo
+         * suyo, y eso solo es legitimo si la semilla no trae ningun global pausado. Se
+         * comprueba en vez de suponerse: el dia que una migracion retire una molecula,
+         * el fallo dira exactamente eso y no «el orden es otro».
+         */
+        @BeforeEach
+        void laSemillaNoTraeGlobalesPausados() {
+            assertThat(repository.findAllDisabledGlobal())
+                    .as("la semilla no debe traer globales pausados; si los trae, "
+                            + "estos casos dejan de poder afirmar el contenido exacto")
+                    .isEmpty();
+        }
+
+        private Medicament pausarGlobal(String nombre) {
+            Medicament guardado = repository
+                    .save(Medicament.create(nombre, "Retirado", null, true));
+            releerDesdeLaBase();
+            repository.delete(guardado.getId());
+            releerDesdeLaBase();
+            return guardado;
+        }
+
+        @Test
+        @DisplayName("ve el global pausado que el SQLRestriction esconde a todo lo demas")
+        void ve_el_global_pausado() {
+            Medicament global = pausarGlobal(ALFA);
+
+            assertThat(repository.findById(global.getId())).isEmpty();
+            assertThat(repository.findAllDisabledGlobal()).singleElement().satisfies(m -> {
+                assertThat(m.getId()).isEqualTo(global.getId());
+                assertThat(m.getName()).isEqualTo(ALFA);
+                assertThat(m.isEnabled()).isFalse();
+                assertThat(m.isGeneral()).isTrue();
+                assertThat(m.getCompany()).isNull();
+            });
+        }
+
+        /**
+         * El orden lo pone ahora la consulta ({@code ORDER BY name ASC, id ASC}), asi
+         * que la asercion pasa a ser el contenido EXACTO y en secuencia: sin el
+         * {@code ORDER BY}, InnoDB no promete nada y la pantalla podia reordenarse
+         * entre dos recargas, con la operadora reactivando la fila equivocada (#594).
+         *
+         * <p>
+         * El desempate por id no es adorno: el indice unico cubre solo las filas
+         * activas —{@code active_name} vale NULL con {@code enabled = false}—, asi que
+         * la tabla admite N pausadas con el MISMO nombre. Este caso crea dos homonimas
+         * a proposito, que es la unica forma de que el desempate se note.
+         */
+        @Test
+        @DisplayName("ordena por nombre y desempata por id entre pausados homonimos")
+        void ordena_por_nombre_y_desempata_por_id() {
+            Medicament zeta = pausarGlobal(ZETA);
+            Medicament betaPrimera = pausarGlobal(BETA);
+            // La segunda «Betamicina» solo puede existir porque la primera esta
+            // pausada y por tanto no ocupa el nombre.
+            Medicament betaSegunda = pausarGlobal(BETA);
+            Medicament alfa = pausarGlobal(ALFA);
+
+            assertThat(betaSegunda.getId()).isGreaterThan(betaPrimera.getId());
+            assertThat(repository.findAllDisabledGlobal()).extracting(Medicament::getId)
+                    .containsExactly(alfa.getId(), betaPrimera.getId(), betaSegunda.getId(),
+                            zeta.getId());
+            assertThat(repository.findAllDisabledGlobal()).extracting(Medicament::getName)
+                    .containsExactly(ALFA, BETA, BETA, ZETA);
+        }
+
+        @Test
+        @DisplayName("no trae el pausado de una empresa: son dos catalogos distintos")
+        void no_trae_el_pausado_de_una_empresa() {
+            Medicament deEmpresa = repository
+                    .save(Medicament.create("Suero", "Formula propia", companyRef, false));
+            releerDesdeLaBase();
+            repository.delete(deEmpresa.getId());
+            releerDesdeLaBase();
+
+            assertThat(repository.findAllDisabledGlobal()).isEmpty();
+            // Y la gemela acotada si lo ve: no es que la fila no este pausada.
+            assertThat(repository.findAllDisabledForCompany(COMPANY))
+                    .extracting(Medicament::getName).containsExactly("Suero");
+        }
+
+        @Test
+        @DisplayName("no trae los globales activos")
+        void no_trae_los_globales_activos() {
+            repository.save(Medicament.create(ZETA, null, null, true));
+            releerDesdeLaBase();
+
+            assertThat(repository.findAllDisabledGlobal()).isEmpty();
+        }
+    }
+
+    /**
+     * {@code reactivateGlobal} — la otra mitad del defecto. Aqui no hay lectura
+     * previa que valide nada: el numero de filas afectadas ES la comprobacion de
+     * existencia, y el {@code company_id IS NULL} del {@code WHERE} es lo unico que
+     * impide que este camino resucite el medicamento privado de un tenant.
+     */
+    @Nested
+    @DisplayName("reactivateGlobal — recuperar un global pausado")
+    class ReactivacionGlobal {
+
+        /**
+         * El escenario que estaba roto, de punta a punta: se pausa un global, se
+         * comprueba que la pantalla de reactivacion lo LISTA, se reactiva y se
+         * comprueba que vuelve al catalogo activo. Los dos pasos van juntos a
+         * proposito: cualquiera de los dos por separado podia estar bien mientras el
+         * global seguia siendo irrecuperable.
+         */
+        @Test
+        @DisplayName("un global pausado se lista en /disabled y se recupera")
+        void un_global_pausado_se_lista_y_se_recupera() {
+            Medicament global = repository.save(Medicament.create(ALFA, "Retirado", null, true));
+            releerDesdeLaBase();
+            // La version se lee RELEIDA de la base: el bloqueo optimista lo asigna el
+            // motor, y afirmar sobre el valor en memoria probaria a Hibernate y no al
+            // UPDATE nativo.
+            Long versionAntes = repository.findById(global.getId()).orElseThrow().getVersion();
+            repository.delete(global.getId());
+            releerDesdeLaBase();
+
+            assertThat(repository.findAllDisabledGlobal()).extracting(Medicament::getId)
+                    .contains(global.getId());
+
+            int filas = repository.reactivateGlobal(global.getId());
+            releerDesdeLaBase();
+
+            assertThat(filas).isEqualTo(1);
+            Medicament releido = repository.findById(global.getId()).orElseThrow();
+            assertThat(releido.isEnabled()).isTrue();
+            assertThat(releido.isGeneral()).isTrue();
+            assertThat(releido.getCompany()).isNull();
+            // El bump de version va en el SET y no en el WHERE: sin el, un save cargado
+            // antes reescribe la fila con su enabled = false y deshace la reactivacion
+            // en silencio.
+            assertThat(releido.getVersion()).isGreaterThan(versionAntes);
+            assertThat(repository.findAllGlobal(null, 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getName).contains(ALFA);
+            assertThat(repository.findAllDisabledGlobal()).extracting(Medicament::getId)
+                    .doesNotContain(global.getId());
+        }
+
+        /**
+         * Por que la gemela existe, medido y no razonado: la consulta acotada con
+         * {@code company_id = :companyId} y {@code null} compara {@code company_id =
+         * NULL} y no casa con la fila, que TIENE la columna nula. El sintoma era un 404
+         * permanente sobre un global que existe. Este caso falla si alguien
+         * «simplifica» el adaptador reusando {@code reactivate(id, null)}.
+         */
+        @Test
+        @DisplayName("la consulta acotada con empresa nula no recupera nada, la gemela si")
+        void la_acotada_con_empresa_nula_no_recupera_nada() {
+            Medicament global = repository.save(Medicament.create(ALFA, "Retirado", null, true));
+            releerDesdeLaBase();
+            repository.delete(global.getId());
+            releerDesdeLaBase();
+
+            int porLaAcotada = repository.reactivate(global.getId(), null);
+            releerDesdeLaBase();
+
+            assertThat(porLaAcotada).isZero();
+            assertThat(repository.findById(global.getId())).isEmpty();
+
+            int porLaGemela = repository.reactivateGlobal(global.getId());
+            releerDesdeLaBase();
+
+            assertThat(porLaGemela).isEqualTo(1);
+            assertThat(repository.findById(global.getId())).isPresent();
+        }
+
+        @Test
+        @DisplayName("NO alcanza el medicamento pausado de una empresa")
+        void no_alcanza_el_pausado_de_una_empresa() {
+            Medicament deEmpresa = repository
+                    .save(Medicament.create("Suero", "Formula propia", companyRef, false));
+            releerDesdeLaBase();
+            repository.delete(deEmpresa.getId());
+            releerDesdeLaBase();
+
+            int filas = repository.reactivateGlobal(deEmpresa.getId());
+            releerDesdeLaBase();
+
+            assertThat(filas).isZero();
+            assertThat(repository.findById(deEmpresa.getId())).isEmpty();
+        }
+
+        @Test
+        @DisplayName("sobre un id inexistente no afecta filas")
+        void sobre_un_id_inexistente_no_afecta_filas() {
+            assertThat(repository.reactivateGlobal(999_999L)).isZero();
+        }
+
+        /**
+         * El {@code AND enabled = false} del {@code WHERE}. Reactivar un global que YA
+         * esta activo no alcanza ninguna fila y, sobre todo, NO mueve su
+         * {@code version} — que era el dano real: quien tuviera abierto el formulario
+         * de esa molecula recibia un 409 CONCURRENT_MODIFICATION al guardar sin que
+         * nadie hubiera cambiado un solo dato.
+         *
+         * <p>
+         * La contrapartida asumida es que el caso de uso traduce «cero filas» a un 404
+         * sobre una fila que existe y esta activa. Es peor mensaje que «ya estaba
+         * activo», y es justo la decision transversal que #484 sigue teniendo abierta
+         * para los {@code reactivate} del repositorio. Aqui apenas se paga: la consola
+         * solo ofrece reactivar sobre lo que devuelve {@code findAllDisabledGlobal()},
+         * que por definicion esta pausado, asi que este 404 solo aparece en una carrera
+         * de dos clics.
+         */
+        @Test
+        @DisplayName("sobre un global YA activo no afecta ninguna fila y no le mueve la version")
+        void sobre_un_global_ya_activo_no_afecta_filas() {
+            Medicament global = repository.save(Medicament.create(ALFA, null, null, true));
+            releerDesdeLaBase();
+            Long versionAntes = repository.findById(global.getId()).orElseThrow().getVersion();
+
+            int filas = repository.reactivateGlobal(global.getId());
+            releerDesdeLaBase();
+
+            assertThat(filas).isZero();
+            Medicament releido = repository.findById(global.getId()).orElseThrow();
+            assertThat(releido.isEnabled()).isTrue();
+            assertThat(releido.getVersion()).isEqualTo(versionAntes);
+        }
+    }
+
+    /**
+     * El buscador por nombre de los dos listados paginados ({@code search} y
+     * {@code searchGlobal}).
+     *
+     * <p>
+     * <b>Por que va aqui y no en un unitario.</b> Todo lo que decide si un termino
+     * encuentra una fila —que sea subcadena y no prefijo, la caja y sobre todo los
+     * acentos— lo resuelve MySQL con la collation de la columna. Para un doble,
+     * «acido» y «Ácido» son dos cadenas distintas y no hay nada que preguntar; la
+     * pregunta solo existe contra el motor. El adaptador aporta exactamente una
+     * decision propia —recortar y traducir «en blanco» a «sin filtro»— y tambien se
+     * ejercita aqui de punta a punta.
+     */
+    @Nested
+    @DisplayName("search / searchGlobal — la busqueda por nombre")
+    class Busqueda {
+
+        @Test
+        @DisplayName("sin termino devuelve lo mismo que antes de existir la busqueda")
+        void sin_termino_no_hay_regresion() {
+            repository.save(Medicament.create(COMPUESTO, null, null, true));
+            repository.save(Medicament.create("Suero", null, companyRef, false));
+            releerDesdeLaBase();
+
+            // Un global mas en el vademecum de plataforma; dos filas mas en el
+            // catalogo sin acotar. Es exactamente lo que estos dos finders devolvian
+            // antes de que la consulta tuviera un :q.
+            assertThat(repository.findAllGlobal(null, 0, 1).totalElements())
+                    .isEqualTo(catalogoGlobalBase + 1);
+            assertThat(repository.findAll(null, 0, 1).totalElements()).isEqualTo(catalogoBase + 2);
+        }
+
+        /**
+         * El {@code termino(q)} del adaptador. Un campo de texto vacio en el front no
+         * debe cambiar nada, y lo que la consulta necesita para no filtrar es
+         * {@code null}: {@code LIKE '%%'} tampoco filtraria, pero no es lo mismo —
+         * dejaria fuera las filas con {@code name} nulo el dia que las hubiera, y
+         * ademas impide que el plan use el camino sin predicado.
+         */
+        @Test
+        @DisplayName("la cadena vacia y la de solo espacios equivalen a no buscar")
+        void blanco_y_vacio_equivalen_a_no_buscar() {
+            repository.save(Medicament.create(COMPUESTO, null, null, true));
+            releerDesdeLaBase();
+
+            long globalSinTermino = repository.findAllGlobal(null, 0, 1).totalElements();
+            assertThat(repository.findAllGlobal("", 0, 1).totalElements())
+                    .isEqualTo(globalSinTermino);
+            assertThat(repository.findAllGlobal("   ", 0, 1).totalElements())
+                    .isEqualTo(globalSinTermino);
+
+            long sinAcotarSinTermino = repository.findAll(null, 0, 1).totalElements();
+            assertThat(repository.findAll("", 0, 1).totalElements()).isEqualTo(sinAcotarSinTermino);
+            assertThat(repository.findAll("  ", 0, 1).totalElements())
+                    .isEqualTo(sinAcotarSinTermino);
+        }
+
+        /**
+         * El caso que obligo a elegir SUBCADENA y no prefijo: media nomenclatura
+         * farmacologica es compuesta, asi que el termino que la usuaria recuerda casi
+         * nunca es la primera palabra del nombre.
+         */
+        @Test
+        @DisplayName("encuentra por una subcadena que NO esta al principio del nombre")
+        void encuentra_por_subcadena_en_medio() {
+            Medicament compuesto = repository.save(Medicament.create(COMPUESTO, null, null, true));
+            repository.save(Medicament.create(ZETA, null, null, true));
+            releerDesdeLaBase();
+
+            assertThat(COMPUESTO)
+                    .as("el termino tiene que estar en medio, o el caso no prueba nada")
+                    .doesNotStartWith("betavulanico").contains("betavulanico");
+            assertThat(repository.findAllGlobal("betavulanico", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId).containsExactly(compuesto.getId());
+        }
+
+        @Test
+        @DisplayName("ignora la caja, la del termino y la del nombre")
+        void ignora_la_caja() {
+            Medicament compuesto = repository.save(Medicament.create(COMPUESTO, null, null, true));
+            releerDesdeLaBase();
+
+            assertThat(repository.findAllGlobal("BETAVULANICO", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId).containsExactly(compuesto.getId());
+            assertThat(repository.findAllGlobal("BeTaVuLaNiCo", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId).containsExactly(compuesto.getId());
+            assertThat(repository.findAllGlobal("alfamicina", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId).containsExactly(compuesto.getId());
+        }
+
+        @Test
+        @DisplayName("los espacios de alrededor del termino no cambian el resultado")
+        void recorta_el_termino() {
+            Medicament compuesto = repository.save(Medicament.create(COMPUESTO, null, null, true));
+            releerDesdeLaBase();
+
+            assertThat(repository.findAllGlobal("   betavulanico   ", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId).containsExactly(compuesto.getId());
+        }
+
+        /**
+         * El caso que importa: que el buscador no se convierta en la fuga que se ha
+         * cerrado por todos los demas lados. Un termino que casa con el medicamento
+         * PRIVADO de una clinica no lo devuelve por {@code /admin/medicaments}, que es
+         * la superficie de plataforma.
+         *
+         * <p>
+         * El contraste con {@code findAll} —el catalogo sin acotar de
+         * {@code GET /medicaments}, que es SYSTEM desde BE-29 y existe justamente para
+         * dar contexto— es lo que demuestra que el corte lo pone el ambito de cada
+         * consulta y no el termino: la misma busqueda, dos alcances distintos.
+         */
+        @Test
+        @DisplayName("la busqueda global NO devuelve el medicamento privado de una clinica")
+        void la_busqueda_global_no_alcanza_lo_privado() {
+            Medicament global = repository.save(Medicament.create(COMPUESTO, null, null, true));
+            Medicament privado = repository.save(Medicament
+                    .create("Suero con betavulanico de la clinica", null, companyRef, false));
+            releerDesdeLaBase();
+
+            assertThat(repository.findAllGlobal("betavulanico", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId).containsExactly(global.getId());
+            assertThat(repository.findAll("betavulanico", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId)
+                    .containsExactlyInAnyOrder(global.getId(), privado.getId());
+        }
+
+        /**
+         * <b>La prueba de los acentos, medida contra MySQL y no razonada.</b>
+         *
+         * <p>
+         * El backend NO normaliza en Java a proposito, y su argumento es que el indice
+         * unico y este {@code LIKE} comparan sobre la MISMA columna y por tanto con la
+         * misma collation, asi que buscar y chocar responden al mismo criterio sea cual
+         * sea. El argumento es correcto en su forma, pero lo que hay que saber es el
+         * criterio CONCRETO: si la collation no fuera insensible a acentos, existiria
+         * el 409 fantasma que se queria evitar —buscar «betavulanico», no encontrarlo,
+         * darlo de alta y recibir un 409 sobre exactamente lo que se acaba de buscar
+         * sin exito—.
+         *
+         * <p>
+         * Este caso lo resuelve: si falla, ese 409 fantasma existe y hay que
+         * reportarlo, no taparlo normalizando en Java. Su gemelo de la guarda de
+         * unicidad es {@code la_igualdad_ignora_acentos_y_caja}, unos casos mas arriba,
+         * que prueba lo mismo para el {@code =} del indice.
+         */
+        @Test
+        @DisplayName("un termino SIN tilde encuentra el nombre CON tilde")
+        void un_termino_sin_tilde_encuentra_el_nombre_con_tilde() {
+            Medicament acentuado = repository.save(Medicament.create(ACENTUADO, null, null, true));
+            releerDesdeLaBase();
+
+            assertThat(ACENTUADO).as("el nombre tiene que llevar tildes, o el caso no prueba nada")
+                    .contains("Ácido betavulánico");
+            assertThat(repository.findAllGlobal("betavulanico", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId).containsExactly(acentuado.getId());
+            assertThat(repository.findAllGlobal("acido betavulanico", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId).containsExactly(acentuado.getId());
+        }
+
+        /**
+         * La direccion contraria, que es la que de verdad usa quien copia el nombre de
+         * un envase: el termino lleva la tilde y el nombre tambien. El segundo caso
+         * suma la caja a la tilde, que es la combinacion completa.
+         *
+         * <p>
+         * <b>Cuidado con el termino que se elige.</b> Aqui se busca «betavulanico» y no
+         * «Ácido», que seria lo natural: la semilla del changeset 299 trae CUATRO
+         * moleculas cuyo nombre contiene «Ácido», asi que ese termino devuelve cinco
+         * filas y el caso no puede afirmar el contenido exacto. Se descubrio
+         * ejecutandolo. El termino de un caso que usa {@code containsExactly} tiene que
+         * ser una palabra que la semilla no contenga.
+         */
+        @Test
+        @DisplayName("un termino CON tilde, y con tilde y mayusculas, tambien encuentra")
+        void un_termino_con_tilde_tambien_encuentra() {
+            Medicament acentuado = repository.save(Medicament.create(ACENTUADO, null, null, true));
+            releerDesdeLaBase();
+
+            assertThat(repository.findAllGlobal("betavulánico", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId).containsExactly(acentuado.getId());
+            assertThat(repository.findAllGlobal("BETAVULÁNICO", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId).containsExactly(acentuado.getId());
+        }
+
+        /**
+         * La otra cara de que la collation sea insensible a acentos: dos moleculas que
+         * solo se diferencian en la tilde caen las dos bajo el mismo termino. Es el
+         * comportamiento que se quiere —quien busca «acido» no sabe si el catalogo lo
+         * escribio con tilde— y es tambien la razon de que un termino corto y comun
+         * filtre poco. Va con filas propias y no contra la semilla para no atarse a
+         * cuantas moleculas acentuadas traiga el changeset de turno.
+         */
+        @Test
+        @DisplayName("un termino sin tilde alcanza a la vez la fila con tilde y la que no la lleva")
+        void un_termino_sin_tilde_alcanza_las_dos_grafias() {
+            Medicament conTilde = repository.save(Medicament.create(ACENTUADO, null, null, true));
+            Medicament sinTilde = repository.save(
+                    Medicament.create("Deltamicina con acido betavulanico", null, null, true));
+            releerDesdeLaBase();
+
+            assertThat(repository.findAllGlobal("acido betavulanico", 0, Pages.MAX_SIZE).content())
+                    .extracting(Medicament::getId)
+                    .containsExactlyInAnyOrder(conTilde.getId(), sinTilde.getId());
+        }
+
+        @Test
+        @DisplayName("un termino que no casa devuelve pagina vacia con total cero")
+        void termino_sin_resultados() {
+            repository.save(Medicament.create(COMPUESTO, null, null, true));
+            releerDesdeLaBase();
+
+            PageResult<Medicament> vacia = repository.findAllGlobal("no-existe-esta-molecula", 0,
+                    Pages.MAX_SIZE);
+
+            assertThat(vacia.content()).isEmpty();
+            assertThat(vacia.totalElements()).isZero();
+            assertThat(vacia.totalPages()).isZero();
+        }
+
+        /**
+         * La busqueda no se lleva por delante el orden ni la paginacion: el
+         * {@code PAGE_ORDER} del adaptador se aplica igual con termino que sin el.
+         */
+        @Test
+        @DisplayName("los resultados siguen ordenados por nombre y siguen paginando")
+        void los_resultados_siguen_ordenados_y_paginados() {
+            repository.save(Medicament.create("Zetamicina betavulanico", null, null, true));
+            repository.save(Medicament.create("Alfamicina betavulanico", null, null, true));
+            repository.save(Medicament.create("Gammamicina betavulanico", null, null, true));
+            releerDesdeLaBase();
+
+            PageResult<Medicament> primera = repository.findAllGlobal("betavulanico", 0, 2);
+            PageResult<Medicament> segunda = repository.findAllGlobal("betavulanico", 1, 2);
+
+            assertThat(primera.totalElements()).isEqualTo(3L);
+            assertThat(primera.totalPages()).isEqualTo(2);
+            assertThat(primera.content()).extracting(Medicament::getName)
+                    .containsExactly("Alfamicina betavulanico", "Gammamicina betavulanico");
+            assertThat(segunda.content()).extracting(Medicament::getName)
+                    .containsExactly("Zetamicina betavulanico");
         }
     }
 }

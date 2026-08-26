@@ -64,10 +64,18 @@ public class MedicamentController {
                 request.description(), authz.currentCompanyId(), false)));
     }
 
+    /**
+     * Catalogo completo de la plataforma, solo para {@code ROLE_SYSTEM}. El
+     * {@code q} es opcional y filtra por nombre en el SERVIDOR; sin el, la
+     * respuesta es la de siempre. El nombre del parametro es el que ya usan
+     * {@code EmployeeController.search} y {@code ClinicalHistoryController}.
+     */
     @GetMapping
-    public PageResponse<MedicamentResponse> listAll(@RequestParam(defaultValue = "0") int page,
+    public PageResponse<MedicamentResponse> listAll(
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
-        return PageResponse.from(listUseCase.listAll(page, pageSize), this::toResponse);
+        return PageResponse.from(listUseCase.listAll(q, page, pageSize), this::toResponse);
     }
 
     @GetMapping("/available")

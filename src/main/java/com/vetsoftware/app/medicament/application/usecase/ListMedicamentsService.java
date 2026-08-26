@@ -17,7 +17,7 @@ public class ListMedicamentsService implements ListMedicamentsUseCase {
     }
 
     @Override
-    public PageResult<MedicamentDto> listAll(int page, int pageSize) {
-        return repository.findAll(page, pageSize).map(MedicamentDto::from);
+    public PageResult<MedicamentDto> listAll(String q, int page, int pageSize) {
+        return repository.findAll(q, page, pageSize).map(MedicamentDto::from);
     }
 }

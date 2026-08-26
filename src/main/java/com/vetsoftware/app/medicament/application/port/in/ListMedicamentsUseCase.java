@@ -17,7 +17,16 @@ public interface ListMedicamentsUseCase {
      *
      * <p>
      * Pagina ademas porque sin tope trae la tabla entera de la plataforma.
+     *
+     * <p>
+     * {@code q} es OPCIONAL: {@code null} o en blanco devuelve el listado completo,
+     * que es como se comportaba antes de existir la busqueda. Filtra por SUBCADENA
+     * del nombre —no por prefijo— y la comparacion la resuelve la collation de la
+     * columna, insensible a caja y acentos. Va en el servidor y no en el navegador
+     * porque el cliente solo tiene la pagina que esta viendo: un filtro en cliente
+     * diria «no existe» sobre algo que esta en la pagina 6, y el operador crearia
+     * un duplicado.
      */
     @PreAuthorize("hasRole('SYSTEM')")
-    PageResult<MedicamentDto> listAll(int page, int pageSize);
+    PageResult<MedicamentDto> listAll(String q, int page, int pageSize);
 }

@@ -25,18 +25,54 @@ public interface MedicamentRepository {
     Optional<Medicament> findAvailableByIdAndCompanyId(Long id, Long companyId);
 
     /**
-     * Catalogo GLOBAL de la plataforma: no filtra por empresa. Pagina porque de
-     * otro modo trae la tabla entera; su uso esta restringido a ROLE_SYSTEM.
+     * Catalogo COMPLETO de la plataforma —globales y privados de todas las
+     * empresas—: no filtra por empresa. Pagina porque de otro modo trae la tabla
+     * entera; su uso esta restringido a ROLE_SYSTEM.
+     *
+     * @param q
+     *            subcadena a buscar en el nombre, o {@code null} para no filtrar.
+     *            Nulo devuelve exactamente lo que devolvia antes de existir la
+     *            busqueda.
      */
-    PageResult<Medicament> findAll(int page, int pageSize);
+    PageResult<Medicament> findAll(String q, int page, int pageSize);
+
+    /**
+     * El catalogo GLOBAL de la plataforma: solo las filas sin empresa. Es lo que
+     * administra la consola, frente a {@link #findAll(String, int, int)}, que
+     * devuelve ademas los privados de cada empresa para dar contexto. Pagina por el
+     * mismo motivo que aquel.
+     *
+     * @param q
+     *            subcadena a buscar en el nombre, o {@code null} para no filtrar.
+     */
+    PageResult<Medicament> findAllGlobal(String q, int page, int pageSize);
 
     List<Medicament> findAllAvailableForCompany(Long companyId);
 
     List<Medicament> findAllDisabledForCompany(Long companyId);
 
+    /**
+     * Los globales PAUSADOS, que el {@code @SQLRestriction} esconde del catalogo
+     * activo. Va aparte de {@link #findAllDisabledForCompany(Long)} y no como un
+     * parametro nulable porque el filtro tiene que ser {@code company_id IS NULL}:
+     * {@code company_id = NULL} no casa nunca en SQL y el listado saldria siempre
+     * vacio, dejando los globales pausados sin ninguna pantalla desde la que
+     * reactivarlos.
+     */
+    List<Medicament> findAllDisabledGlobal();
+
     void delete(Long id);
 
     int reactivate(Long id, Long companyId);
+
+    /**
+     * Reactiva un global. Gemela de {@link #reactivate(Long, Long)} y separada por
+     * la misma razon que el listado de arriba: acotar por «no tiene empresa» exige
+     * {@code IS NULL}, y pasar {@code null} a la acotada afecta cero filas, que el
+     * servicio traduce a un 404 sobre una fila que existe. Devuelve las filas
+     * afectadas.
+     */
+    int reactivateGlobal(Long id);
 
     /**
      * La fila del MISMO ambito que ocupa ese nombre, incluidas las DESHABILITADAS.
