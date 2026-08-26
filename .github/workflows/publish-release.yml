@@ -260,9 +260,13 @@ jobs:
           # por simetria con publish-dev-image.yml: que los dos caminos declaren la version
           # explicitamente evita que el dia que alguien mueva el orden de los steps la
           # imagen vuelva a mentir en silencio en uno solo de los dos.
+          # APT_SECURITY_REFRESH rompe a proposito el acierto de cache de la capa de apt.
+          # El Dockerfile explica por que un acierto ahi publica una imagen con paquetes
+          # viejos y el gate de escaneo de ECR acaba rechazando el despliegue.
           build-args: |
             JAR_FILE=build/docker/application.jar
             APP_VERSION=${{ steps.release.outputs.version }}
+            APT_SECURITY_REFRESH=${{ github.run_id }}
           # Scope propio, separado del de desarrollo. Compartiendo `backend-arm64` una
           # release y una publicacion de develop se pisaban las capas mutuamente: cada
           # una invalidaba el acierto de la otra y ninguna llegaba a amortizar el cache.
