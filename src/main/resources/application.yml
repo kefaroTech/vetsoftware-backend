@@ -220,6 +220,18 @@ vetsoftware:
     business-metrics:
       initial-delay-ms: ${BUSINESS_METRICS_INITIAL_DELAY_MS:10000}
       snapshot-refresh-ms: ${BUSINESS_METRICS_SNAPSHOT_REFRESH_MS:60000}
+    # Sonda de alcanzabilidad de la base (DatabaseAvailabilityProbe). El umbral y el
+    # intervalo se multiplican: 4 x 15 s = 60 s antes del ERROR, y la alerta pone
+    # encima su propio for: 2m. Subir el intervalo abarata la sonda y retrasa la
+    # deteccion en la misma proporcion; bajar el umbral a 1 devuelve el ruido que
+    # esta senal existe para quitar.
+    database-availability:
+      initial-delay-ms: ${DATABASE_PROBE_INITIAL_DELAY_MS:15000}
+      probe-interval-ms: ${DATABASE_PROBE_INTERVAL_MS:15000}
+      # Por debajo del connection-timeout del pool (3 s): la sonda no debe tardar
+      # mas que la peticion de usuario a la que representa.
+      validation-timeout-seconds: ${DATABASE_PROBE_VALIDATION_TIMEOUT_SECONDS:2}
+      failure-threshold: ${DATABASE_PROBE_FAILURE_THRESHOLD:4}
     actuator:
       authentication:
         enabled: ${ACTUATOR_AUTH_ENABLED:false}
