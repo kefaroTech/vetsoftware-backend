@@ -22,6 +22,7 @@ import com.vetsoftware.app.employee.domain.AdminEmployeeCannotBeDisabledExceptio
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.pdf.PdfRenderException;
 import com.vetsoftware.app.infrastructure.storage.S3StorageException;
+import com.vetsoftware.app.medicament.domain.MedicamentNameAlreadyExistsException;
 import com.vetsoftware.app.numberingresolution.domain.NumberingResolutionAlreadyActiveException;
 import com.vetsoftware.app.openaccount.domain.InvalidOpenAccountStatusTransitionException;
 import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
@@ -176,6 +177,23 @@ class GlobalExceptionHandlerUnitTest {
 
             assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
             assertThat(pd.getProperties()).containsEntry("code", "PRODUCT_NAME_ALREADY_EXISTS");
+        }
+
+        /**
+         * La guarda del service y el indice de la base emiten el MISMO errorCode a
+         * proposito: al front le da igual quien detecto el choque, y un codigo distinto
+         * le obligaria a escribir dos veces el mismo tratamiento. Este caso cierra el
+         * par con el {@code uq_medicaments_*} del if-chain de mas abajo.
+         */
+        @Test
+        @DisplayName("el catalogo clinico deriva su codigo igual: MEDICAMENT_NAME_ALREADY_EXISTS")
+        void el_catalogo_clinico_deriva_su_codigo_igual() {
+            ProblemDetail pd = handler.handleNameAlreadyExists(
+                    new MedicamentNameAlreadyExistsException("Amoxicilina"));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties()).containsEntry("code", "MEDICAMENT_NAME_ALREADY_EXISTS");
+            assertThat(pd.getDetail()).contains("Amoxicilina");
         }
 
         @Test
@@ -716,7 +734,41 @@ class GlobalExceptionHandlerUnitTest {
                     Arguments.of("employee_code", "EMPLOYEE_CODE_TAKEN"),
                     Arguments.of("uq_cash_session_employee_open",
                             "EMPLOYEE_CASH_SESSION_ALREADY_OPEN"),
-                    Arguments.of("uq_cash_session_open", "CASH_SESSION_ALREADY_OPEN"));
+                    Arguments.of("uq_cash_session_open", "CASH_SESSION_ALREADY_OPEN"),
+                    // Los siete catalogos clinicos de #559. Cada uno entra DOS veces a
+                    // proposito: el nombre definitivo (uq_<tabla>_owner_active_name, que
+                    // llega con los changesets 285/288) y el que hay hoy en la base, que
+                    // en seis de las siete tablas se llama literalmente `name` y el driver
+                    // reporta como `<tabla>.name`. Los dos tienen que salir por el MISMO
+                    // errorCode: si solo estuviera mapeado el nuevo, un rollback del
+                    // changeset devolveria el 409 generico en ingles justo cuando el
+                    // despliegue ya ha ido mal.
+                    Arguments.of("uq_vaccination_types_owner_active_name",
+                            "VACCINATION_TYPE_NAME_ALREADY_EXISTS"),
+                    Arguments.of("vaccination_types.name", "VACCINATION_TYPE_NAME_ALREADY_EXISTS"),
+                    Arguments.of("uq_surgery_types_owner_active_name",
+                            "SURGERY_TYPE_NAME_ALREADY_EXISTS"),
+                    Arguments.of("surgery_types.name", "SURGERY_TYPE_NAME_ALREADY_EXISTS"),
+                    Arguments.of("uq_laboratory_test_types_owner_active_name",
+                            "LABORATORY_TEST_TYPE_NAME_ALREADY_EXISTS"),
+                    Arguments.of("laboratory_test_types.name",
+                            "LABORATORY_TEST_TYPE_NAME_ALREADY_EXISTS"),
+                    Arguments.of("uq_diagnostic_imaging_types_owner_active_name",
+                            "DIAGNOSTIC_IMAGING_TYPE_NAME_ALREADY_EXISTS"),
+                    Arguments.of("diagnostic_imaging_types.name",
+                            "DIAGNOSTIC_IMAGING_TYPE_NAME_ALREADY_EXISTS"),
+                    // medicaments es la excepcion: su indice de hoy ya tiene nombre propio
+                    // desde la migracion 173, asi que el par es uq_medicaments_name (viejo)
+                    // / uq_medicaments_owner_active_name (nuevo), y NO `medicaments.name`.
+                    Arguments.of("uq_medicaments_owner_active_name",
+                            "MEDICAMENT_NAME_ALREADY_EXISTS"),
+                    Arguments.of("uq_medicaments_name", "MEDICAMENT_NAME_ALREADY_EXISTS"),
+                    Arguments.of("uq_consultation_types_owner_active_name",
+                            "CONSULTATION_TYPE_NAME_ALREADY_EXISTS"),
+                    Arguments.of("consultation_types.name",
+                            "CONSULTATION_TYPE_NAME_ALREADY_EXISTS"),
+                    Arguments.of("uq_spa_types_owner_active_name", "SPA_TYPE_NAME_ALREADY_EXISTS"),
+                    Arguments.of("spa_types.name", "SPA_TYPE_NAME_ALREADY_EXISTS"));
         }
 
         @ParameterizedTest(name = "causa \"{0}\" -> {1}")
@@ -728,6 +780,26 @@ class GlobalExceptionHandlerUnitTest {
 
             assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
             assertThat(pd.getProperties()).containsEntry("code", codigoEsperado);
+        }
+
+        /**
+         * El if-chain compara por {@code contains} sobre el mensaje CRUDO del driver,
+         * no sobre un nombre de constraint ya extraido. Alimentarlo con el nombre
+         * pelado —como hace el caso parametrizado— no demuestra que el mensaje real de
+         * MySQL, con su prefijo de tabla y su valor duplicado delante, tambien case.
+         * Este caso lo fija con el texto tal y como llega de Connector/J.
+         */
+        @Test
+        @DisplayName("el mensaje crudo de MySQL, con prefijo de tabla y valor duplicado, tambien casa")
+        void el_mensaje_crudo_de_mysql_tambien_casa() {
+            ProblemDetail pd = handler.handleDataIntegrity(new DataIntegrityViolationException(
+                    "Duplicate entry '900-Amoxicilina' for key 'medicaments.uq_medicaments_owner_active_name'"));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties()).containsEntry("code", "MEDICAMENT_NAME_ALREADY_EXISTS");
+            // El detail que sale al cliente es el de negocio, en español: el mensaje de
+            // MySQL arrastra el valor duplicado y jamas se publica.
+            assertThat(pd.getDetail()).doesNotContain("Duplicate entry").doesNotContain("900-");
         }
 
         @Test

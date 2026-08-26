@@ -103,21 +103,32 @@ class DiagnosticImagingPersistenceIT extends AbstractDataJpaTest {
         SchemaSeed.seed(entityManager);
         company = companyJpaRepository.getReferenceById(COMPANY);
 
+        // Nombres sinteticos con sufijo de rodaja (-DI): los changesets 290-293
+        // siembran estos catalogos como filas globales y sus indices unicos
+        // (uq_species_owner_active_name, uq_breeds_specie_owner_active_name,
+        // uq_animal_colors_specie_owner_active_name,
+        // uq_consultation_types_owner_active_name)
+        // comparan bajo utf8mb4_0900_ai_ci, sin acentos ni caja. `general` y
+        // `company_id` no los mapean estas entidades: el DEFAULT TRUE del changeset
+        // 288 deja la fila como global bien formada.
         SpecieJpaEntity specie = newInstance(SpecieJpaEntity.class);
-        setField(specie, "name", "Perro");
+        setField(specie, "name", "Perro-DI");
         setField(specie, "createdDate", LocalDateTime.of(2026, 1, 1, 0, 0));
+        setField(specie, "enabled", true);
         specie = specieJpaRepository.save(specie);
 
         BreedJpaEntity breed = newInstance(BreedJpaEntity.class);
-        setField(breed, "name", "Labrador");
+        setField(breed, "name", "Labrador-DI");
         setField(breed, "specie", specie);
         setField(breed, "createdDate", LocalDateTime.of(2026, 1, 1, 0, 0));
+        setField(breed, "enabled", true);
         breed = breedJpaRepository.save(breed);
 
         AnimalColorJpaEntity color = newInstance(AnimalColorJpaEntity.class);
-        setField(color, "name", "Negro");
+        setField(color, "name", "Negro-DI");
         setField(color, "specie", specie);
         setField(color, "createdDate", LocalDateTime.of(2026, 1, 1, 0, 0));
+        setField(color, "enabled", true);
         color = animalColorJpaRepository.save(color);
 
         OwnerJpaEntity owner = newInstance(OwnerJpaEntity.class);
@@ -152,9 +163,10 @@ class DiagnosticImagingPersistenceIT extends AbstractDataJpaTest {
         animal = animalJpaRepository.save(animal);
 
         ConsultationTypeJpaEntity consultationType = newInstance(ConsultationTypeJpaEntity.class);
-        setField(consultationType, "name", "Consulta general");
+        setField(consultationType, "name", "Consulta general-DI");
         setField(consultationType, "description", "Consulta general de rutina");
         setField(consultationType, "createdDate", LocalDateTime.of(2026, 1, 1, 0, 0));
+        setField(consultationType, "enabled", true);
         consultationType = consultationTypeJpaRepository.save(consultationType);
 
         consultation = newInstance(ConsultationJpaEntity.class);
@@ -168,10 +180,13 @@ class DiagnosticImagingPersistenceIT extends AbstractDataJpaTest {
         consultation = consultationJpaRepository.save(consultation);
 
         diagnosticImagingType = newInstance(DiagnosticImagingTypeJpaEntity.class);
-        setField(diagnosticImagingType, "name", "Radiografia " + DIAGNOSTIC_IMAGING_TYPE_ID);
+        // Fila GLOBAL: `general = true` y `company` ausente, el unico lado que admite
+        // ck_diagnostic_imaging_types_owner_xor (changeset 286) sin company_id.
+        setField(diagnosticImagingType, "name", "Radiografia-DI");
         setField(diagnosticImagingType, "description", "Radiografia simple");
         setField(diagnosticImagingType, "general", true);
         setField(diagnosticImagingType, "createdDate", LocalDateTime.of(2026, 1, 1, 0, 0));
+        setField(diagnosticImagingType, "enabled", true);
         diagnosticImagingType = diagnosticImagingTypeJpaRepository.save(diagnosticImagingType);
 
         entityManager.flush();

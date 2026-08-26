@@ -69,13 +69,17 @@ class ClinicalEventPersistenceIT extends AbstractDataJpaTest {
     void sembrarLaCadenaCompleta() {
         SchemaSeed.seed(entityManager);
         insert("""
-                INSERT INTO species (id, name) VALUES (%d, 'Perro')
+                INSERT INTO species (id, name, general, created_date, enabled, version)
+                VALUES (%d, 'Perro-CE', TRUE, '2026-01-01 08:00:00', TRUE, 0)
                 """.formatted(SPECIE_ID));
         insert("""
-                INSERT INTO breeds (id, name, specie_id) VALUES (%d, 'Labrador', %d)
+                INSERT INTO breeds (id, name, specie_id, general, created_date, enabled, version)
+                VALUES (%d, 'Labrador-CE', %d, TRUE, '2026-01-01 08:00:00', TRUE, 0)
                 """.formatted(BREED_ID, SPECIE_ID));
         insert("""
-                INSERT INTO animal_colors (id, name, specie_id) VALUES (%d, 'Negro', %d)
+                INSERT INTO animal_colors (id, name, specie_id, general, created_date, enabled,
+                                           version)
+                VALUES (%d, 'Negro-CE', %d, TRUE, '2026-01-01 08:00:00', TRUE, 0)
                 """.formatted(COLOR_ID, SPECIE_ID));
         insert("""
                 INSERT INTO owners (id, name, document, document_type, person_type, city_id,
@@ -97,12 +101,20 @@ class ClinicalEventPersistenceIT extends AbstractDataJpaTest {
                         'STERILIZED', %d, %d)
                 """.formatted(OTRO_ANIMAL_ID, SPECIE_ID, BREED_ID, OWNER_ID, COLOR_ID, COMPANY));
         insert("""
-                INSERT INTO consultation_types (id, name, description)
-                VALUES (%d, 'Control General', 'Consulta de control')
+                INSERT INTO consultation_types (id, name, description, general, created_date,
+                                                enabled, version)
+                VALUES (%d, 'Control General-CE', 'Consulta de control', TRUE,
+                        '2026-01-01 08:00:00', TRUE, 0)
                 """.formatted(CONSULTATION_TYPE_ID));
+        // Fila GLOBAL: `general = TRUE` explicito y `company_id` ausente. El default de
+        // surgery_types.general es FALSE (changeset 057), asi que omitirlo dejaba
+        // general = FALSE con company_id NULL — justo lo que prohibe
+        // ck_surgery_types_owner_xor (changeset 286).
         insert("""
-                INSERT INTO surgery_types (id, name, description)
-                VALUES (%d, 'Esterilización', 'Cirugía de esterilización')
+                INSERT INTO surgery_types (id, name, description, general, created_date, enabled,
+                                           version)
+                VALUES (%d, 'Esterilización-CE', 'Cirugía de esterilización', TRUE,
+                        '2026-01-01 08:00:00', TRUE, 0)
                 """.formatted(SURGERY_TYPE_ID));
 
         insert("""
@@ -158,7 +170,7 @@ class ClinicalEventPersistenceIT extends AbstractDataJpaTest {
             assertThat(historia).filteredOn(e -> e.sourceId().equals(SURGERY_1)).singleElement()
                     .satisfies(e -> {
                         assertThat(e.eventType()).isEqualTo(ClinicalEventType.SURGERY);
-                        assertThat(e.summary()).isEqualTo("Esterilización");
+                        assertThat(e.summary()).isEqualTo("Esterilización-CE");
                         assertThat(e.consultationId()).isEqualTo(CONSULTATION_1);
                     });
         }

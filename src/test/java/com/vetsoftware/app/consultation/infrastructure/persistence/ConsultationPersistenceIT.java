@@ -103,7 +103,7 @@ class ConsultationPersistenceIT extends AbstractDataJpaTest {
     private void catalogoDeAnimal() {
         entityManager.createNativeQuery("""
                 INSERT IGNORE INTO species (id, name, created_date, enabled)
-                VALUES (:id, 'Canino', '2026-01-01 08:00:00', true)
+                VALUES (:id, 'Canino-CO', '2026-01-01 08:00:00', true)
                 """).setParameter("id", SPECIE).executeUpdate();
         entityManager.createNativeQuery("""
                 INSERT IGNORE INTO breeds (id, name, specie_id, created_date, enabled)

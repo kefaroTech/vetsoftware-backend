@@ -59,8 +59,14 @@ class VaccinationPersistenceIT extends AbstractDataJpaTest {
     private static final AnimalRef MICHI = new AnimalRef(OTRO_ANIMAL, "Michi", "A-002");
     private static final ConsultationRef CONSULTA = new ConsultationRef(CONSULTATION,
             LocalDate.of(2026, 2, 20));
+    /**
+     * Tipo PROPIO de la empresa: {@code general = false} exige {@code company_id}
+     * con valor ({@code ck_vaccination_types_owner_xor}, changeset 286). El sufijo
+     * de rodaja lo mantiene fuera del alcance de la semilla del changeset 294, que
+     * se compara sin acentos ni caja.
+     */
     private static final VaccinationTypeRef RABIA = new VaccinationTypeRef(VACCINATION_TYPE,
-            "Rabia");
+            "Rabia-VA");
     private static final CompanyRef CLINICA = new CompanyRef(EMPRESA, "Veterinaria de prueba",
             "900123456");
     private static final CompanyRef CLINICA_AJENA = new CompanyRef(OTRA_EMPRESA,
@@ -83,7 +89,7 @@ class VaccinationPersistenceIT extends AbstractDataJpaTest {
         animal(ANIMAL, "Firulais", "A-001");
         animal(OTRO_ANIMAL, "Michi", "A-002");
         consultaAsociada();
-        tipoDeVacuna(VACCINATION_TYPE, "Rabia");
+        tipoDeVacuna(VACCINATION_TYPE, "Rabia-VA");
         entityManager.flush();
 
         // Guardia de la siembra: INSERT IGNORE degrada la FK rota a warning, asi que
@@ -114,16 +120,18 @@ class VaccinationPersistenceIT extends AbstractDataJpaTest {
 
     private void catalogoDeAnimal() {
         entityManager.createNativeQuery("""
-                INSERT IGNORE INTO species (id, name, created_date, enabled)
-                VALUES (:id, 'Canino', '2026-01-01 08:00:00', true)
+                INSERT IGNORE INTO species (id, name, general, created_date, enabled, version)
+                VALUES (:id, 'Canino-VA', true, '2026-01-01 08:00:00', true, 0)
                 """).setParameter("id", SPECIE).executeUpdate();
         entityManager.createNativeQuery("""
-                INSERT IGNORE INTO breeds (id, name, specie_id, created_date, enabled)
-                VALUES (:id, 'Criollo', :specie, '2026-01-01 08:00:00', true)
+                INSERT IGNORE INTO breeds (id, name, specie_id, general, created_date, enabled,
+                                           version)
+                VALUES (:id, 'Criollo-VA', :specie, true, '2026-01-01 08:00:00', true, 0)
                 """).setParameter("id", BREED).setParameter("specie", SPECIE).executeUpdate();
         entityManager.createNativeQuery("""
-                INSERT IGNORE INTO animal_colors (id, name, specie_id, created_date, enabled)
-                VALUES (:id, 'Negro', :specie, '2026-01-01 08:00:00', true)
+                INSERT IGNORE INTO animal_colors (id, name, specie_id, general, created_date,
+                                                  enabled, version)
+                VALUES (:id, 'Negro-VA', :specie, true, '2026-01-01 08:00:00', true, 0)
                 """).setParameter("id", COLOR).setParameter("specie", SPECIE).executeUpdate();
     }
 
@@ -142,8 +150,10 @@ class VaccinationPersistenceIT extends AbstractDataJpaTest {
 
     private void consultaAsociada() {
         entityManager.createNativeQuery("""
-                INSERT IGNORE INTO consultation_types (id, name, description, created_date)
-                VALUES (:id, 'Control', 'Consulta de control', '2026-01-01 08:00:00')
+                INSERT IGNORE INTO consultation_types (id, name, description, general,
+                                                       created_date, enabled, version)
+                VALUES (:id, 'Control-VA', 'Consulta de control', true, '2026-01-01 08:00:00',
+                        true, 0)
                 """).setParameter("id", CONSULTATION_TYPE).executeUpdate();
         entityManager.createNativeQuery("""
                 INSERT IGNORE INTO consultations (id, date, consultation_type_id, anamnesis,
@@ -155,12 +165,20 @@ class VaccinationPersistenceIT extends AbstractDataJpaTest {
                 .setParameter("animal", ANIMAL).setParameter("empresa", EMPRESA).executeUpdate();
     }
 
+    /**
+     * Fila PROPIA de la empresa: {@code general = false} obliga a llevar
+     * {@code company_id}. Sin el, {@code ck_vaccination_types_owner_xor} rechaza el
+     * INSERT, el {@code IGNORE} degrada el rechazo a warning y la fila no entra: el
+     * fallo aparece mucho despues, contando cero.
+     */
     private void tipoDeVacuna(Long id, String nombre) {
         entityManager.createNativeQuery("""
-                INSERT IGNORE INTO vaccination_types (id, name, description, general, created_date,
-                                                       enabled)
-                VALUES (:id, :nombre, 'Vacuna de prueba', false, '2026-01-01 08:00:00', true)
-                """).setParameter("id", id).setParameter("nombre", nombre).executeUpdate();
+                INSERT IGNORE INTO vaccination_types (id, name, description, general, company_id,
+                                                      created_date, enabled, version)
+                VALUES (:id, :nombre, 'Vacuna de prueba', false, :empresa,
+                        '2026-01-01 08:00:00', true, 0)
+                """).setParameter("id", id).setParameter("nombre", nombre)
+                .setParameter("empresa", EMPRESA).executeUpdate();
     }
 
     private Vaccination crear(AnimalRef animal, ConsultationRef consultation, CompanyRef company,
