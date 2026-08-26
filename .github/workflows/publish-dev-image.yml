@@ -274,9 +274,13 @@ jobs:
           # que dice su tag no pueden divergir, porque salen del mismo output del step de
           # bump. El jar viene del job `verify`, anterior al bump, y lleva horneada la
           # version anterior; esta variable la pisa en runtime sin recompilar nada.
+          # APT_SECURITY_REFRESH rompe a proposito el acierto de cache de la capa de apt.
+          # El Dockerfile explica por que un acierto ahi publica una imagen con paquetes
+          # viejos y el gate de escaneo de ECR acaba rechazando el despliegue.
           build-args: |
             JAR_FILE=build/docker/application.jar
             APP_VERSION=${{ steps.version.outputs.version }}
+            APT_SECURITY_REFRESH=${{ github.run_id }}
           # Scope propio. Antes dev y release compartian `backend-arm64`, asi que una
           # release y una publicacion de develop se pisaban las capas mutuamente y cada
           # una invalidaba el acierto de la otra. Los PR de `ci.yml` leen este mismo

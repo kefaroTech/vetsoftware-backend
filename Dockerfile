@@ -53,7 +53,34 @@ ARG APP_GID=10001
 # comprueban antes de construir. Por eso `.dockerignore` tampoco admite otra cosa.
 ARG JAR_FILE=build/docker/application.jar
 
-RUN apt-get update \
+# Dos cosas que parecen redundantes y no lo son. Quitar cualquiera de las dos devuelve la
+# imagen al estado con el que el gate de escaneo de ECR bloqueo el despliegue de dev el
+# 26-08-2026.
+#
+# 1. `apt-get upgrade`. El `install` de aqui abajo solo trae los cuatro paquetes nombrados;
+#    a `libssl3t64` -preinstalado en la base, y con una version que ya satisface la
+#    dependencia de `curl`- apt no lo toca. Asi es como la imagen se quedo en openssl
+#    3.0.13-0ubuntu3.12 y el escaneo la rechazo con seis HIGH: CVE-2026-63072,
+#    CVE-2026-63076 y CVE-2026-54874, cada uno contado en `openssl` y en `libssl3t64`,
+#    cuando Ubuntu ya habia publicado la 3.0.13-0ubuntu3.15 en USN-8678-1. Fijar otro
+#    digest de `eclipse-temurin` no lo arregla: la base se reconstruye con su propia
+#    cadencia y aquel dia la mas reciente era anterior a la USN. Generico y no
+#    `--only-upgrade libssl3t64 openssl` porque el gate bloquea con CUALQUIER HIGH en
+#    cualquier paquete: lo puntual solo aplaza la misma rotura a la siguiente USN.
+#
+# 2. `APT_SECURITY_REFRESH`. Sin el, ese `upgrade` se ejecuta una sola vez y su capa se
+#    sirve del cache `type=gha` en todas las publicaciones siguientes, congelando los
+#    paquetes en la fecha del primer build. No es teorico: la imagen del 26-08-2026 se
+#    publico con curl 8.5.0-2ubuntu10.12 aunque la 10.13 -que cierra CVE-2026-8932- ya
+#    llevaba seis dias en el archivo, porque esta misma capa venia del cache. Los dos
+#    workflows de publicacion le pasan el `run_id`, distinto en cada ejecucion, y asi la
+#    capa se reconstruye siempre. Lo que se paga son los segundos de apt; el `COPY` del
+#    jar que viene detras cambia en cada publicacion de todos modos.
+ARG APT_SECURITY_REFRESH=cached
+
+RUN echo "Refresco de seguridad: ${APT_SECURITY_REFRESH}" \
+    && apt-get update \
+    && apt-get upgrade --yes \
     && apt-get install --no-install-recommends --yes ca-certificates curl fontconfig fonts-noto-core \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid "${APP_GID}" vetsoftware \
