@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de docs/db/semilla-consulta-cirugia-spa.md §2. `consultation_types` ganó company_id +
+         general en 288_add_company_scope_to_global_catalogs (issues #571/#566): hasta ahora era un
+         catalogo global puro (032_create_consultation_types.xml) y el tenant solo podia leerlo
+         (ListConsultationTypesUseCase.java); ahora admite ademas filas propias de empresa. Toda fila
+         de esta semilla es de plataforma: company_id = NULL, general = TRUE explicito. 27 filas,
+         `Otro motivo de consulta` de escape al final. INSERT ... SELECT ... WHERE NOT EXISTS por
+         nombre, nunca INSERT IGNORE (prohibido por CLAUDE.md: convierte el error en aviso y la fila
+         no entra sin que nadie se entere). -->
+    <changeSet id="293_check_consultation_types_schema" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="consultation_types" columnName="general"/>
+        </preConditions>
+        <sql>DO 0;</sql>
+    </changeSet>
+
+    <changeSet id="293_seed_consultation_types_catalog" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM consultation_types WHERE general = TRUE</sqlCheck>
+        </preConditions>
+
+        <sql>
+            INSERT INTO consultation_types (name, description, company_id, general, enabled, version, created_date)
+            SELECT seed.name, seed.description, NULL, TRUE, TRUE, 0, CURRENT_TIMESTAMP
+              FROM (
+                SELECT 'Consulta general' AS name, 'Primera atención clínica del paciente por un motivo nuevo: anamnesis, examen físico completo, orientación diagnóstica y plan de manejo inicial. Es la consulta de entrada cuando el caso no es un control ni una urgencia.' AS description
+                UNION ALL SELECT 'Control médico', 'Consulta de seguimiento de un paciente ya valorado: revisión de la evolución, lectura de resultados pendientes, ajuste del tratamiento y decisión de continuidad o alta.'
+                UNION ALL SELECT 'Control posquirúrgico', 'Revisión del paciente operado: estado de la herida, retiro de puntos, control del dolor y del vendaje, y autorización del alta quirúrgica.'
+                UNION ALL SELECT 'Consulta de urgencias', 'Atención de un paciente cuyo estado exige valoración inmediata. Incluye la clasificación por triaje al ingreso y la estabilización antes de cualquier otro procedimiento.'
+                UNION ALL SELECT 'Consulta prioritaria', 'Atención sin cita previa de un caso que no compromete la vida pero no admite esperar a la agenda programada del día siguiente.'
+                UNION ALL SELECT 'Valoración prequirúrgica', 'Evaluación del riesgo anestésico y quirúrgico antes de un procedimiento programado: examen físico dirigido, clasificación del estado físico, revisión de los exámenes prequirúrgicos y consentimiento informado.'
+                UNION ALL SELECT 'Consulta de medicina preventiva', 'Chequeo del paciente sano según su etapa de vida: examen físico, plan de vacunación y desparasitación, control de peso y condición corporal, y actualización del carné.'
+                UNION ALL SELECT 'Consulta pediátrica', 'Valoración del cachorro o gatito: desarrollo, plan sanitario inicial, pauta de alimentación, socialización y detección de defectos congénitos.'
+                UNION ALL SELECT 'Consulta geriátrica', 'Valoración del paciente en su última etapa de vida, recomendada al menos dos veces al año: detección temprana de enfermedad crónica, evaluación del dolor, la movilidad, el deterioro cognitivo y la calidad de vida.'
+                UNION ALL SELECT 'Consulta de dermatología', 'Consulta especializada en piel, manto y oído externo: prurito, alopecia, otitis, alergias, enfermedad autoinmune y pruebas dermatológicas complementarias.'
+                UNION ALL SELECT 'Consulta de cardiología', 'Consulta especializada del aparato cardiovascular: soplos, arritmias, insuficiencia cardiaca, valoración del riesgo cardiaco previo a cirugía y seguimiento ecocardiográfico.'
+                UNION ALL SELECT 'Consulta de oftalmología', 'Consulta especializada del ojo y sus anexos: úlceras corneales, glaucoma, cataratas, uveítis y alteraciones palpebrales, con las pruebas oftalmológicas específicas.'
+                UNION ALL SELECT 'Consulta de ortopedia y traumatología', 'Consulta especializada del aparato locomotor: cojeras, fracturas, luxaciones, displasias, ruptura de ligamento cruzado craneal y planificación de la cirugía ortopédica.'
+                UNION ALL SELECT 'Consulta de neurología', 'Consulta especializada del sistema nervioso: convulsiones, paresias y parálisis, enfermedad discal, síndrome vestibular y alteraciones de conducta de origen orgánico.'
+                UNION ALL SELECT 'Consulta de oncología', 'Consulta especializada en tumores: estadificación, plan terapéutico, seguimiento del paciente oncológico y control de la quimioterapia.'
+                UNION ALL SELECT 'Consulta de medicina interna', 'Consulta especializada en enfermedad sistémica: endocrinología, aparato digestivo, riñón, hígado y enfermedades infecciosas, con enfoque en el caso complejo o sin diagnóstico.'
+                UNION ALL SELECT 'Consulta de medicina felina', 'Consulta especializada en el gato, con manejo de bajo estrés y enfoque en la patología propia de la especie: enfermedad renal crónica, hipertiroidismo y enfermedad del tracto urinario inferior.'
+                UNION ALL SELECT 'Consulta de reproducción', 'Consulta especializada en reproducción: control del ciclo, citología vaginal, planificación de la monta o la inseminación, seguimiento de la gestación y valoración del reproductor.'
+                UNION ALL SELECT 'Consulta de etología', 'Consulta de medicina del comportamiento: prevención, diagnóstico y tratamiento de problemas de conducta como agresividad, ansiedad por separación, miedos y eliminación inadecuada.'
+                UNION ALL SELECT 'Consulta de nutrición', 'Valoración nutricional del paciente y recomendación dietética específica: condición corporal, masa muscular, cálculo de requerimientos y dieta terapéutica para una enfermedad concreta.'
+                UNION ALL SELECT 'Consulta de rehabilitación y fisioterapia', 'Valoración y plan de rehabilitación física: recuperación posquirúrgica u ortopédica, manejo del dolor crónico y control del peso y del acondicionamiento.'
+                UNION ALL SELECT 'Consulta de paciente remitido', 'Atención de un paciente enviado por otro médico veterinario para valoración especializada, segunda opinión o procedimiento no disponible en el centro remitente.'
+                UNION ALL SELECT 'Certificado de salud y viaje', 'Examen clínico para expedir el certificado de salud exigido para el viaje del animal, con verificación de vacunación, desparasitación e identificación por microchip previa al trámite sanitario ante el ICA.'
+                UNION ALL SELECT 'Eutanasia y acompañamiento', 'Consulta de decisión y realización de la eutanasia: valoración de la calidad de vida, consentimiento informado, sedación previa, procedimiento y acompañamiento a la familia.'
+                UNION ALL SELECT 'Teleconsulta', 'Atención clínica prestada a distancia por medios de telecomunicación, sobre un paciente con relación veterinario-cliente-paciente ya establecida. No sustituye al examen físico cuando este es necesario.'
+                UNION ALL SELECT 'Consulta a domicilio', 'Atención clínica prestada en el domicilio del propietario, con el alcance limitado por el equipo disponible fuera del centro.'
+                UNION ALL SELECT 'Otro motivo de consulta', 'Motivo de consulta no contemplado en el catálogo. El detalle se registra en el texto de la consulta. Su uso frecuente es la señal de que falta un tipo por sembrar.'
+              ) AS seed
+             WHERE NOT EXISTS (SELECT 1 FROM consultation_types ct
+                                WHERE ct.name = seed.name AND ct.general = TRUE);
+        </sql>
+
+        <rollback>
+            <sql>
+                DELETE FROM consultation_types
+                 WHERE general = TRUE AND company_id IS NULL
+                   AND name IN ('Consulta general','Control médico','Control posquirúrgico',
+                    'Consulta de urgencias','Consulta prioritaria','Valoración prequirúrgica',
+                    'Consulta de medicina preventiva','Consulta pediátrica','Consulta geriátrica',
+                    'Consulta de dermatología','Consulta de cardiología','Consulta de oftalmología',
+                    'Consulta de ortopedia y traumatología','Consulta de neurología',
+                    'Consulta de oncología','Consulta de medicina interna','Consulta de medicina felina',
+                    'Consulta de reproducción','Consulta de etología','Consulta de nutrición',
+                    'Consulta de rehabilitación y fisioterapia','Consulta de paciente remitido',
+                    'Certificado de salud y viaje','Eutanasia y acompañamiento','Teleconsulta',
+                    'Consulta a domicilio','Otro motivo de consulta')
+                   AND NOT EXISTS (SELECT 1 FROM consultations c
+                                    WHERE c.consultation_type_id = consultation_types.id);
+            </sql>
+        </rollback>
+    </changeSet>
+    <!-- Verificacion de RESULTADO, barata y sin dependencia de JOIN por nombre (no aplica aqui, es
+         una tabla plana): confirma que el INSERT de arriba dejo las 27 filas esperadas. -->
+    <changeSet id="293_seed_consultation_types_verify_count" author="orlando">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="27">SELECT COUNT(*) FROM consultation_types WHERE general = TRUE AND enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>DO 0;</sql>
+    </changeSet>
+
+</databaseChangeLog>

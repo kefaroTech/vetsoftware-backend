@@ -61,4 +61,27 @@ public class JpaLaboratoryTestTypeRepository implements LaboratoryTestTypeReposi
     public void delete(Long id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public Optional<LaboratoryTestType> findByNameAndCompanyIdIncludingDisabled(String name,
+            Long companyId) {
+        return (companyId == null
+                ? jpaRepository.findGlobalByNameIncludingDisabled(name)
+                : jpaRepository.findByNameAndCompanyIncludingDisabled(name, companyId))
+                .map(mapper::toDomain);
+    }
+
+    @Override
+    public boolean existsActiveByNameAndCompanyIdExcludingId(String name, Long companyId, Long id) {
+        return companyId == null
+                ? jpaRepository.existsByNameAndCompanyIsNullAndIdNot(name, id)
+                : jpaRepository.existsByNameAndCompany_IdAndIdNot(name, companyId, id);
+    }
+
+    @Override
+    public int reactivateWithDetails(Long id, Long companyId, String name, String description) {
+        return companyId == null
+                ? jpaRepository.reactivateWithDetails(id, name, description)
+                : jpaRepository.reactivateWithDetails(id, companyId, name, description);
+    }
 }

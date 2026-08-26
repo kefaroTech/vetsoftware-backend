@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de docs/db/semilla-laboratorio-e-imagen.md §5. `diagnostic_imaging_types`
+         (053_create_diagnostic_imaging_types.xml + 058_alter_diagnostic_imaging_types_add_company_
+         and_general.xml) gano company_id + general con DEFAULT FALSE: general se pone SIEMPRE
+         explicito (issue #560). 21 filas: la fila es la modalidad + variante tecnica, nunca la
+         region anatomica, que ya es `diagnostic_imagings.study_type` de texto libre
+         (054_create_diagnostic_imagings.xml). -->
+    <changeSet id="297_seed_diagnostic_imaging_types_catalog" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM diagnostic_imaging_types WHERE general = TRUE
+            </sqlCheck>
+        </preConditions>
+
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Radiografía digital simple"/>
+            <column name="description" value="Estudio radiográfico sin medio de contraste, en las proyecciones que indique el caso. Es la imagen de primera línea en trauma, tórax, abdomen agudo y patología osteoarticular."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Radiografía con medio de contraste"/>
+            <column name="description" value="Estudio radiográfico con contraste positivo o negativo para valorar tránsito digestivo, vías urinarias u otras estructuras huecas que no se distinguen en la radiografía simple."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Mielografía"/>
+            <column name="description" value="Radiografía de la columna tras inyectar medio de contraste en el espacio subaracnoideo, para localizar una compresión medular cuando no se dispone de resonancia magnética."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Radiografía dental intraoral"/>
+            <column name="description" value="Radiografía con sensor o placa dentro de la cavidad oral, indispensable para valorar raíces, hueso alveolar y reabsorción dentaria, que la radiografía extraoral no muestra."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Radiografía de displasia de cadera, protocolo OFA"/>
+            <column name="description" value="Proyección ventrodorsal con extremidades extendidas según el protocolo de la Orthopedic Foundation for Animals, con evaluación por panel y edad mínima de 24 meses."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Radiografía de displasia de cadera, protocolo PennHIP"/>
+            <column name="description" value="Serie de tres radiografías —distracción, compresión y ventrodorsal extendida— que cuantifica la laxitud articular mediante el índice de distracción. Exige veterinario certificado y anestesia general."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Radiografía de displasia de cadera, protocolo FCI"/>
+            <column name="description" value="Proyección ventrodorsal con extremidades extendidas según el protocolo de la Fédération Cynologique Internationale, con calificación de A a E y edad mínima de 12 a 18 meses según la raza."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Radiografía de displasia de codo"/>
+            <column name="description" value="Serie radiográfica del codo, con proyección medio-lateral flexionada, para detectar los procesos que integran la displasia de codo y la artrosis secundaria."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Ecografía abdominal completa"/>
+            <column name="description" value="Exploración ultrasonográfica sistemática de hígado, vías biliares, bazo, riñones, vejiga, tracto digestivo, ganglios y aparato reproductor. Complementa a la radiografía y no la sustituye."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Ecocardiografía con Doppler"/>
+            <column name="description" value="Estudio ultrasonográfico del corazón con medición de cámaras, función sistólica y evaluación de flujos por Doppler. Es el estándar de referencia para estadificar la enfermedad valvular mitral y la cardiomiopatía felina."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Ecografía de gestación y seguimiento fetal"/>
+            <column name="description" value="Confirma la gestación desde etapas tempranas, evalúa la viabilidad y la frecuencia cardíaca fetal y detecta sufrimiento fetal. No es el método fiable para contar fetos."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Ecografía ocular"/>
+            <column name="description" value="Exploración ultrasonográfica del globo ocular y la órbita, indicada cuando la opacidad de medios impide la exploración oftalmoscópica directa, ante desprendimiento de retina o masa retrobulbar."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Ecografía musculoesquelética y de tejidos blandos"/>
+            <column name="description" value="Evaluación de tendones, músculos, articulaciones y masas superficiales, y valoración dinámica en tiempo real que la radiografía no permite."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Ecografía FAST abdominal y torácica"/>
+            <column name="description" value="Protocolo ecográfico abreviado en urgencias para detectar líquido libre abdominal, pleural o pericárdico y neumotórax en el paciente politraumatizado o inestable."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Punción o biopsia guiada por ecografía"/>
+            <column name="description" value="Toma de muestra citológica o histológica de un órgano o masa con guía ecográfica en tiempo real, lo que reduce el riesgo de lesionar estructuras vecinas."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Tomografía computarizada simple"/>
+            <column name="description" value="Estudio tomográfico sin contraste, con reconstrucción multiplanar. Es la modalidad de elección en trauma craneal, patología nasal, oído medio, tórax y planificación quirúrgica ortopédica."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Tomografía computarizada con medio de contraste"/>
+            <column name="description" value="Estudio tomográfico con contraste intravenoso para caracterizar masas, valorar vascularización, estadificar tumores y estudiar anomalías vasculares como la derivación portosistémica."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Resonancia magnética"/>
+            <column name="description" value="Estudio de alta resolución del tejido blando, de elección en enfermedad del sistema nervioso central, médula espinal, discopatías y patología de tejidos blandos que la tomografía no resuelve."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Fluoroscopia"/>
+            <column name="description" value="Radiografía dinámica en tiempo real, indicada para colapso traqueal, trastornos de la deglución, estudios de tránsito y procedimientos intervencionistas guiados."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Endoscopia digestiva alta"/>
+            <column name="description" value="Exploración del esófago, estómago y duodeno con endoscopio flexible, con toma de biopsias y extracción de cuerpos extraños sin cirugía."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="diagnostic_imaging_types">
+            <column name="name" value="Colonoscopia"/>
+            <column name="description" value="Exploración del colon y el íleon distal con endoscopio flexible y toma de biopsias, indicada en diarrea crónica de intestino grueso y hematoquecia."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+
+        <rollback>
+            <sql>
+                DELETE FROM diagnostic_imaging_types
+                 WHERE general = TRUE AND company_id IS NULL
+                   AND name IN ('Radiografía digital simple','Radiografía con medio de contraste','Mielografía',
+                     'Radiografía dental intraoral','Radiografía de displasia de cadera, protocolo OFA',
+                     'Radiografía de displasia de cadera, protocolo PennHIP',
+                     'Radiografía de displasia de cadera, protocolo FCI','Radiografía de displasia de codo',
+                     'Ecografía abdominal completa','Ecocardiografía con Doppler',
+                     'Ecografía de gestación y seguimiento fetal','Ecografía ocular',
+                     'Ecografía musculoesquelética y de tejidos blandos','Ecografía FAST abdominal y torácica',
+                     'Punción o biopsia guiada por ecografía','Tomografía computarizada simple',
+                     'Tomografía computarizada con medio de contraste','Resonancia magnética','Fluoroscopia',
+                     'Endoscopia digestiva alta','Colonoscopia')
+                   AND NOT EXISTS (SELECT 1 FROM diagnostic_imagings di
+                                    WHERE di.diagnostic_imaging_type_id = diagnostic_imaging_types.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

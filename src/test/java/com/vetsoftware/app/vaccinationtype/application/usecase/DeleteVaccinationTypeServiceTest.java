@@ -53,8 +53,8 @@ class DeleteVaccinationTypeServiceTest {
         }
 
         @Test
-        @DisplayName("sin empresa (SYSTEM) la lectura previa no se acota y alcanza a las generales")
-        void sin_empresa_la_lectura_no_se_acota() {
+        @DisplayName("sin empresa (SYSTEM) la lectura previa alcanza el catalogo de plataforma")
+        void sin_empresa_la_lectura_alcanza_el_catalogo_de_plataforma() {
             when(repository.findById(VaccinationTypeMother.TYPE_ID))
                     .thenReturn(Optional.of(VaccinationTypeMother.general()));
             when(vaccinationChildrenQueryPort
@@ -119,6 +119,28 @@ class DeleteVaccinationTypeServiceTest {
                     VaccinationTypeMother.COMPANY_ID))
                     .isInstanceOf(VaccinationTypeNotFoundException.class);
 
+            verifyNoInteractions(vaccinationChildrenQueryPort);
+            verify(repository, never()).delete(any());
+        }
+
+        @Test
+        @DisplayName("el camino SYSTEM no alcanza la fila PRIVADA de una empresa: 404 y no borra")
+        void el_camino_system_no_alcanza_la_fila_privada() {
+            // Este camino era alcanzable desde ANTES de #565: el delete del controller
+            // ya usaba currentCompanyIdOrNull(). Sin el .filter(VaccinationType::isGeneral)
+            // un DELETE de plataforma con el id de una fila PRIVADA la daba de baja: 204,
+            // sin error, y la clinica dejaba de verla por el @SQLRestriction. Mas
+            // silencioso que la expropiacion del update, donde la fila al menos reaparecia
+            // en el catalogo global.
+            when(repository.findById(VaccinationTypeMother.TYPE_ID))
+                    .thenReturn(Optional.of(VaccinationTypeMother.propia()));
+
+            assertThatThrownBy(() -> service.execute(VaccinationTypeMother.TYPE_ID, null))
+                    .isInstanceOf(VaccinationTypeNotFoundException.class);
+
+            // La barrera actua ANTES de mirar hijos activos: si no, un tipo privado sin
+            // vacunas colgando saldria por el 404 igualmente, pero uno CON hijos daria un
+            // 409 que revela que la fila existe y que esta en uso.
             verifyNoInteractions(vaccinationChildrenQueryPort);
             verify(repository, never()).delete(any());
         }

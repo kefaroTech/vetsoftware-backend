@@ -37,4 +37,37 @@ public interface MedicamentRepository {
     void delete(Long id);
 
     int reactivate(Long id, Long companyId);
+
+    /**
+     * La fila del MISMO ambito que ocupa ese nombre, incluidas las DESHABILITADAS.
+     * El ambito es la empresa cuando llega {@code companyId} y el vademecum de
+     * plataforma cuando llega {@code null}.
+     *
+     * <p>
+     * Ve las deshabilitadas a proposito: el indice unico de la base solo cubre las
+     * filas activas, asi que una pausada NO ocupa el nombre y la respuesta correcta
+     * del alta es reactivarla, no insertar otra ni fallar. Sin este finder el alta
+     * chocaba contra un nombre que la clinica no ve en su catalogo activo.
+     *
+     * <p>
+     * La igualdad la decide la base con la collation de la columna
+     * ({@code utf8mb4_0900_ai_ci}): insensible a acentos y a caja, el mismo
+     * criterio del indice unico. Comparar en Java diria que «Amoxicilina» esta
+     * libre frente a «amoxicilina» y la base lo rechazaria despues.
+     */
+    Optional<Medicament> findByNameAndCompanyIdIncludingDisabled(String name, Long companyId);
+
+    /**
+     * Cierto si otra fila ACTIVA del mismo ambito ya lleva ese nombre. Excluye la
+     * fila que se esta editando. Solo mira las activas porque son las unicas que el
+     * indice unico cuenta.
+     */
+    boolean existsActiveByNameAndCompanyIdExcludingId(String name, Long companyId, Long id);
+
+    /**
+     * Reactiva la fila pausada y le aplica el nombre y la descripcion de la
+     * peticion: vuelve con lo que la usuaria acaba de escribir, no con lo que tenia
+     * el dia que se pauso. Devuelve las filas afectadas.
+     */
+    int reactivateWithDetails(Long id, Long companyId, String name, String description);
 }

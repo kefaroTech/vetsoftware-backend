@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de docs/db/semilla-especies-razas-colores.md §4. PRIMERO de los tres changesets del
+         documento: 291 (breeds) y 292 (animal_colors) resuelven specie_id por species.name, nunca
+         por id literal, y necesitan que las 18 filas existan. `Canino` y `Felino` van exactos porque
+         el changeset 218 los referencia literalmente (218_scope_animal_colors_by_specie.xml).
+
+         NO usa `INSERT IGNORE`: el CLAUDE.md lo prohibe con nombre y apellido — "convierte el error
+         en un aviso, asi que la fila no entra y nadie se entera" — y el propio changeset 218 es el
+         ejemplo de lo que sale mal: su INSERT IGNORE tambien depende de que el nombre de la especie
+         case, y cuando no casa, no falla, sencillamente siembra cero filas para siempre. Aqui la
+         idempotencia la da Liquibase (cada changeSet corre una sola vez por entorno, registrado en
+         DATABASECHANGELOG) mas la precondicion `sqlCheck` de mas abajo, asi que un `INSERT` a secas
+         es correcto: si por lo que sea el changeSet se reejecutara sobre una base ya sembrada, el
+         `INSERT` fallaria fuerte por la unique constraint, que es el comportamiento que se quiere
+         (fallar, no desaparecer en silencio).
+
+         Tres changeSets, no uno, porque el XSD de cada `changeSet` solo admite UN `<preConditions>`
+         y aqui hacen falta dos semanticas de fallo distintas que no pueden compartir bloque:
+         "la columna no existe" es HALT (algo esta mal de verdad, DDL 288 no corrio) y "ya esta
+         sembrado" es MARK_RAN (reintento normal, no es un error). El tercero verifica el RESULTADO
+         del INSERT, no solo su condicion de entrada: sin esto, un `INSERT` que insertara de menos
+         (por ejemplo si alguien recorta la lista en un merge) pasaria desapercibido igual que 218.
+
+         288_add_company_scope_to_global_catalogs anadio company_id + general a `species` (issues
+         #571/#566): toda fila de plataforma va company_id = NULL, general = TRUE explicito, la
+         misma convencion que vaccination_types/surgery_types. -->
+
+    <changeSet id="290_check_species_schema" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="species" columnName="general"/>
+        </preConditions>
+        <sql>DO 0;</sql>
+    </changeSet>
+
+    <changeSet id="290_seed_species_catalog" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM species WHERE general = TRUE</sqlCheck>
+        </preConditions>
+
+        <sql>
+            INSERT INTO species (name, created_date, enabled, version, company_id, general)
+            SELECT n.name, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM (          SELECT 'Canino' AS name
+                    UNION ALL SELECT 'Felino'
+                    UNION ALL SELECT 'Equino'
+                    UNION ALL SELECT 'Asnal'
+                    UNION ALL SELECT 'Mular'
+                    UNION ALL SELECT 'Bovino'
+                    UNION ALL SELECT 'Bufalino'
+                    UNION ALL SELECT 'Porcino'
+                    UNION ALL SELECT 'Ovino'
+                    UNION ALL SELECT 'Caprino'
+                    UNION ALL SELECT 'Conejo'
+                    UNION ALL SELECT 'Cobayo'
+                    UNION ALL SELECT 'Hámster'
+                    UNION ALL SELECT 'Chinchilla'
+                    UNION ALL SELECT 'Jerbo'
+                    UNION ALL SELECT 'Hurón'
+                    UNION ALL SELECT 'Ave'
+                    UNION ALL SELECT 'Reptil'
+              ) n;
+        </sql>
+
+        <rollback>
+            <sql>
+                DELETE s FROM species s
+                 WHERE s.name IN ('Canino','Felino','Equino','Asnal','Mular','Bovino','Bufalino',
+                                   'Porcino','Ovino','Caprino','Conejo','Cobayo','Hámster',
+                                   'Chinchilla','Jerbo','Hurón','Ave','Reptil')
+                   AND NOT EXISTS (SELECT 1 FROM breeds b WHERE b.specie_id = s.id)
+                   AND NOT EXISTS (SELECT 1 FROM animal_colors c WHERE c.specie_id = s.id)
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.specie_id = s.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Verificacion de RESULTADO, no de condicion de entrada: confirma que el INSERT de arriba
+         produjo exactamente 18 filas activas. Sin esto, un INSERT que insertara de menos pasaria
+         desapercibido — mismo fallo silencioso que 218, ahora imposible de colar. -->
+    <changeSet id="290_seed_species_catalog_verify" author="orlando">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE general = TRUE AND enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>DO 0;</sql>
+    </changeSet>
+
+</databaseChangeLog>

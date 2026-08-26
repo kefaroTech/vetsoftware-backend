@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de docs/db/semilla-consulta-cirugia-spa.md §4. `spa_types` ganó company_id + general
+         en 288_add_company_scope_to_global_catalogs (issues #571/#566): hasta ahora era un catalogo
+         global puro (043_create_spa_types.xml) y la clinica no podia crear filas propias; ahora
+         admite ademas servicios propios de empresa. Toda fila de esta semilla es de plataforma:
+         company_id = NULL, general = TRUE explicito. 32 filas, `Otro servicio de estética` de escape
+         al final. INSERT ... SELECT ... WHERE NOT EXISTS por nombre; INSERT IGNORE prohibido por
+         CLAUDE.md. -->
+    <changeSet id="298_check_spa_types_schema" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="spa_types" columnName="general"/>
+        </preConditions>
+        <sql>DO 0;</sql>
+    </changeSet>
+
+    <changeSet id="298_seed_spa_types_catalog" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM spa_types WHERE general = TRUE</sqlCheck>
+        </preConditions>
+
+        <sql>
+            INSERT INTO spa_types (name, description, company_id, general, enabled, version, created_date)
+            SELECT seed.name, seed.description, NULL, TRUE, TRUE, 0, CURRENT_TIMESTAMP
+              FROM (
+                SELECT 'Baño y secado' AS name, 'Baño completo con champú acorde al tipo de manto, aclarado y secado profesional con soplador y cepillado. Es el servicio base de la peluquería.' AS description
+                UNION ALL SELECT 'Baño medicado', 'Baño con champú medicado prescrito o recomendado por el veterinario, con tiempo de contacto controlado, para dermatitis, seborrea, control bacteriano o fúngico y prurito.'
+                UNION ALL SELECT 'Baño antipulgas', 'Baño con producto insecticida para eliminar las pulgas presentes en el manto. No sustituye al antiparasitario externo de uso periódico.'
+                UNION ALL SELECT 'Baño hidratante de avena', 'Baño con champú y mascarilla a base de avena para piel sensible o reseca, con efecto calmante sobre el prurito leve.'
+                UNION ALL SELECT 'Baño realce de color', 'Baño con champú específico que realza el color del manto —blanco, negro, dorado o marrón— sin teñirlo.'
+                UNION ALL SELECT 'Baño en seco', 'Limpieza sin agua con producto en espuma o polvo, para gatos, pacientes que no toleran el baño o animales con vendaje o herida reciente.'
+                UNION ALL SELECT 'Baño de ozono', 'Baño en tina con microburbujas de ozono generadas por ozonizador, para limpieza profunda, control del olor, desinfección de la piel y apoyo a los tratamientos dermatológicos.'
+                UNION ALL SELECT 'Primer baño de cachorro', 'Primer baño del cachorro, con manejo suave y progresivo para que asocie el proceso a una experiencia positiva. Sujeto a que el plan de vacunación lo permita.'
+                UNION ALL SELECT 'Corte higiénico', 'Recorte del pelo de las zonas genital, perianal, axilar y de las almohadillas plantares. Es un servicio de higiene, no de estética.'
+                UNION ALL SELECT 'Corte a máquina', 'Rebaje uniforme de todo el manto a máquina, con el número de peine acordado. Conocido como corte de verano.'
+                UNION ALL SELECT 'Corte de raza', 'Arreglo según el patrón propio de la raza, con tijera y máquina, respetando las proporciones del estándar.'
+                UNION ALL SELECT 'Corte tipo schnauzer', 'Patrón de schnauzer: lomo y flancos apurados a máquina, faldón, cejas y barba conservados y perfilados con tijera.'
+                UNION ALL SELECT 'Corte tipo poodle', 'Patrón de poodle en cualquiera de sus variantes de salón —cachorro, holandés, continental o león—, con acabado a tijera.'
+                UNION ALL SELECT 'Corte tipo cachorro', 'Recorte de todo el manto a una longitud uniforme y corta, con acabado redondeado en cabeza y patas. Apto para cualquier raza de pelo largo.'
+                UNION ALL SELECT 'Arreglo de patas', 'Perfilado del pelo de las patas y de entre las almohadillas, con limpieza del pelo interdigital.'
+                UNION ALL SELECT 'Pulida de corte', 'Repaso y perfilado de un corte anterior para prolongar su duración, sin rehacer el patrón completo.'
+                UNION ALL SELECT 'Stripping', 'Arrancado del pelo muerto a navaja o a mano en razas de pelo duro, como los terrier, para renovar el manto y conservar su textura y color.'
+                UNION ALL SELECT 'Deslanado', 'Retiro del subpelo muerto con herramienta específica para rebajar el volumen del manto y reducir la caída de pelo, conservando la capa de cobertura.'
+                UNION ALL SELECT 'Cepillado y desenredado', 'Cepillado completo con retiro de nudos superficiales, previo o independiente del baño.'
+                UNION ALL SELECT 'Rescate de manto', 'Desenredo profundo de un manto apelmazado, nudo a nudo y con producto desenredante, como alternativa a rapar al animal.'
+                UNION ALL SELECT 'Corte y limado de uñas', 'Corte de las uñas hasta el límite del lecho vascular y limado del borde para evitar enganches y arañazos.'
+                UNION ALL SELECT 'Limpieza de oídos', 'Limpieza del pabellón y del conducto auditivo externo con solución ótica, y retiro del pelo del conducto en las razas que lo requieren.'
+                UNION ALL SELECT 'Cepillado dental estético', 'Cepillado de los dientes con pasta dental para animales, con fin higiénico y de control del mal aliento. No sustituye a la profilaxis dental bajo anestesia.'
+                UNION ALL SELECT 'Drenaje de glándulas anales', 'Vaciado manual de los sacos anales cuando el animal lo requiere. Si hay dolor, inflamación o secreción anómala, el caso pasa a valoración veterinaria.'
+                UNION ALL SELECT 'Hidratación de nariz y almohadillas', 'Aplicación de bálsamo hidratante en la trufa y en las almohadillas plantares resecas o agrietadas.'
+                UNION ALL SELECT 'Mascarilla capilar hidratante', 'Aplicación de mascarilla acondicionadora tras el baño para hidratar, dar brillo y facilitar el peinado del manto.'
+                UNION ALL SELECT 'Tratamiento antiseborreico', 'Baño y tratamiento tópico con producto queratolítico para el manto graso o con exceso de descamación.'
+                UNION ALL SELECT 'Masaje relajante y aromaterapia', 'Masaje corporal con aromaterapia para reducir el estrés durante la sesión de estética, en pacientes nerviosos o de edad avanzada.'
+                UNION ALL SELECT 'Colorimetría', 'Aplicación de tinte apto para mascotas en cola, orejas o puntas, con fines exclusivamente estéticos.'
+                UNION ALL SELECT 'Paquete spa completo', 'Sesión completa que reúne baño, mascarilla, masaje, corte higiénico, deslanado, corte de uñas, limpieza de oídos y perfumado final.'
+                UNION ALL SELECT 'Baño a domicilio', 'Baño y arreglo realizados en el domicilio del propietario o en unidad móvil, con el alcance limitado por el equipo disponible fuera del local.'
+                UNION ALL SELECT 'Otro servicio de estética', 'Servicio de estética no contemplado en el catálogo. El detalle se registra en el texto del servicio. Su uso frecuente es la señal de que falta un tipo por sembrar.'
+              ) AS seed
+             WHERE NOT EXISTS (SELECT 1 FROM spa_types sp WHERE sp.name = seed.name AND sp.general = TRUE);
+        </sql>
+
+        <rollback>
+            <sql>
+                DELETE FROM spa_types
+                 WHERE general = TRUE AND company_id IS NULL
+                   AND name IN ('Baño y secado','Baño medicado','Baño antipulgas','Baño hidratante de avena',
+                     'Baño realce de color','Baño en seco','Baño de ozono','Primer baño de cachorro',
+                     'Corte higiénico','Corte a máquina','Corte de raza','Corte tipo schnauzer',
+                     'Corte tipo poodle','Corte tipo cachorro','Arreglo de patas','Pulida de corte',
+                     'Stripping','Deslanado','Cepillado y desenredado','Rescate de manto',
+                     'Corte y limado de uñas','Limpieza de oídos','Cepillado dental estético',
+                     'Drenaje de glándulas anales','Hidratación de nariz y almohadillas',
+                     'Mascarilla capilar hidratante','Tratamiento antiseborreico',
+                     'Masaje relajante y aromaterapia','Colorimetría','Paquete spa completo',
+                     'Baño a domicilio','Otro servicio de estética')
+                   AND NOT EXISTS (SELECT 1 FROM spas sp2 WHERE sp2.spa_type_id = spa_types.id);
+            </sql>
+        </rollback>
+    </changeSet>
+    <!-- Verificacion de RESULTADO, barata y sin dependencia de JOIN por nombre (no aplica aqui, es
+         una tabla plana): confirma que el INSERT de arriba dejo las 32 filas esperadas. -->
+    <changeSet id="298_seed_spa_types_verify_count" author="orlando">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="32">SELECT COUNT(*) FROM spa_types WHERE general = TRUE AND enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>DO 0;</sql>
+    </changeSet>
+
+</databaseChangeLog>

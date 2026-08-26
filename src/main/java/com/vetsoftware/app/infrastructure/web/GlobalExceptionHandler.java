@@ -58,6 +58,7 @@ import com.vetsoftware.app.configurator.domain.UnreachableAnswerException;
 import com.vetsoftware.app.consultation.domain.ConsultationHasActiveChildrenException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeHasActiveChildrenException;
+import com.vetsoftware.app.consultationtype.domain.ConsultationTypeNameAlreadyExistsException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeNotFoundException;
 import com.vetsoftware.app.country.domain.CountryHasActiveChildrenException;
 import com.vetsoftware.app.country.domain.CountryNotFoundException;
@@ -67,6 +68,7 @@ import com.vetsoftware.app.debtopenaccount.domain.DebtOpenAccountNotFoundExcepti
 import com.vetsoftware.app.deworming.domain.DewormingNotFoundException;
 import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImagingNotFoundException;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeHasActiveChildrenException;
+import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNameAlreadyExistsException;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNotFoundException;
 import com.vetsoftware.app.dianprovider.domain.DianProviderConfigNotFoundException;
 import com.vetsoftware.app.dunning.domain.DunningEventNotFoundException;
@@ -101,8 +103,10 @@ import com.vetsoftware.app.inventory.domain.InventoryCountNotFoundException;
 import com.vetsoftware.app.laboratorytest.domain.LaboratoryTestNotFoundException;
 import com.vetsoftware.app.laboratorytestfile.domain.LaboratoryTestFileNotFoundException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeHasActiveChildrenException;
+import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeNameAlreadyExistsException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeNotFoundException;
 import com.vetsoftware.app.medicament.domain.MedicamentHasActiveChildrenException;
+import com.vetsoftware.app.medicament.domain.MedicamentNameAlreadyExistsException;
 import com.vetsoftware.app.medicament.domain.MedicamentNotFoundException;
 import com.vetsoftware.app.medicamentprescription.domain.MedicamentPrescriptionNotFoundException;
 import com.vetsoftware.app.module.domain.ModuleHasActiveChildrenException;
@@ -116,15 +120,15 @@ import com.vetsoftware.app.openaccount.domain.OwnerAlreadyHasOpenAccountExceptio
 import com.vetsoftware.app.owner.domain.OwnerHasActiveChildrenException;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
 import com.vetsoftware.app.passwordreset.domain.InvalidPasswordResetTokenException;
+import com.vetsoftware.app.permission.domain.PermissionHasActiveChildrenException;
+import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
+import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
+import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogNotFoundException;
 import com.vetsoftware.app.platformaccess.domain.InvalidApprovalTokenException;
 import com.vetsoftware.app.platformaccess.domain.InvalidInvitationTokenException;
 import com.vetsoftware.app.platformaccess.domain.PlatformAccessBlockedException;
 import com.vetsoftware.app.platformaccess.domain.PlatformAccessClosedException;
 import com.vetsoftware.app.platformaccess.domain.PlatformAccessCodeMismatchException;
-import com.vetsoftware.app.permission.domain.PermissionHasActiveChildrenException;
-import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
-import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
-import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogNotFoundException;
 import com.vetsoftware.app.platformbillingconfig.domain.PlatformBillingConfigNotConfiguredException;
 import com.vetsoftware.app.prescription.domain.PrescriptionHasActiveChildrenException;
 import com.vetsoftware.app.prescription.domain.PrescriptionNotFoundException;
@@ -172,6 +176,7 @@ import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAcco
 import com.vetsoftware.app.servicechargeopenaccount.domain.ServiceChargeOpenAccountNotFoundException;
 import com.vetsoftware.app.spa.domain.SpaNotFoundException;
 import com.vetsoftware.app.spatype.domain.SpaTypeHasActiveChildrenException;
+import com.vetsoftware.app.spatype.domain.SpaTypeNameAlreadyExistsException;
 import com.vetsoftware.app.spatype.domain.SpaTypeNotFoundException;
 import com.vetsoftware.app.specie.domain.SpecieHasActiveChildrenException;
 import com.vetsoftware.app.specie.domain.SpecieNotFoundException;
@@ -199,8 +204,8 @@ import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionChargeNotFound
 import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentApplicationNotFoundException;
 import com.vetsoftware.app.subscriptionpayment.domain.InvalidSubscriptionPaymentStatusTransitionException;
 import com.vetsoftware.app.subscriptionpayment.domain.OverAppliedSourceException;
-import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotConfirmedException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentHasActiveApplicationsException;
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotConfirmedException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotFoundException;
 import com.vetsoftware.app.supplier.domain.SupplierNameAlreadyExistsException;
 import com.vetsoftware.app.supplier.domain.SupplierNotFoundException;
@@ -209,6 +214,7 @@ import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNotFoundExcepti
 import com.vetsoftware.app.supplierinvoice.domain.SupplierInvoiceNumberAlreadyExistsException;
 import com.vetsoftware.app.surgery.domain.SurgeryNotFoundException;
 import com.vetsoftware.app.surgerytype.domain.SurgeryTypeHasActiveChildrenException;
+import com.vetsoftware.app.surgerytype.domain.SurgeryTypeNameAlreadyExistsException;
 import com.vetsoftware.app.surgerytype.domain.SurgeryTypeNotFoundException;
 import com.vetsoftware.app.systempermission.domain.SystemPermissionHasActiveChildrenException;
 import com.vetsoftware.app.systempermission.domain.SystemPermissionNotFoundException;
@@ -220,6 +226,7 @@ import com.vetsoftware.app.tax.domain.TaxNameAlreadyExistsException;
 import com.vetsoftware.app.tax.domain.TaxNotFoundException;
 import com.vetsoftware.app.vaccination.domain.VaccinationNotFoundException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeHasActiveChildrenException;
+import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNameAlreadyExistsException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
 import com.vetsoftware.app.withholdingconfig.domain.WithholdingConfigNotFoundException;
 import io.micrometer.tracing.Span;
@@ -539,7 +546,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             ProductCategoryNameAlreadyExistsException.class,
             ServiceCategoryNameAlreadyExistsException.class, TaxNameAlreadyExistsException.class,
             SupplierNameAlreadyExistsException.class,
-            SupplierInvoiceNumberAlreadyExistsException.class})
+            SupplierInvoiceNumberAlreadyExistsException.class,
+            VaccinationTypeNameAlreadyExistsException.class,
+            ConsultationTypeNameAlreadyExistsException.class,
+            SurgeryTypeNameAlreadyExistsException.class,
+            LaboratoryTestTypeNameAlreadyExistsException.class,
+            DiagnosticImagingTypeNameAlreadyExistsException.class,
+            SpaTypeNameAlreadyExistsException.class, MedicamentNameAlreadyExistsException.class})
     public ProblemDetail handleNameAlreadyExists(RuntimeException ex) {
         log.info("Name already exists: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
@@ -1981,6 +1994,65 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (cause != null && cause.contains("uq_cash_session_open")) {
             return problem(HttpStatus.CONFLICT, "CASH_SESSION_ALREADY_OPEN",
                     "La terminal seleccionada ya tiene una caja abierta.");
+        }
+        // Unicidad del NOMBRE en los catalogos clinicos (#559). Cada rama lleva DOS
+        // nombres de constraint a proposito. El definitivo es el
+        // uq_<tabla>_owner_active_name que introduce #556 con el patron de columnas
+        // generadas STORED (owner_scope = COALESCE(company_id, 0), active_name = el
+        // nombre solo mientras la fila esta activa); el otro es el indice que hay
+        // HOY en la base y que se llama, literalmente, `name`, asi que el driver lo
+        // reporta como `<tabla>.name`. Liquibase corre al arrancar y la ventana en
+        // la que conviven es minima, pero un ROLLBACK deja vivo el viejo y el mapeo
+        // se quedaria muerto justo cuando mas falta hace. Cuesta una linea por
+        // tabla y hace al handler indiferente al orden de despliegue.
+        //
+        // MISMO errorCode que la excepcion de negocio de cada catalogo, igual que
+        // en el resto del metodo: al front le da igual si el choque lo detecto la
+        // guarda del service o lo detecto la base, y un codigo distinto le
+        // obligaria a escribir dos veces el mismo tratamiento.
+        if (cause != null && (cause.contains("uq_vaccination_types_owner_active_name")
+                || cause.contains("vaccination_types.name"))) {
+            return problem(HttpStatus.CONFLICT, "VACCINATION_TYPE_NAME_ALREADY_EXISTS",
+                    "Ya existe un tipo de vacuna activo con ese nombre en este ámbito.");
+        }
+        if (cause != null && (cause.contains("uq_surgery_types_owner_active_name")
+                || cause.contains("surgery_types.name"))) {
+            return problem(HttpStatus.CONFLICT, "SURGERY_TYPE_NAME_ALREADY_EXISTS",
+                    "Ya existe un tipo de cirugía activo con ese nombre en este ámbito.");
+        }
+        if (cause != null && (cause.contains("uq_laboratory_test_types_owner_active_name")
+                || cause.contains("laboratory_test_types.name"))) {
+            return problem(HttpStatus.CONFLICT, "LABORATORY_TEST_TYPE_NAME_ALREADY_EXISTS",
+                    "Ya existe un tipo de examen de laboratorio activo con ese nombre en este ámbito.");
+        }
+        if (cause != null && (cause.contains("uq_diagnostic_imaging_types_owner_active_name")
+                || cause.contains("diagnostic_imaging_types.name"))) {
+            return problem(HttpStatus.CONFLICT, "DIAGNOSTIC_IMAGING_TYPE_NAME_ALREADY_EXISTS",
+                    "Ya existe un tipo de imagen diagnóstica activo con ese nombre en este ámbito.");
+        }
+        // medicaments es el unico cuyo indice de hoy ya tiene nombre propio
+        // (uq_medicaments_name, migracion 173); #556 lo sustituye por el patron
+        // por propietario. Se mapean los dos por la misma razon que arriba.
+        if (cause != null && (cause.contains("uq_medicaments_owner_active_name")
+                || cause.contains("uq_medicaments_name"))) {
+            return problem(HttpStatus.CONFLICT, "MEDICAMENT_NAME_ALREADY_EXISTS",
+                    "Ya existe un medicamento activo con ese nombre en este ámbito.");
+        }
+        // consultation_types y spa_types reciben company_id y general en el changeset
+        // 288: hoy son catalogos de plataforma sin dueno y su ambito es la tabla
+        // entera, a partir del 288 seran mixtos como los cuatro de arriba. El nombre
+        // del indice ya esta fijado, asi que las dos ramas se escriben igual; lo que
+        // queda pendiente es la GUARDA en Java, que tendra que pasar a comprobar por
+        // ambito cuando esas dos tablas tengan dueno.
+        if (cause != null && (cause.contains("uq_consultation_types_owner_active_name")
+                || cause.contains("consultation_types.name"))) {
+            return problem(HttpStatus.CONFLICT, "CONSULTATION_TYPE_NAME_ALREADY_EXISTS",
+                    "Ya existe un tipo de consulta activo con ese nombre en este catálogo.");
+        }
+        if (cause != null && (cause.contains("uq_spa_types_owner_active_name")
+                || cause.contains("spa_types.name"))) {
+            return problem(HttpStatus.CONFLICT, "SPA_TYPE_NAME_ALREADY_EXISTS",
+                    "Ya existe un tipo de spa activo con ese nombre en este catálogo.");
         }
         return null;
     }

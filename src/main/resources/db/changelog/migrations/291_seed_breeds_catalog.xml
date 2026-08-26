@@ -1,0 +1,726 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de docs/db/semilla-especies-razas-colores.md §5. 577 filas, un changeSet por especie
+         (18) para que cada uno sea revisable y su checksum estable ante una correccion puntual.
+         specie_id se resuelve SIEMPRE por species.name via JOIN, nunca por id literal (los
+         AUTO_INCREMENT no son estables entre entornos: es lo que dejo en cero filas al changeset 218
+         en base nueva). `Mestizo` va primero en cada especie de mamifero (`Otra Ave`/`Otro Reptil`
+         hacen ese papel en Ave/Reptil): sin ORDER BY en el repositorio (issue #572) el orden del
+         desplegable es el de insercion. El resto sigue el orden de la fuente: grupo y seccion FCI
+         para caninos, el orden del documento para el resto. La precondicion HALT (no MARK_RAN) es
+         deliberada: sin las 18 especies sembrar razas no es "innecesario", es imposible.
+
+         NO usa `INSERT IGNORE` (CLAUDE.md lo prohibe: "convierte el error en un aviso... y nadie se
+         entera"). Es una tentacion especialmente peligrosa aqui porque el propio `218` es el
+         precedente de lo que sale mal: su `INSERT IGNORE ... JOIN species` resuelve la especie por
+         nombre exactamente como estos 18 changesets, y si el nombre no casa —una tilde, un cambio,
+         una especie no sembrada— el JOIN no produce filas, `INSERT IGNORE` no protesta, Liquibase
+         marca el changeSet como ejecutado y esa especie se queda con el catalogo de razas vacio para
+         siempre. Aqui la unica idempotencia que hace falta es la que ya da Liquibase (cada changeSet
+         corre una vez por entorno): un `INSERT` a secas es lo correcto, y si algo lo reejecutara
+         sobre datos ya sembrados, debe romper fuerte por la unique constraint, no desaparecer.
+         Por eso el fichero termina en un changeSet de VERIFICACION DE RESULTADO
+         (`291_seed_breeds_verify_counts`): 18 `sqlCheck`, uno por especie, contando las razas
+         realmente insertadas. Sin él, un `JOIN` que no casara por una especie mal escrita pasaría
+         exactamente igual de desapercibido que en `218`, solo que sin `INSERT IGNORE` de por medio.
+
+         Diff FCI (~360 razas oficiales vs 344 transcritas / 347 filas contando las 4 variedades del
+         Pastor Belga): NO se pudo ejecutar en esta sesion — este entorno no tiene acceso a red para
+         consultar fci.be/es/nomenclature/1..10 — documentado como pendiente, issue nuevo abierto por
+         db-migrations (ver informe). 36 razas de especies menores marcadas "sin verificar" en la
+         especificacion (equinas salvo las 2 verificadas, bufalinas, ovinas y caprinas no-AGROSAVIA,
+         hamster, chinchilla, jerbo, 6 de las 7 cavias, aves de corral) se siembran igual, sin
+         inventar ni recortar: ya hay issue abierto #576 y el propio documento decide sembrarlas
+         marcando la fuente en su tabla, no en la fila (la columna `name` no tiene sitio para el
+         marcador; queda en el issue). -->
+
+    <changeSet id="291_seed_breeds_canino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Mestizo' AS name
+                UNION ALL SELECT 'Pastor Alemán' UNION ALL SELECT 'Perro de Pastor Bergamasco'
+                UNION ALL SELECT 'Australian Kelpie' UNION ALL SELECT 'Perro de Pastor de los Abruzos y de la Maremma'
+                UNION ALL SELECT 'Perro de Pastor Belga (Groenendael)' UNION ALL SELECT 'Pastor Holandés'
+                UNION ALL SELECT 'Perro de Pastor Belga (Tervueren)' UNION ALL SELECT 'Perro Lobo de Saarloos'
+                UNION ALL SELECT 'Perro de Pastor Belga (Malinois)' UNION ALL SELECT 'Schapendoes Neerlandés'
+                UNION ALL SELECT 'Perro de Pastor Belga (Laekenois)' UNION ALL SELECT 'Pastor Polaco de Tatra'
+                UNION ALL SELECT 'Schipperke' UNION ALL SELECT 'Perro de Pastor Polaco de las Llanuras'
+                UNION ALL SELECT 'Perro Lobo Checoslovaco' UNION ALL SELECT 'Perro de Pastor Portugués'
+                UNION ALL SELECT 'Perro Pastor Croata' UNION ALL SELECT 'Antiguo Perro de Pastor Inglés (Bobtail)'
+                UNION ALL SELECT 'Tchuvatch Eslovaco' UNION ALL SELECT 'Border Collie'
+                UNION ALL SELECT 'Perro de Pastor Catalán' UNION ALL SELECT 'Collie Barbudo'
+                UNION ALL SELECT 'Perro de Pastor Mallorquín' UNION ALL SELECT 'Collie de Pelo Corto'
+                UNION ALL SELECT 'Perro Pastor Australiano' UNION ALL SELECT 'Collie de Pelo Largo'
+                UNION ALL SELECT 'Pastor de Beauce' UNION ALL SELECT 'Perro Pastor de Shetland'
+                UNION ALL SELECT 'Pastor de Brie' UNION ALL SELECT 'Perro de Pastor Rumano de los Cárpatos'
+                UNION ALL SELECT 'Pastor de los Pirineos de Cara Rasa' UNION ALL SELECT 'Perro Pastor Rumano de Mioritza'
+                UNION ALL SELECT 'Pastor de Picardía' UNION ALL SELECT 'Perro de Pastor de Rusia Meridional'
+                UNION ALL SELECT 'Perro Pastor de los Pirineos de Pelo Largo' UNION ALL SELECT 'Pastor Blanco Suizo'
+                UNION ALL SELECT 'Komondor' UNION ALL SELECT 'Boyero Australiano'
+                UNION ALL SELECT 'Kuvasz' UNION ALL SELECT 'Boyero de las Ardenas'
+                UNION ALL SELECT 'Mudi' UNION ALL SELECT 'Boyero de Flandes'
+                UNION ALL SELECT 'Puli' UNION ALL SELECT 'Welsh Corgi (Cardigan)'
+                UNION ALL SELECT 'Pumi' UNION ALL SELECT 'Welsh Corgi (Pembroke)'
+                UNION ALL SELECT 'Affenpinscher' UNION ALL SELECT 'Mastiff'
+                UNION ALL SELECT 'Dobermann' UNION ALL SELECT 'Cimarrón Uruguayo'
+                UNION ALL SELECT 'Pinscher Alemán' UNION ALL SELECT 'Hovawart'
+                UNION ALL SELECT 'Pinscher Miniatura' UNION ALL SELECT 'Leonberger'
+                UNION ALL SELECT 'Pinscher Austriaco' UNION ALL SELECT 'Landseer (Tipo Europeo Continental)'
+                UNION ALL SELECT 'Perro de Granja Danés y Sueco' UNION ALL SELECT 'Pastor de Bosnia y Herzegovina - Croacia (Tornjak)'
+                UNION ALL SELECT 'Schnauzer' UNION ALL SELECT 'Terranova'
+                UNION ALL SELECT 'Schnauzer Gigante' UNION ALL SELECT 'Pastor de Karst'
+                UNION ALL SELECT 'Schnauzer Miniatura' UNION ALL SELECT 'Mastín del Pirineo'
+                UNION ALL SELECT 'Perro Smous Holandés' UNION ALL SELECT 'Mastín Español'
+                UNION ALL SELECT 'Terrier Ruso Negro' UNION ALL SELECT 'Perro de Montaña de los Pirineos'
+                UNION ALL SELECT 'Boxer' UNION ALL SELECT 'Perro de Pastor Yugoslavo de Charplanina'
+                UNION ALL SELECT 'Gran Danés (Deutsche Dogge)' UNION ALL SELECT 'Perro de Montaña del Atlas'
+                UNION ALL SELECT 'Rottweiler' UNION ALL SELECT 'Perro de Castro Laboreiro'
+                UNION ALL SELECT 'Dogo Argentino' UNION ALL SELECT 'Perro de la Sierra de la Estrela'
+                UNION ALL SELECT 'Fila Brasileño' UNION ALL SELECT 'Rafeiro del Alentejo'
+                UNION ALL SELECT 'Shar Pei' UNION ALL SELECT 'Perro de Pastor Rumano de Bucovina'
+                UNION ALL SELECT 'Broholmer' UNION ALL SELECT 'Perro Pastor de Asia Central'
+                UNION ALL SELECT 'Perro Dogo Mallorquín (Ca de Bou)' UNION ALL SELECT 'Perro Pastor del Cáucaso'
+                UNION ALL SELECT 'Presa Canario' UNION ALL SELECT 'San Bernardo'
+                UNION ALL SELECT 'Dogo de Burdeos' UNION ALL SELECT 'Dogo del Tíbet'
+                UNION ALL SELECT 'Cane Corso' UNION ALL SELECT 'Perro Pastor Kangal'
+                UNION ALL SELECT 'Mastín Napolitano' UNION ALL SELECT 'Boyero de Montaña Bernés'
+                UNION ALL SELECT 'Tosa' UNION ALL SELECT 'Gran Boyero Suizo'
+                UNION ALL SELECT 'Fila de San Miguel' UNION ALL SELECT 'Perro Boyero de Appenzell'
+                UNION ALL SELECT 'Bulldog' UNION ALL SELECT 'Perro Boyero de Entlebuch'
+                UNION ALL SELECT 'Bullmastiff'
+                UNION ALL SELECT 'Terrier Cazador Alemán' UNION ALL SELECT 'Cairn Terrier'
+                UNION ALL SELECT 'Terrier Brasileño' UNION ALL SELECT 'Dandie Dinmont Terrier'
+                UNION ALL SELECT 'Kerry Blue Terrier' UNION ALL SELECT 'Norfolk Terrier'
+                UNION ALL SELECT 'Soft Coated Wheaten Terrier Irlandés' UNION ALL SELECT 'Norwich Terrier'
+                UNION ALL SELECT 'Terrier Glen de Imaal Irlandés' UNION ALL SELECT 'Scottish Terrier'
+                UNION ALL SELECT 'Terrier Irlandés' UNION ALL SELECT 'Sealyham Terrier'
+                UNION ALL SELECT 'Airedale Terrier' UNION ALL SELECT 'Skye Terrier'
+                UNION ALL SELECT 'Bedlington Terrier' UNION ALL SELECT 'Terrier Jack Russell'
+                UNION ALL SELECT 'Border Terrier' UNION ALL SELECT 'West Highland White Terrier'
+                UNION ALL SELECT 'Fox Terrier de Pelo Alambre' UNION ALL SELECT 'Terrier Checo'
+                UNION ALL SELECT 'Fox Terrier de Pelo Liso' UNION ALL SELECT 'American Staffordshire Terrier'
+                UNION ALL SELECT 'Lakeland Terrier' UNION ALL SELECT 'Bull Terrier'
+                UNION ALL SELECT 'Manchester Terrier' UNION ALL SELECT 'Bull Terrier Miniatura'
+                UNION ALL SELECT 'Parson Russell Terrier' UNION ALL SELECT 'Staffordshire Bull Terrier'
+                UNION ALL SELECT 'Welsh Terrier' UNION ALL SELECT 'Terrier Sedoso Australiano'
+                UNION ALL SELECT 'Australian Terrier' UNION ALL SELECT 'Terrier de Juguete Inglés Negro y Fuego'
+                UNION ALL SELECT 'Terrier Japonés' UNION ALL SELECT 'Yorkshire Terrier'
+                UNION ALL SELECT 'Teckel (Dachshund)'
+                UNION ALL SELECT 'Perro Esquimal Canadiense' UNION ALL SELECT 'Eurásico'
+                UNION ALL SELECT 'Husky Siberiano' UNION ALL SELECT 'Chow Chow'
+                UNION ALL SELECT 'Malamute de Alaska' UNION ALL SELECT 'Korea Jindo Dog'
+                UNION ALL SELECT 'Perro de Groenlandia' UNION ALL SELECT 'Akita'
+                UNION ALL SELECT 'Samoyedo' UNION ALL SELECT 'Akita Americano'
+                UNION ALL SELECT 'Perro de Osos de Carelia' UNION ALL SELECT 'Hokkaido'
+                UNION ALL SELECT 'Spitz Finlandés' UNION ALL SELECT 'Kai'
+                UNION ALL SELECT 'Cazador de Alces Noruego Gris' UNION ALL SELECT 'Kishu'
+                UNION ALL SELECT 'Cazador de Alces Noruego Negro' UNION ALL SELECT 'Shiba'
+                UNION ALL SELECT 'Lundehund Noruego' UNION ALL SELECT 'Shikoku'
+                UNION ALL SELECT 'Laika de Siberia Occidental' UNION ALL SELECT 'Spitz Japonés'
+                UNION ALL SELECT 'Laika de Siberia Oriental' UNION ALL SELECT 'Thai Bangkaew Dog'
+                UNION ALL SELECT 'Laika Ruso-Europeo' UNION ALL SELECT 'Basenji'
+                UNION ALL SELECT 'Perro Cazador de Alces Sueco' UNION ALL SELECT 'Canaan Dog'
+                UNION ALL SELECT 'Spitz de Norrbotten' UNION ALL SELECT 'Perro del Faraón'
+                UNION ALL SELECT 'Pastor Finlandés de Laponia' UNION ALL SELECT 'Xoloitzcuintle'
+                UNION ALL SELECT 'Perro Finlandés de Laponia' UNION ALL SELECT 'Perro sin Pelo del Perú'
+                UNION ALL SELECT 'Perro de Pastor Islandés' UNION ALL SELECT 'Podenco Canario'
+                UNION ALL SELECT 'Buhund Noruego' UNION ALL SELECT 'Podenco Ibicenco'
+                UNION ALL SELECT 'Perro Sueco de Laponia' UNION ALL SELECT 'Cirneco del Etna'
+                UNION ALL SELECT 'Spitz de los Visigodos' UNION ALL SELECT 'Podenco Portugués'
+                UNION ALL SELECT 'Spitz Alemán' UNION ALL SELECT 'Thai Ridgeback Dog'
+                UNION ALL SELECT 'Volpino Italiano' UNION ALL SELECT 'Perro de Taiwán'
+                UNION ALL SELECT 'Chien de Saint Hubert' UNION ALL SELECT 'Sabueso Anglo-Francés de Tamaño Mediano'
+                UNION ALL SELECT 'Rastreador Brasileño' UNION ALL SELECT 'Sabueso Artesiano'
+                UNION ALL SELECT 'American Foxhound' UNION ALL SELECT 'Sabueso del Ariege'
+                UNION ALL SELECT 'Perro Negro y Fuego para la Caza del Mapache' UNION ALL SELECT 'Sabueso Helénico'
+                UNION ALL SELECT 'Billy' UNION ALL SELECT 'Sabueso Húngaro de Transilvania'
+                UNION ALL SELECT 'Gascon Saintongeois' UNION ALL SELECT 'Sabueso Italiano de Pelo Duro'
+                UNION ALL SELECT 'Gran Grifón Vendeano' UNION ALL SELECT 'Sabueso Italiano de Pelo Raso'
+                UNION ALL SELECT 'Gran Sabueso Anglo-Francés Blanco y Naranja' UNION ALL SELECT 'Sabueso de Montaña del Montenegro'
+                UNION ALL SELECT 'Gran Sabueso Anglo-Francés Blanco y Negro' UNION ALL SELECT 'Sabueso de Hygen'
+                UNION ALL SELECT 'Gran Sabueso Anglo-Francés Tricolor' UNION ALL SELECT 'Sabueso Halden'
+                UNION ALL SELECT 'Gran Sabueso Azul de Gascuña' UNION ALL SELECT 'Sabueso Noruego'
+                UNION ALL SELECT 'Sabueso Francés Blanco y Naranja' UNION ALL SELECT 'Gonczy Polski'
+                UNION ALL SELECT 'Sabueso Francés Blanco y Negro' UNION ALL SELECT 'Harrier'
+                UNION ALL SELECT 'Sabueso Francés Tricolor' UNION ALL SELECT 'Sabueso Serbio'
+                UNION ALL SELECT 'Sabueso Poitevin' UNION ALL SELECT 'Sabueso Tricolor Serbio'
+                UNION ALL SELECT 'Sabueso Polaco' UNION ALL SELECT 'Sabueso de Smaland'
+                UNION ALL SELECT 'Foxhound Inglés' UNION ALL SELECT 'Sabueso Hamilton'
+                UNION ALL SELECT 'Perro de Nutria' UNION ALL SELECT 'Sabueso Schiller'
+                UNION ALL SELECT 'Sabueso Austriaco Negro y Fuego' UNION ALL SELECT 'Sabueso Suizo'
+                UNION ALL SELECT 'Sabueso del Tirol' UNION ALL SELECT 'Perro Tejonero de Westfalia'
+                UNION ALL SELECT 'Sabueso Estirio de Pelo Áspero' UNION ALL SELECT 'Sabueso Alemán'
+                UNION ALL SELECT 'Sabueso Bosnio de Pelo Cerdoso (Barak)' UNION ALL SELECT 'Basset Artesiano de Normandía'
+                UNION ALL SELECT 'Sabueso de Istria de Pelo Corto' UNION ALL SELECT 'Basset Azul de Gascuña'
+                UNION ALL SELECT 'Sabueso de Istria de Pelo Duro' UNION ALL SELECT 'Basset Leonado de Bretaña'
+                UNION ALL SELECT 'Sabueso del Valle de Save' UNION ALL SELECT 'Gran Basset Grifón Vendeano'
+                UNION ALL SELECT 'Sabueso Eslovaco' UNION ALL SELECT 'Pequeño Basset Grifón Vendeano'
+                UNION ALL SELECT 'Sabueso Español' UNION ALL SELECT 'Basset Hound'
+                UNION ALL SELECT 'Sabueso Finlandés' UNION ALL SELECT 'Beagle'
+                UNION ALL SELECT 'Beagle-Harrier' UNION ALL SELECT 'Perro Tejonero Sueco'
+                UNION ALL SELECT 'Briquet Grifón Vendeano' UNION ALL SELECT 'Sabueso Suizo Pequeño'
+                UNION ALL SELECT 'Grifón Azul de Gascuña' UNION ALL SELECT 'Rastreador de Hannover'
+                UNION ALL SELECT 'Grifón del Nivernais' UNION ALL SELECT 'Rastreador Montañés de Baviera'
+                UNION ALL SELECT 'Grifón Leonado de Bretaña' UNION ALL SELECT 'Dachsbracke de los Alpes'
+                UNION ALL SELECT 'Pequeño Sabueso Azul de Gascuña' UNION ALL SELECT 'Dálmata'
+                UNION ALL SELECT 'Porcelaine' UNION ALL SELECT 'Perro Crestado Rodesiano (Rhodesian Ridgeback)'
+                UNION ALL SELECT 'Braco Alemán de Pelo Corto' UNION ALL SELECT 'Deutsch Langhaar'
+                UNION ALL SELECT 'Perro de Muestra Alemán de Pelo Cerdoso' UNION ALL SELECT 'Gran Münsterländer'
+                UNION ALL SELECT 'Perro de Muestra Alemán de Pelo Duro' UNION ALL SELECT 'Pequeño Münsterländer'
+                UNION ALL SELECT 'Pudelpointer' UNION ALL SELECT 'Spaniel Azul de Picardía'
+                UNION ALL SELECT 'Weimaraner' UNION ALL SELECT 'Spaniel Bretón'
+                UNION ALL SELECT 'Antiguo Perro de Muestra Danés' UNION ALL SELECT 'Spaniel de Pont-Audemer'
+                UNION ALL SELECT 'Braco Eslovaco de Pelo Duro' UNION ALL SELECT 'Spaniel Francés'
+                UNION ALL SELECT 'Perdiguero de Burgos' UNION ALL SELECT 'Spaniel Picardo'
+                UNION ALL SELECT 'Braco de Auvernia' UNION ALL SELECT 'Perdiguero de Drente'
+                UNION ALL SELECT 'Braco del Ariege' UNION ALL SELECT 'Perdiguero Frisón'
+                UNION ALL SELECT 'Braco del Borbonesado' UNION ALL SELECT 'Grifón de Muestra de Pelo Duro'
+                UNION ALL SELECT 'Braco Francés - Tipo Gascuña' UNION ALL SELECT 'Espinone'
+                UNION ALL SELECT 'Braco Francés - Tipo Pirineos' UNION ALL SELECT 'Grifón de Muestra Bohemio de Pelo Duro'
+                UNION ALL SELECT 'Braco Saint-Germain' UNION ALL SELECT 'Pointer Inglés'
+                UNION ALL SELECT 'Braco Húngaro de Pelo Corto' UNION ALL SELECT 'Setter Irlandés Rojo'
+                UNION ALL SELECT 'Braco Húngaro de Pelo Duro' UNION ALL SELECT 'Setter Irlandés Rojo y Blanco'
+                UNION ALL SELECT 'Braco Italiano' UNION ALL SELECT 'Gordon Setter'
+                UNION ALL SELECT 'Perdiguero Portugués' UNION ALL SELECT 'Setter Inglés'
+                UNION ALL SELECT 'Perro Cobrador de Nueva Escocia (Nova Scotia Duck Tolling Retriever)' UNION ALL SELECT 'Field Spaniel'
+                UNION ALL SELECT 'Chesapeake Bay Retriever' UNION ALL SELECT 'Springer Spaniel Galés'
+                UNION ALL SELECT 'Cobrador de Pelo Liso (Flat Coated Retriever)' UNION ALL SELECT 'Springer Spaniel Inglés'
+                UNION ALL SELECT 'Cobrador de Pelo Rizado (Curly Coated Retriever)' UNION ALL SELECT 'Sussex Spaniel'
+                UNION ALL SELECT 'Cobrador Dorado (Golden Retriever)' UNION ALL SELECT 'Perro de Agua Español'
+                UNION ALL SELECT 'Labrador Retriever' UNION ALL SELECT 'Perro de Agua Americano'
+                UNION ALL SELECT 'Perdiguero Alemán' UNION ALL SELECT 'Perro de Agua Francés'
+                UNION ALL SELECT 'Cocker Spaniel Americano' UNION ALL SELECT 'Perro de Agua Irlandés'
+                UNION ALL SELECT 'Nederlandse Kooikerhondje' UNION ALL SELECT 'Perro de Agua de Romagna'
+                UNION ALL SELECT 'Clumber Spaniel' UNION ALL SELECT 'Perro de Agua Frisón'
+                UNION ALL SELECT 'Cocker Spaniel Inglés' UNION ALL SELECT 'Perro de Agua Portugués'
+                UNION ALL SELECT 'Bichón de Pelo Rizado' UNION ALL SELECT 'Spaniel Tibetano'
+                UNION ALL SELECT 'Bichón Habanero' UNION ALL SELECT 'Terrier Tibetano'
+                UNION ALL SELECT 'Maltés' UNION ALL SELECT 'Chihuahueño'
+                UNION ALL SELECT 'Bolognese' UNION ALL SELECT 'Cavalier King Charles Spaniel'
+                UNION ALL SELECT 'Coton de Tulear' UNION ALL SELECT 'King Charles Spaniel'
+                UNION ALL SELECT 'Pequeño Perro León' UNION ALL SELECT 'Pekinés'
+                UNION ALL SELECT 'Caniche (Poodle)' UNION ALL SELECT 'Spaniel Japonés'
+                UNION ALL SELECT 'Griffon Belge' UNION ALL SELECT 'Spaniel Continental Enano de Compañía'
+                UNION ALL SELECT 'Griffon Bruxellois' UNION ALL SELECT 'Pequeño Perro Ruso'
+                UNION ALL SELECT 'Petit Brabançon' UNION ALL SELECT 'Kromfohrländer'
+                UNION ALL SELECT 'Perro Crestado Chino' UNION ALL SELECT 'Pug'
+                UNION ALL SELECT 'Lhasa Apso' UNION ALL SELECT 'Boston Terrier'
+                UNION ALL SELECT 'Shih Tzu' UNION ALL SELECT 'Bulldog Francés'
+                UNION ALL SELECT 'Lebrel Afgano' UNION ALL SELECT 'Pequeño Lebrel Italiano'
+                UNION ALL SELECT 'Saluki' UNION ALL SELECT 'Azawakh'
+                UNION ALL SELECT 'Borzoi - Lebrel Ruso para la Caza' UNION ALL SELECT 'Sloughi'
+                UNION ALL SELECT 'Lebrel Irlandés' UNION ALL SELECT 'Lebrel Polaco'
+                UNION ALL SELECT 'Lebrel Escocés' UNION ALL SELECT 'Greyhound'
+                UNION ALL SELECT 'Galgo Español' UNION ALL SELECT 'Whippet'
+                UNION ALL SELECT 'Lebrel Húngaro'
+                UNION ALL SELECT 'Sabueso Fino Colombiano' UNION ALL SELECT 'American Pit Bull Terrier'
+              ) n
+             WHERE s.name = 'Canino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Canino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_felino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Mestizo' AS name
+                UNION ALL SELECT 'Exótico' UNION ALL SELECT 'Persa' UNION ALL SELECT 'Ragdoll'
+                UNION ALL SELECT 'Sagrado de Birmania' UNION ALL SELECT 'Van Turco'
+                UNION ALL SELECT 'American Curl Longhair' UNION ALL SELECT 'American Curl Shorthair'
+                UNION ALL SELECT 'LaPerm Longhair' UNION ALL SELECT 'LaPerm Shorthair'
+                UNION ALL SELECT 'Maine Coon' UNION ALL SELECT 'Neva Masquerade'
+                UNION ALL SELECT 'Gato de los Bosques de Noruega' UNION ALL SELECT 'Siberiano'
+                UNION ALL SELECT 'Angora Turco' UNION ALL SELECT 'Bengalí'
+                UNION ALL SELECT 'Británico Longhair' UNION ALL SELECT 'Burmilla'
+                UNION ALL SELECT 'Británico Shorthair' UNION ALL SELECT 'Birmano'
+                UNION ALL SELECT 'Chartreux' UNION ALL SELECT 'Cymric'
+                UNION ALL SELECT 'Europeo' UNION ALL SELECT 'Kurilean Bobtail Longhair'
+                UNION ALL SELECT 'Kurilean Bobtail Shorthair' UNION ALL SELECT 'Korat'
+                UNION ALL SELECT 'Manx' UNION ALL SELECT 'Mau Egipcio'
+                UNION ALL SELECT 'Ocicat' UNION ALL SELECT 'Singapura'
+                UNION ALL SELECT 'Snowshoe' UNION ALL SELECT 'Sokoke'
+                UNION ALL SELECT 'Selkirk Rex Longhair' UNION ALL SELECT 'Selkirk Rex Shorthair'
+                UNION ALL SELECT 'Abisinio' UNION ALL SELECT 'Balinés'
+                UNION ALL SELECT 'Cornish Rex' UNION ALL SELECT 'Devon Rex'
+                UNION ALL SELECT 'Don Sphynx' UNION ALL SELECT 'German Rex'
+                UNION ALL SELECT 'Bobtail Japonés' UNION ALL SELECT 'Oriental Longhair'
+                UNION ALL SELECT 'Oriental Shorthair' UNION ALL SELECT 'Peterbald'
+                UNION ALL SELECT 'Azul Ruso' UNION ALL SELECT 'Siamés'
+                UNION ALL SELECT 'Somalí' UNION ALL SELECT 'Sphynx'
+                UNION ALL SELECT 'Thai' UNION ALL SELECT 'Bombay'
+                UNION ALL SELECT 'Lykoi' UNION ALL SELECT 'American Bobtail'
+                UNION ALL SELECT 'American Shorthair' UNION ALL SELECT 'American Wirehair'
+              ) n
+             WHERE s.name = 'Felino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Felino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_equino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Mestizo' AS name
+                UNION ALL SELECT 'Criollo Colombiano' UNION ALL SELECT 'Pura Sangre Inglés'
+                UNION ALL SELECT 'Cuarto de Milla' UNION ALL SELECT 'Árabe'
+                UNION ALL SELECT 'Appaloosa' UNION ALL SELECT 'Percherón'
+                UNION ALL SELECT 'Poni Shetland'
+              ) n
+             WHERE s.name = 'Equino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Equino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_asnal" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Mestizo' AS name UNION ALL SELECT 'Criollo' ) n
+             WHERE s.name = 'Asnal';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Asnal'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_mular" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Mestizo' AS name UNION ALL SELECT 'Mula' ) n
+             WHERE s.name = 'Mular';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Mular'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_bovino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Mestizo' AS name
+                UNION ALL SELECT 'Holstein' UNION ALL SELECT 'Normando' UNION ALL SELECT 'Santa Gertrudis'
+                UNION ALL SELECT 'Blanco Orejinegro' UNION ALL SELECT 'Ayrshire' UNION ALL SELECT 'Montbeliarde'
+                UNION ALL SELECT 'Bonsmara' UNION ALL SELECT 'Beefmaster' UNION ALL SELECT 'Hereford'
+                UNION ALL SELECT 'Braford' UNION ALL SELECT 'Simmental' UNION ALL SELECT 'Simbrah'
+                UNION ALL SELECT 'Simcebú' UNION ALL SELECT 'Senepol' UNION ALL SELECT 'Wagyu'
+                UNION ALL SELECT 'Brahman' UNION ALL SELECT 'Gyr' UNION ALL SELECT 'Guzerá'
+                UNION ALL SELECT 'Nelore' UNION ALL SELECT 'Indubrasil' UNION ALL SELECT 'Sardo Negro'
+                UNION ALL SELECT 'Sindi' UNION ALL SELECT 'Romosinuano' UNION ALL SELECT 'Costeño con Cuernos'
+                UNION ALL SELECT 'Chino Santandereano' UNION ALL SELECT 'Hartón del Valle'
+                UNION ALL SELECT 'Casanareño' UNION ALL SELECT 'Sanmartinero'
+                UNION ALL SELECT 'Lucerna' UNION ALL SELECT 'Velásquez'
+              ) n
+             WHERE s.name = 'Bovino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Bovino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_bufalino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Mestizo' AS name UNION ALL SELECT 'Murrah' UNION ALL SELECT 'Mediterráneo'
+                     UNION ALL SELECT 'Jafarabadi' UNION ALL SELECT 'Carabao' ) n
+             WHERE s.name = 'Bufalino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Bufalino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_porcino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Mestizo' AS name UNION ALL SELECT 'Yorkshire' UNION ALL SELECT 'Large White'
+                     UNION ALL SELECT 'Landrace' UNION ALL SELECT 'Duroc' UNION ALL SELECT 'Pietrain'
+                     UNION ALL SELECT 'Hampshire' UNION ALL SELECT 'Zungo' UNION ALL SELECT 'San Pedreño'
+                     UNION ALL SELECT 'Casco de Mula' ) n
+             WHERE s.name = 'Porcino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Porcino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_ovino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Mestizo' AS name UNION ALL SELECT 'Criolla' UNION ALL SELECT 'Camuro'
+                     UNION ALL SELECT 'Mora Colombiana' UNION ALL SELECT 'Hampshire'
+                     UNION ALL SELECT 'Romney Marsh' UNION ALL SELECT 'Corriedale'
+                     UNION ALL SELECT 'Cheviot' UNION ALL SELECT 'Black Face'
+                     UNION ALL SELECT 'Merino Rambouillet' UNION ALL SELECT 'Katahdin'
+                     UNION ALL SELECT 'Dorper' UNION ALL SELECT 'Santa Inés' UNION ALL SELECT 'Pelibuey' ) n
+             WHERE s.name = 'Ovino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Ovino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_caprino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Mestizo' AS name UNION ALL SELECT 'Guajira' UNION ALL SELECT 'Sabanera'
+                     UNION ALL SELECT 'Santandereana' UNION ALL SELECT 'Saanen' UNION ALL SELECT 'Toggenburg'
+                     UNION ALL SELECT 'Alpina' UNION ALL SELECT 'Nubiana' UNION ALL SELECT 'Boer' ) n
+             WHERE s.name = 'Caprino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Caprino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_conejo" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Mestizo' AS name
+                UNION ALL SELECT 'American' UNION ALL SELECT 'American Chinchilla'
+                UNION ALL SELECT 'American Fuzzy Lop' UNION ALL SELECT 'American Sable'
+                UNION ALL SELECT 'Argente Brun' UNION ALL SELECT 'Belgian Hare'
+                UNION ALL SELECT 'Beveren' UNION ALL SELECT 'Blanc de Hotot'
+                UNION ALL SELECT 'Blue Holicer' UNION ALL SELECT 'Britannia Petite'
+                UNION ALL SELECT 'Californian' UNION ALL SELECT 'Champagne d''Argent'
+                UNION ALL SELECT 'Checkered Giant' UNION ALL SELECT 'Cinnamon'
+                UNION ALL SELECT 'Creme d''Argent' UNION ALL SELECT 'Czech Frosty'
+                UNION ALL SELECT 'Dutch' UNION ALL SELECT 'Dwarf Hotot'
+                UNION ALL SELECT 'Dwarf Papillon' UNION ALL SELECT 'English Angora'
+                UNION ALL SELECT 'English Lop' UNION ALL SELECT 'English Spot'
+                UNION ALL SELECT 'Flemish Giant' UNION ALL SELECT 'Florida White'
+                UNION ALL SELECT 'French Angora' UNION ALL SELECT 'French Lop'
+                UNION ALL SELECT 'Giant Angora' UNION ALL SELECT 'Giant Chinchilla'
+                UNION ALL SELECT 'Harlequin' UNION ALL SELECT 'Havana'
+                UNION ALL SELECT 'Himalayan' UNION ALL SELECT 'Holland Lop'
+                UNION ALL SELECT 'Jersey Wooly' UNION ALL SELECT 'Lilac'
+                UNION ALL SELECT 'Lionhead' UNION ALL SELECT 'Mini Californian'
+                UNION ALL SELECT 'Mini Lop' UNION ALL SELECT 'Mini Rex'
+                UNION ALL SELECT 'Mini Satin' UNION ALL SELECT 'Netherland Dwarf'
+                UNION ALL SELECT 'New Zealand' UNION ALL SELECT 'Palomino'
+                UNION ALL SELECT 'Polish' UNION ALL SELECT 'Rex'
+                UNION ALL SELECT 'Rhinelander' UNION ALL SELECT 'Satin'
+                UNION ALL SELECT 'Satin Angora' UNION ALL SELECT 'Silver'
+                UNION ALL SELECT 'Silver Fox' UNION ALL SELECT 'Silver Marten'
+                UNION ALL SELECT 'Standard Chinchilla' UNION ALL SELECT 'Tan'
+                UNION ALL SELECT 'Thrianta'
+              ) n
+             WHERE s.name = 'Conejo';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Conejo'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_cobayo" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Mestizo' AS name UNION ALL SELECT 'American' UNION ALL SELECT 'Abyssinian'
+                     UNION ALL SELECT 'Peruvian' UNION ALL SELECT 'White Crested' UNION ALL SELECT 'Teddy'
+                     UNION ALL SELECT 'Coronet' UNION ALL SELECT 'Silkie' ) n
+             WHERE s.name = 'Cobayo';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Cobayo'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_hamster" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Mestizo' AS name UNION ALL SELECT 'Sirio' UNION ALL SELECT 'Ruso'
+                     UNION ALL SELECT 'Roborovski' UNION ALL SELECT 'Chino' ) n
+             WHERE s.name = 'Hámster';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Hámster'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_chinchilla" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Mestizo' AS name UNION ALL SELECT 'Chinchilla Lanigera'
+                     UNION ALL SELECT 'Chinchilla Brevicaudata' ) n
+             WHERE s.name = 'Chinchilla';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Chinchilla'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_jerbo" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Mestizo' AS name UNION ALL SELECT 'Jerbo de Mongolia' ) n
+             WHERE s.name = 'Jerbo';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Jerbo'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_huron" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Mestizo' AS name UNION ALL SELECT 'Hurón Doméstico' ) n
+             WHERE s.name = 'Hurón';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Hurón'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_ave" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Otra Ave' AS name
+                UNION ALL SELECT 'Canario' UNION ALL SELECT 'Periquito Australiano'
+                UNION ALL SELECT 'Cacatúa Ninfa' UNION ALL SELECT 'Diamante Mandarín'
+                UNION ALL SELECT 'Agapornis' UNION ALL SELECT 'Loro Cabeza Azul'
+                UNION ALL SELECT 'Cacatúa' UNION ALL SELECT 'Jilguero'
+                UNION ALL SELECT 'Papagayo de Collar' UNION ALL SELECT 'Paloma Doméstica'
+                UNION ALL SELECT 'Tórtola Diamante' UNION ALL SELECT 'Pinzón Cebra'
+                UNION ALL SELECT 'Gallina' UNION ALL SELECT 'Pato'
+                UNION ALL SELECT 'Pavo' UNION ALL SELECT 'Codorniz'
+              ) n
+             WHERE s.name = 'Ave';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Ave'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="291_seed_breeds_reptil" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="breeds" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO breeds (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN ( SELECT 'Otro Reptil' AS name ) n
+             WHERE s.name = 'Reptil';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE b FROM breeds b JOIN species s ON s.id = b.specie_id
+                 WHERE s.name = 'Reptil'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.breed_id = b.id);
+            </sql>
+        </rollback>
+    </changeSet>
+    <!-- Verificacion de RESULTADO: confirma que CADA especie recibio exactamente las razas que le
+         tocaban, no solo que el INSERT corrio. Sin esto, un nombre de especie mal escrito en un solo
+         WHERE s.name = 'X' pasa la precondicion HALT de arriba (que solo cuenta el total de
+         especies, 18) y siembra cero razas para esa especie, en silencio — el mismo fallo del
+         changeset 218 que motivo la mitad de este encargo. -->
+    <changeSet id="291_seed_breeds_verify_counts" author="orlando">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="350">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Canino' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="54">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Felino' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="8">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Equino' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="2">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Asnal' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="2">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Mular' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="31">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Bovino' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="5">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Bufalino' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="10">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Porcino' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="14">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Ovino' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="9">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Caprino' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="54">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Conejo' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="8">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Cobayo' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="5">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Hámster' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="3">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Chinchilla' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="2">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Jerbo' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="2">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Hurón' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="17">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Ave' AND b.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Reptil' AND b.enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>DO 0;</sql>
+    </changeSet>
+
+</databaseChangeLog>

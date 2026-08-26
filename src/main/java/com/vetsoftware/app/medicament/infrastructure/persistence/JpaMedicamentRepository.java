@@ -80,4 +80,27 @@ public class JpaMedicamentRepository implements MedicamentRepository {
     public int reactivate(Long id, Long companyId) {
         return jpaRepository.reactivate(id, companyId);
     }
+
+    @Override
+    public Optional<Medicament> findByNameAndCompanyIdIncludingDisabled(String name,
+            Long companyId) {
+        return (companyId == null
+                ? jpaRepository.findGlobalByNameIncludingDisabled(name)
+                : jpaRepository.findByNameAndCompanyIncludingDisabled(name, companyId))
+                .map(mapper::toDomain);
+    }
+
+    @Override
+    public boolean existsActiveByNameAndCompanyIdExcludingId(String name, Long companyId, Long id) {
+        return companyId == null
+                ? jpaRepository.existsByNameAndCompanyIsNullAndIdNot(name, id)
+                : jpaRepository.existsByNameAndCompany_IdAndIdNot(name, companyId, id);
+    }
+
+    @Override
+    public int reactivateWithDetails(Long id, Long companyId, String name, String description) {
+        return companyId == null
+                ? jpaRepository.reactivateWithDetails(id, name, description)
+                : jpaRepository.reactivateWithDetails(id, companyId, name, description);
+    }
 }

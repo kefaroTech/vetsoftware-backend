@@ -1,0 +1,594 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de docs/db/semilla-laboratorio-e-imagen.md §4. `laboratory_test_types` nacio como
+         `test_types` (037_create_test_types.xml, renombrada en 059) y gano company_id + general en
+         056_alter_test_types_add_company_and_general.xml (DEFAULT FALSE: general se pone SIEMPRE
+         explicito, issue #560). 87 filas con nombre canonico completo (nunca «Hemograma» a secas)
+         para dejar libre el nombre corto que cada clinica querria para su catalogo propio, mitigando
+         el UNIQUE global de `name` (issue #556/#557). Un solo <insert> nativo por fila, como pide la
+         especificacion (no <sql>/UNION ALL aqui: 87 <insert> es la forma recomendada por el
+         documento §3.3). -->
+    <changeSet id="296_seed_laboratory_test_types_catalog" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM laboratory_test_types WHERE general = TRUE
+            </sqlCheck>
+        </preConditions>
+
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Hemograma completo (cuadro hemático)"/>
+            <column name="description" value="Recuento de eritrocitos, leucocitos y plaquetas con hematocrito, hemoglobina, índices eritrocitarios, recuento diferencial leucocitario y evaluación morfológica. Es la prueba base de tamizaje en anemia, infección, inflamación y trastornos plaquetarios."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Extendido de sangre periférica (frotis)"/>
+            <column name="description" value="Revisión microscópica manual del frotis teñido para evaluar morfología de eritrocitos, leucocitos y plaquetas, confirmar recuentos del analizador y detectar células anómalas, agregados plaquetarios e inclusiones."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Recuento de reticulocitos"/>
+            <column name="description" value="Cuantifica los eritrocitos inmaduros circulantes para clasificar una anemia como regenerativa o arregenerativa. Es la prueba que decide el enfoque diagnóstico de toda anemia."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Microhematocrito con proteínas totales por refractometría"/>
+            <column name="description" value="Determinación rápida del hematocrito por centrifugación en capilar junto con proteínas totales por refractómetro. Prueba de consultorio para valorar hidratación, anemia y pérdida proteica en minutos."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Frotis para hemoparásitos"/>
+            <column name="description" value="Búsqueda microscópica dirigida de hemoparásitos en extendido sanguíneo teñido: Ehrlichia, Anaplasma, Babesia, Hepatozoon y Mycoplasma haemofelis. Su resultado negativo no descarta infección."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Hemoparásitos en capa leucocitaria (buffy coat)"/>
+            <column name="description" value="Concentración de la capa leucocitaria por centrifugación para aumentar la probabilidad de observar mórulas de Ehrlichia y Anaplasma frente al frotis convencional."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Recuento manual de plaquetas en cámara"/>
+            <column name="description" value="Recuento plaquetario por microscopía en cámara de Neubauer para confirmar trombocitopenias reportadas por el analizador y descartar seudotrombocitopenia por agregados."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Perfil bioquímico general (química sanguínea completa)"/>
+            <column name="description" value="Panel amplio de química sérica con función renal, hepática, glucosa, proteínas, electrolitos y enzimas. Es el tamizaje bioquímico de referencia en el paciente enfermo sin diagnóstico orientado."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Perfil renal"/>
+            <column name="description" value="Creatinina, nitrógeno ureico (BUN), fósforo, calcio y proteínas totales, con densidad urinaria cuando se acompaña de orina. Permite estadificar la enfermedad renal crónica según el sistema IRIS."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Perfil hepático"/>
+            <column name="description" value="ALT, AST, fosfatasa alcalina, GGT, bilirrubina total y directa, proteínas totales, albúmina y glucosa. Distingue el daño hepatocelular del patrón colestásico y valora la función de síntesis."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Perfil pancreático"/>
+            <column name="description" value="Amilasa, lipasa, glucosa, calcio, triglicéridos y proteínas totales, orientado al paciente con sospecha de pancreatitis aguda. Se confirma con lipasa pancreática específica."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Perfil lipídico"/>
+            <column name="description" value="Colesterol total y triglicéridos en ayuno, para evaluar hiperlipidemias primarias y secundarias a hipotiroidismo, diabetes, hiperadrenocorticismo y síndrome nefrótico."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Perfil prequirúrgico"/>
+            <column name="description" value="Hemograma, ALT, fosfatasa alcalina, creatinina, nitrógeno ureico, glucosa y proteínas totales. Valora el riesgo anestésico y detecta la enfermedad subclínica que obliga a aplazar o modificar el protocolo."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Perfil geriátrico"/>
+            <column name="description" value="Hemograma, química sanguínea amplia, uroanálisis y T4 total, para el tamizaje anual del paciente mayor donde la enfermedad renal, hepática y endocrina cursa sin signos."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Perfil pediátrico"/>
+            <column name="description" value="Hemograma y química sanguínea básica adaptados a cachorros y gatitos, con valores de referencia propios de la edad, orientados a anemia, hipoglucemia, parasitismo y déficit de crecimiento."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Perfil de paciente convulsivo"/>
+            <column name="description" value="Glucosa, calcio, electrolitos, función hepática con ácidos biliares o amoníaco, y función renal, para descartar las causas metabólicas y extracraneales de convulsión antes de asumir causa intracraneal."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Perfil dermatológico"/>
+            <column name="description" value="Panel de apoyo al paciente con enfermedad cutánea crónica: hemograma, química básica, T4 total y pruebas de tamizaje endocrino, junto con raspado y citología cuando se solicitan aparte."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Perfil cardíaco (troponina I y NT-proBNP)"/>
+            <column name="description" value="Biomarcadores cardíacos en suero: troponina I como marcador de daño miocárdico y NT-proBNP como marcador de estiramiento de pared. Apoyan la decisión de estudiar con ecocardiografía."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Alanina aminotransferasa (ALT)"/>
+            <column name="description" value="Enzima de localización hepatocelular. Su elevación indica lesión de la célula hepática y es el marcador más específico de daño hepatocelular en perro y gato."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Aspartato aminotransferasa (AST)"/>
+            <column name="description" value="Enzima presente en hígado y músculo. Se interpreta junto con ALT y creatina quinasa para separar el origen hepático del muscular."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Fosfatasa alcalina (FA)"/>
+            <column name="description" value="Enzima que se eleva en colestasis, inducción por corticoides o fenobarbital, y en crecimiento óseo activo. En el gato cualquier elevación es significativa por su vida media corta."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Gamma glutamil transferasa (GGT)"/>
+            <column name="description" value="Marcador de colestasis y de inducción enzimática. Junto con la fosfatasa alcalina ayuda a confirmar el patrón colestásico y a interpretar elevaciones de origen óseo."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Bilirrubina total y directa"/>
+            <column name="description" value="Cuantifica y fracciona la bilirrubina sérica para clasificar la ictericia en prehepática, hepática o poshepática."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Proteínas totales y fraccionadas (albúmina y globulinas)"/>
+            <column name="description" value="Proteínas séricas totales con separación de albúmina y globulinas y relación albúmina/globulina. Orienta a pérdida proteica, inflamación crónica, gammapatías y fallo de síntesis hepática."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Albúmina sérica"/>
+            <column name="description" value="Principal proteína de síntesis hepática y determinante de la presión oncótica. Su descenso orienta a enteropatía o nefropatía perdedora de proteínas, hepatopatía o inflamación crónica."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Nitrógeno ureico en sangre (BUN)"/>
+            <column name="description" value="Producto nitrogenado de eliminación renal. Se interpreta junto con creatinina y densidad urinaria para separar la azotemia prerrenal, renal y posrenal."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Creatinina sérica"/>
+            <column name="description" value="Marcador de filtración glomerular y eje de la estadificación IRIS de enfermedad renal crónica. Se eleva cuando ya se ha perdido buena parte de la función renal, por lo que se combina con SDMA."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Dimetilarginina simétrica (SDMA)"/>
+            <column name="description" value="Marcador de filtración glomerular más precoz que la creatinina y menos dependiente de la masa muscular. Permite detectar enfermedad renal en estadios tempranos y afinar la estadificación IRIS."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Glucosa sérica"/>
+            <column name="description" value="Concentración de glucosa en sangre. Base del diagnóstico y seguimiento de la diabetes mellitus y de la evaluación urgente de hipoglucemia en cachorros, sepsis e insulinoma."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Calcio total y fósforo"/>
+            <column name="description" value="Cuantifica ambos minerales, cuyo desequilibrio acompaña a la enfermedad renal crónica, el hiperparatiroidismo, las neoplasias con hipercalcemia y la eclampsia puerperal."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Calcio ionizado"/>
+            <column name="description" value="Fracción biológicamente activa del calcio. Es la medida válida cuando hay hipoalbuminemia y la que se exige para confirmar hipercalcemia o hipocalcemia verdaderas."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Amilasa y lipasa séricas"/>
+            <column name="description" value="Enzimas pancreáticas de tamizaje en el abdomen agudo. Su baja especificidad obliga a confirmar la pancreatitis con lipasa pancreática específica y ecografía."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Lipasa pancreática específica (cPL/fPL)"/>
+            <column name="description" value="Inmunoensayo específico de lipasa de origen pancreático en perro y gato. Es la prueba sérica de elección para el diagnóstico de pancreatitis."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Ácidos biliares séricos pre y posprandiales"/>
+            <column name="description" value="Par de muestras en ayuno y dos horas tras el alimento. Evalúa la función hepática y es la prueba de tamizaje de derivación portosistémica."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Creatina quinasa (CK)"/>
+            <column name="description" value="Enzima de músculo esquelético y cardíaco. Confirma el origen muscular de una elevación de AST y apoya el diagnóstico de miopatía, trauma y decúbito prolongado."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Uroanálisis completo (parcial de orina con sedimento)"/>
+            <column name="description" value="Examen físico, químico y microscópico del sedimento urinario: color, densidad, pH, proteína, glucosa, cetonas, sangre, cilindros, cristales, células y bacterias. Se debe indicar el método de recolección."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Densidad urinaria por refractometría"/>
+            <column name="description" value="Mide la capacidad de concentración renal. Es el dato que convierte una azotemia en interpretable y no puede sustituirse por la tira reactiva."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Relación proteína/creatinina en orina (UPC)"/>
+            <column name="description" value="Cuantifica la proteinuria de forma independiente de la concentración de la orina. Es el criterio con que el sistema IRIS subestadifica la enfermedad renal crónica y decide tratar la proteinuria."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Urocultivo con recuento de colonias y antibiograma"/>
+            <column name="description" value="Cultivo cuantitativo de orina obtenida por cistocentesis, con identificación del germen y sensibilidad antibiótica. Es obligatorio antes de tratar infección urinaria recurrente o complicada."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Análisis de composición de urolitos"/>
+            <column name="description" value="Determinación de la composición del cálculo extraído (estruvita, oxalato de calcio, urato, cistina). Define la dieta y la prevención de recidiva, que difieren por completo según el tipo."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Coprológico directo y por flotación"/>
+            <column name="description" value="Examen microscópico de materia fecal, en fresco y tras flotación en solución de alta densidad, para detectar huevos de helmintos, ooquistes de coccidias y protozoos."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Coprológico seriado de tres muestras"/>
+            <column name="description" value="Tres exámenes coprológicos de días alternos. La eliminación de huevos es intermitente, de modo que una sola muestra negativa no descarta parasitismo."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Flotación fecal por centrifugación"/>
+            <column name="description" value="Flotación asistida por centrifugación, que recupera significativamente más huevos y ooquistes que la flotación pasiva. Es el método recomendado como estándar de tamizaje."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Técnica de Baermann para larvas"/>
+            <column name="description" value="Migración activa de larvas desde la materia fecal en columna de agua. Es la prueba de elección para larvas de nematodos respiratorios como Angiostrongylus y Aelurostrongylus."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Antígeno de Giardia en materia fecal"/>
+            <column name="description" value="Inmunoensayo de antígeno específico de Giardia, complementario del examen microscópico, que detecta infecciones con eliminación intermitente de quistes."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Tinción de Ziehl-Neelsen modificada en materia fecal"/>
+            <column name="description" value="Coloración ácido-alcohol resistente para identificar ooquistes de Cryptosporidium, que pasan desapercibidos en el coprológico convencional por su tamaño."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Sangre oculta en materia fecal"/>
+            <column name="description" value="Detección de sangre no visible en heces, como apoyo al estudio de anemia y de enfermedad gastrointestinal ulcerativa. Requiere control dietario previo para evitar falsos positivos."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Tiroxina total (T4 total)"/>
+            <column name="description" value="Concentración sérica de T4 total. Es la prueba de tamizaje tiroideo: valor alto confirma hipertiroidismo felino y valor bajo obliga a completar con T4 libre y TSH en el perro."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Tiroxina libre por diálisis de equilibrio (T4 libre)"/>
+            <column name="description" value="Mide la fracción libre de T4 sin interferencia de proteínas transportadoras ni de enfermedad no tiroidea. Es la prueba que confirma el hipotiroidismo canino cuando la T4 total no es concluyente."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Hormona estimulante de tiroides canina (cTSH)"/>
+            <column name="description" value="Se interpreta junto con la T4 libre. Una TSH alta con T4 libre baja es el patrón que confirma el hipotiroidismo primario canino."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Cortisol sérico basal"/>
+            <column name="description" value="Concentración puntual de cortisol. Por sí sola no diagnostica hiperadrenocorticismo, pero un valor basal alto es útil para descartar hipoadrenocorticismo."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Prueba de supresión con dexametasona a dosis baja"/>
+            <column name="description" value="Cortisol basal y a las 4 y 8 horas de administrar dexametasona. Es la prueba de tamizaje preferida para el hiperadrenocorticismo canino y en parte de los casos diferencia el origen hipofisario del adrenal."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Prueba de supresión con dexametasona a dosis alta"/>
+            <column name="description" value="Prueba de diferenciación que se realiza tras confirmar el hiperadrenocorticismo, para separar el origen hipofisario del tumor adrenal según el grado de supresión del cortisol."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Prueba de estimulación con ACTH"/>
+            <column name="description" value="Cortisol antes y después de administrar ACTH sintética. Es la prueba de elección para diagnosticar hipoadrenocorticismo y para monitorizar el tratamiento del hiperadrenocorticismo."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Relación cortisol/creatinina en orina"/>
+            <column name="description" value="Prueba de tamizaje de hiperadrenocorticismo en muestra de orina tomada en casa. Su alta sensibilidad y baja especificidad la hacen útil para descartar, no para confirmar."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Fructosamina sérica"/>
+            <column name="description" value="Refleja la glucemia media de las dos a tres semanas previas. Diferencia la hiperglucemia por estrés de la diabetes real, sobre todo en el gato, y monitoriza el control glucémico."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Prueba rápida de Ehrlichia, Anaplasma y antígeno de Dirofilaria"/>
+            <column name="description" value="Inmunoensayo de consultorio que detecta en una sola muestra anticuerpos frente a Ehrlichia y Anaplasma y antígeno de Dirofilaria immitis. Es el tamizaje habitual del paciente con exposición a garrapatas."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Ehrlichia canis y Anaplasma spp. por PCR"/>
+            <column name="description" value="Detección molecular del ADN del agente en sangre. Confirma infección activa cuando la serología es dudosa y permite diferenciar especies que el frotis no distingue."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Antígeno de Dirofilaria immitis"/>
+            <column name="description" value="Detecta antígeno de hembra adulta de dirofilaria en suero o sangre. Se recomienda usarlo siempre junto con una prueba de microfilarias, porque los resultados discordantes son frecuentes."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Test de Knott modificado para microfilarias"/>
+            <column name="description" value="Concentración y observación microscópica de microfilarias, con medición para diferenciar Dirofilaria immitis de otras filarias. Es la prueba de microfilarias de referencia."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Anticuerpos anti-Leishmania por inmunofluorescencia indirecta"/>
+            <column name="description" value="Serología cuantitativa frente a Leishmania infantum. Es la técnica con la que el Instituto Nacional de Salud confirma los casos caninos dentro de la vigilancia epidemiológica en Colombia."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Prueba rápida rK39 para leishmaniasis canina"/>
+            <column name="description" value="Inmunocromatografía frente al antígeno recombinante rK39, usada como tamizaje de leishmaniasis visceral canina en campo y aceptada en estudios de prevalencia en Colombia."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Leishmania spp. por PCR"/>
+            <column name="description" value="Detección de ADN de Leishmania en médula ósea, ganglio, piel o sangre. Confirma infección activa y es la prueba de elección cuando la serología es dudosa."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Antígeno de parvovirus canino en materia fecal"/>
+            <column name="description" value="Prueba rápida de antígeno en heces o vómito, con resultado en pocos minutos. Es la primera prueba en todo cachorro con vómito y diarrea, y condiciona el aislamiento inmediato del paciente."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Antígeno del virus del moquillo canino"/>
+            <column name="description" value="Prueba rápida de antígeno en secreción conjuntival o nasal, orientada al paciente con signos respiratorios, digestivos o neurológicos compatibles con distemper."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Parvovirus y virus del moquillo canino por PCR"/>
+            <column name="description" value="Detección molecular de ambos virus, con mayor sensibilidad que la prueba rápida. Confirma casos con carga viral baja y resuelve los resultados dudosos por interferencia vacunal reciente."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Prueba rápida combinada de antígeno de FeLV y anticuerpos de FIV"/>
+            <column name="description" value="Inmunoensayo de consultorio para leucemia e inmunodeficiencia felinas. Todo gato debe conocer su estado retroviral; un resultado positivo requiere confirmación en un segundo nivel de prueba."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Anticuerpos de Brucella canis por aglutinación rápida en placa"/>
+            <column name="description" value="Prueba serológica de tamizaje de brucelosis canina, con o sin 2-mercaptoetanol. Es una zoonosis reproductiva y todo positivo debe confirmarse con hemocultivo o PCR."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Anticuerpos anti-Leptospira por microaglutinación (MAT)"/>
+            <column name="description" value="Serología de referencia frente a los serovares de Leptospira, con titulación en muestras pareadas. Zoonosis relevante en Colombia por el clima y la exposición a aguas contaminadas."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Citología por aspiración con aguja fina"/>
+            <column name="description" value="Estudio microscópico de células obtenidas por punción de masa, ganglio, órgano o lesión cutánea. Es el primer paso ante cualquier masa: separa lo inflamatorio de lo neoplásico sin cirugía."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Citología de hisopado ótico"/>
+            <column name="description" value="Evaluación microscópica del contenido del conducto auditivo para identificar levaduras, cocos, bacilos y ácaros. Define el tratamiento tópico de la otitis y su respuesta."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Citología vaginal"/>
+            <column name="description" value="Evaluación de la descamación del epitelio vaginal para determinar la fase del ciclo estral, apoyar el momento óptimo de la monta y estudiar secreciones anómalas."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Citología de líquidos corporales con análisis fisicoquímico"/>
+            <column name="description" value="Recuento celular, proteínas y estudio citológico de líquido abdominal, torácico, pericárdico o sinovial, para clasificarlo como trasudado, trasudado modificado o exudado."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Citología de líquido cefalorraquídeo"/>
+            <column name="description" value="Recuento celular, proteínas y citología del líquido cefalorraquídeo, para diferenciar la enfermedad inflamatoria e infecciosa del sistema nervioso central de la degenerativa y la neoplásica."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Raspado cutáneo y tricograma"/>
+            <column name="description" value="Raspado superficial y profundo de piel y examen del pelo arrancado, para detectar Demodex, Sarcoptes y dermatofitos, y evaluar el ciclo del folículo piloso."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Histopatología de biopsia"/>
+            <column name="description" value="Estudio anatomopatológico de tejido fijado en formol, con diagnóstico definitivo, grado tumoral y evaluación de márgenes quirúrgicos cuando se remite la pieza completa."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Necropsia con estudio histopatológico"/>
+            <column name="description" value="Examen post mortem sistemático con toma de muestras para histopatología. Determina la causa de muerte y detecta enfermedad transmisible que afecte a los demás animales del hogar o del criadero."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Cultivo bacteriano aerobio con antibiograma"/>
+            <column name="description" value="Aislamiento e identificación del germen y determinación de su sensibilidad antibiótica. Es el requisito de un uso responsable de antimicrobianos en infecciones recurrentes o graves."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Cultivo bacteriano anaerobio"/>
+            <column name="description" value="Cultivo en condiciones de anaerobiosis para abscesos profundos, piotórax, peritonitis y heridas por mordedura, donde el cultivo aerobio convencional resulta falsamente negativo."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Cultivo micológico e identificación de dermatofitos"/>
+            <column name="description" value="Siembra de pelo y escamas en medio selectivo con identificación de la especie de dermatofito. Es la prueba de confirmación de la tiña, una dermatopatía zoonótica."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Tiempos de coagulación (TP y TTPa)"/>
+            <column name="description" value="Tiempo de protrombina y tiempo de tromboplastina parcial activada. Evalúan las vías extrínseca e intrínseca y son la prueba clave ante intoxicación por rodenticidas, hepatopatía y sangrado quirúrgico."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Fibrinógeno plasmático"/>
+            <column name="description" value="Cuantifica el fibrinógeno como factor de coagulación y reactante de fase aguda. Su descenso acompaña a la coagulación intravascular diseminada y al fallo hepático."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Dímero D"/>
+            <column name="description" value="Producto de degradación de la fibrina. Apoya el diagnóstico de coagulación intravascular diseminada y de tromboembolismo, siempre interpretado junto con el cuadro clínico."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Tiempo de sangría de la mucosa bucal"/>
+            <column name="description" value="Prueba de consultorio que evalúa la hemostasia primaria y la función plaquetaria. Se realiza antes de una cirugía en pacientes con historia de sangrado y recuento plaquetario normal."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Gases sanguíneos y equilibrio ácido-base"/>
+            <column name="description" value="Determinación de pH, presiones de oxígeno y dióxido de carbono, bicarbonato y exceso de base en sangre arterial o venosa. Guía la reanimación del paciente crítico y la ventilación."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Electrolitos séricos (sodio, potasio y cloro)"/>
+            <column name="description" value="Cuantifica los electrolitos mayores. La hiperpotasemia del paciente obstruido y del hipoadrenocorticismo es una urgencia con riesgo vital inmediato."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="laboratory_test_types">
+            <column name="name" value="Tipificación sanguínea y prueba cruzada de compatibilidad"/>
+            <column name="description" value="Determinación del grupo sanguíneo (DEA 1 en el perro; A, B y AB en el gato) y prueba cruzada mayor y menor con el donante. Obligatoria antes de transfundir a un gato y en la segunda transfusión de un perro."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+
+        <rollback>
+            <sql>
+                DELETE FROM laboratory_test_types
+                 WHERE general = TRUE AND company_id IS NULL
+                   AND name IN ('Hemograma completo (cuadro hemático)','Extendido de sangre periférica (frotis)',
+                     'Recuento de reticulocitos','Microhematocrito con proteínas totales por refractometría',
+                     'Frotis para hemoparásitos','Hemoparásitos en capa leucocitaria (buffy coat)',
+                     'Recuento manual de plaquetas en cámara','Perfil bioquímico general (química sanguínea completa)',
+                     'Perfil renal','Perfil hepático','Perfil pancreático','Perfil lipídico','Perfil prequirúrgico',
+                     'Perfil geriátrico','Perfil pediátrico','Perfil de paciente convulsivo','Perfil dermatológico',
+                     'Perfil cardíaco (troponina I y NT-proBNP)','Alanina aminotransferasa (ALT)',
+                     'Aspartato aminotransferasa (AST)','Fosfatasa alcalina (FA)','Gamma glutamil transferasa (GGT)',
+                     'Bilirrubina total y directa','Proteínas totales y fraccionadas (albúmina y globulinas)',
+                     'Albúmina sérica','Nitrógeno ureico en sangre (BUN)','Creatinina sérica',
+                     'Dimetilarginina simétrica (SDMA)','Glucosa sérica','Calcio total y fósforo','Calcio ionizado',
+                     'Amilasa y lipasa séricas','Lipasa pancreática específica (cPL/fPL)',
+                     'Ácidos biliares séricos pre y posprandiales','Creatina quinasa (CK)',
+                     'Uroanálisis completo (parcial de orina con sedimento)','Densidad urinaria por refractometría',
+                     'Relación proteína/creatinina en orina (UPC)','Urocultivo con recuento de colonias y antibiograma',
+                     'Análisis de composición de urolitos','Coprológico directo y por flotación',
+                     'Coprológico seriado de tres muestras','Flotación fecal por centrifugación',
+                     'Técnica de Baermann para larvas','Antígeno de Giardia en materia fecal',
+                     'Tinción de Ziehl-Neelsen modificada en materia fecal','Sangre oculta en materia fecal',
+                     'Tiroxina total (T4 total)','Tiroxina libre por diálisis de equilibrio (T4 libre)',
+                     'Hormona estimulante de tiroides canina (cTSH)','Cortisol sérico basal',
+                     'Prueba de supresión con dexametasona a dosis baja','Prueba de supresión con dexametasona a dosis alta',
+                     'Prueba de estimulación con ACTH','Relación cortisol/creatinina en orina','Fructosamina sérica',
+                     'Prueba rápida de Ehrlichia, Anaplasma y antígeno de Dirofilaria','Ehrlichia canis y Anaplasma spp. por PCR',
+                     'Antígeno de Dirofilaria immitis','Test de Knott modificado para microfilarias',
+                     'Anticuerpos anti-Leishmania por inmunofluorescencia indirecta','Prueba rápida rK39 para leishmaniasis canina',
+                     'Leishmania spp. por PCR','Antígeno de parvovirus canino en materia fecal',
+                     'Antígeno del virus del moquillo canino','Parvovirus y virus del moquillo canino por PCR',
+                     'Prueba rápida combinada de antígeno de FeLV y anticuerpos de FIV',
+                     'Anticuerpos de Brucella canis por aglutinación rápida en placa',
+                     'Anticuerpos anti-Leptospira por microaglutinación (MAT)','Citología por aspiración con aguja fina',
+                     'Citología de hisopado ótico','Citología vaginal','Citología de líquidos corporales con análisis fisicoquímico',
+                     'Citología de líquido cefalorraquídeo','Raspado cutáneo y tricograma','Histopatología de biopsia',
+                     'Necropsia con estudio histopatológico','Cultivo bacteriano aerobio con antibiograma',
+                     'Cultivo bacteriano anaerobio','Cultivo micológico e identificación de dermatofitos',
+                     'Tiempos de coagulación (TP y TTPa)','Fibrinógeno plasmático','Dímero D',
+                     'Tiempo de sangría de la mucosa bucal','Gases sanguíneos y equilibrio ácido-base',
+                     'Electrolitos séricos (sodio, potasio y cloro)',
+                     'Tipificación sanguínea y prueba cruzada de compatibilidad')
+                   AND NOT EXISTS (SELECT 1 FROM laboratory_tests lt
+                                    WHERE lt.test_type_id = laboratory_test_types.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

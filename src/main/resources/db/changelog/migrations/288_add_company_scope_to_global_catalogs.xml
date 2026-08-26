@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issues #571 y #566. `species`, `breeds`, `animal_colors`, `consultation_types` y `spa_types`
+         no tenian `company_id`: la raza, el color, la especie o el tipo de consulta/estetica que
+         creaba una clinica se creaba para TODO el SaaS, sin ninguna barrera de autorizacion mas alla
+         de `anyRequest().authenticated()` en los endpoints de escritura. Se les da el mismo patron
+         mixto que ya usan `vaccination_types` y `surgery_types`: filas globales de plataforma
+         (`company_id = NULL`, `general = TRUE`) mas filas propias de cada empresa
+         (`company_id` = su empresa, `general = FALSE`).
+
+         `general` nace `NOT NULL DEFAULT TRUE` — al reves que el patron historico de
+         `vaccination_types`/`surgery_types` (DEFAULT FALSE + backfill manual en el mismo changeset,
+         055/057) — porque aqui es correcto por construccion: hasta este changeset NINGUNA fila de
+         estas cinco tablas tenia dueno, asi que toda fila ya existente (0 en las cinco en dev; puede
+         haber alguna en produccion, creada por cualquier tenant sin scope) pasa a ser una fila de
+         PLATAFORMA por el simple valor por defecto de la columna, sin necesidad de un UPDATE
+         separado.
+
+         Issue #579 (backend, verificado por construccion, sin ejecutar nada): el `DEFAULT TRUE`
+         de `general` y el `company_id` recien creado (que queda NULL, sin default posible en una FK)
+         SE QUEDAN sin retirar, a proposito y de forma permanente hasta nuevo aviso. Las cinco
+         entidades JPA (SpecieJpaEntity, BreedJpaEntity, AnimalColorJpaEntity, ConsultationTypeJpaEntity,
+         SpaTypeJpaEntity) todavia no mapean ni `general` ni `company_id` — eso es la tanda #566/#571
+         de backend-feature, que a fecha de este changeset no existe. Sin el DEFAULT, Hibernate omite
+         la columna en cada INSERT y MySQL en modo estricto responde `Field 'general' doesn't have a
+         default value`: no se podria crear ni una especie, ni una raza, ni un color, ni un tipo de
+         consulta, ni un tipo de spa, disfrazado del 409 generico en ingles que #559 acaba de quitar
+         de estos mismos catalogos. `ddl-auto: validate` no lo detecta — el validador de Hibernate
+         ignora columnas que estan en la base y no en la entidad —, asi que el arranque no protesta
+         y solo lo habria delatado un IT de persistencia.
+         Con el DEFAULT puesto, un INSERT que omita `general` (el caso de las cinco entidades tal
+         como estan hoy) crea una fila `general = TRUE, company_id = NULL` — exactamente una fila
+         global bien formada, que satisface el CHECK XOR de 286 sin necesitar `company_id` mapeado.
+         Que la raza creada por una clinica salga global es el defecto ya conocido de #571 (razon de
+         ser de este mismo changeset); preservar el comportamiento actual es preferible a una
+         funcionalidad muerta. El `DROP DEFAULT` se retira en un changeset propio, en el mismo PR
+         que mapee `general` y `company_id` en las cinco entidades (la tanda #566/#571 de
+         backend-feature) — no antes, y no aqui: no es un olvido, es una espera con condicion.
+
+         `breeds` y `animal_colors` ya distinguian por especie (UNIQUE (specie_id, name)); al entrar
+         `company_id` el unico pasa a tres columnas y le pega el mismo defecto que #556: MySQL no
+         deduplica NULL, asi que un UNIQUE(specie_id, company_id, name) corriente no protegeria dos
+         filas globales de la misma especie entre si. Se usa el MISMO mecanismo de columna generada
+         STORED del 285/#556 — un solo patron en todo el repositorio, no dos — con `specie_id` como
+         prefijo izquierdo para que la FK a `species` siga soportada por el mismo indice
+         (287 ya retiro el indice redundante que sobraba). -->
+
+    <changeSet id="288_add_company_scope_species" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="species"/>
+            <not><columnExists tableName="species" columnName="company_id"/></not>
+        </preConditions>
+        <sql>
+            ALTER TABLE species
+                ADD COLUMN company_id BIGINT NULL,
+                ADD COLUMN general BOOLEAN NOT NULL DEFAULT TRUE,
+                ADD CONSTRAINT fk_species_company FOREIGN KEY (company_id) REFERENCES companies (id),
+                ADD COLUMN owner_scope BIGINT
+                    GENERATED ALWAYS AS (COALESCE(company_id, 0)) STORED,
+                ADD COLUMN active_name VARCHAR(100)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_species_owner_active_name UNIQUE (owner_scope, active_name),
+                DROP INDEX `name`;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE species
+                    DROP CONSTRAINT uq_species_owner_active_name,
+                    DROP COLUMN owner_scope,
+                    DROP COLUMN active_name,
+                    ADD UNIQUE INDEX `name` (name),
+                    DROP FOREIGN KEY fk_species_company,
+                    DROP COLUMN general,
+                    DROP COLUMN company_id;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="288_add_company_scope_breeds" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="breeds"/>
+            <not><columnExists tableName="breeds" columnName="company_id"/></not>
+        </preConditions>
+        <sql>
+            ALTER TABLE breeds
+                ADD COLUMN company_id BIGINT NULL,
+                ADD COLUMN general BOOLEAN NOT NULL DEFAULT TRUE,
+                ADD CONSTRAINT fk_breeds_company FOREIGN KEY (company_id) REFERENCES companies (id),
+                ADD COLUMN owner_scope BIGINT
+                    GENERATED ALWAYS AS (COALESCE(company_id, 0)) STORED,
+                ADD COLUMN active_name VARCHAR(100)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_breeds_specie_owner_active_name UNIQUE (specie_id, owner_scope, active_name),
+                DROP INDEX uq_breeds_specie_name;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE breeds
+                    DROP CONSTRAINT uq_breeds_specie_owner_active_name,
+                    DROP COLUMN owner_scope,
+                    DROP COLUMN active_name,
+                    ADD UNIQUE INDEX uq_breeds_specie_name (specie_id, name),
+                    DROP FOREIGN KEY fk_breeds_company,
+                    DROP COLUMN general,
+                    DROP COLUMN company_id;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="288_add_company_scope_animal_colors" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="animal_colors"/>
+            <not><columnExists tableName="animal_colors" columnName="company_id"/></not>
+        </preConditions>
+        <sql>
+            ALTER TABLE animal_colors
+                ADD COLUMN company_id BIGINT NULL,
+                ADD COLUMN general BOOLEAN NOT NULL DEFAULT TRUE,
+                ADD CONSTRAINT fk_animal_colors_company FOREIGN KEY (company_id) REFERENCES companies (id),
+                ADD COLUMN owner_scope BIGINT
+                    GENERATED ALWAYS AS (COALESCE(company_id, 0)) STORED,
+                ADD COLUMN active_name VARCHAR(100)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_animal_colors_specie_owner_active_name UNIQUE (specie_id, owner_scope, active_name),
+                DROP INDEX uq_animal_colors_specie_name;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE animal_colors
+                    DROP CONSTRAINT uq_animal_colors_specie_owner_active_name,
+                    DROP COLUMN owner_scope,
+                    DROP COLUMN active_name,
+                    ADD UNIQUE INDEX uq_animal_colors_specie_name (specie_id, name),
+                    DROP FOREIGN KEY fk_animal_colors_company,
+                    DROP COLUMN general,
+                    DROP COLUMN company_id;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="288_add_company_scope_consultation_types" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="consultation_types"/>
+            <not><columnExists tableName="consultation_types" columnName="company_id"/></not>
+        </preConditions>
+        <sql>
+            ALTER TABLE consultation_types
+                ADD COLUMN company_id BIGINT NULL,
+                ADD COLUMN general BOOLEAN NOT NULL DEFAULT TRUE,
+                ADD CONSTRAINT fk_consultation_types_company FOREIGN KEY (company_id) REFERENCES companies (id),
+                ADD COLUMN owner_scope BIGINT
+                    GENERATED ALWAYS AS (COALESCE(company_id, 0)) STORED,
+                ADD COLUMN active_name VARCHAR(100)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_consultation_types_owner_active_name UNIQUE (owner_scope, active_name),
+                DROP INDEX `name`;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE consultation_types
+                    DROP CONSTRAINT uq_consultation_types_owner_active_name,
+                    DROP COLUMN owner_scope,
+                    DROP COLUMN active_name,
+                    ADD UNIQUE INDEX `name` (name),
+                    DROP FOREIGN KEY fk_consultation_types_company,
+                    DROP COLUMN general,
+                    DROP COLUMN company_id;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="288_add_company_scope_spa_types" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="spa_types"/>
+            <not><columnExists tableName="spa_types" columnName="company_id"/></not>
+        </preConditions>
+        <sql>
+            ALTER TABLE spa_types
+                ADD COLUMN company_id BIGINT NULL,
+                ADD COLUMN general BOOLEAN NOT NULL DEFAULT TRUE,
+                ADD CONSTRAINT fk_spa_types_company FOREIGN KEY (company_id) REFERENCES companies (id),
+                ADD COLUMN owner_scope BIGINT
+                    GENERATED ALWAYS AS (COALESCE(company_id, 0)) STORED,
+                ADD COLUMN active_name VARCHAR(100)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_spa_types_owner_active_name UNIQUE (owner_scope, active_name),
+                DROP INDEX `name`;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE spa_types
+                    DROP CONSTRAINT uq_spa_types_owner_active_name,
+                    DROP COLUMN owner_scope,
+                    DROP COLUMN active_name,
+                    ADD UNIQUE INDEX `name` (name),
+                    DROP FOREIGN KEY fk_spa_types_company,
+                    DROP COLUMN general,
+                    DROP COLUMN company_id;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

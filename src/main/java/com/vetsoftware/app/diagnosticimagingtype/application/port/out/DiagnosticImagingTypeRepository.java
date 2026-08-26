@@ -24,4 +24,39 @@ public interface DiagnosticImagingTypeRepository {
     List<DiagnosticImagingType> findAllAvailableForCompany(Long companyId);
 
     void delete(Long id);
+
+    /**
+     * La fila del MISMO ámbito que ocupa ese nombre, incluidas las DESHABILITADAS.
+     * El ámbito es la empresa cuando llega {@code companyId} y el catálogo de
+     * plataforma cuando llega {@code null}.
+     *
+     * <p>
+     * Ve las deshabilitadas a propósito: el índice único de la base solo cubre las
+     * filas activas, así que una fila dada de baja NO ocupa el nombre y la
+     * respuesta correcta del alta es reactivarla, no insertar otra ni fallar. Sin
+     * este finder el alta chocaba contra un nombre que la usuaria no ve en el
+     * listado, y el 409 hablaba de un conflicto con algo que para ella no existe.
+     *
+     * <p>
+     * La igualdad la decide la base con la collation de la columna
+     * ({@code utf8mb4_0900_ai_ci}): insensible a acentos y a caja, el mismo
+     * criterio del índice único. Comparar en Java diría que «Antirrabica» está
+     * libre y la base lo rechazaría después.
+     */
+    Optional<DiagnosticImagingType> findByNameAndCompanyIdIncludingDisabled(String name,
+            Long companyId);
+
+    /**
+     * ¿Hay otra fila ACTIVA del mismo ámbito con ese nombre? Excluye la fila que se
+     * está editando, que evidentemente ya lo lleva. Solo mira las activas porque
+     * son las únicas que el índice único cuenta.
+     */
+    boolean existsActiveByNameAndCompanyIdExcludingId(String name, Long companyId, Long id);
+
+    /**
+     * Reactiva la fila deshabilitada y le aplica el nombre y la descripción de la
+     * petición: la fila vuelve con lo que la usuaria acaba de escribir, no con lo
+     * que tenía el día que se dio de baja. Devuelve las filas afectadas.
+     */
+    int reactivateWithDetails(Long id, Long companyId, String name, String description);
 }

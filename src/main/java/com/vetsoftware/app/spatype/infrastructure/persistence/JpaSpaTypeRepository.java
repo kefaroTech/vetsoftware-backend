@@ -40,4 +40,19 @@ public class JpaSpaTypeRepository implements SpaTypeRepository {
     public int reactivate(Long id) {
         return jpaRepository.reactivate(id);
     }
+
+    @Override
+    public Optional<SpaType> findByNameIncludingDisabled(String name) {
+        return jpaRepository.findByNameIncludingDisabled(name).map(mapper::toDomain);
+    }
+
+    @Override
+    public boolean existsActiveByNameExcludingId(String name, Long id) {
+        return jpaRepository.existsByNameAndIdNot(name, id);
+    }
+
+    @Override
+    public int reactivateWithDetails(Long id, String name, String description) {
+        return jpaRepository.reactivateWithDetails(id, name, description);
+    }
 }

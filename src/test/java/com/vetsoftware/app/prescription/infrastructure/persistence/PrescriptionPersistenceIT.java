@@ -92,21 +92,32 @@ class PrescriptionPersistenceIT extends AbstractDataJpaTest {
         SchemaSeed.seed(entityManager);
         company = companyJpaRepository.getReferenceById(COMPANY);
 
+        // Nombres sinteticos con sufijo de rodaja (-PR): los changesets 290-293
+        // siembran estos catalogos como filas globales y sus indices unicos
+        // (uq_species_owner_active_name, uq_breeds_specie_owner_active_name,
+        // uq_animal_colors_specie_owner_active_name,
+        // uq_consultation_types_owner_active_name)
+        // comparan bajo utf8mb4_0900_ai_ci, sin acentos ni caja. `general` y
+        // `company_id` no los mapean estas entidades: el DEFAULT TRUE del changeset
+        // 288 deja la fila como global bien formada.
         SpecieJpaEntity specie = newInstance(SpecieJpaEntity.class);
-        setField(specie, "name", "Perro");
+        setField(specie, "name", "Perro-PR");
         setField(specie, "createdDate", LocalDateTime.of(2026, 1, 1, 0, 0));
+        setField(specie, "enabled", true);
         specie = specieJpaRepository.save(specie);
 
         BreedJpaEntity breed = newInstance(BreedJpaEntity.class);
-        setField(breed, "name", "Labrador");
+        setField(breed, "name", "Labrador-PR");
         setField(breed, "specie", specie);
         setField(breed, "createdDate", LocalDateTime.of(2026, 1, 1, 0, 0));
+        setField(breed, "enabled", true);
         breed = breedJpaRepository.save(breed);
 
         AnimalColorJpaEntity color = newInstance(AnimalColorJpaEntity.class);
-        setField(color, "name", "Negro");
+        setField(color, "name", "Negro-PR");
         setField(color, "specie", specie);
         setField(color, "createdDate", LocalDateTime.of(2026, 1, 1, 0, 0));
+        setField(color, "enabled", true);
         color = animalColorJpaRepository.save(color);
 
         OwnerJpaEntity owner = newInstance(OwnerJpaEntity.class);
@@ -141,9 +152,10 @@ class PrescriptionPersistenceIT extends AbstractDataJpaTest {
         animal = animalJpaRepository.save(animal);
 
         ConsultationTypeJpaEntity consultationType = newInstance(ConsultationTypeJpaEntity.class);
-        setField(consultationType, "name", "Consulta general");
+        setField(consultationType, "name", "Consulta general-PR");
         setField(consultationType, "description", "Consulta general de rutina");
         setField(consultationType, "createdDate", LocalDateTime.of(2026, 1, 1, 0, 0));
+        setField(consultationType, "enabled", true);
         consultationType = consultationTypeJpaRepository.save(consultationType);
 
         consultation = newInstance(ConsultationJpaEntity.class);

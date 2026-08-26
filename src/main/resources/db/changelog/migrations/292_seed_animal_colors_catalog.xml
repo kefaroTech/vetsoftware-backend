@@ -1,0 +1,619 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de docs/db/semilla-especies-razas-colores.md §6. 411 filas, un changeSet por
+         especie (18), specie_id resuelto por species.name via JOIN. Los changesets de Canino y
+         Felino empiezan por el UPDATE de normalizacion de acentos de §7.4: el changeset 218 sembro
+         'Cafe', 'Higado', 'Aguti', 'Calico' y 'Arlequin' SIN tilde en entornos donde ya habia
+         especies (dev); bajo utf8mb4_0900_ai_ci esas cadenas son la MISMA clave que 'Café',
+         'Hígado', 'Agutí', 'Calicó' y 'Arlequín'. El UPDATE va antes del INSERT del mismo changeset
+         y mueve `version` (@Version en AnimalColorJpaEntity). Precondicion HALT: sin las 18
+         especies sembrar colores es imposible, no innecesario (mismo criterio que 291).
+
+         NO usa `INSERT IGNORE` (CLAUDE.md lo prohibe: "convierte el error en un aviso... y nadie se
+         entera"), y aqui el riesgo es doble: si `INSERT IGNORE` se hubiera usado, la propia
+         normalizacion de acentos de arriba habria quedado sin red — un `INSERT IGNORE` de la forma
+         correcta ('Café') que topara con una fila ya normalizada no habria dado error, que es el
+         comportamiento correcto ahi, pero ese mismo silencio es el que dejo 411 filas sin sembrar
+         si un `WHERE s.name = 'X'` no casara por una especie mal escrita: `INSERT IGNORE` no
+         distingue "ya estaba, todo bien" de "el JOIN no encontro la especie, cero filas". Con
+         `INSERT` a secas mas el changeSet de verificacion del final
+         (`292_seed_animal_colors_verify_counts`, 18 `sqlCheck`, uno por especie) esa distincion
+         vuelve a existir: si el JOIN no casa, el recuento posterior lo delata con un HALT, no con
+         silencio — el mismo fallo de `218` que motivo la mitad de este encargo, ahora imposible de
+         colar. -->
+
+    <changeSet id="292_seed_animal_colors_canino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            UPDATE animal_colors c JOIN species s ON s.id = c.specie_id
+               SET c.name = 'Café', c.version = c.version + 1
+             WHERE c.name COLLATE utf8mb4_bin = 'Cafe' AND s.name = 'Canino';
+            UPDATE animal_colors c JOIN species s ON s.id = c.specie_id
+               SET c.name = 'Hígado', c.version = c.version + 1
+             WHERE c.name COLLATE utf8mb4_bin = 'Higado' AND s.name = 'Canino';
+            UPDATE animal_colors c JOIN species s ON s.id = c.specie_id
+               SET c.name = 'Agutí', c.version = c.version + 1
+             WHERE c.name COLLATE utf8mb4_bin = 'Aguti' AND s.name = 'Canino';
+            UPDATE animal_colors c JOIN species s ON s.id = c.specie_id
+               SET c.name = 'Arlequín', c.version = c.version + 1
+             WHERE c.name COLLATE utf8mb4_bin = 'Arlequin' AND s.name = 'Canino';
+        </sql>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Café' UNION ALL SELECT 'Blanco'
+                UNION ALL SELECT 'Gris' UNION ALL SELECT 'Crema' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Naranja' UNION ALL SELECT 'Rojo'
+                UNION ALL SELECT 'Chocolate' UNION ALL SELECT 'Canela' UNION ALL SELECT 'Azul'
+                UNION ALL SELECT 'Lila' UNION ALL SELECT 'Plateado' UNION ALL SELECT 'Marfil'
+                UNION ALL SELECT 'Arena' UNION ALL SELECT 'Albino' UNION ALL SELECT 'Bicolor'
+                UNION ALL SELECT 'Tricolor' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Agutí' UNION ALL SELECT 'Blanco y Negro'
+                UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Blanco y Gris'
+                UNION ALL SELECT 'Blanco y Naranja' UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+                UNION ALL SELECT 'Leonado' UNION ALL SELECT 'Trigueño' UNION ALL SELECT 'Hígado'
+                UNION ALL SELECT 'Ruano' UNION ALL SELECT 'Arlequín' UNION ALL SELECT 'Merle'
+                UNION ALL SELECT 'Merle Azul' UNION ALL SELECT 'Merle Rojo' UNION ALL SELECT 'Sable'
+                UNION ALL SELECT 'Negro y Fuego' UNION ALL SELECT 'Manto Negro'
+              ) n
+             WHERE s.name = 'Canino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Canino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_felino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            UPDATE animal_colors c JOIN species s ON s.id = c.specie_id
+               SET c.name = 'Café', c.version = c.version + 1
+             WHERE c.name COLLATE utf8mb4_bin = 'Cafe' AND s.name = 'Felino';
+            UPDATE animal_colors c JOIN species s ON s.id = c.specie_id
+               SET c.name = 'Agutí', c.version = c.version + 1
+             WHERE c.name COLLATE utf8mb4_bin = 'Aguti' AND s.name = 'Felino';
+            UPDATE animal_colors c JOIN species s ON s.id = c.specie_id
+               SET c.name = 'Calicó', c.version = c.version + 1
+             WHERE c.name COLLATE utf8mb4_bin = 'Calico' AND s.name = 'Felino';
+        </sql>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Café' UNION ALL SELECT 'Blanco'
+                UNION ALL SELECT 'Gris' UNION ALL SELECT 'Crema' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Naranja' UNION ALL SELECT 'Rojo'
+                UNION ALL SELECT 'Chocolate' UNION ALL SELECT 'Canela' UNION ALL SELECT 'Azul'
+                UNION ALL SELECT 'Lila' UNION ALL SELECT 'Plateado' UNION ALL SELECT 'Marfil'
+                UNION ALL SELECT 'Arena' UNION ALL SELECT 'Albino' UNION ALL SELECT 'Bicolor'
+                UNION ALL SELECT 'Tricolor' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Agutí' UNION ALL SELECT 'Blanco y Negro'
+                UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Blanco y Gris'
+                UNION ALL SELECT 'Blanco y Naranja' UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+                UNION ALL SELECT 'Carey' UNION ALL SELECT 'Calicó' UNION ALL SELECT 'Carey Diluido'
+                UNION ALL SELECT 'Colorpoint' UNION ALL SELECT 'Esmoquin' UNION ALL SELECT 'Humo'
+                UNION ALL SELECT 'Sombreado' UNION ALL SELECT 'Chinchilla'
+                UNION ALL SELECT 'Cervato' UNION ALL SELECT 'Caramelo' UNION ALL SELECT 'Albaricoque'
+                UNION ALL SELECT 'Carey Azul' UNION ALL SELECT 'Carey Chocolate' UNION ALL SELECT 'Carey Lila'
+                UNION ALL SELECT 'Carey Canela' UNION ALL SELECT 'Carey Cervato' UNION ALL SELECT 'Van'
+                UNION ALL SELECT 'Mitted' UNION ALL SELECT 'Atigrado Clásico' UNION ALL SELECT 'Atigrado Rayado'
+                UNION ALL SELECT 'Atigrado Moteado' UNION ALL SELECT 'Atigrado Ticked'
+              ) n
+             WHERE s.name = 'Felino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Felino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_equino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Alazán' AS name UNION ALL SELECT 'Alazán Tostado' UNION ALL SELECT 'Castaño'
+                UNION ALL SELECT 'Castaño Oscuro' UNION ALL SELECT 'Castaño Bocifuego' UNION ALL SELECT 'Negro'
+                UNION ALL SELECT 'Negro Ahumado' UNION ALL SELECT 'Negro Plata' UNION ALL SELECT 'Castaño Plata'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Bayo Tostado' UNION ALL SELECT 'Palomino'
+                UNION ALL SELECT 'Palomino Tostado' UNION ALL SELECT 'Isabelo' UNION ALL SELECT 'Cervuno'
+                UNION ALL SELECT 'Grullo' UNION ALL SELECT 'Ratonero' UNION ALL SELECT 'Perlino'
+                UNION ALL SELECT 'Cremello' UNION ALL SELECT 'Crema Ahumado'
+                UNION ALL SELECT 'Tordo' UNION ALL SELECT 'Tordo Rodado' UNION ALL SELECT 'Tordo Mosqueado'
+                UNION ALL SELECT 'Tordo Atruchado' UNION ALL SELECT 'Tordo Vinoso' UNION ALL SELECT 'Tordo Apizarrado'
+                UNION ALL SELECT 'Tordo Claro' UNION ALL SELECT 'Ruano Negro' UNION ALL SELECT 'Ruano Castaño'
+                UNION ALL SELECT 'Ruano Alazán' UNION ALL SELECT 'Rabicano'
+                UNION ALL SELECT 'Appaloosa' UNION ALL SELECT 'Tobiano' UNION ALL SELECT 'Overo'
+                UNION ALL SELECT 'Sabino' UNION ALL SELECT 'Pío' UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Equino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Equino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_asnal" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Asnal';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Asnal'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_mular" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Mular';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Mular'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_bovino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Bovino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Bovino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_bufalino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Bufalino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Bufalino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_porcino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Porcino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Porcino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_ovino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Ovino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Ovino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_caprino" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Caprino';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Caprino'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_conejo" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Conejo';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Conejo'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_cobayo" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Cobayo';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Cobayo'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_hamster" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Hámster';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Hámster'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_chinchilla" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Chinchilla';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Chinchilla'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_jerbo" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Jerbo';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Jerbo'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_huron" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Negro' AS name UNION ALL SELECT 'Blanco' UNION ALL SELECT 'Gris'
+                UNION ALL SELECT 'Café' UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Crema'
+                UNION ALL SELECT 'Amarillo' UNION ALL SELECT 'Dorado' UNION ALL SELECT 'Beige'
+                UNION ALL SELECT 'Bayo' UNION ALL SELECT 'Atigrado' UNION ALL SELECT 'Manchado'
+                UNION ALL SELECT 'Moteado' UNION ALL SELECT 'Bicolor' UNION ALL SELECT 'Tricolor'
+                UNION ALL SELECT 'Blanco y Negro' UNION ALL SELECT 'Blanco y Café' UNION ALL SELECT 'Albino'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Hurón';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Hurón'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_ave" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Verde' AS name UNION ALL SELECT 'Azul' UNION ALL SELECT 'Amarillo'
+                UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Naranja' UNION ALL SELECT 'Blanco'
+                UNION ALL SELECT 'Negro' UNION ALL SELECT 'Gris' UNION ALL SELECT 'Café'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Ave';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Ave'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="292_seed_animal_colors_reptil" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="animal_colors" columnName="general"/>
+            <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO animal_colors (name, specie_id, created_date, enabled, version, company_id, general)
+            SELECT n.name, s.id, CURRENT_TIMESTAMP, 1, 0, NULL, 1
+              FROM species s
+              JOIN (
+                SELECT 'Verde' AS name UNION ALL SELECT 'Azul' UNION ALL SELECT 'Amarillo'
+                UNION ALL SELECT 'Rojo' UNION ALL SELECT 'Naranja' UNION ALL SELECT 'Blanco'
+                UNION ALL SELECT 'Negro' UNION ALL SELECT 'Gris' UNION ALL SELECT 'Café'
+                UNION ALL SELECT 'Multicolor' UNION ALL SELECT 'Otro'
+              ) n
+             WHERE s.name = 'Reptil';
+        </sql>
+        <rollback>
+            <sql>
+                DELETE c FROM animal_colors c JOIN species s ON s.id = c.specie_id
+                 WHERE s.name = 'Reptil'
+                   AND NOT EXISTS (SELECT 1 FROM animals a WHERE a.color_id = c.id);
+            </sql>
+        </rollback>
+    </changeSet>
+    <!-- Verificacion de RESULTADO: confirma que CADA especie recibio exactamente los colores que le
+         tocaban. Ver el razonamiento completo en la cabecera del fichero. -->
+    <changeSet id="292_seed_animal_colors_verify_counts" author="orlando">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="40">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Canino' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="51">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Felino' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="38">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Equino' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Asnal' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Mular' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Bovino' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Bufalino' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Porcino' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Ovino' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Caprino' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Conejo' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Cobayo' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Hámster' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Chinchilla' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Jerbo' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="20">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Hurón' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="11">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Ave' AND c.enabled = 1</sqlCheck>
+            <sqlCheck expectedResult="11">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Reptil' AND c.enabled = 1</sqlCheck>
+        </preConditions>
+        <sql>DO 0;</sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -50,8 +50,15 @@ class SurgeryPersistenceIT extends AbstractDataJpaTest {
 
     private static final AnimalRef FIRULAIS = new AnimalRef(ANIMAL, "Firulais", "A-001");
     private static final AnimalRef OTRO_ANIMAL_REF = new AnimalRef(OTRO_ANIMAL, "Michi", "A-002");
+    /**
+     * Nombre sintetico con sufijo de rodaja: el changeset 295 siembra
+     * {@code 'Ovariohisterectomia'} (con tilde) como fila global y la collation
+     * {@code utf8mb4_0900_ai_ci} ignora acentos y caja, asi que
+     * {@code 'Ovariohisterectomia'} a secas es EL MISMO nombre para
+     * {@code uq_surgery_types_owner_active_name}.
+     */
     private static final SurgeryTypeRef OVARIOHISTERECTOMIA = new SurgeryTypeRef(SURGERY_TYPE,
-            "Ovariohisterectomia");
+            "Ovariohisterectomia-SU");
     private static final ConsultationRef CONSULTA_PREVIA = new ConsultationRef(CONSULTATION,
             LocalDate.of(2026, 3, 9));
     private static final CompanyRef CLINICA = new CompanyRef(EMPRESA, "Veterinaria de prueba",
@@ -111,16 +118,18 @@ class SurgeryPersistenceIT extends AbstractDataJpaTest {
 
     private void catalogoDeAnimal() {
         entityManager.createNativeQuery("""
-                INSERT IGNORE INTO species (id, name, created_date, enabled)
-                VALUES (:id, 'Canino', '2026-01-01 08:00:00', true)
+                INSERT IGNORE INTO species (id, name, general, created_date, enabled, version)
+                VALUES (:id, 'Canino-SU', true, '2026-01-01 08:00:00', true, 0)
                 """).setParameter("id", SPECIE).executeUpdate();
         entityManager.createNativeQuery("""
-                INSERT IGNORE INTO breeds (id, name, specie_id, created_date, enabled)
-                VALUES (:id, 'Criollo', :specie, '2026-01-01 08:00:00', true)
+                INSERT IGNORE INTO breeds (id, name, specie_id, general, created_date, enabled,
+                                           version)
+                VALUES (:id, 'Criollo-SU', :specie, true, '2026-01-01 08:00:00', true, 0)
                 """).setParameter("id", BREED).setParameter("specie", SPECIE).executeUpdate();
         entityManager.createNativeQuery("""
-                INSERT IGNORE INTO animal_colors (id, name, specie_id, created_date, enabled)
-                VALUES (:id, 'Negro', :specie, '2026-01-01 08:00:00', true)
+                INSERT IGNORE INTO animal_colors (id, name, specie_id, general, created_date,
+                                                  enabled, version)
+                VALUES (:id, 'Negro-SU', :specie, true, '2026-01-01 08:00:00', true, 0)
                 """).setParameter("id", COLOR).setParameter("specie", SPECIE).executeUpdate();
     }
 
@@ -140,17 +149,18 @@ class SurgeryPersistenceIT extends AbstractDataJpaTest {
     private void tipoDeCirugia() {
         entityManager.createNativeQuery("""
                 INSERT IGNORE INTO surgery_types (id, name, description, general, created_date,
-                                                  enabled)
-                VALUES (:id, 'Ovariohisterectomia', 'Cirugia de esterilizacion', true,
-                        '2026-01-01 08:00:00', true)
+                                                  enabled, version)
+                VALUES (:id, 'Ovariohisterectomia-SU', 'Cirugia de esterilizacion', true,
+                        '2026-01-01 08:00:00', true, 0)
                 """).setParameter("id", SURGERY_TYPE).executeUpdate();
     }
 
     private void tipoDeConsulta() {
         entityManager.createNativeQuery("""
-                INSERT IGNORE INTO consultation_types (id, name, description, created_date, enabled)
-                VALUES (:id, 'Control prequirurgico', 'Valoracion previa a cirugia',
-                        '2026-01-01 08:00:00', true)
+                INSERT IGNORE INTO consultation_types (id, name, description, general,
+                                                       created_date, enabled, version)
+                VALUES (:id, 'Control prequirurgico-SU', 'Valoracion previa a cirugia', true,
+                        '2026-01-01 08:00:00', true, 0)
                 """).setParameter("id", CONSULTATION_TYPE).executeUpdate();
     }
 

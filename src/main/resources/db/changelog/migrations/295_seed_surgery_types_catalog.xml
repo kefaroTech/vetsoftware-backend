@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de docs/db/semilla-consulta-cirugia-spa.md §3. `surgery_types` SI tiene company_id +
+         general (051_create_surgery_types.xml + 057_alter_surgery_types_add_company_and_general.xml):
+         toda fila de plataforma va company_id = NULL, general = TRUE, la unica combinacion que acepta
+         el dominio (SurgeryType.java: XOR general/company). 81 filas con nomenclatura tecnica, nunca
+         coloquial, para dejar libres los nombres que una clinica querria para su propio catalogo
+         (Castracion, Esterilizacion, Limpieza dental...). INSERT ... SELECT ... WHERE NOT EXISTS por
+         nombre; INSERT IGNORE prohibido por CLAUDE.md. -->
+    <changeSet id="295_seed_surgery_types_catalog" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM surgery_types WHERE general = TRUE
+            </sqlCheck>
+        </preConditions>
+
+        <sql>
+            INSERT INTO surgery_types (name, description, company_id, general, enabled, version, created_date)
+            SELECT seed.name, seed.description, NULL, TRUE, TRUE, 0, CURRENT_TIMESTAMP
+              FROM (
+                SELECT 'Ovariohisterectomía' AS name, 'Extirpación de ovarios y útero. Es la esterilización electiva de la hembra, comúnmente llamada «castración» o «esterilización». Vía laparotomía por la línea media ventral.' AS description
+                UNION ALL SELECT 'Ovariectomía', 'Extirpación de los ovarios conservando el útero. Alternativa a la ovariohisterectomía en la hembra joven y sana, con menor abordaje.'
+                UNION ALL SELECT 'Orquiectomía', 'Extirpación de ambos testículos. Es la castración del macho, electiva o terapéutica, por abordaje prescrotal en el perro y escrotal en el gato.'
+                UNION ALL SELECT 'Orquiectomía de testículo criptórquido', 'Extirpación del testículo no descendido, alojado en el canal inguinal o en la cavidad abdominal. Exige abordaje inguinal o laparotomía, y no es equiparable a la orquiectomía corriente.'
+                UNION ALL SELECT 'Cesárea', 'Extracción quirúrgica de los fetos por histerotomía ante distocia o por indicación programada. Incluye la reanimación de los neonatos.'
+                UNION ALL SELECT 'Ovariohisterectomía por piómetra', 'Ovariohisterectomía de urgencia por infección uterina. No es la cirugía electiva: el paciente llega comprometido y exige estabilización previa y manejo posoperatorio distinto.'
+                UNION ALL SELECT 'Reducción de prolapso vaginal', 'Corrección del prolapso o la hiperplasia del suelo vaginal, con resección del tejido protruido cuando está desvitalizado.'
+                UNION ALL SELECT 'Reducción de prolapso uterino', 'Reposición o resección del útero prolapsado tras el parto. Procedimiento de urgencia.'
+                UNION ALL SELECT 'Vasectomía', 'Sección y ligadura de los conductos deferentes. Esteriliza al macho conservando la función testicular endocrina.'
+                UNION ALL SELECT 'Laparotomía exploratoria', 'Apertura de la cavidad abdominal para exploración y diagnóstico, con toma de biopsias, sin un procedimiento adicional planeado de antemano.'
+                UNION ALL SELECT 'Gastrotomía', 'Apertura del estómago para extraer un cuerpo extraño o tomar biopsia de pared, con cierre en dos planos.'
+                UNION ALL SELECT 'Gastropexia preventiva', 'Fijación del estómago a la pared abdominal derecha para prevenir la recidiva o la aparición del vólvulo gástrico en razas predispuestas.'
+                UNION ALL SELECT 'Corrección de dilatación y vólvulo gástrico (GDV)', 'Urgencia quirúrgica: descompresión y desrotación del estómago, valoración de la viabilidad de la pared y del bazo, y gastropexia en el mismo acto.'
+                UNION ALL SELECT 'Enterotomía', 'Apertura del intestino para extraer un cuerpo extraño o tomar biopsia, conservando el segmento intestinal.'
+                UNION ALL SELECT 'Enterectomía con anastomosis', 'Resección del segmento intestinal inviable y anastomosis término-terminal. Indicada en obstrucción con necrosis, invaginación o masa intestinal.'
+                UNION ALL SELECT 'Esplenectomía', 'Extirpación total o parcial del bazo por masa esplénica, torsión o traumatismo con hemorragia.'
+                UNION ALL SELECT 'Lobectomía hepática', 'Resección total o parcial de un lóbulo hepático por masa, absceso o traumatismo.'
+                UNION ALL SELECT 'Colecistectomía', 'Extirpación de la vesícula biliar, con exploración y permeabilización de la vía biliar. Indicada en mucocele y colecistitis.'
+                UNION ALL SELECT 'Ligadura de shunt portosistémico', 'Cierre progresivo del vaso anómalo que desvía la sangre portal, con anillo ameroide, banda de celofán o sutura.'
+                UNION ALL SELECT 'Adrenalectomía', 'Extirpación de la glándula suprarrenal por masa funcional o no funcional, con valoración de la invasión de la vena cava.'
+                UNION ALL SELECT 'Corrección de prolapso rectal', 'Reducción y fijación del recto prolapsado, por vía perineal o por laparotomía con colopexia según la gravedad y la recidiva.'
+                UNION ALL SELECT 'Cistotomía', 'Apertura de la vejiga para extraer urolitos, tomar biopsia o resecar una masa de la pared.'
+                UNION ALL SELECT 'Uretrostomía', 'Creación de una abertura uretral permanente (perineal, prescrotal, escrotal o prepúbica) ante obstrucción uretral recurrente o irresoluble.'
+                UNION ALL SELECT 'Nefrotomía', 'Apertura del riñón para extraer un cálculo de la pelvis renal, conservando el órgano.'
+                UNION ALL SELECT 'Nefrectomía', 'Extirpación de un riñón por masa, hidronefrosis o traumatismo, con función renal contralateral comprobada.'
+                UNION ALL SELECT 'Herniorrafia umbilical', 'Cierre del anillo umbilical persistente. Con frecuencia se resuelve en el mismo acto de la esterilización electiva.'
+                UNION ALL SELECT 'Herniorrafia inguinal', 'Reducción del contenido herniado y cierre del anillo inguinal, uni o bilateral.'
+                UNION ALL SELECT 'Herniorrafia perineal', 'Reconstrucción del diafragma pélvico, con transposición del músculo obturador interno cuando hace falta. Frecuente en el macho entero de edad avanzada.'
+                UNION ALL SELECT 'Herniorrafia diafragmática', 'Reparación de la rotura del diafragma, casi siempre traumática, con reexpansión pulmonar y drenaje torácico.'
+                UNION ALL SELECT 'Herniorrafia de pared abdominal', 'Cierre de la eventración o de la hernia de pared traumática o incisional, con malla si el defecto lo exige.'
+                UNION ALL SELECT 'Resección de masa cutánea o subcutánea', 'Extirpación de una masa de piel o tejido subcutáneo con margen quirúrgico, y remisión de la pieza a histopatología.'
+                UNION ALL SELECT 'Mastectomía', 'Extirpación de la cadena mamaria, regional o radical, por tumor mamario. Puede acompañarse de ovariohisterectomía en el mismo acto.'
+                UNION ALL SELECT 'Saculectomía anal', 'Extirpación de los sacos anales por absceso recurrente, impactación crónica o neoplasia.'
+                UNION ALL SELECT 'Debridación y sutura de heridas', 'Limpieza, desbridamiento del tejido desvitalizado y cierre de una herida traumática o por mordedura, con drenaje si procede.'
+                UNION ALL SELECT 'Colgajo cutáneo o injerto de piel', 'Reconstrucción de un defecto cutáneo extenso mediante colgajo de avance, rotación, transposición o patrón axial, o injerto libre de piel.'
+                UNION ALL SELECT 'Estafilectomía', 'Resección del paladar blando elongado, componente principal de la corrección del síndrome braquicefálico.'
+                UNION ALL SELECT 'Corrección de narinas estenóticas', 'Rinoplastia o alarplastia que amplía el orificio nasal en el paciente braquicéfalo. Suele hacerse junto con la estafilectomía.'
+                UNION ALL SELECT 'Lateralización aritenoidea', 'Fijación del cartílago aritenoides en abducción para tratar la parálisis laríngea.'
+                UNION ALL SELECT 'Traqueostomía', 'Apertura de la tráquea para asegurar la vía aérea, temporal o permanente, en obstrucción de vía aérea alta.'
+                UNION ALL SELECT 'Toracotomía exploratoria', 'Apertura de la cavidad torácica —intercostal o por esternotomía media— para exploración, biopsia o resección de una masa intratorácica.'
+                UNION ALL SELECT 'Lobectomía pulmonar', 'Resección total o parcial de un lóbulo pulmonar por masa, torsión, absceso o traumatismo.'
+                UNION ALL SELECT 'Ligadura de ducto arterioso persistente', 'Cierre quirúrgico del conducto arterioso persistente por toracotomía. Cardiopatía congénita corregible del cachorro.'
+                UNION ALL SELECT 'Manejo quirúrgico de otohematoma', 'Drenaje y fijación del pabellón auricular para tratar el hematoma auricular y evitar la deformidad en coliflor.'
+                UNION ALL SELECT 'Ablación total del conducto auditivo', 'Ablación total del conducto auditivo externo con osteotomía de la bulla timpánica (TECA-BO), en otitis crónica de fin de vía o neoplasia del conducto.'
+                UNION ALL SELECT 'Resección lateral del conducto auditivo', 'Resección de la pared lateral del conducto auditivo vertical (técnica de Zepp) para mejorar el drenaje y la ventilación del oído.'
+                UNION ALL SELECT 'Osteosíntesis con placa', 'Reducción abierta y fijación interna de una fractura con placa y tornillos, sola o combinada con clavo intramedular.'
+                UNION ALL SELECT 'Osteosíntesis con clavo intramedular', 'Fijación de una fractura de hueso largo con clavo intramedular o clavo encerrojado, con o sin cerclaje.'
+                UNION ALL SELECT 'Osteosíntesis con fijador externo', 'Estabilización de una fractura con fijador externo lineal, híbrido o circular. Indicada en fractura abierta o con pérdida de sustancia.'
+                UNION ALL SELECT 'Osteotomía niveladora de la meseta tibial (TPLO)', 'Nivelación de la meseta tibial para neutralizar la subluxación craneal de la tibia tras la ruptura del ligamento cruzado craneal.'
+                UNION ALL SELECT 'Avance de la tuberosidad tibial (TTA)', 'Avance de la tuberosidad tibial para neutralizar la inestabilidad por ruptura del ligamento cruzado craneal. Alternativa a la TPLO.'
+                UNION ALL SELECT 'Estabilización extracapsular de ligamento cruzado', 'Estabilización de la rodilla mediante sutura fabelo-tibial o retinacular, fuera de la articulación. Es la técnica tradicional para el paciente de bajo peso.'
+                UNION ALL SELECT 'Corrección de luxación rotuliana', 'Corrección de la luxación de rótula con trocleoplastia, transposición de la tuberosidad tibial y ajuste de los tejidos blandos, según el grado.'
+                UNION ALL SELECT 'Ostectomía de cabeza y cuello femoral', 'Resección de la cabeza y el cuello del fémur para crear una seudoartrosis indolora en displasia de cadera, luxación irreducible o necrosis de la cabeza femoral.'
+                UNION ALL SELECT 'Reducción abierta de luxación articular', 'Reducción quirúrgica y estabilización de una luxación de cadera, codo, hombro o tarso que no se mantiene tras la reducción cerrada.'
+                UNION ALL SELECT 'Artrodesis', 'Fusión quirúrgica de una articulación —carpo, tarso, hombro, codo o rodilla—, total o parcial, ante inestabilidad o artrosis irreparable.'
+                UNION ALL SELECT 'Reemplazo total de cadera', 'Sustitución protésica de la articulación coxofemoral en displasia avanzada o artrosis incapacitante.'
+                UNION ALL SELECT 'Osteotomía correctiva', 'Corrección quirúrgica de una deformidad angular o rotacional de un hueso largo, estabilizada con placa, clavo encerrojado o fijador externo.'
+                UNION ALL SELECT 'Amputación de miembro', 'Amputación de un miembro anterior o posterior por traumatismo irreparable, neoplasia o dolor incontrolable, por desarticulación o con escapulectomía.'
+                UNION ALL SELECT 'Extracción de material de osteosíntesis', 'Retiro de placas, tornillos, clavos o fijadores una vez consolidada la fractura, o antes por intolerancia o infección del implante.'
+                UNION ALL SELECT 'Artrotomía exploratoria', 'Apertura quirúrgica de una articulación para exploración, biopsia sinovial o extracción de un fragmento osteocondral.'
+                UNION ALL SELECT 'Hemilaminectomía', 'Descompresión de la médula espinal por abordaje lateral, con o sin fenestración del disco, en enfermedad discal toracolumbar.'
+                UNION ALL SELECT 'Craneotomía', 'Apertura del cráneo para biopsia o resección de una masa intracraneal, o para descompresión tras traumatismo.'
+                UNION ALL SELECT 'Profilaxis dental', 'Limpieza dental profesional bajo anestesia general: raspado supragingival y subgingival, pulido y sondaje periodontal completo con registro por diente.'
+                UNION ALL SELECT 'Extracción dental simple', 'Extracción de una pieza dental sin colgajo ni ostectomía, en diente de raíz única o con movilidad avanzada.'
+                UNION ALL SELECT 'Extracción dental quirúrgica', 'Extracción con elevación de colgajo mucogingival, ostectomía y seccionamiento de raíces, con cierre del alveolo.'
+                UNION ALL SELECT 'Tratamiento periodontal', 'Tratamiento de la enfermedad periodontal más allá de la limpieza: alisado radicular, curetaje, colgajo periodontal, gingivectomía o aplicación local de antisépticos.'
+                UNION ALL SELECT 'Mandibulectomía o maxilectomía parcial', 'Resección parcial de la mandíbula o del maxilar por neoplasia oral o fractura irreparable, con reconstrucción de tejidos blandos.'
+                UNION ALL SELECT 'Corrección de entropión', 'Blefaroplastia que corrige la inversión del párpado y el roce de las pestañas contra la córnea.'
+                UNION ALL SELECT 'Corrección de ectropión', 'Blefaroplastia que corrige la eversión del párpado y la exposición conjuntival crónica.'
+                UNION ALL SELECT 'Reposición de la glándula del tercer párpado', 'Reposición quirúrgica de la glándula del tercer párpado prolapsada, conocida como «ojo de cereza», por técnica de bolsillo o de anclaje. Nunca por extirpación.'
+                UNION ALL SELECT 'Queratotomía en rejilla', 'Desbridamiento del epitelio corneal no adherido y queratotomía en rejilla o puntiforme para tratar la úlcera corneal superficial crónica indolente.'
+                UNION ALL SELECT 'Recubrimiento conjuntival', 'Injerto o colgajo de conjuntiva que cubre y nutre una úlcera corneal profunda, un descemetocele o una perforación.'
+                UNION ALL SELECT 'Enucleación', 'Extirpación del globo ocular con cierre palpebral definitivo, ante ojo ciego doloroso, glaucoma terminal o neoplasia intraocular.'
+                UNION ALL SELECT 'Facoemulsificación de catarata', 'Extracción del cristalino cataratoso por facoemulsificación, con implante de lente intraocular.'
+                UNION ALL SELECT 'Resección de masa palpebral', 'Extirpación de un tumor del párpado con margen, y blefaroplastia reconstructiva cuando el defecto supera un tercio del borde palpebral.'
+                UNION ALL SELECT 'Ovariectomía laparoscópica', 'Extirpación de los ovarios por laparoscopia, con menor dolor posoperatorio y recuperación más rápida que la vía abierta.'
+                UNION ALL SELECT 'Gastropexia laparoscópica', 'Fijación preventiva del estómago a la pared abdominal por vía laparoscópica o asistida por laparoscopia.'
+                UNION ALL SELECT 'Laparoscopia exploratoria', 'Exploración de la cavidad abdominal por laparoscopia, con toma de biopsias de hígado, riñón, páncreas o intestino.'
+                UNION ALL SELECT 'Endoscopia intervencionista', 'Procedimiento terapéutico por endoscopia flexible o rígida: extracción de cuerpo extraño digestivo, dilatación esofágica o colocación de sonda de alimentación.'
+                UNION ALL SELECT 'Artroscopia', 'Exploración articular por artroscopia, con extracción de fragmentos, liberación meniscal o desbridamiento en hombro, codo, rodilla o tarso.'
+                UNION ALL SELECT 'Otro procedimiento quirúrgico', 'Procedimiento no contemplado en el catálogo global. El detalle se registra en el texto de la cirugía. Su uso frecuente indica que falta un tipo por sembrar, o que la clínica debería crear el suyo propio.'
+              ) AS seed
+             WHERE NOT EXISTS (SELECT 1 FROM surgery_types st WHERE st.name = seed.name);
+        </sql>
+
+        <rollback>
+            <sql>
+                DELETE FROM surgery_types
+                 WHERE general = TRUE AND company_id IS NULL
+                   AND name IN ('Ovariohisterectomía','Ovariectomía','Orquiectomía',
+                     'Orquiectomía de testículo criptórquido','Cesárea','Ovariohisterectomía por piómetra',
+                     'Reducción de prolapso vaginal','Reducción de prolapso uterino','Vasectomía',
+                     'Laparotomía exploratoria','Gastrotomía','Gastropexia preventiva',
+                     'Corrección de dilatación y vólvulo gástrico (GDV)','Enterotomía',
+                     'Enterectomía con anastomosis','Esplenectomía','Lobectomía hepática',
+                     'Colecistectomía','Ligadura de shunt portosistémico','Adrenalectomía',
+                     'Corrección de prolapso rectal','Cistotomía','Uretrostomía','Nefrotomía','Nefrectomía',
+                     'Herniorrafia umbilical','Herniorrafia inguinal','Herniorrafia perineal',
+                     'Herniorrafia diafragmática','Herniorrafia de pared abdominal',
+                     'Resección de masa cutánea o subcutánea','Mastectomía','Saculectomía anal',
+                     'Debridación y sutura de heridas','Colgajo cutáneo o injerto de piel','Estafilectomía',
+                     'Corrección de narinas estenóticas','Lateralización aritenoidea','Traqueostomía',
+                     'Toracotomía exploratoria','Lobectomía pulmonar','Ligadura de ducto arterioso persistente',
+                     'Manejo quirúrgico de otohematoma','Ablación total del conducto auditivo',
+                     'Resección lateral del conducto auditivo','Osteosíntesis con placa',
+                     'Osteosíntesis con clavo intramedular','Osteosíntesis con fijador externo',
+                     'Osteotomía niveladora de la meseta tibial (TPLO)','Avance de la tuberosidad tibial (TTA)',
+                     'Estabilización extracapsular de ligamento cruzado','Corrección de luxación rotuliana',
+                     'Ostectomía de cabeza y cuello femoral','Reducción abierta de luxación articular',
+                     'Artrodesis','Reemplazo total de cadera','Osteotomía correctiva','Amputación de miembro',
+                     'Extracción de material de osteosíntesis','Artrotomía exploratoria','Hemilaminectomía',
+                     'Craneotomía','Profilaxis dental','Extracción dental simple','Extracción dental quirúrgica',
+                     'Tratamiento periodontal','Mandibulectomía o maxilectomía parcial','Corrección de entropión',
+                     'Corrección de ectropión','Reposición de la glándula del tercer párpado',
+                     'Queratotomía en rejilla','Recubrimiento conjuntival','Enucleación',
+                     'Facoemulsificación de catarata','Resección de masa palpebral',
+                     'Ovariectomía laparoscópica','Gastropexia laparoscópica','Laparoscopia exploratoria',
+                     'Endoscopia intervencionista','Artroscopia','Otro procedimiento quirúrgico')
+                   AND NOT EXISTS (SELECT 1 FROM surgeries su WHERE su.surgery_type_id = surgery_types.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

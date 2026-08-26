@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de docs/db/semilla-tipos-de-vacuna.md §4. La especificacion recomendaba sembrar solo
+         12 de las 33 filas investigadas (niveles N1+N2) para no quemar mas nombres en el UNIQUE
+         global de `name` (issue #557) hasta que exista `uq_vaccination_types_owner_active_name`.
+         Decision del usuario, ya tomada: se siembran las 33 filas completas de §4 (todo lo
+         investigado y verificado). Quedan fuera, por criterio CLINICO y no por recorte de alcance,
+         las vacunas de §5: coronavirus canino, giardiasis canina, PIF y FIV (las cuatro "not
+         recommended" del WSAVA VGG) y Lyme (no endemica en Colombia); tambien quedan fuera
+         influenza aviar, leishmaniosis canina y mixomatosis/enfermedad hemorragica del conejo,
+         que la propia especificacion marca como "pendiente de verificar" registro ICA y para las
+         que no hay `description` investigada y verificada que transcribir.
+         `general = TRUE` explicito (el DEFAULT de la columna es FALSE: 055_alter_vaccination_types_
+         add_company_and_general.xml) y `company_id` se omite (queda NULL). Ver issue #560. -->
+    <changeSet id="294_seed_vaccination_types_catalog" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM vaccination_types WHERE general = TRUE</sqlCheck>
+        </preConditions>
+
+        <insert tableName="vaccination_types">
+            <column name="name" value="Antirrábica canina y felina"/>
+            <column name="description" value="Virus de la rabia inactivado, aplicable a perros y gatos. Previene la rabia, encefalitis de curso mortal y zoonosis transmisible al ser humano. Vacuna núcleo (core) para ambas especies según WSAVA y AAHA/AAFP, y exigida en Colombia dentro del control oficial de zoonosis (Ley 9 de 1979 y Decreto 2257 de 1986)."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Polivalente canina DHPP: moquillo, hepatitis, parvovirus y parainfluenza"/>
+            <column name="description" value="Vacuna combinada para perros. Previene el moquillo (virus del distemper canino), la hepatitis infecciosa canina (adenovirus canino, formulada con cepa CAV-2), la parvovirosis (parvovirus canino tipo 2) y la parainfluenza canina. Reúne las tres vacunas núcleo (core) del perro según WSAVA. En el mercado colombiano se conoce como quíntuple."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Polivalente canina DHPP-L: moquillo, hepatitis, parvovirus, parainfluenza y leptospirosis"/>
+            <column name="description" value="Vacuna combinada para perros. Previene el moquillo, la hepatitis infecciosa canina (adenovirus canino), la parvovirosis, la parainfluenza canina y la leptospirosis (serovares de Leptospira interrogans). Las cuatro primeras valencias son las mismas de la polivalente DHPP; la fracción de Leptospira es no núcleo (non-core) y se indica por riesgo de exposición. En el mercado colombiano se conoce como séxtuple."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Leptospirosis canina"/>
+            <column name="description" value="Bacterina para perros contra serovares de Leptospira interrogans (canicola, icterohaemorrhagiae, grippotyphosa y pomona, según el producto). Previene la leptospirosis canina, de curso hepático y renal, y zoonosis de importancia en Colombia. Vacuna no núcleo (non-core) según WSAVA: se indica por riesgo de exposición a agua estancada, roedores o inundaciones."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Tos de las perreras (Bordetella bronchiseptica)"/>
+            <column name="description" value="Vacuna para perros contra Bordetella bronchiseptica, sola o combinada con parainfluenza canina, en presentación intranasal, oral o inyectable. Previene la traqueobronquitis infecciosa canina, conocida como tos de las perreras. Vacuna no núcleo (non-core): se indica en perros con guardería, peluquería, criadero, albergue o exposiciones."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Influenza canina (H3N8 y H3N2)"/>
+            <column name="description" value="Vacuna para perros contra los virus de la influenza canina H3N8 y H3N2. Previene la influenza canina, de curso respiratorio agudo. Vacuna no núcleo (non-core), indicada solo donde la enfermedad esté presente y en perros con alta vida social. No se ha verificado que exista un producto con registro ICA vigente en Colombia."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Trivalente felina FVRCP: panleucopenia, rinotraqueítis y calicivirus"/>
+            <column name="description" value="Vacuna combinada para gatos. Previene la panleucopenia felina (parvovirus felino), la rinotraqueítis viral felina (herpesvirus felino tipo 1) y la calicivirosis felina (calicivirus felino). Son las tres vacunas núcleo (core) del gato según WSAVA y las guías AAHA/AAFP. En el mercado colombiano se conoce como triple felina."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Leucemia felina (FeLV)"/>
+            <column name="description" value="Vacuna para gatos contra el virus de la leucemia felina, retrovirus que causa inmunosupresión, anemia y linfoma. Núcleo (core) en gatos menores de un año según AAHA/AAFP y WSAVA; en el gato adulto es no núcleo (non-core) y se indica con acceso al exterior o convivencia con gatos de estado desconocido. Exige prueba previa de FeLV."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Polivalente felina FVRCP + Chlamydia felis"/>
+            <column name="description" value="Vacuna combinada para gatos. Añade a la trivalente felina (panleucopenia, rinotraqueítis y calicivirosis) la fracción contra Chlamydia felis, causa de conjuntivitis crónica. La fracción de Chlamydia es no núcleo (non-core) y se indica en poblaciones con conjuntivitis confirmada, sobre todo en colonias y refugios. En el mercado se conoce como cuádruple felina."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Bordetelosis felina (Bordetella bronchiseptica)"/>
+            <column name="description" value="Vacuna intranasal para gatos contra Bordetella bronchiseptica. Previene la enfermedad respiratoria alta por bordetelosis felina. Vacuna no núcleo (non-core) de uso muy limitado: se reserva a poblaciones de refugio o criadero con enfermedad respiratoria confirmada, no a gatos de hogar."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Toxoide tetánico equino"/>
+            <column name="description" value="Toxoide de Clostridium tetani para equinos. Previene el tétanos, enfermedad neurológica de letalidad muy alta en el caballo, que se adquiere por heridas punzantes, por el ombligo del potro y por la castración. Vacuna núcleo (core) de la AAEP: todo équido debe recibirla con independencia de su uso, su valor o su ubicación."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Encefalitis equina venezolana (EEV)"/>
+            <column name="description" value="Vacuna de virus vivo atenuado, cepa TC-83, para caballares, mulares y asnales. Previene la encefalitis equina venezolana, de curso nervioso y mortal, y zoonosis. En Colombia es enfermedad de control oficial y su aplicación es obligatoria por debajo de los 1.500 m s. n. m. y para todo équido que asista a eventos de concentración animal (Resolución ICA 6646 de 2017)."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Encefalitis equina del Este y del Oeste (EEE/WEE)"/>
+            <column name="description" value="Vacuna inactivada para equinos contra los virus de la encefalomielitis equina del Este y del Oeste. Previene encefalitis de curso nervioso transmitidas por mosquitos, con letalidad muy alta en el caso del Este. Vacunas núcleo (core) de la AAEP. En Colombia se han atendido brotes de encefalitis equina del Este; suele aplicarse en presentación combinada con la venezolana."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Influenza equina"/>
+            <column name="description" value="Vacuna para equinos contra el virus de la influenza equina (subtipo H3N8). Previene la influenza equina, de curso respiratorio y alta difusión en poblaciones agrupadas. Vacuna basada en riesgo (non-core) de la AAEP: se indica en caballos de deporte, de trabajo, de transporte frecuente o que asisten a concentraciones."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Rinoneumonitis equina (herpesvirus equino tipos 1 y 4)"/>
+            <column name="description" value="Vacuna para equinos contra los herpesvirus equinos tipo 1 y tipo 4. Previene la rinoneumonitis equina, de curso respiratorio, y el aborto por herpesvirus tipo 1 en la yegua gestante. Vacuna basada en riesgo (non-core) de la AAEP: prioritaria en yeguas de cría y en caballos jóvenes agrupados."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Antirrábica equina"/>
+            <column name="description" value="Virus de la rabia inactivado para equinos. Previene la rabia equina, que en Colombia se presenta sobre todo como rabia de origen silvestre transmitida por el murciélago hematófago Desmodus rotundus. Vacuna núcleo (core) de la AAEP y de interés en salud pública por ser zoonosis mortal."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Fiebre aftosa bovina"/>
+            <column name="description" value="Vacuna oleosa inactivada contra el virus de la fiebre aftosa, para bovinos y bufalinos. Previene la fiebre aftosa, enfermedad vesicular de difusión muy rápida y alto impacto económico. En Colombia la vacunación es obligatoria y se ejecuta en dos ciclos anuales coordinados por el ICA; es la condición que sostiene el estatus de país libre de fiebre aftosa con vacunación."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Brucelosis bovina"/>
+            <column name="description" value="Vacuna de Brucella abortus, cepa 19 o cepa RB51, para bovinos. Previene la brucelosis bovina, causa de aborto y de pérdida reproductiva, y zoonosis de riesgo profesional. En Colombia su aplicación es obligatoria en las terneras dentro de la franja de edad definida por el ICA y se ejecuta junto con los ciclos oficiales de vacunación."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Rabia bovina de origen silvestre"/>
+            <column name="description" value="Virus de la rabia inactivado para bovinos y bufalinos. Previene la rabia de origen silvestre o rabia paresiante, transmitida por el murciélago hematófago Desmodus rotundus, de curso nervioso y siempre mortal. En Colombia se aplica en las zonas de riesgo dentro de los ciclos oficiales de vacunación del ICA."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Clostridiales bovinos: carbón sintomático, edema maligno y septicemia hemorrágica"/>
+            <column name="description" value="Bacterina para bovinos contra Clostridium chauvoei, Clostridium septicum y Pasteurella multocida. Previene el carbón sintomático, el edema maligno y la septicemia hemorrágica bovina, cuadros de curso agudo y mortalidad alta en animales jóvenes en pastoreo. En el mercado colombiano se conoce como triple bovina."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Carbón bacteridiano (ántrax, cepa Sterne)"/>
+            <column name="description" value="Vacuna viva de Bacillus anthracis, cepa Sterne 34F2, para bovinos y otros rumiantes. Previene el carbón bacteridiano o ántrax, de curso sobreagudo y zoonosis grave. Se aplica en predios y zonas con antecedente de la enfermedad, bajo criterio de la autoridad sanitaria."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Complejo respiratorio bovino: IBR, DVB, PI3 y VRSB"/>
+            <column name="description" value="Vacuna combinada para bovinos contra rinotraqueítis infecciosa bovina (herpesvirus bovino tipo 1), diarrea viral bovina, parainfluenza tipo 3 y virus respiratorio sincitial bovino. Previene el complejo respiratorio bovino y, en el caso de la diarrea viral, la pérdida reproductiva y el ternero persistentemente infectado."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Leptospirosis bovina"/>
+            <column name="description" value="Bacterina para bovinos contra serovares de Leptospira (hardjo, pomona, canicola, icterohaemorrhagiae y grippotyphosa, según el producto). Previene la leptospirosis bovina, causa de aborto, infertilidad y caída de producción láctea, y zoonosis de riesgo profesional."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Enfermedad de Newcastle"/>
+            <column name="description" value="Vacuna para aves contra el virus de la enfermedad de Newcastle (paramixovirus aviar tipo 1), en presentación viva y en oleosa inactivada. Previene la enfermedad de Newcastle, de curso respiratorio, nervioso y digestivo. En Colombia es enfermedad de control oficial del ICA; el esquema depende del tipo de ave y del sistema de producción, y la vacunación no es universalmente obligatoria para toda ave."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Bronquitis infecciosa aviar"/>
+            <column name="description" value="Vacuna para aves contra el coronavirus de la bronquitis infecciosa aviar. Previene la bronquitis infecciosa, de curso respiratorio, con daño renal y con caída y deformidad del huevo en ponedoras. El serotipo del producto debe corresponder al que circula en la zona."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Enfermedad de Gumboro (bursitis infecciosa aviar)"/>
+            <column name="description" value="Vacuna para aves contra el virus de la bursitis infecciosa aviar. Previene la enfermedad de Gumboro, que destruye la bolsa de Fabricio en el pollo joven y provoca inmunosupresión, con lo que hace fracasar las demás vacunaciones."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Enfermedad de Marek"/>
+            <column name="description" value="Vacuna para aves contra el herpesvirus de la enfermedad de Marek. Previene la enfermedad de Marek, linfoma de las aves con parálisis. Se aplica en la incubadora, al día de edad o en el huevo embrionado, nunca en el lote adulto."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Viruela aviar"/>
+            <column name="description" value="Vacuna viva para aves contra el virus de la viruela aviar. Previene la viruela aviar en sus formas cutánea y diftérica. Se aplica por punción en la membrana alar y es de uso frecuente en aves de traspatio, ornamentales y de riña."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Peste porcina clásica"/>
+            <column name="description" value="Vacuna de virus vivo modificado de peste porcina clásica, cepa China adaptada en cultivo celular, para porcinos. Previene la peste porcina clásica, de curso hemorrágico y mortalidad muy alta. En Colombia la vacunación es obligatoria en las zonas definidas por el ICA y solo se admiten vacunas con registro ICA vigente."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Triple porcina: parvovirosis, leptospirosis y erisipela"/>
+            <column name="description" value="Vacuna combinada para porcinos reproductores contra parvovirus porcino, serovares de Leptospira y Erysipelothrix rhusiopathiae. Previene la falla reproductiva por parvovirosis y leptospirosis y la erisipela porcina. Se aplica en cerdas y verracos de cría."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Neumonía enzoótica porcina (Mycoplasma hyopneumoniae)"/>
+            <column name="description" value="Bacterina para porcinos contra Mycoplasma hyopneumoniae. Previene la neumonía enzoótica porcina, de curso crónico, que deteriora la conversión alimenticia y abre la puerta al complejo respiratorio porcino. Se aplica en lechones."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Circovirus porcino tipo 2 (PCV2)"/>
+            <column name="description" value="Vacuna para porcinos contra el circovirus porcino tipo 2. Previene las enfermedades asociadas al circovirus, con desmedro, adelgazamiento progresivo y mortalidad en la etapa de levante. Se aplica en lechones."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+        <insert tableName="vaccination_types">
+            <column name="name" value="Clostridiales de ovinos y caprinos (enterotoxemia)"/>
+            <column name="description" value="Bacterina toxoide para ovinos y caprinos contra clostridios, sobre todo Clostridium perfringens tipos C y D y Clostridium tetani. Previene la enterotoxemia y el tétanos, de curso sobreagudo en corderos y cabritos bien alimentados."/>
+            <column name="general" valueBoolean="true"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="version" valueNumeric="0"/>
+        </insert>
+
+        <rollback>
+            <sql>
+                DELETE FROM vaccination_types
+                 WHERE general = TRUE AND company_id IS NULL
+                   AND name IN (
+                     'Antirrábica canina y felina',
+                     'Polivalente canina DHPP: moquillo, hepatitis, parvovirus y parainfluenza',
+                     'Polivalente canina DHPP-L: moquillo, hepatitis, parvovirus, parainfluenza y leptospirosis',
+                     'Leptospirosis canina','Tos de las perreras (Bordetella bronchiseptica)',
+                     'Influenza canina (H3N8 y H3N2)',
+                     'Trivalente felina FVRCP: panleucopenia, rinotraqueítis y calicivirus',
+                     'Leucemia felina (FeLV)','Polivalente felina FVRCP + Chlamydia felis',
+                     'Bordetelosis felina (Bordetella bronchiseptica)','Toxoide tetánico equino',
+                     'Encefalitis equina venezolana (EEV)','Encefalitis equina del Este y del Oeste (EEE/WEE)',
+                     'Influenza equina','Rinoneumonitis equina (herpesvirus equino tipos 1 y 4)',
+                     'Antirrábica equina','Fiebre aftosa bovina','Brucelosis bovina',
+                     'Rabia bovina de origen silvestre',
+                     'Clostridiales bovinos: carbón sintomático, edema maligno y septicemia hemorrágica',
+                     'Carbón bacteridiano (ántrax, cepa Sterne)','Complejo respiratorio bovino: IBR, DVB, PI3 y VRSB',
+                     'Leptospirosis bovina','Enfermedad de Newcastle','Bronquitis infecciosa aviar',
+                     'Enfermedad de Gumboro (bursitis infecciosa aviar)','Enfermedad de Marek','Viruela aviar',
+                     'Peste porcina clásica','Triple porcina: parvovirosis, leptospirosis y erisipela',
+                     'Neumonía enzoótica porcina (Mycoplasma hyopneumoniae)','Circovirus porcino tipo 2 (PCV2)',
+                     'Clostridiales de ovinos y caprinos (enterotoxemia)')
+                   AND NOT EXISTS (SELECT 1 FROM vaccinations v
+                                    WHERE v.vaccination_type_id = vaccination_types.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -13,6 +13,7 @@ import com.vetsoftware.app.vaccinationtype.application.dto.VaccinationTypeDto;
 import com.vetsoftware.app.vaccinationtype.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.vaccinationtype.application.port.out.VaccinationTypeRepository;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationType;
+import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNameAlreadyExistsException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
 import com.vetsoftware.app.vaccinationtype.testsupport.VaccinationTypeMother;
 import java.util.Optional;
@@ -37,8 +38,22 @@ class UpdateVaccinationTypeServiceTest {
     @InjectMocks
     private UpdateVaccinationTypeService service;
 
+    /**
+     * Nadie mas ocupa el nombre en el ambito al que la fila va a quedar (#559).
+     * Excluye siempre el propio id: la fila que se edita ya lleva su nombre.
+     */
+    private void nombreLibreEn(String nombre, Long companyId) {
+        when(repository.existsActiveByNameAndCompanyIdExcludingId(nombre, companyId,
+                VaccinationTypeMother.TYPE_ID)).thenReturn(false);
+    }
+
+    private void nombreOcupadoEn(String nombre, Long companyId) {
+        when(repository.existsActiveByNameAndCompanyIdExcludingId(nombre, companyId,
+                VaccinationTypeMother.TYPE_ID)).thenReturn(true);
+    }
+
     @Nested
-    @DisplayName("actualizacion")
+    @DisplayName("Actualizacion")
     class Actualizacion {
 
         @Test
@@ -49,6 +64,7 @@ class UpdateVaccinationTypeServiceTest {
                     .thenReturn(Optional.of(VaccinationTypeMother.propia()));
             when(companyQueryPort.findById(VaccinationTypeMother.COMPANY_ID))
                     .thenReturn(Optional.of(VaccinationTypeMother.CLINICA));
+            nombreLibreEn("Moquillo", VaccinationTypeMother.COMPANY_ID);
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             VaccinationTypeDto dto = service.execute(VaccinationTypeMother.comandoActualizar());
@@ -66,11 +82,11 @@ class UpdateVaccinationTypeServiceTest {
         void un_comando_general_sin_company_id_no_consulta_el_puerto() {
             when(repository.findById(VaccinationTypeMother.TYPE_ID))
                     .thenReturn(Optional.of(VaccinationTypeMother.general()));
+            nombreLibreEn("Vacuna universal", null);
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             VaccinationTypeDto dto = service
-                    .execute(new UpdateVaccinationTypeCommand(VaccinationTypeMother.TYPE_ID,
-                            "Vacuna universal", "Disponible para todas", null, true));
+                    .execute(VaccinationTypeMother.comandoActualizarGeneral());
 
             verifyNoInteractions(companyQueryPort);
             assertThat(dto.general()).isTrue();
@@ -78,7 +94,52 @@ class UpdateVaccinationTypeServiceTest {
     }
 
     @Nested
-    @DisplayName("fallos")
+    @DisplayName("Validaciones")
+    class Validaciones {
+
+        @Test
+        @DisplayName("un nombre ya usado por otra fila ACTIVA de la empresa lanza y no guarda")
+        void un_nombre_ya_usado_en_la_empresa_lanza_y_no_guarda() {
+            when(repository.findOwnedByIdAndCompanyId(VaccinationTypeMother.TYPE_ID,
+                    VaccinationTypeMother.COMPANY_ID))
+                    .thenReturn(Optional.of(VaccinationTypeMother.propia()));
+            when(companyQueryPort.findById(VaccinationTypeMother.COMPANY_ID))
+                    .thenReturn(Optional.of(VaccinationTypeMother.CLINICA));
+            nombreOcupadoEn("Moquillo", VaccinationTypeMother.COMPANY_ID);
+
+            assertThatThrownBy(() -> service.execute(VaccinationTypeMother.comandoActualizar()))
+                    .isInstanceOf(VaccinationTypeNameAlreadyExistsException.class)
+                    .hasMessageContaining("Moquillo");
+
+            // Sin la guarda el choque lo daba la constraint: 409 en ingles, sin nombrar
+            // el campo, y el formulario no podia marcar `name` en rojo (#559).
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("el camino SYSTEM consulta la guarda con companyId nulo, no con una empresa")
+        void el_camino_system_consulta_la_guarda_con_company_id_nulo() {
+            // Si la guarda se consultara con una empresa cualquiera, dos filas globales
+            // podrian quedarse con el mismo nombre y el rechazo lo daria el indice
+            // unico de plataforma, no el caso de uso.
+            when(repository.findById(VaccinationTypeMother.TYPE_ID))
+                    .thenReturn(Optional.of(VaccinationTypeMother.general()));
+            nombreOcupadoEn("Vacuna universal", null);
+
+            assertThatThrownBy(
+                    () -> service.execute(VaccinationTypeMother.comandoActualizarGeneral()))
+                    .isInstanceOf(VaccinationTypeNameAlreadyExistsException.class)
+                    .hasMessageContaining("Vacuna universal");
+
+            verify(repository).existsActiveByNameAndCompanyIdExcludingId("Vacuna universal", null,
+                    VaccinationTypeMother.TYPE_ID);
+            verifyNoInteractions(companyQueryPort);
+            verify(repository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("Fallos")
     class Fallos {
 
         @Test
@@ -132,7 +193,7 @@ class UpdateVaccinationTypeServiceTest {
     }
 
     @Nested
-    @DisplayName("aislamiento entre empresas")
+    @DisplayName("Tenancy")
     class Tenancy {
 
         @Test
@@ -145,6 +206,27 @@ class UpdateVaccinationTypeServiceTest {
                     VaccinationTypeMother.COMPANY_ID)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(VaccinationTypeMother.comandoActualizar()))
+                    .isInstanceOf(VaccinationTypeNotFoundException.class);
+
+            verifyNoInteractions(companyQueryPort);
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("el camino SYSTEM no alcanza la fila PRIVADA de una empresa: 404 y no escribe")
+        void el_camino_system_no_alcanza_la_fila_privada() {
+            // La otra cara de #565, y la abrio el propio arreglo: con
+            // currentCompanyIdOrNull() la rama companyId == null pasa a ser alcanzable
+            // por HTTP, y sin el .filter(VaccinationType::isGeneral) un PUT de
+            // plataforma cargaba el tipo PRIVADO de una clinica y el update le ponia
+            // company = null y general = true —la consola manda general fijo—. No es
+            // apropiacion entre tenants: es expropiacion hacia el catalogo global, y en
+            // silencio.
+            when(repository.findById(VaccinationTypeMother.TYPE_ID))
+                    .thenReturn(Optional.of(VaccinationTypeMother.propia()));
+
+            assertThatThrownBy(
+                    () -> service.execute(VaccinationTypeMother.comandoActualizarGeneral()))
                     .isInstanceOf(VaccinationTypeNotFoundException.class);
 
             verifyNoInteractions(companyQueryPort);

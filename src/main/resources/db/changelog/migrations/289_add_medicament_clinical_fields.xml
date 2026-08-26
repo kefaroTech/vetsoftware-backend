@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #567, alcance recortado a proposito: solo los avisos por especie. #562 (resultado de
+         laboratorio estructurado) y #563 (proyecciones de imagen) quedan planificados, no se tocan
+         aqui. Hoy `medicaments` no tiene forma de decir "la permetrina mata gatos" mas que como
+         prosa dentro de `description` (docs/db/semilla-medicamentos.md §6): el front no puede pintar
+         un aviso bloqueante ni el backend exigir el flujo de control especial del FNE para
+         tramadol/ketamina/midazolam/tiletamina+zolazepam/pentobarbital, porque "control especial" no
+         es un dato consultable.
+
+         Se crea la ESTRUCTURA unicamente. El contenido (que medicamento avisa de que a que especie)
+         es una decision de producto que el propio issue deja pendiente de revision por un medico
+         veterinario colegiado — la semilla de 299 llena `description` con la advertencia en prosa,
+         pero NINGUNA fila de `medicament_species_warnings` se siembra en este changeset ni en el 299.
+
+         Las tres columnas nuevas de `medicaments` son ADD COLUMN simples, no generadas y al final de
+         la tabla: segun el manual de MySQL 8.4 (`Online DDL for Adding Columns`,
+         https://dev.mysql.com/doc/refman/8.4/en/innodb-online-ddl-column-operations.html), anadir una
+         columna con ALGORITHM=INSTANT es el comportamiento por defecto salvo que la tabla ya tenga
+         particiones, un indice FULLTEXT, o la columna sea GENERATED STORED (que es justo lo que si
+         paga reconstruccion, como ya advierte 285/288 sobre `owner_scope`/`active_name`). Ninguna de
+         las tres condiciones aplica aqui: son INSTANT y seguras sobre una tabla con datos en
+         produccion. -->
+
+    <changeSet id="289_add_medicament_clinical_fields" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="medicaments"/>
+            <not><columnExists tableName="medicaments" columnName="atcvet_code"/></not>
+        </preConditions>
+        <sql>
+            ALTER TABLE medicaments
+                ADD COLUMN atcvet_code VARCHAR(10) NULL,
+                ADD COLUMN controlled_substance BOOLEAN NOT NULL DEFAULT FALSE,
+                ADD COLUMN ica_registration VARCHAR(20) NULL;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE medicaments
+                    DROP COLUMN atcvet_code,
+                    DROP COLUMN controlled_substance,
+                    DROP COLUMN ica_registration;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Tabla hija, vacia a proposito (ver cabecera). FK a `species`, no texto libre: el catalogo de
+         especies ya existe desde 028_create_species.xml y se siembra en 290, asi que un aviso "para
+         gatos" referencia la misma fila `Felino` que usa el resto del esquema, en vez de inventar un
+         segundo vocabulario de especie. `version` incluida por el mismo criterio por defecto que el
+         resto de entidades nuevas del repo (BE-26): si `backend-feature` decide que esta tabla es
+         E1_APPEND_ONLY o E2_TABLA_PUENTE y no necesita bloqueo optimista, la columna queda sin usar
+         y se retira en un changeset propio — mas barato que anadirla despues sobre una tabla con
+         avisos ya cargados. -->
+    <changeSet id="289_create_medicament_species_warnings" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="medicaments"/>
+            <tableExists tableName="species"/>
+            <not><tableExists tableName="medicament_species_warnings"/></not>
+        </preConditions>
+        <createTable tableName="medicament_species_warnings">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="medicament_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_medicament_species_warnings_medicament"
+                             references="medicaments(id)"/>
+            </column>
+            <column name="specie_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_medicament_species_warnings_specie"
+                             references="species(id)"/>
+            </column>
+            <column name="severity" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="note" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="medicament_species_warnings"
+                             columnNames="medicament_id, specie_id"
+                             constraintName="uq_medicament_species_warnings_medicament_specie"/>
+        <rollback>
+            <dropTable tableName="medicament_species_warnings"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

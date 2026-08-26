@@ -24,6 +24,7 @@ import com.vetsoftware.app.spatype.application.port.in.ListSpaTypesUseCase;
 import com.vetsoftware.app.spatype.application.port.in.ReactivateSpaTypeUseCase;
 import com.vetsoftware.app.spatype.application.port.in.UpdateSpaTypeUseCase;
 import com.vetsoftware.app.spatype.domain.SpaTypeHasActiveChildrenException;
+import com.vetsoftware.app.spatype.domain.SpaTypeNameAlreadyExistsException;
 import com.vetsoftware.app.spatype.domain.SpaTypeNotFoundException;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.time.LocalDateTime;
@@ -106,6 +107,25 @@ class SpaTypeControllerTest {
 
             verify(createUseCase)
                     .execute(new CreateSpaTypeCommand("Baño medicado", "Baño con champú medicado"));
+        }
+
+        /**
+         * El choque de nombre tiene que salir como 409 y no como 500. Antes de #559 la
+         * guarda no existia y el choque lo detectaba solo la base: llegaba al handler
+         * como violacion de constraint y salia con un mensaje en ingles y sin codigo de
+         * negocio. Lo que se prueba aqui es que la excepcion de dominio nueva esta
+         * REGISTRADA en el {@code GlobalExceptionHandler} — si alguien la crea y olvida
+         * mapearla, el front recibe un 500 y este caso lo delata.
+         */
+        @Test
+        @DisplayName("POST /spa-types con un nombre ya usado responde 409, no 500")
+        void post_con_nombre_repetido_responde_409() throws Exception {
+            when(createUseCase.execute(any()))
+                    .thenThrow(new SpaTypeNameAlreadyExistsException("Baño medicado"));
+
+            mockMvc.perform(post("/spa-types").contentType(MediaType.APPLICATION_JSON).content(
+                    "{\"name\":\"Baño medicado\",\"description\":\"Baño con champú medicado\"}"))
+                    .andExpect(status().isConflict());
         }
     }
 
@@ -237,6 +257,17 @@ class SpaTypeControllerTest {
 
             verify(updateUseCase)
                     .execute(new UpdateSpaTypeCommand(7L, "Nuevo nombre", "Nueva descripción"));
+        }
+
+        @Test
+        @DisplayName("PUT /spa-types/{id} con un nombre ya usado responde 409, no 500")
+        void put_con_nombre_repetido_responde_409() throws Exception {
+            when(updateUseCase.execute(any()))
+                    .thenThrow(new SpaTypeNameAlreadyExistsException("Baño medicado"));
+
+            mockMvc.perform(put("/spa-types/7").contentType(MediaType.APPLICATION_JSON).content(
+                    "{\"name\":\"Baño medicado\",\"description\":\"Baño con champú medicado\"}"))
+                    .andExpect(status().isConflict());
         }
 
         @Test

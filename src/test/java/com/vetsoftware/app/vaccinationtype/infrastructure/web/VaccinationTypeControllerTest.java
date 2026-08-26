@@ -24,9 +24,11 @@ import com.vetsoftware.app.vaccinationtype.application.port.in.ListAvailableVacc
 import com.vetsoftware.app.vaccinationtype.application.port.in.ListVaccinationTypesUseCase;
 import com.vetsoftware.app.vaccinationtype.application.port.in.UpdateVaccinationTypeUseCase;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeHasActiveChildrenException;
+import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNameAlreadyExistsException;
 import com.vetsoftware.app.vaccinationtype.domain.VaccinationTypeNotFoundException;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -86,6 +88,20 @@ class VaccinationTypeControllerTest {
      */
     @Autowired
     private com.vetsoftware.app.auth.infrastructure.security.Authz authz;
+
+    /**
+     * {@link WebMvcSliceConfig} stubea {@code currentCompanyId()} pero NO
+     * {@code currentCompanyIdOrNull()}, y desde el arreglo de #565 es el segundo el
+     * que usan {@code create} y {@code update}: sin este stub devolveria
+     * {@code null} y todos los commands esperados llegarian sin empresa. El doble
+     * es un {@code @Bean} compartido y no se resetea entre casos, asi que se
+     * re-stubea en CADA uno para que el que necesita el principal de plataforma no
+     * contamine a los demas.
+     */
+    @BeforeEach
+    void laEmpresaDelContexto() {
+        when(authz.currentCompanyIdOrNull()).thenReturn(COMPANY_ID);
+    }
 
     private static VaccinationTypeDto rabia() {
         return new VaccinationTypeDto(50L, "Rabia", "Vacuna antirrabica",
@@ -190,6 +206,62 @@ class VaccinationTypeControllerTest {
             mockMvc.perform(post("/vaccination-types").contentType(MediaType.APPLICATION_JSON)
                     .content(CUERPO_VALIDO)).andExpect(status().isBadRequest());
         }
+
+        @Test
+        @DisplayName("un nombre ya usado en el ambito responde 409, no 500")
+        void nombre_repetido_responde_409() throws Exception {
+            when(createUseCase.execute(any()))
+                    .thenThrow(new VaccinationTypeNameAlreadyExistsException("Rabia"));
+
+            // El errorCode de negocio es la mitad del arreglo de #559: con el 409 crudo
+            // de la constraint el front recibia "Database constraint violation" y no
+            // podia marcar `name` en rojo.
+            mockMvc.perform(post("/vaccination-types").contentType(MediaType.APPLICATION_JSON)
+                    .content(CUERPO_VALIDO)).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("VACCINATION_TYPE_NAME_ALREADY_EXISTS"))
+                    .andExpect(jsonPath("$.detail")
+                            .value(org.hamcrest.Matchers.containsString("Rabia")));
+        }
+
+        @Test
+        @DisplayName("una reactivacion que no alcanza la fila sale como 409 CONCURRENT_MODIFICATION")
+        void conflicto_de_concurrencia_responde_409() throws Exception {
+            // El alta que reactiva una fila dada de baja y no alcanza ninguna: el
+            // servicio lanza el candado optimista y el front necesita distinguirlo del
+            // nombre repetido, porque la accion que le toca al usuario es otra
+            // (recargar y reintentar, no cambiar el nombre).
+            when(createUseCase.execute(any()))
+                    .thenThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException(
+                            "VaccinationType", 50L));
+
+            mockMvc.perform(post("/vaccination-types").contentType(MediaType.APPLICATION_JSON)
+                    .content(CUERPO_VALIDO)).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("CONCURRENT_MODIFICATION"));
+        }
+
+        @Test
+        @DisplayName("un principal de plataforma crea un tipo global: companyId nulo y general true")
+        void un_principal_de_plataforma_crea_un_tipo_global() throws Exception {
+            // #565. Con currentCompanyId() esta combinacion era INALCANZABLE: un
+            // principal de plataforma moria con AccessDeniedException y un empleado
+            // recibia siempre su empresa, asi que general = true chocaba contra el XOR
+            // del dominio. Ningun actor podia crear un tipo global pese a que el
+            // @PreAuthorize del caso de uso abre a hasRole('SYSTEM'). Se afirma el
+            // COMMAND y no solo el 201: el 201 lo daria igual un command con empresa.
+            when(authz.currentCompanyIdOrNull()).thenReturn((Long) null);
+            when(createUseCase.execute(any())).thenReturn(vacunaUniversal());
+
+            mockMvc.perform(
+                    post("/vaccination-types").contentType(MediaType.APPLICATION_JSON).content(
+                            """
+                                    {"name":"Vacuna universal","description":"Disponible para todas","general":true}
+                                    """))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.company").doesNotExist())
+                    .andExpect(jsonPath("$.general").value(true));
+
+            verify(createUseCase).execute(new CreateVaccinationTypeCommand("Vacuna universal",
+                    "Disponible para todas", null, true));
+        }
     }
 
     @Nested
@@ -280,6 +352,36 @@ class VaccinationTypeControllerTest {
 
             mockMvc.perform(put("/vaccination-types/50").contentType(MediaType.APPLICATION_JSON)
                     .content(CUERPO_VALIDO)).andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("PUT con un nombre ya usado en el ambito responde 409, no 500")
+        void put_con_nombre_repetido_responde_409() throws Exception {
+            when(updateUseCase.execute(any()))
+                    .thenThrow(new VaccinationTypeNameAlreadyExistsException("Rabia"));
+
+            mockMvc.perform(put("/vaccination-types/50").contentType(MediaType.APPLICATION_JSON)
+                    .content(CUERPO_VALIDO)).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("VACCINATION_TYPE_NAME_ALREADY_EXISTS"));
+        }
+
+        @Test
+        @DisplayName("PUT de un principal de plataforma lleva companyId nulo al command")
+        void put_de_un_principal_de_plataforma_lleva_company_id_nulo() throws Exception {
+            // La otra mitad de #565: el update tambien paso a currentCompanyIdOrNull(),
+            // que es lo que abre el camino SYSTEM del service (findById sin acotar).
+            when(authz.currentCompanyIdOrNull()).thenReturn((Long) null);
+            when(updateUseCase.execute(any())).thenReturn(vacunaUniversal());
+
+            mockMvc.perform(
+                    put("/vaccination-types/60").contentType(MediaType.APPLICATION_JSON).content(
+                            """
+                                    {"name":"Vacuna universal","description":"Disponible para todas","general":true}
+                                    """))
+                    .andExpect(status().isOk());
+
+            verify(updateUseCase).execute(new UpdateVaccinationTypeCommand(60L, "Vacuna universal",
+                    "Disponible para todas", null, true));
         }
 
         @Test
