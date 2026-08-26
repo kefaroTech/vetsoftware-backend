@@ -18,6 +18,8 @@ import java.time.LocalDateTime;
 public final class VaccinationTypeMother {
 
     public static final Long TYPE_ID = 50L;
+    /** Id de la fila del catalogo de PLATAFORMA (sin empresa, general). */
+    public static final Long GENERAL_TYPE_ID = 51L;
     public static final Long COMPANY_ID = 9L;
     public static final Long OTRA_COMPANY_ID = 99L;
 
@@ -56,12 +58,34 @@ public final class VaccinationTypeMother {
                 true);
     }
 
+    /**
+     * Fila del catalogo de PLATAFORMA dada de baja. Es la ocupante del nombre en la
+     * rama de reactivacion global: sin empresa, {@code general = true} y
+     * {@code enabled = false}.
+     */
+    public static VaccinationType generalDeshabilitada() {
+        return new VaccinationType(GENERAL_TYPE_ID, "Vacuna universal", "Disponible para todas",
+                null, true, CREADO, null, false);
+    }
+
     public static CreateVaccinationTypeCommand comandoCrear() {
         return new CreateVaccinationTypeCommand("Rabia", "Vacuna antirrabica", COMPANY_ID, false);
+    }
+
+    /** Alta en el catalogo de plataforma: sin empresa y general. */
+    public static CreateVaccinationTypeCommand comandoCrearGeneral() {
+        return new CreateVaccinationTypeCommand("Vacuna universal", "Disponible para todas", null,
+                true);
     }
 
     public static UpdateVaccinationTypeCommand comandoActualizar() {
         return new UpdateVaccinationTypeCommand(TYPE_ID, "Moquillo", "Vacuna contra el moquillo",
                 COMPANY_ID, false);
+    }
+
+    /** Edicion por el camino SYSTEM: sin empresa en el command. */
+    public static UpdateVaccinationTypeCommand comandoActualizarGeneral() {
+        return new UpdateVaccinationTypeCommand(TYPE_ID, "Vacuna universal",
+                "Disponible para todas", null, true);
     }
 }

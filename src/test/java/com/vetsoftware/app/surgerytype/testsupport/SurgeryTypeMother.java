@@ -39,6 +39,16 @@ public final class SurgeryTypeMother {
                 false, CREADO, null, false);
     }
 
+    /**
+     * Fila del catalogo de PLATAFORMA dada de baja. Es la ocupante del nombre en la
+     * rama de reactivacion global: sin empresa, {@code general = true} y
+     * {@code enabled = false}.
+     */
+    public static SurgeryType generalDeshabilitado() {
+        return new SurgeryType(GENERAL_SURGERY_TYPE_ID, "Cirugia general", "Procedimiento estandar",
+                null, true, CREADO, null, false);
+    }
+
     public static CreateSurgeryTypeCommand comandoCrearPropio() {
         return new CreateSurgeryTypeCommand("Castracion", "Cirugia de esterilizacion", COMPANY_ID,
                 false);
@@ -52,5 +62,15 @@ public final class SurgeryTypeMother {
     public static UpdateSurgeryTypeCommand comandoActualizarPropio() {
         return new UpdateSurgeryTypeCommand(SURGERY_TYPE_ID, "Castracion avanzada",
                 "Nueva descripcion", COMPANY_ID, false);
+    }
+
+    /**
+     * Edicion por el camino SYSTEM: sin empresa en el command. Apunta al id de la
+     * fila GLOBAL a proposito — desde el arreglo de la expropiacion, ese camino
+     * solo alcanza el catalogo de plataforma.
+     */
+    public static UpdateSurgeryTypeCommand comandoActualizarGeneral() {
+        return new UpdateSurgeryTypeCommand(GENERAL_SURGERY_TYPE_ID, "Cirugia general",
+                "Procedimiento estandar", null, true);
     }
 }

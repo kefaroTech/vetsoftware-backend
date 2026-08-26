@@ -23,10 +23,12 @@ import com.vetsoftware.app.laboratorytesttype.application.port.in.ListAvailableL
 import com.vetsoftware.app.laboratorytesttype.application.port.in.ListLaboratoryTestTypesUseCase;
 import com.vetsoftware.app.laboratorytesttype.application.port.in.UpdateLaboratoryTestTypeUseCase;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeHasActiveChildrenException;
+import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeNameAlreadyExistsException;
 import com.vetsoftware.app.laboratorytesttype.domain.LaboratoryTestTypeNotFoundException;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -86,6 +88,26 @@ class LaboratoryTestTypeControllerTest {
      */
     @Autowired
     private com.vetsoftware.app.auth.infrastructure.security.Authz authz;
+
+    /**
+     * {@code WebMvcSliceConfig} stubea {@code currentCompanyId()} pero NO
+     * {@code currentCompanyIdOrNull()} —lo comparten 92 rodajas y varias dependen
+     * de que devuelva {@code null}—, asi que la empresa del contexto para las
+     * ESCRITURAS se pone aqui. Desde el arreglo de #565 el {@code create} y el
+     * {@code update} leen esa segunda, igual que ya hacia el {@code delete}: sin
+     * este stub el command llegaria con {@code companyId} nulo y el tipo caeria en
+     * el catalogo de plataforma en vez de en la veterinaria.
+     *
+     * <p>
+     * El doble es un {@code mock()} de la configuracion compartida, no un
+     * {@code @MockitoBean}: nadie lo resetea entre casos, y re-stubearlo antes de
+     * cada uno es lo que deja el caso del principal de plataforma —que lo pone en
+     * {@code null}— sin contaminar a los siguientes.
+     */
+    @BeforeEach
+    void empresaDelContexto() {
+        when(authz.currentCompanyIdOrNull()).thenReturn(COMPANY_ID);
+    }
 
     private static LaboratoryTestTypeDto hemograma() {
         return new LaboratoryTestTypeDto(70L, "Hemograma", "Hemograma completo",
@@ -205,6 +227,37 @@ class LaboratoryTestTypeControllerTest {
             mockMvc.perform(post("/laboratory-test-types").contentType(MediaType.APPLICATION_JSON)
                     .content(CUERPO_VALIDO)).andExpect(status().isBadRequest());
         }
+
+        @Test
+        @DisplayName("un nombre ya usado en el ambito responde 409, no 500")
+        void nombre_repetido_responde_409() throws Exception {
+            when(createUseCase.execute(any()))
+                    .thenThrow(new LaboratoryTestTypeNameAlreadyExistsException("Hemograma"));
+
+            mockMvc.perform(post("/laboratory-test-types").contentType(MediaType.APPLICATION_JSON)
+                    .content(CUERPO_VALIDO)).andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("un principal de plataforma crea un tipo global: el command va sin empresa y con general")
+        void un_principal_de_plataforma_crea_un_tipo_global() throws Exception {
+            // El arreglo de #565. Con currentCompanyId() ningun actor podia crear un
+            // tipo global: al principal de plataforma le saltaba un AccessDeniedException
+            // sin contexto y al empleado le colaban SU empresa, que choca contra el XOR
+            // del dominio en cuanto general = true.
+            when(authz.currentCompanyIdOrNull()).thenReturn(null);
+            when(createUseCase.execute(any())).thenReturn(perfilRenalGeneral());
+
+            mockMvc.perform(
+                    post("/laboratory-test-types").contentType(MediaType.APPLICATION_JSON).content(
+                            """
+                                    {"name":"Perfil renal","description":"Perfil renal basico","general":true}
+                                    """))
+                    .andExpect(status().isCreated());
+
+            verify(createUseCase).execute(new CreateLaboratoryTestTypeCommand("Perfil renal",
+                    "Perfil renal basico", null, true));
+        }
     }
 
     @Nested
@@ -300,10 +353,35 @@ class LaboratoryTestTypeControllerTest {
         }
 
         @Test
+        @DisplayName("PUT con un nombre ya usado en el ambito responde 409, no 500")
+        void put_con_nombre_repetido_responde_409() throws Exception {
+            when(updateUseCase.execute(any()))
+                    .thenThrow(new LaboratoryTestTypeNameAlreadyExistsException("Hemograma"));
+
+            mockMvc.perform(put("/laboratory-test-types/70").contentType(MediaType.APPLICATION_JSON)
+                    .content(CUERPO_VALIDO)).andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("PUT de un principal de plataforma edita el catalogo global: el command va sin empresa")
+        void put_de_un_principal_de_plataforma_va_sin_empresa() throws Exception {
+            // La otra mitad de #565: el update tambien pasa a currentCompanyIdOrNull().
+            when(authz.currentCompanyIdOrNull()).thenReturn(null);
+            when(updateUseCase.execute(any())).thenReturn(perfilRenalGeneral());
+
+            mockMvc.perform(put("/laboratory-test-types/71").contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                            """
+                                    {"name":"Perfil renal","description":"Perfil renal basico","general":true}
+                                    """));
+
+            verify(updateUseCase).execute(new UpdateLaboratoryTestTypeCommand(71L, "Perfil renal",
+                    "Perfil renal basico", null, true));
+        }
+
+        @Test
         @DisplayName("DELETE /laboratory-test-types/{id} responde 204 y propaga la empresa del contexto")
         void delete_responde_204() throws Exception {
-            when(authz.currentCompanyIdOrNull()).thenReturn(COMPANY_ID);
-
             mockMvc.perform(delete("/laboratory-test-types/70")).andExpect(status().isNoContent());
 
             verify(deleteUseCase).execute(70L, COMPANY_ID);
@@ -312,7 +390,6 @@ class LaboratoryTestTypeControllerTest {
         @Test
         @DisplayName("DELETE de un tipo inexistente responde 404")
         void delete_inexistente_responde_404() throws Exception {
-            when(authz.currentCompanyIdOrNull()).thenReturn(COMPANY_ID);
             doThrow(new LaboratoryTestTypeNotFoundException(99L)).when(deleteUseCase).execute(99L,
                     COMPANY_ID);
 
@@ -322,7 +399,6 @@ class LaboratoryTestTypeControllerTest {
         @Test
         @DisplayName("DELETE de un tipo con examenes activos responde 409")
         void delete_con_examenes_activos_responde_409() throws Exception {
-            when(authz.currentCompanyIdOrNull()).thenReturn(COMPANY_ID);
             doThrow(new LaboratoryTestTypeHasActiveChildrenException(70L, "laboratoryTest"))
                     .when(deleteUseCase).execute(70L, COMPANY_ID);
 

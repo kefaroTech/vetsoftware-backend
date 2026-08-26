@@ -24,6 +24,7 @@ import com.vetsoftware.app.medicament.application.port.in.ListDisabledMedicament
 import com.vetsoftware.app.medicament.application.port.in.ListMedicamentsUseCase;
 import com.vetsoftware.app.medicament.application.port.in.ReactivateMedicamentUseCase;
 import com.vetsoftware.app.medicament.application.port.in.UpdateMedicamentUseCase;
+import com.vetsoftware.app.medicament.domain.MedicamentNameAlreadyExistsException;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.time.LocalDateTime;
@@ -111,6 +112,28 @@ class MedicamentControllerTest {
                     {"name":"","description":"x"}
                     """)).andExpect(status().isBadRequest());
         }
+
+        /**
+         * Sin este mapeo el choque de nombre salia como el 409 generico
+         * {@code DATA_INTEGRITY_VIOLATION} con el detail
+         * {@code "Database constraint violation"}: en ingles, sin nombrar el campo y
+         * sin codigo de negocio, asi que el formulario no podia marcar {@code name} en
+         * rojo (#559). Lo que se afirma aqui es el {@code code}, no solo el 409: es el
+         * unico dato del que el front puede colgar el tratamiento.
+         */
+        @Test
+        @DisplayName("nombre repetido responde 409 con el errorCode de negocio")
+        void nombre_repetido_responde_409() throws Exception {
+            when(createUseCase.execute(any()))
+                    .thenThrow(new MedicamentNameAlreadyExistsException("Suero"));
+
+            mockMvc.perform(post("/medicaments").contentType(MediaType.APPLICATION_JSON).content("""
+                    {"name":"Suero","description":"Formula propia"}
+                    """)).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("MEDICAMENT_NAME_ALREADY_EXISTS"))
+                    .andExpect(jsonPath("$.detail")
+                            .value(org.hamcrest.Matchers.containsString("Suero")));
+        }
     }
 
     @Nested
@@ -182,6 +205,19 @@ class MedicamentControllerTest {
             // El request NO trae companyId: lo pone el controller desde el contexto.
             org.assertj.core.api.Assertions.assertThat(captor.getValue().companyId())
                     .isEqualTo(WebMvcSliceConfig.COMPANY_ID);
+        }
+
+        @Test
+        @DisplayName("nombre repetido responde 409 con el errorCode de negocio")
+        void put_con_nombre_repetido_responde_409() throws Exception {
+            when(updateUseCase.execute(any()))
+                    .thenThrow(new MedicamentNameAlreadyExistsException("Suero fisiologico"));
+
+            mockMvc.perform(
+                    put("/medicaments/2").contentType(MediaType.APPLICATION_JSON).content("""
+                            {"name":"Suero fisiologico","description":"Actualizado"}
+                            """)).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("MEDICAMENT_NAME_ALREADY_EXISTS"));
         }
     }
 

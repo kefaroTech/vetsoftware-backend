@@ -21,6 +21,7 @@ import com.vetsoftware.app.consultationtype.application.port.in.FindConsultation
 import com.vetsoftware.app.consultationtype.application.port.in.ListConsultationTypesUseCase;
 import com.vetsoftware.app.consultationtype.application.port.in.ReactivateConsultationTypeUseCase;
 import com.vetsoftware.app.consultationtype.application.port.in.UpdateConsultationTypeUseCase;
+import com.vetsoftware.app.consultationtype.domain.ConsultationTypeNameAlreadyExistsException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeNotFoundException;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.time.LocalDateTime;
@@ -108,6 +109,36 @@ class ConsultationTypeControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(createUseCase, never()).execute(any());
+    }
+
+    /**
+     * El choque de nombre tiene que salir como 409 y no como 500. Antes de #559 la
+     * guarda no existia y el choque lo detectaba solo la base: llegaba al handler
+     * como violacion de constraint y salia con un mensaje en ingles y sin codigo de
+     * negocio. Lo que se prueba aqui es que la excepcion de dominio nueva esta
+     * REGISTRADA en el {@code GlobalExceptionHandler} — si alguien la crea y olvida
+     * mapearla, el front recibe un 500 y este caso lo delata.
+     */
+    @Test
+    @DisplayName("POST /consultation-types con un nombre ya usado responde 409, no 500")
+    void post_con_nombre_repetido_responde_409() throws Exception {
+        when(createUseCase.execute(any()))
+                .thenThrow(new ConsultationTypeNameAlreadyExistsException("Vacunacion"));
+
+        mockMvc.perform(post("/consultation-types").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Vacunacion\",\"description\":\"Aplicacion de vacunas\"}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("PUT /consultation-types/{id} con un nombre ya usado responde 409, no 500")
+    void put_con_nombre_repetido_responde_409() throws Exception {
+        when(updateUseCase.execute(any()))
+                .thenThrow(new ConsultationTypeNameAlreadyExistsException("Vacunacion"));
+
+        mockMvc.perform(put("/consultation-types/1").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Vacunacion\",\"description\":\"Aplicacion de vacunas\"}"))
+                .andExpect(status().isConflict());
     }
 
     @Test

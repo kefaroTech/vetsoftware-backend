@@ -52,8 +52,8 @@ class DeleteDiagnosticImagingTypeServiceTest {
         }
 
         @Test
-        @DisplayName("sin empresa (SYSTEM) la lectura previa no se acota y alcanza a las generales")
-        void sin_empresa_la_lectura_no_se_acota() {
+        @DisplayName("sin empresa (SYSTEM) la lectura previa se acota al catalogo de plataforma y alcanza a las generales")
+        void sin_empresa_la_lectura_se_acota_al_catalogo_de_plataforma() {
             when(repository.findById(DiagnosticImagingTypeMother.TYPE_ID))
                     .thenReturn(Optional.of(DiagnosticImagingTypeMother.general()));
             when(diagnosticImagingChildrenQueryPort
@@ -137,6 +137,30 @@ class DeleteDiagnosticImagingTypeServiceTest {
             assertThatThrownBy(() -> service.execute(502L, DiagnosticImagingTypeMother.COMPANY_ID))
                     .isInstanceOf(DiagnosticImagingTypeNotFoundException.class);
 
+            verify(repository, never()).delete(org.mockito.ArgumentMatchers.any());
+        }
+
+        @Test
+        @DisplayName("el camino SYSTEM no alcanza una fila PRIVADA: es 404 y no la borra")
+        void el_camino_system_no_alcanza_una_fila_privada() {
+            // La direccion contraria del caso de arriba, y la mas silenciosa de las dos:
+            // sin el .filter(isGeneral) un DELETE de plataforma con el id de una fila
+            // PRIVADA la cargaba y la daba de baja. 204, sin error, y la clinica dejaba
+            // de verla por el @SQLRestriction. Esta rama NO la abrio #565: el delete de
+            // este controller usaba currentCompanyIdOrNull() desde el principio, asi que
+            // llevaba expuesta mas tiempo que la del update.
+            when(repository.findById(DiagnosticImagingTypeMother.TYPE_ID))
+                    .thenReturn(Optional.of(DiagnosticImagingTypeMother.propiaDeEmpresa()));
+
+            assertThatThrownBy(() -> service.execute(DiagnosticImagingTypeMother.TYPE_ID, null))
+                    .isInstanceOf(DiagnosticImagingTypeNotFoundException.class)
+                    .hasMessageContaining("DiagnosticImagingType not found: "
+                            + DiagnosticImagingTypeMother.TYPE_ID);
+
+            // La barrera actua ANTES de preguntar por hijos activos: si el orden se
+            // invirtiera, un tipo privado SIN hijos llegaria igualmente al delete.
+            verify(diagnosticImagingChildrenQueryPort, never())
+                    .existsActiveByDiagnosticImagingTypeId(org.mockito.ArgumentMatchers.any());
             verify(repository, never()).delete(org.mockito.ArgumentMatchers.any());
         }
     }

@@ -45,12 +45,28 @@ public class VaccinationTypeController {
         this.authz = authz;
     }
 
+    /**
+     * La empresa sale de {@code currentCompanyIdOrNull()} y no de
+     * {@code currentCompanyId()}, que es el arreglo de #565. Con la segunda, un
+     * principal de plataforma —que no tiene empresa— moría con un
+     * {@code AccessDeniedException} sin contexto, y un empleado recibía siempre su
+     * empresa, así que {@code general = true} chocaba contra el XOR del dominio:
+     * NINGÚN actor podía crear un tipo global, pese a que el {@code @PreAuthorize}
+     * del caso de uso abre explícitamente a {@code hasRole('SYSTEM')} y el propio
+     * servicio ya tiene escrito el camino {@code companyId == null}. Es la misma
+     * herramienta que el {@code delete} de este controller ya usaba.
+     *
+     * <p>
+     * El request sigue sin poder declarar la empresa: para un empleado la sigue
+     * poniendo el contexto, y {@code null} solo lo produce un principal que no
+     * tiene ninguna.
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public VaccinationTypeResponse create(
             @Valid @RequestBody CreateVaccinationTypeRequest request) {
         return toResponse(createUseCase.execute(new CreateVaccinationTypeCommand(request.name(),
-                request.description(), authz.currentCompanyId(), request.general())));
+                request.description(), authz.currentCompanyIdOrNull(), request.general())));
     }
 
     @GetMapping
@@ -73,7 +89,7 @@ public class VaccinationTypeController {
     public VaccinationTypeResponse update(@PathVariable Long id,
             @Valid @RequestBody UpdateVaccinationTypeRequest request) {
         return toResponse(updateUseCase.execute(new UpdateVaccinationTypeCommand(id, request.name(),
-                request.description(), authz.currentCompanyId(), request.general())));
+                request.description(), authz.currentCompanyIdOrNull(), request.general())));
     }
 
     @DeleteMapping("/{id}")

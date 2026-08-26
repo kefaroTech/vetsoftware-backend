@@ -11,6 +11,7 @@ import com.vetsoftware.app.diagnosticimagingtype.application.dto.DiagnosticImagi
 import com.vetsoftware.app.diagnosticimagingtype.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.diagnosticimagingtype.application.port.out.DiagnosticImagingTypeRepository;
 import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingType;
+import com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNameAlreadyExistsException;
 import com.vetsoftware.app.diagnosticimagingtype.testsupport.DiagnosticImagingTypeMother;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -50,6 +51,11 @@ class UpdateDiagnosticImagingTypeServiceTest {
                     DiagnosticImagingTypeMother.COMPANY_ID)).thenReturn(Optional.of(existente));
             when(companyQueryPort.findById(DiagnosticImagingTypeMother.COMPANY_ID))
                     .thenReturn(Optional.of(DiagnosticImagingTypeMother.EMPRESA));
+            // La guarda de unicidad se consulta en el ambito de la EMPRESA del command
+            // y excluyendo la propia fila: renombrarse a si misma no es un choque.
+            when(repository.existsActiveByNameAndCompanyIdExcludingId(
+                    "Ecografia abdominal (actualizada)", DiagnosticImagingTypeMother.COMPANY_ID,
+                    DiagnosticImagingTypeMother.TYPE_ID)).thenReturn(false);
             when(repository.save(any())).thenReturn(existente);
 
             service.execute(DiagnosticImagingTypeMother.comandoActualizar());
@@ -66,6 +72,11 @@ class UpdateDiagnosticImagingTypeServiceTest {
                     DiagnosticImagingTypeMother.COMPANY_ID)).thenReturn(Optional.of(existente));
             when(companyQueryPort.findById(DiagnosticImagingTypeMother.COMPANY_ID))
                     .thenReturn(Optional.of(DiagnosticImagingTypeMother.EMPRESA));
+            // La guarda de unicidad se consulta en el ambito de la EMPRESA del command
+            // y excluyendo la propia fila: renombrarse a si misma no es un choque.
+            when(repository.existsActiveByNameAndCompanyIdExcludingId(
+                    "Ecografia abdominal (actualizada)", DiagnosticImagingTypeMother.COMPANY_ID,
+                    DiagnosticImagingTypeMother.TYPE_ID)).thenReturn(false);
             when(repository.save(any())).thenReturn(existente);
 
             DiagnosticImagingTypeDto dto = service
@@ -112,6 +123,50 @@ class UpdateDiagnosticImagingTypeServiceTest {
     }
 
     @Nested
+    @DisplayName("Validaciones")
+    class Validaciones {
+
+        @Test
+        @DisplayName("renombrar a un nombre ya usado por otra fila ACTIVA de la empresa no guarda nada")
+        void renombrar_a_un_nombre_ya_usado_en_la_empresa_no_guarda_nada() {
+            when(repository.findOwnedByIdAndCompanyId(DiagnosticImagingTypeMother.TYPE_ID,
+                    DiagnosticImagingTypeMother.COMPANY_ID))
+                    .thenReturn(Optional.of(DiagnosticImagingTypeMother.propiaDeEmpresa()));
+            when(companyQueryPort.findById(DiagnosticImagingTypeMother.COMPANY_ID))
+                    .thenReturn(Optional.of(DiagnosticImagingTypeMother.EMPRESA));
+            when(repository.existsActiveByNameAndCompanyIdExcludingId(
+                    "Ecografia abdominal (actualizada)", DiagnosticImagingTypeMother.COMPANY_ID,
+                    DiagnosticImagingTypeMother.TYPE_ID)).thenReturn(true);
+
+            assertThatThrownBy(
+                    () -> service.execute(DiagnosticImagingTypeMother.comandoActualizar()))
+                    .isInstanceOf(DiagnosticImagingTypeNameAlreadyExistsException.class)
+                    .hasMessageContaining("Ecografia abdominal (actualizada)");
+
+            verify(repository, org.mockito.Mockito.never()).save(any());
+        }
+
+        @Test
+        @DisplayName("el camino SYSTEM comprueba el choque en el catalogo de plataforma, con companyId nulo")
+        void el_camino_system_comprueba_el_choque_en_el_catalogo_de_plataforma() {
+            // Con STRICT_STUBS, preguntar la guarda con una empresa en vez de con null
+            // levanta PotentialStubbingProblem: el stub ES la asercion del ambito.
+            when(repository.findById(DiagnosticImagingTypeMother.TYPE_ID))
+                    .thenReturn(Optional.of(DiagnosticImagingTypeMother.general()));
+            when(repository.existsActiveByNameAndCompanyIdExcludingId("Radiografia", null,
+                    DiagnosticImagingTypeMother.TYPE_ID)).thenReturn(true);
+
+            assertThatThrownBy(
+                    () -> service.execute(DiagnosticImagingTypeMother.comandoActualizarGeneral()))
+                    .isInstanceOf(DiagnosticImagingTypeNameAlreadyExistsException.class)
+                    .hasMessageContaining("Radiografia");
+
+            verifyNoInteractions(companyQueryPort);
+            verify(repository, org.mockito.Mockito.never()).save(any());
+        }
+    }
+
+    @Nested
     @DisplayName("aislamiento entre empresas")
     class Tenancy {
 
@@ -133,6 +188,31 @@ class UpdateDiagnosticImagingTypeServiceTest {
             verify(repository, org.mockito.Mockito.never()).save(any());
             verify(repository, org.mockito.Mockito.never())
                     .findById(org.mockito.ArgumentMatchers.any());
+        }
+
+        @Test
+        @DisplayName("el camino SYSTEM no alcanza una fila PRIVADA: es 404 y no la expropia al catalogo global")
+        void el_camino_system_no_alcanza_una_fila_privada() {
+            // Espejo del caso de arriba, y la via que #565 dejo viva: desde que el
+            // controller pasa currentCompanyIdOrNull(), la rama companyId == null es
+            // alcanzable de verdad por HTTP. Sin el .filter(isGeneral) un PUT de
+            // plataforma con el id de una fila PRIVADA la cargaba, y el update posterior
+            // le ponia company = null y general = true -la consola manda general: true
+            // fijo-, asi que el tipo de una clinica pasaba EN SILENCIO al catalogo
+            // global y quedaba visible para todos los tenants. 404 y no 403: no se
+            // revela de quien es la fila.
+            when(repository.findById(DiagnosticImagingTypeMother.TYPE_ID))
+                    .thenReturn(Optional.of(DiagnosticImagingTypeMother.propiaDeEmpresa()));
+
+            assertThatThrownBy(
+                    () -> service.execute(DiagnosticImagingTypeMother.comandoActualizarGeneral()))
+                    .isInstanceOf(
+                            com.vetsoftware.app.diagnosticimagingtype.domain.DiagnosticImagingTypeNotFoundException.class)
+                    .hasMessageContaining("DiagnosticImagingType not found: "
+                            + DiagnosticImagingTypeMother.TYPE_ID);
+
+            verifyNoInteractions(companyQueryPort);
+            verify(repository, org.mockito.Mockito.never()).save(any());
         }
     }
 }
