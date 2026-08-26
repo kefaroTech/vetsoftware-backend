@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Semilla de docs/db/semilla-medicamentos.md §3 y §8. `medicaments` NO esta vacia: 173b sembro
+         6 filas globales (Amoxicilina + Clavulánico, Meloxicam, Metronidazol, Omeprazol, Sucralfato,
+         Maropitant) y 173d hace backfill de nombres distintos ya recetados, que varia por entorno y
+         no es conocible desde el arbol (173_create_medicaments.xml:82-90). Por eso este changeset
+         NO puede usar <insert> de Liquibase (no admite condicion): es <sql> idempotente con
+         INSERT ... SELECT ... WHERE NOT EXISTS, igual patron que 258_seed_technical_catalog.xml y
+         275_seed_clinical_care_permissions.xml. INSERT IGNORE prohibido por CLAUDE.md.
+         Unidad de la fila: la molecula (DCI) o la combinacion fija registrada, nunca la marca ni la
+         concentracion (docs/db/semilla-medicamentos.md §1). 154 filas nuevas + 6 preexistentes que
+         solo reciben `description` si esta vacia, sin tocar su `name` (renombrarlas rompería
+         medicament_prescriptions.medicament_id, que las referencia por FK). `general = TRUE`
+         explicito, `company_id` se omite (Medicament.validate exige el XOR: issue #560).
+         version = version + 1 en el UPDATE de las 6 preexistentes, exigido por la regla dura de
+         ArchUnit UPDATE_MASIVO_MUEVE_LA_VERSION (BE-26, #53). -->
+    <changeSet id="299_seed_global_medicament_catalog" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="medicaments"/>
+            <columnExists tableName="medicaments" columnName="version"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM medicaments WHERE general = TRUE AND company_id IS NOT NULL
+            </sqlCheck>
+        </preConditions>
+
+        <sql>
+            INSERT INTO medicaments (name, description, company_id, general, created_date, version, enabled)
+            SELECT t.name, t.description, NULL, TRUE, NOW(), 0, TRUE
+              FROM (
+                SELECT 'Fenbendazol' AS name, 'Antiparasitario interno (bencimidazol). Nematodos gastrointestinales, Giardia y algunos cestodos en perros y gatos. Registrado en Colombia para uso veterinario (ICA).' AS description
+                UNION ALL SELECT 'Albendazol', 'Antiparasitario interno (bencimidazol). Nematodos y cestodos. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Oxibendazol', 'Antiparasitario interno (bencimidazol). Nematodos gastrointestinales. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Praziquantel', 'Antiparasitario interno (cestodicida). Dipylidium, Taenia y Echinococcus en perros y gatos. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Pirantel', 'Antiparasitario interno. Ascáridos y anquilostomas en perros y gatos, incluidos cachorros. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Praziquantel + Pirantel', 'Combinación antiparasitaria interna de amplio espectro: cestodos y nematodos en una sola toma. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Praziquantel + Pirantel + Febantel', 'Combinación antiparasitaria interna de amplio espectro para perros: cestodos, nematodos y Giardia. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ivermectina', 'Antiparasitario interno y externo (lactona macrocíclica). PRECAUCIÓN EN RAZAS CON MUTACIÓN MDR1/ABCB1 (Collie, Pastor Australiano, Border Collie y cruces): riesgo de neurotoxicidad grave. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Milbemicina oxima', 'Antiparasitario interno (lactona macrocíclica). Nematodos y prevención de dirofilariosis en perros y gatos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Milbemicina oxima + Praziquantel', 'Combinación antiparasitaria interna: nematodos, prevención de dirofilariosis y cestodos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Moxidectina', 'Antiparasitario endectocida (lactona macrocíclica). Nematodos, prevención de dirofilariosis y ácaros. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Emodepsida + Toltrazurilo', 'Combinación antiparasitaria interna para cachorros: nematodos y coccidios (Isospora). Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Fipronil', 'Antiparasitario externo (fenilpirazol). Pulgas y garrapatas en perros y gatos, uso tópico. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Fipronil + S-metopreno', 'Antiparasitario externo con regulador del crecimiento de insectos: pulgas adultas, huevos y larvas, y garrapatas. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Imidacloprid', 'Antiparasitario externo (neonicotinoide). Pulgas en perros y gatos, uso tópico. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Imidacloprid + Flumetrina', 'Antiparasitario externo de liberación prolongada en collar: pulgas y garrapatas. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Imidacloprid + Moxidectina', 'Antiparasitario externo e interno tópico: pulgas, ácaros, nematodos y prevención de dirofilariosis. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Fluralaner', 'Antiparasitario externo sistémico (isoxazolina). Pulgas, garrapatas y ácaros en perros y gatos. Usar con precaución en pacientes con antecedentes de convulsiones. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Afoxolaner', 'Antiparasitario externo sistémico (isoxazolina). Pulgas y garrapatas en perros. Usar con precaución en pacientes con antecedentes de convulsiones. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Sarolaner', 'Antiparasitario externo sistémico (isoxazolina). Pulgas, garrapatas y ácaros de la sarna en perros. Usar con precaución en pacientes con antecedentes de convulsiones. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Lotilaner', 'Antiparasitario externo sistémico (isoxazolina). Pulgas y garrapatas en perros y gatos. Usar con precaución en pacientes con antecedentes de convulsiones. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Selamectina', 'Antiparasitario endectocida tópico (lactona macrocíclica). Pulgas, ácaros de oído, sarna y prevención de dirofilariosis en perros y gatos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Permetrina', 'Antiparasitario externo (piretroide). Pulgas, garrapatas y repelencia de flebótomos en PERROS. TÓXICA EN GATOS: no aplicar en felinos ni permitir su contacto con perros recién tratados; puede causar temblores, convulsiones y muerte. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Deltametrina', 'Antiparasitario externo (piretroide) en collar para PERROS: garrapatas y repelencia de flebótomos. TÓXICA EN GATOS: no usar en felinos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Amitraz', 'Antiparasitario externo (formamidina). Demodicosis y garrapatas en PERROS. NO USAR EN GATOS ni en equinos. Antídoto del efecto alfa-2: atipamezol o yohimbina. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Spinosad', 'Antiparasitario externo sistémico oral (espinosina). Pulgas en perros y gatos. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Piriproxifeno', 'Regulador del crecimiento de insectos. Control ambiental y sobre el animal de huevos y larvas de pulga. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Amoxicilina', 'Antibiótico betalactámico (aminopenicilina). Infecciones sensibles de piel, vía urinaria y tejidos blandos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ampicilina', 'Antibiótico betalactámico (aminopenicilina), presentación inyectable. Infecciones sistémicas sensibles. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Penicilina G benzatínica + procaínica', 'Antibiótico betalactámico de acción prolongada. Infecciones por grampositivos sensibles. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Cefalexina', 'Antibiótico cefalosporínico de primera generación. Piodermas e infecciones de piel y tejidos blandos en perros y gatos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Cefadroxilo', 'Antibiótico cefalosporínico de primera generación, vía oral. Infecciones de piel y tejidos blandos. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Cefovecina', 'Antibiótico cefalosporínico de tercera generación, inyectable de acción prolongada, para perros y gatos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Enrofloxacina', 'Antibiótico quinolona de amplio espectro. RIESGO DE DEGENERACIÓN RETINIANA Y CEGUERA EN GATOS al superar la dosis recomendada. Evitar en animales en crecimiento por daño del cartílago articular. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Marbofloxacina', 'Antibiótico quinolona de amplio espectro para perros y gatos. Evitar en animales en crecimiento por daño del cartílago articular. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ciprofloxacina', 'Antibiótico quinolona. Infecciones sensibles; absorción oral variable en perros. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Doxiciclina', 'Antibiótico tetraciclina. Hemoparásitos (Ehrlichia, Anaplasma), leptospirosis y afecciones respiratorias. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Oxitetraciclina', 'Antibiótico tetraciclina de amplio espectro. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Azitromicina', 'Antibiótico macrólido (azálida). Infecciones respiratorias, de piel y por microorganismos intracelulares. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Eritromicina', 'Antibiótico macrólido. Alternativa en pacientes alérgicos a betalactámicos; también como procinético gástrico. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Tilosina', 'Antibiótico macrólido. Enteropatías crónicas y colitis en perros. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Clindamicina', 'Antibiótico lincosamida. Infecciones de cavidad oral, hueso, piel y toxoplasmosis. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Lincomicina', 'Antibiótico lincosamida. Infecciones por grampositivos sensibles. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Trimetoprim + Sulfadiazina', 'Sulfa potenciada de amplio espectro. Riesgo de queratoconjuntivitis seca, discrasias sanguíneas y reacciones idiosincráticas en tratamientos prolongados. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Gentamicina', 'Antibiótico aminoglucósido. Gramnegativos; nefrotóxica y ototóxica, vigilar función renal e hidratación. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Florfenicol', 'Antibiótico fenicol. Uso tópico ótico y sistémico según presentación. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Carprofeno', 'AINE de uso veterinario (propiónico). Dolor osteoarticular y perioperatorio en perros. Vigilar función hepática y renal; no combinar con corticoides. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Firocoxib', 'AINE de uso veterinario (coxib, COX-2 selectivo). Osteoartritis y dolor perioperatorio en perros. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Robenacoxib', 'AINE de uso veterinario (coxib, COX-2 selectivo) para perros y gatos. Dolor e inflamación musculoesquelética y perioperatoria. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Mavacoxib', 'AINE de uso veterinario (coxib) de acción prolongada para perros con osteoartritis. Su vida media larga obliga a vigilar los efectos adversos durante semanas. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Grapiprant', 'Antagonista del receptor EP4 de la prostaglandina E2, analgésico y antiinflamatorio no COX-inhibidor, para osteoartritis en perros. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ketoprofeno', 'AINE de uso veterinario (propiónico). Dolor agudo e inflamación; uso de corta duración por su efecto gastrolesivo. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ácido tolfenámico', 'AINE de uso veterinario (fenamato). Dolor e inflamación aguda en perros y gatos. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Flunixino meglumina', 'AINE de uso veterinario. Dolor visceral, endotoxemia y procesos inflamatorios agudos. Uso restringido y de corta duración en pequeños animales por gastrolesividad. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Dipirona', 'Analgésico, antipirético y espasmolítico (metamizol). Uso puntual; vigilar discrasias sanguíneas. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Fenilbutazona', 'AINE de uso veterinario, principalmente equino. Alta gastrolesividad y riesgo de discrasias sanguíneas; uso desaconsejado en perros y gatos habiendo alternativas más seguras. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Tepoxalina', 'AINE de uso veterinario con inhibición dual COX/LOX para osteoartritis en perros. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Tramadol', 'Analgésico opioide atípico. Dolor agudo y crónico en perros y gatos. MEDICAMENTO DE CONTROL ESPECIAL en Colombia: prescripción, custodia y reporte diferenciados ante el Fondo Nacional de Estupefacientes. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Buprenorfina', 'Analgésico opioide agonista parcial, de elección en dolor moderado en gatos. MEDICAMENTO DE CONTROL ESPECIAL ante el Fondo Nacional de Estupefacientes. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Butorfanol', 'Analgésico y sedante opioide agonista-antagonista. Sedación, analgesia visceral y antitusígeno. MEDICAMENTO DE CONTROL ESPECIAL DE USO VETERINARIO en Colombia (Resolución 315 de 2020, Anexo 3). Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ketamina', 'Anestésico disociativo. Inducción y anestesia en perros y gatos, siempre combinada con sedantes. MEDICAMENTO DE CONTROL ESPECIAL DE USO VETERINARIO en Colombia (Resolución 315 de 2020, Anexo 3). Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ketamina + Midazolam', 'Combinación anestésica disociativa con benzodiacepina para inducción en perros y gatos. MEDICAMENTO DE CONTROL ESPECIAL DE USO VETERINARIO en Colombia (Resolución 315 de 2020, Anexo 3). Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Tiletamina + Zolazepam', 'Combinación anestésica disociativa con benzodiacepina para perros y gatos. SUSTANCIA SOMETIDA A FISCALIZACIÓN ante el Fondo Nacional de Estupefacientes. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Midazolam', 'Benzodiacepina de acción corta. Sedación, premedicación y control de convulsiones. SUSTANCIA SOMETIDA A FISCALIZACIÓN ante el Fondo Nacional de Estupefacientes. En Colombia solo tiene registro veterinario en combinación fija con ketamina; sola se usa por extrapolación humana.'
+                UNION ALL SELECT 'Diazepam', 'Benzodiacepina. Control de convulsiones, sedación y estimulación del apetito en gatos. SUSTANCIA SOMETIDA A FISCALIZACIÓN ante el Fondo Nacional de Estupefacientes. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Propofol', 'Anestésico intravenoso de acción ultracorta para inducción y mantenimiento. Produce apnea si se inyecta rápido; exige control de la vía aérea. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Isoflurano', 'Anestésico inhalatorio halogenado para mantenimiento anestésico. Requiere vaporizador calibrado y monitorización. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Sevoflurano', 'Anestésico inhalatorio halogenado de inducción y recuperación rápidas. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Lidocaína', 'Anestésico local tipo amida y antiarrítmico de clase IB. Bloqueos locorregionales e infusión analgésica. USAR CON ESPECIAL PRECAUCIÓN EN GATOS por su menor margen de seguridad. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Bupivacaína', 'Anestésico local tipo amida de larga duración para bloqueos locorregionales. Nunca por vía intravenosa: cardiotoxicidad. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Dexmedetomidina', 'Sedante y analgésico agonista alfa-2 para perros y gatos. Produce bradicardia y vasoconstricción; reversible con atipamezol. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Medetomidina', 'Sedante y analgésico agonista alfa-2. Reversible con atipamezol. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Xilacina', 'Sedante, analgésico y miorrelajante agonista alfa-2. Emética en gatos; produce bradicardia y depresión respiratoria. Reversible con yohimbina o atipamezol. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Acepromacina', 'Tranquilizante fenotiazínico. Sedación y premedicación; NO es analgésico. Produce hipotensión; usar con precaución en braquicéfalos y en pacientes con antecedentes de convulsiones. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Atipamezol', 'Antagonista alfa-2 selectivo. Reversión de la sedación por dexmedetomidina, medetomidina o xilacina. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Yohimbina', 'Antagonista alfa-2. Reversión de la sedación por xilacina y del efecto del amitraz. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Atropina', 'Anticolinérgico. Bradicardia, premedicación anestésica y antídoto en intoxicación por organofosforados. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Gabapentina', 'Analgésico para dolor neuropático y ansiolítico previo a consulta, especialmente en gatos. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Prednisolona', 'Corticoide de acción intermedia. Antiinflamatorio e inmunosupresor; es la forma de elección en gatos por no requerir conversión hepática. No combinar con AINEs. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Prednisona', 'Corticoide de acción intermedia, profármaco de la prednisolona. Antiinflamatorio e inmunosupresor en perros. No combinar con AINEs. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Dexametasona', 'Corticoide de acción prolongada y alta potencia antiinflamatoria. Procesos inflamatorios, alérgicos y de urgencia. No combinar con AINEs. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Betametasona', 'Corticoide de acción prolongada. Procesos inflamatorios y alérgicos; también en formulaciones tópicas y óticas. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Triamcinolona', 'Corticoide de acción intermedia-prolongada. Dermatopatías inflamatorias y alérgicas. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Hidrocortisona', 'Corticoide de acción corta. Formulaciones tópicas, óticas y oftálmicas; terapia de reemplazo en hipoadrenocorticismo. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Aceponato de hidrocortisona', 'Corticoide tópico de acción local (diéster) para dermatitis atópica en perros, con baja absorción sistémica. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Metilprednisolona', 'Corticoide de acción intermedia, antiinflamatorio e inmunosupresor. Sin registro veterinario vigente en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Metoclopramida', 'Antiemético central y procinético gastrointestinal. Contraindicado ante obstrucción o perforación digestiva. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ondansetrón', 'Antiemético antagonista de receptores 5-HT3, útil en vómito refractario y quimioterapia. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Ranitidina', 'Antagonista de receptores H2 de la histamina, antisecretor gástrico. Registrada en Colombia para uso veterinario (ICA); en medicina humana el INVIMA ordenó su retiro del mercado en 2020 por nitrosaminas (NDMA).'
+                UNION ALL SELECT 'Famotidina', 'Antagonista de receptores H2 de la histamina, antisecretor gástrico. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Silimarina', 'Hepatoprotector derivado del cardo mariano, antioxidante hepático. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ademetionina', 'Hepatoprotector (S-adenosilmetionina). Soporte antioxidante en hepatopatías crónicas. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Lactulosa', 'Laxante osmótico y reductor de la absorción de amoníaco en encefalopatía hepática. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Ácido ursodesoxicólico', 'Colerético y hepatoprotector en colestasis y hepatopatías crónicas. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Enzimas pancreáticas', 'Suplemento enzimático de reemplazo en insuficiencia pancreática exocrina. Sin registro veterinario en Colombia como medicamento: uso por extrapolación humana o como suplemento, bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Apomorfina', 'Emético de acción central para inducir el vómito en intoxicaciones recientes en perros. No usar en gatos. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Pimobendán', 'Inodilatador (sensibilizante al calcio e inhibidor de PDE3). Insuficiencia cardíaca congestiva por enfermedad valvular mitral o cardiomiopatía dilatada en perros. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Furosemida', 'Diurético de asa. Edema pulmonar e insuficiencia cardíaca congestiva. Vigilar deshidratación, función renal y potasio. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Torasemida', 'Diurético de asa de acción más prolongada que la furosemida, en insuficiencia cardíaca congestiva refractaria. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Benazepril', 'Inhibidor de la ECA. Insuficiencia cardíaca y proteinuria en enfermedad renal crónica. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Enalapril', 'Inhibidor de la ECA. Insuficiencia cardíaca e hipertensión. Vigilar función renal y potasio. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Espironolactona', 'Diurético ahorrador de potasio y antagonista de la aldosterona, coadyuvante en insuficiencia cardíaca. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Amlodipino', 'Bloqueante de los canales de calcio. Hipertensión arterial sistémica, especialmente en gatos con enfermedad renal crónica. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Digoxina', 'Glucósido digitálico. Control de la frecuencia en fibrilación auricular. Margen terapéutico estrecho: exige monitorización. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Atenolol', 'Betabloqueante cardioselectivo. Cardiomiopatía hipertrófica felina y taquiarritmias. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Insulina porcina zinc', 'Insulina de origen porcino de acción intermedia para el tratamiento de la diabetes mellitus en perros y gatos. Conservación en frío y homogeneización suave antes de cada uso. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Insulina glargina', 'Análogo de insulina de acción prolongada, usado en el manejo de la diabetes mellitus felina. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Levotiroxina sódica', 'Hormona tiroidea de reemplazo en el hipotiroidismo canino. Requiere control periódico de niveles séricos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Metimazol', 'Antitiroideo para el hipertiroidismo felino. Vigilar hemograma, función hepática y reacciones cutáneas. Sin registro veterinario en Colombia: uso por extrapolación humana o preparación magistral, bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Trilostano', 'Inhibidor de la 3-beta-hidroxiesteroide deshidrogenasa para el hiperadrenocorticismo (síndrome de Cushing) canino. Exige monitorización de cortisol y electrolitos. Sin registro veterinario en Colombia: uso por extrapolación o importación, bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Desmopresina', 'Análogo de la vasopresina para la diabetes insípida central. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Oclacitinib', 'Inhibidor selectivo de Janus quinasa (JAK1). Control del prurito y de la dermatitis atópica en perros. No usar en perros con infección grave, neoplasia ni menores de la edad autorizada. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Lokivetmab', 'Anticuerpo monoclonal caninizado anti-IL-31. Control del prurito por dermatitis atópica en perros. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ciclosporina', 'Inmunomodulador inhibidor de la calcineurina. Dermatitis atópica y enfermedades inmunomediadas en perros y gatos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Itraconazol', 'Antifúngico triazólico sistémico. Dermatofitosis y micosis sistémicas en perros y gatos. Vigilar función hepática. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ketoconazol', 'Antifúngico imidazólico, sistémico y tópico. Dermatofitosis y malasseziosis. Hepatotóxico; interacciona con múltiples fármacos. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Terbinafina', 'Antifúngico alilamina, sistémico y tópico. Dermatofitosis en perros y gatos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Griseofulvina', 'Antifúngico sistémico para dermatofitosis. TERATOGÉNICA: no usar en hembras gestantes. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Miconazol', 'Antifúngico imidazólico tópico. Dermatofitosis y malasseziosis, con frecuencia asociado a clorhexidina. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Clorhexidina', 'Antiséptico de amplio espectro para piel y mucosas. Piodermas, antisepsia quirúrgica e higiene oral. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Clorfenamina', 'Antihistamínico H1 de primera generación. Reacciones alérgicas y prurito; produce sedación. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Difenhidramina', 'Antihistamínico H1 de primera generación. Reacciones alérgicas agudas y cinetosis; produce sedación. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Cetirizina', 'Antihistamínico H1 de segunda generación, con menor efecto sedante. Prurito alérgico. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Hidroxicina', 'Antihistamínico H1 de primera generación con efecto ansiolítico, usado en dermatopatías alérgicas. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Ciproheptadina', 'Antihistamínico H1 y antiserotoninérgico, usado como estimulante del apetito en gatos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Tobramicina', 'Antibiótico aminoglucósido de uso oftálmico tópico. Conjuntivitis y úlceras corneales infectadas. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Dorzolamida', 'Inhibidor tópico de la anhidrasa carbónica. Reducción de la presión intraocular en glaucoma. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ácido hialurónico', 'Lubricante ocular y protector corneal en queratoconjuntivitis seca y lesiones de superficie. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Latanoprost', 'Análogo de prostaglandina tópico, hipotensor ocular en glaucoma canino. Contraindicado en uveítis y en glaucoma felino. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Tropicamida', 'Midriático y ciclopléjico tópico de acción corta para exploración del fondo de ojo. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Florfenicol + Terbinafina + Betametasona', 'Combinación ótica de antibiótico, antifúngico y corticoide para otitis externa en perros. Descartar rotura timpánica antes de aplicar. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Solución de lactato de Ringer (Hartmann)', 'Cristaloide isotónico balanceado. Fluidoterapia de reposición, deshidratación y soporte perioperatorio. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Cloruro de sodio (solución salina)', 'Cristaloide isotónico. Fluidoterapia de reposición, hiponatremia y dilución de fármacos. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Dextrosa', 'Solución de glucosa para hipoglucemia y aporte calórico, y como aditivo de fluidoterapia. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Cloruro de potasio', 'Electrolito para la corrección de la hipopotasemia, siempre diluido en fluidoterapia. NUNCA administrar en bolo intravenoso: es letal. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Gluconato de calcio', 'Electrolito para hipocalcemia y eclampsia puerperal, y como cardioprotector en hiperpotasemia. Administración intravenosa lenta con monitorización cardíaca. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Bicarbonato de sodio', 'Alcalinizante para acidosis metabólica grave documentada por gasometría. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Manitol', 'Diurético osmótico para hipertensión intracraneal y edema cerebral. Contraindicado en pacientes deshidratados o con hemorragia intracraneal activa. Sin registro veterinario específico verificado en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Adrenalina', 'Simpaticomimético de urgencia. Parada cardiorrespiratoria y anafilaxia. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Fitomenadiona', 'Vitamina K1. Antídoto de la intoxicación por rodenticidas anticoagulantes y de las coagulopatías por déficit de vitamina K. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Ácido tranexámico', 'Antifibrinolítico para el control de hemorragias. Sin registro veterinario en Colombia: uso por extrapolación humana bajo criterio del médico veterinario.'
+                UNION ALL SELECT 'Carbón activado', 'Adsorbente gastrointestinal para el manejo de intoxicaciones por vía oral. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'N-acetilcisteína', 'Mucolítico y precursor del glutatión; antídoto de la intoxicación por paracetamol, especialmente en gatos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Doxapram', 'Estimulante respiratorio central para depresión respiratoria y reanimación neonatal. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Oxitocina', 'Hormona uterotónica. Inercia uterina y estimulación de la bajada de la leche. Contraindicada ante obstrucción del canal del parto. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Sulfato de magnesio', 'Electrolito y antiarrítmico en hipomagnesemia y arritmias refractarias. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Tiamina', 'Vitamina B1. Deficiencia de tiamina, especialmente en gatos, con signos neurológicos. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Neomicina', 'Antibiótico aminoglucósido de uso tópico en piel, oído y ojo. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Polimixina B', 'Antibiótico polipeptídico de uso tópico frente a gramnegativos, en formulaciones óticas y oftálmicas. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Clotrimazol', 'Antifúngico imidazólico de uso tópico y ótico. Dermatofitosis, malasseziosis y otitis por levaduras. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Sulfadiazina de plata', 'Antibacteriano tópico de elección en quemaduras y heridas extensas. Registrada en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Toltrazurilo', 'Antiprotozoario triazinona para coccidiosis (Isospora) en cachorros. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Pentobarbital sódico', 'Barbitúrico de acción ultracorta empleado en eutanasia y como anticonvulsivante. SUSTANCIA SOMETIDA A FISCALIZACIÓN ante el Fondo Nacional de Estupefacientes; administración exclusiva por médico veterinario. Registrado en Colombia para uso veterinario (ICA).'
+                UNION ALL SELECT 'Pentobarbital sódico + Difenilhidantoína', 'Solución eutanásica para perros y gatos. SUSTANCIA SOMETIDA A FISCALIZACIÓN ante el Fondo Nacional de Estupefacientes; administración exclusiva por médico veterinario. Registrada en Colombia para uso veterinario (ICA).'
+              ) AS t
+             WHERE NOT EXISTS (SELECT 1 FROM medicaments m WHERE m.name = t.name);
+        </sql>
+
+        <!-- Las 6 filas ya sembradas por 173b: se adoptan con su nombre exacto y solo se les rellena
+             la descripción si está vacía, sin pisar lo que un SYSTEM haya editado a mano. -->
+        <sql>UPDATE medicaments SET description = 'Antibiótico betalactámico con inhibidor de betalactamasas. Infecciones de piel, tejidos blandos, vía urinaria y cavidad oral. Registrada en Colombia para uso veterinario (ICA).', version = version + 1 WHERE name = 'Amoxicilina + Clavulánico' AND general = TRUE AND description IS NULL;</sql>
+        <sql>UPDATE medicaments SET description = 'AINE de uso veterinario (oxicam, COX-2 preferente). Dolor e inflamación aguda y crónica en perros y gatos. Contraindicado con deshidratación, hipotensión, enfermedad renal o gastrointestinal activa, y en combinación con corticoides. Registrado en Colombia para uso veterinario (ICA).', version = version + 1 WHERE name = 'Meloxicam' AND general = TRUE AND description IS NULL;</sql>
+        <sql>UPDATE medicaments SET description = 'Antimicrobiano nitroimidazólico y antiprotozoario. Anaerobios, giardiosis y enteropatías. La sobredosis o el uso prolongado producen neurotoxicidad vestibular. Registrado en Colombia para uso veterinario (ICA).', version = version + 1 WHERE name = 'Metronidazol' AND general = TRUE AND description IS NULL;</sql>
+        <sql>UPDATE medicaments SET description = 'Inhibidor de la bomba de protones. Úlcera gastroduodenal, esofagitis por reflujo y gastroprotección. Registrado en Colombia para uso veterinario (ICA).', version = version + 1 WHERE name = 'Omeprazol' AND general = TRUE AND description IS NULL;</sql>
+        <sql>UPDATE medicaments SET description = 'Protector de la mucosa gástrica; forma una barrera sobre la lesión ulcerada. Separar su administración de otros fármacos orales porque reduce su absorción. Registrado en Colombia para uso veterinario (ICA).', version = version + 1 WHERE name = 'Sucralfato' AND general = TRUE AND description IS NULL;</sql>
+        <sql>UPDATE medicaments SET description = 'Antiemético antagonista del receptor NK-1 para perros y gatos. Vómito agudo, cinetosis y control del vómito perioperatorio. Registrado en Colombia para uso veterinario (ICA).', version = version + 1 WHERE name = 'Maropitant' AND general = TRUE AND description IS NULL;</sql>
+
+        <rollback>
+            <sql>
+                DELETE FROM medicaments
+                 WHERE general = TRUE AND company_id IS NULL
+                   AND name NOT IN ('Amoxicilina + Clavulánico','Meloxicam','Metronidazol','Omeprazol',
+                                     'Sucralfato','Maropitant')
+                   AND NOT EXISTS (SELECT 1 FROM medicament_prescriptions mp
+                                    WHERE mp.medicament_id = medicaments.id);
+                UPDATE medicaments SET description = NULL, version = version + 1
+                 WHERE name IN ('Amoxicilina + Clavulánico','Meloxicam','Metronidazol','Omeprazol',
+                                 'Sucralfato','Maropitant') AND general = TRUE;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

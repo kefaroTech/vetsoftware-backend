@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #560. `general = TRUE` XOR `company_id IS NOT NULL` hoy solo vive en el constructor de
+         dominio de cada entidad (VaccinationType.java, SurgeryType.java, LaboratoryTestType.java,
+         DiagnosticImagingType.java, Medicament.java) y se evalua AL LEER, no al insertar: una fila
+         mal sembrada — typicamente `general = FALSE` con `company_id NULL`, el default de la
+         columna antes de este changeset era `general = FALSE` — no rompe el INSERT, rompe el
+         primer `findAll`/`findAllByGeneralTrueOrCompany_Id` que la mapee, con
+         IllegalArgumentException, y tumba el listado del catalogo para TODOS los tenants a la vez,
+         no solo el que la creo. MySQL 8.4 aplica CHECK de verdad (a diferencia de versiones
+         anteriores que lo parseaban y lo ignoraban). Va DESPUES de 285 (mismas 5 tablas, mismo
+         `company_id`) y ANTES de la semilla 290-299: con las tablas ya bajo el CHECK, un INSERT de
+         la semilla que se equivocara de `general` fallaria en el momento, no en produccion. -->
+
+    <changeSet id="286_check_general_xor_company_vaccination_types" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="vaccination_types" columnName="general"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM vaccination_types
+                 WHERE (general = TRUE AND company_id IS NOT NULL)
+                    OR (general = FALSE AND company_id IS NULL)
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE vaccination_types
+                ADD CONSTRAINT ck_vaccination_types_owner_xor
+                CHECK ((general = TRUE AND company_id IS NULL) OR (general = FALSE AND company_id IS NOT NULL));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE vaccination_types DROP CONSTRAINT ck_vaccination_types_owner_xor;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="286_check_general_xor_company_surgery_types" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="surgery_types" columnName="general"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM surgery_types
+                 WHERE (general = TRUE AND company_id IS NOT NULL)
+                    OR (general = FALSE AND company_id IS NULL)
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE surgery_types
+                ADD CONSTRAINT ck_surgery_types_owner_xor
+                CHECK ((general = TRUE AND company_id IS NULL) OR (general = FALSE AND company_id IS NOT NULL));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE surgery_types DROP CONSTRAINT ck_surgery_types_owner_xor;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="286_check_general_xor_company_laboratory_test_types" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="laboratory_test_types" columnName="general"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM laboratory_test_types
+                 WHERE (general = TRUE AND company_id IS NOT NULL)
+                    OR (general = FALSE AND company_id IS NULL)
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE laboratory_test_types
+                ADD CONSTRAINT ck_laboratory_test_types_owner_xor
+                CHECK ((general = TRUE AND company_id IS NULL) OR (general = FALSE AND company_id IS NOT NULL));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE laboratory_test_types DROP CONSTRAINT ck_laboratory_test_types_owner_xor;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="286_check_general_xor_company_diagnostic_imaging_types" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="diagnostic_imaging_types" columnName="general"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM diagnostic_imaging_types
+                 WHERE (general = TRUE AND company_id IS NOT NULL)
+                    OR (general = FALSE AND company_id IS NULL)
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE diagnostic_imaging_types
+                ADD CONSTRAINT ck_diagnostic_imaging_types_owner_xor
+                CHECK ((general = TRUE AND company_id IS NULL) OR (general = FALSE AND company_id IS NOT NULL));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE diagnostic_imaging_types DROP CONSTRAINT ck_diagnostic_imaging_types_owner_xor;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="286_check_general_xor_company_medicaments" author="orlando">
+        <preConditions onFail="HALT">
+            <columnExists tableName="medicaments" columnName="general"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM medicaments
+                 WHERE (general = TRUE AND company_id IS NOT NULL)
+                    OR (general = FALSE AND company_id IS NULL)
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE medicaments
+                ADD CONSTRAINT ck_medicaments_owner_xor
+                CHECK ((general = TRUE AND company_id IS NULL) OR (general = FALSE AND company_id IS NOT NULL));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE medicaments DROP CONSTRAINT ck_medicaments_owner_xor;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

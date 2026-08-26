@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #556. `vaccination_types`, `surgery_types`, `laboratory_test_types`,
+         `diagnostic_imaging_types` y `medicaments` mezclan filas globales (company_id IS NULL) con
+         filas propias de empresa bajo un UNIQUE(name) que es GLOBAL: la primera clinica que crea un
+         nombre se lo quita a todas las demas para siempre, y el borrado logico (@SQLDelete) no
+         libera el nombre. Se ejecuta ANTES de sembrar (285-289 son DDL, 290-299 es la semilla)
+         porque el ALTER es mas barato con las tablas casi vacias — medicaments es la unica con
+         datos hoy en dev (6 filas de 173b) — y porque asi la semilla que viene detras entra ya bajo
+         la constraint correcta, sin tener que auditar colisiones despues.
+
+         Patron de la casa (changesets 151-154, 206, 210, 226): columna generada STORED que vale
+         NULL fuera de alcance, porque MySQL no tiene indice unico parcial y un UNIQUE(company_id,
+         name) corriente no protege las filas globales entre si (dos NULL no colisionan en MySQL).
+
+           owner_scope  = COALESCE(company_id, 0)                    — 0 = plataforma
+           active_name  = CASE WHEN enabled THEN name ELSE NULL END  — la baja libera el nombre
+
+         Precondicion de seguridad por tabla: cero grupos (owner_scope, active_name) con mas de una
+         fila ANTES del ALTER, onFail=HALT — si hubiera una colision real bajo la collation
+         utf8mb4_0900_ai_ci, el ALTER fallaria a medio camino y es preferible pararse limpio antes.
+
+         El nombre del indice `name` que se retira es el que MySQL asigna por defecto a un
+         `unique="true"` inline sin constraintName (034/051/037/053): VERIFICADO por el coordinador
+         contra `information_schema.STATISTICS` de dev, no deducido — las cinco tablas confirman
+         `name (name) UNIQUE`, y `medicaments` confirma `uq_medicaments_name (name) UNIQUE`, exacto lo
+         que asume este changeset. Los cinco indices de soporte de la FK a `companies`
+         (`fk_vaccination_types_company`, `fk_surgery_types_company`, `fk_test_types_company`,
+         `fk_diagnostic_imaging_types_company`, `fk_medicaments_company`) tambien estan confirmados y
+         NO quedan redundantes con `owner_scope` (columna derivada de `company_id`, no el propio
+         `company_id`): MySQL no puede usar un indice sobre `owner_scope` para resolver la FK sobre
+         `company_id`, asi que los cinco siguen siendo necesarios y no se tocan aqui. -->
+
+    <changeSet id="285_fix_unique_index_vaccination_types" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="vaccination_types"/>
+            <columnExists tableName="vaccination_types" columnName="company_id"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM (
+                  SELECT COALESCE(company_id, 0) o, name
+                    FROM vaccination_types WHERE enabled = 1
+                   GROUP BY o, name HAVING COUNT(*) > 1
+                ) dup
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE vaccination_types
+                ADD COLUMN owner_scope BIGINT
+                    GENERATED ALWAYS AS (COALESCE(company_id, 0)) STORED,
+                ADD COLUMN active_name VARCHAR(100)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_vaccination_types_owner_active_name UNIQUE (owner_scope, active_name),
+                DROP INDEX `name`;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE vaccination_types
+                    DROP CONSTRAINT uq_vaccination_types_owner_active_name,
+                    DROP COLUMN owner_scope,
+                    DROP COLUMN active_name,
+                    ADD UNIQUE INDEX `name` (name);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="285_fix_unique_index_surgery_types" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="surgery_types"/>
+            <columnExists tableName="surgery_types" columnName="company_id"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM (
+                  SELECT COALESCE(company_id, 0) o, name
+                    FROM surgery_types WHERE enabled = 1
+                   GROUP BY o, name HAVING COUNT(*) > 1
+                ) dup
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE surgery_types
+                ADD COLUMN owner_scope BIGINT
+                    GENERATED ALWAYS AS (COALESCE(company_id, 0)) STORED,
+                ADD COLUMN active_name VARCHAR(100)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_surgery_types_owner_active_name UNIQUE (owner_scope, active_name),
+                DROP INDEX `name`;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE surgery_types
+                    DROP CONSTRAINT uq_surgery_types_owner_active_name,
+                    DROP COLUMN owner_scope,
+                    DROP COLUMN active_name,
+                    ADD UNIQUE INDEX `name` (name);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="285_fix_unique_index_laboratory_test_types" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="laboratory_test_types"/>
+            <columnExists tableName="laboratory_test_types" columnName="company_id"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM (
+                  SELECT COALESCE(company_id, 0) o, name
+                    FROM laboratory_test_types WHERE enabled = 1
+                   GROUP BY o, name HAVING COUNT(*) > 1
+                ) dup
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE laboratory_test_types
+                ADD COLUMN owner_scope BIGINT
+                    GENERATED ALWAYS AS (COALESCE(company_id, 0)) STORED,
+                ADD COLUMN active_name VARCHAR(100)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_laboratory_test_types_owner_active_name UNIQUE (owner_scope, active_name),
+                DROP INDEX `name`;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE laboratory_test_types
+                    DROP CONSTRAINT uq_laboratory_test_types_owner_active_name,
+                    DROP COLUMN owner_scope,
+                    DROP COLUMN active_name,
+                    ADD UNIQUE INDEX `name` (name);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="285_fix_unique_index_diagnostic_imaging_types" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="diagnostic_imaging_types"/>
+            <columnExists tableName="diagnostic_imaging_types" columnName="company_id"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM (
+                  SELECT COALESCE(company_id, 0) o, name
+                    FROM diagnostic_imaging_types WHERE enabled = 1
+                   GROUP BY o, name HAVING COUNT(*) > 1
+                ) dup
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE diagnostic_imaging_types
+                ADD COLUMN owner_scope BIGINT
+                    GENERATED ALWAYS AS (COALESCE(company_id, 0)) STORED,
+                ADD COLUMN active_name VARCHAR(100)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_diagnostic_imaging_types_owner_active_name UNIQUE (owner_scope, active_name),
+                DROP INDEX `name`;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE diagnostic_imaging_types
+                    DROP CONSTRAINT uq_diagnostic_imaging_types_owner_active_name,
+                    DROP COLUMN owner_scope,
+                    DROP COLUMN active_name,
+                    ADD UNIQUE INDEX `name` (name);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- medicaments SI tiene el indice nombrado explicitamente (uq_medicaments_name,
+         173_create_medicaments.xml:17), asi que aqui no hace falta adivinar el nombre por defecto
+         de MySQL. La tabla tiene datos hoy (6 filas de 173b en dev; produccion puede tener mas por
+         173d), de ahi que la precondicion de colisiones sea la misma red de seguridad que en las
+         otras cuatro. VARCHAR(200) porque medicaments.name es mas largo que el resto (issue #557 lo
+         documenta como el caso donde ai_ci pega mas fuerte, por la nomenclatura farmacologica). -->
+    <changeSet id="285_fix_unique_index_medicaments" author="orlando">
+        <preConditions onFail="HALT">
+            <tableExists tableName="medicaments"/>
+            <columnExists tableName="medicaments" columnName="company_id"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM (
+                  SELECT COALESCE(company_id, 0) o, name
+                    FROM medicaments WHERE enabled = 1
+                   GROUP BY o, name HAVING COUNT(*) > 1
+                ) dup
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE medicaments
+                ADD COLUMN owner_scope BIGINT
+                    GENERATED ALWAYS AS (COALESCE(company_id, 0)) STORED,
+                ADD COLUMN active_name VARCHAR(200)
+                    GENERATED ALWAYS AS (CASE WHEN enabled = TRUE THEN name ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_medicaments_owner_active_name UNIQUE (owner_scope, active_name),
+                DROP INDEX uq_medicaments_name;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE medicaments
+                    DROP CONSTRAINT uq_medicaments_owner_active_name,
+                    DROP COLUMN owner_scope,
+                    DROP COLUMN active_name,
+                    ADD UNIQUE INDEX uq_medicaments_name (name);
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #574. VERIFICADO por el coordinador contra `information_schema.STATISTICS` de dev:
+         `breeds` y `animal_colors` solo tienen dos indices cada una (PRIMARY + `uq_breeds_specie_name`
+         / `uq_animal_colors_specie_name`). NO existe ningun `fk_breeds_specie` ni
+         `fk_animal_colors_specie` como indice — en una base creada desde cero, MySQL nunca crea el
+         indice de soporte de la FK porque el UNIQUE compuesto ya empieza por `specie_id` y le sirve
+         de prefijo por la izquierda (MySQL 8.4 Multiple-Column Indexes), así que el "indice
+         redundante" que describe #574 nunca llega a materializarse aqui. La razon de este changeset
+         deja de ser "retirar un indice redundante" y pasa a ser "retirarlo SOLO en los entornos donde
+         exista" — produccion pudo crearlo con otra version de MySQL, o un DBA a mano en algun punto
+         de la historia; este comentario documenta esa decision para que #574 se cierre con el motivo
+         correcto.
+
+         Va ANTES de 288 (que sustituye `uq_breeds_specie_name`/`uq_animal_colors_specie_name` por el
+         indice de tres columnas con `company_id`): mientras este changeset corre, el indice compuesto
+         original todavia existe y sigue sirviendo de soporte a la FK, asi que MySQL no se queda sin
+         indice para `specie_id` en ningun momento intermedio.
+
+         La `preCondition indexExists` con `onFail="MARK_RAN"` es la que confirmo el no-op en dev: si
+         el indice no existe (el caso comun), el changeset se marca ejecutado sin tocar nada; si existe
+         (el caso que puede darse en produccion), lo retira. -->
+
+    <changeSet id="287_drop_redundant_fk_index_breeds" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <indexExists tableName="breeds" indexName="fk_breeds_specie"/>
+        </preConditions>
+        <sql>DROP INDEX fk_breeds_specie ON breeds;</sql>
+        <rollback>
+            <sql>CREATE INDEX fk_breeds_specie ON breeds (specie_id);</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="287_drop_redundant_fk_index_animal_colors" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <indexExists tableName="animal_colors" indexName="fk_animal_colors_specie"/>
+        </preConditions>
+        <sql>DROP INDEX fk_animal_colors_specie ON animal_colors;</sql>
+        <rollback>
+            <sql>CREATE INDEX fk_animal_colors_specie ON animal_colors (specie_id);</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

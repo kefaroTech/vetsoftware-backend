@@ -365,4 +365,37 @@
     <include file="db/changelog/migrations/283_create_platform_access_invitations.xml"/>
     <include file="db/changelog/migrations/284_seed_platform_access_switch.xml"/>
 
+    <!-- Diez catalogos clinicos maestros (docs/db/semilla-*.md, 2026-08-25) + los arreglos
+         estructurales que los preceden, decididos para aprovechar que las tablas siguen casi vacias
+         (285-289 son DDL, 290-299 es la semilla; el DDL SIEMPRE va antes del INSERT que depende de
+         el). Orden interno:
+           285 #556  fija el UNIQUE global de name en los 5 catalogos con company_id
+                     (vaccination_types, surgery_types, laboratory_test_types,
+                     diagnostic_imaging_types, medicaments) con el patron de columna generada STORED
+           286 #560  CHECK "general XOR company_id" en esos mismos 5
+           287 #574  retira el indice de FK redundante en breeds/animal_colors
+           288 #571 + #566  anade company_id + general a las cinco que no lo tenian
+                     (species, breeds, animal_colors, consultation_types, spa_types), mismo patron
+                     de columna generada que 285
+           289 #567  campos clinicos de medicaments (atcvet_code, controlled_substance,
+                     ica_registration) + tabla medicament_species_warnings, sin poblar avisos
+           290-292   species -> breeds -> animal_colors (specie_id se resuelve por nombre, por eso
+                     el orden es obligatorio)
+           293-299   los siete catalogos restantes, independientes entre si -->
+    <include file="db/changelog/migrations/285_fix_unique_index_catalogs_with_company.xml"/>
+    <include file="db/changelog/migrations/286_add_general_xor_company_check.xml"/>
+    <include file="db/changelog/migrations/287_drop_redundant_fk_index_breeds_colors.xml"/>
+    <include file="db/changelog/migrations/288_add_company_scope_to_global_catalogs.xml"/>
+    <include file="db/changelog/migrations/289_add_medicament_clinical_fields.xml"/>
+    <include file="db/changelog/migrations/290_seed_species_catalog.xml"/>
+    <include file="db/changelog/migrations/291_seed_breeds_catalog.xml"/>
+    <include file="db/changelog/migrations/292_seed_animal_colors_catalog.xml"/>
+    <include file="db/changelog/migrations/293_seed_consultation_types_catalog.xml"/>
+    <include file="db/changelog/migrations/294_seed_vaccination_types_catalog.xml"/>
+    <include file="db/changelog/migrations/295_seed_surgery_types_catalog.xml"/>
+    <include file="db/changelog/migrations/296_seed_laboratory_test_types_catalog.xml"/>
+    <include file="db/changelog/migrations/297_seed_diagnostic_imaging_types_catalog.xml"/>
+    <include file="db/changelog/migrations/298_seed_spa_types_catalog.xml"/>
+    <include file="db/changelog/migrations/299_seed_global_medicament_catalog.xml"/>
+
 </databaseChangeLog>
