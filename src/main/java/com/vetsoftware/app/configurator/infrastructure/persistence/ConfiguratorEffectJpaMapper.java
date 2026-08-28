@@ -14,6 +14,7 @@ public class ConfiguratorEffectJpaMapper {
         entity.setCatalogItemId(effect.getCatalogItemId());
         entity.setEffect(effect.getEffect());
         entity.setQuantity(effect.getQuantity());
+        entity.setPriority(effect.getPriority());
         entity.setCreatedDate(effect.getCreatedDate());
         entity.setVersion(effect.getVersion());
         entity.setEnabled(effect.isEnabled());
@@ -23,6 +24,7 @@ public class ConfiguratorEffectJpaMapper {
     public ConfiguratorEffect toDomain(ConfiguratorEffectJpaEntity entity) {
         return new ConfiguratorEffect(entity.getId(), entity.getOptionId(), entity.getQuestionId(),
                 entity.getCatalogItemId(), entity.getEffect(), entity.getQuantity(),
-                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
+                entity.getPriority(), entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled());
     }
 }

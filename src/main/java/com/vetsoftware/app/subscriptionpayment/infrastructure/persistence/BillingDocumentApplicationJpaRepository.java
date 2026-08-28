@@ -77,6 +77,37 @@ public interface BillingDocumentApplicationJpaRepository
             @Param("companyId") Long companyId);
 
     /**
+     * R3 sobre una retencion. Mismo criterio de suma neta.
+     *
+     * <p>
+     * Filtra tambien por {@code sourceKind} y no solo por la FK: una fila de otro
+     * origen no puede llevar {@code withholding_id} relleno
+     * ({@code chk_bda_source_exclusive}), asi que el filtro es redundante contra la
+     * base y deliberado contra el futuro -- si alguien relajara esa constraint,
+     * esta suma seguiria midiendo lo que dice medir.
+     */
+    @Query("""
+            select coalesce(sum(a.appliedAmount), 0)
+            from BillingDocumentApplicationJpaEntity a
+            where a.withholdingId = :withholdingId
+              and a.companyId = :companyId
+              and a.sourceKind = com.vetsoftware.app.subscriptionpayment.domain.ApplicationSourceKind.WITHHOLDING
+            """)
+    BigDecimal sumAppliedFromWithholding(@Param("withholdingId") Long withholdingId,
+            @Param("companyId") Long companyId);
+
+    /** R3 sobre un lote de saldo a favor. Mismo criterio de suma neta. */
+    @Query("""
+            select coalesce(sum(a.appliedAmount), 0)
+            from BillingDocumentApplicationJpaEntity a
+            where a.creditEntryId = :creditEntryId
+              and a.companyId = :companyId
+              and a.sourceKind = com.vetsoftware.app.subscriptionpayment.domain.ApplicationSourceKind.CUSTOMER_CREDIT
+            """)
+    BigDecimal sumAppliedFromCreditEntry(@Param("creditEntryId") Long creditEntryId,
+            @Param("companyId") Long companyId);
+
+    /**
      * Facturas que este pago toca. Alimenta el recalculo de {@code settled_amount}
      * cuando el pago cambia de estado: confirmar o devolver un pago mueve el saldo
      * de todas ellas.

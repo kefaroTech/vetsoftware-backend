@@ -614,6 +614,7 @@
             <sqlCheck expectedResult="11">SELECT COUNT(*) FROM animal_colors c JOIN species s ON s.id = c.specie_id WHERE s.name = 'Reptil' AND c.enabled = 1</sqlCheck>
         </preConditions>
         <sql>DO 0;</sql>
+        <rollback/>
     </changeSet>
 
 </databaseChangeLog>

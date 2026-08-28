@@ -23,16 +23,25 @@ import com.vetsoftware.app.subscriptionpayment.application.dto.BillingDocumentAp
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentApplicationRepository;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentQueryPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentSettlementPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.CustomerCreditQueryPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.DunningReevaluationPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentAuditPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentMetrics;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentRepository;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.WithholdingQueryPort;
 import com.vetsoftware.app.subscriptionpayment.domain.ApplicationSourceKind;
 import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentApplication;
+import com.vetsoftware.app.subscriptionpayment.domain.CustomerCreditLotRef;
 import com.vetsoftware.app.subscriptionpayment.domain.OverAppliedSourceException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotFoundException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotConfirmedException;
+import com.vetsoftware.app.subscriptionpayment.domain.RoundingCapExceededException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentStatus;
+import com.vetsoftware.app.subscriptionpayment.domain.WithholdingRef;
+import com.vetsoftware.app.subscriptionpayment.domain.WriteOffSignatureRequiredException;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,16 +74,26 @@ class ApplyBillingDocumentServiceTest {
     @Mock
     private BillingDocumentQueryPort billingDocumentQueryPort;
     @Mock
+    private WithholdingQueryPort withholdingQueryPort;
+    @Mock
+    private CustomerCreditQueryPort customerCreditQueryPort;
+    @Mock
     private BillingDocumentSettlementPort settlementPort;
     @Mock
     private DunningReevaluationPort dunningReevaluationPort;
+
+    @Mock
+    private SubscriptionPaymentMetrics metrics;
+    @Mock
+    private SubscriptionPaymentAuditPort audit;
 
     private ApplyBillingDocumentService service;
 
     @BeforeEach
     void setUp() {
         service = new ApplyBillingDocumentService(applicationRepository, paymentRepository,
-                billingDocumentQueryPort, settlementPort, dunningReevaluationPort, RELOJ);
+                billingDocumentQueryPort, withholdingQueryPort, customerCreditQueryPort,
+                settlementPort, dunningReevaluationPort, metrics, audit, RELOJ);
     }
 
     private ApplyBillingDocumentService service() {
@@ -500,9 +519,226 @@ class ApplyBillingDocumentServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("Los cuatro origenes de la capa K")
+    class OrigenesDeLaCapaK {
+
+        /**
+         * <b>El caso MOR-021.</b> Ana debe 213.010, su contadora practica 7.160 de
+         * retencion y le gira 205.850. Antes de abrir este origen quedaban 7.160 vivos,
+         * pasaban los cinco dias de gracia y la cuenta caia a solo lectura por una
+         * deuda que fiscalmente no existe.
+         */
+        @Test
+        @DisplayName("una retencion salda la factura sin que entre un peso")
+        void la_retencion_salda() {
+            resuelveFactura();
+            when(withholdingQueryPort.findByIdAndCompanyId(300L, EMPRESA)).thenReturn(
+                    Optional.of(new WithholdingRef(300L, EMPRESA, 100L, pesos("7160.00"))));
+            when(applicationRepository.sumAppliedFromWithholding(300L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
+            when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            BillingDocumentApplicationDto dto = service()
+                    .execute(comandoDeRetencion(pesos("7160.00"), LocalDate.of(2026, 10, 30)));
+
+            assertThat(dto.sourceKind()).isEqualTo(ApplicationSourceKind.WITHHOLDING);
+            assertThat(dto.withholdingId()).isEqualTo(300L);
+            assertThat(dto.valueDate()).isEqualTo(LocalDate.of(2026, 10, 30));
+            verify(settlementPort).recalculateSettledAmount(100L, EMPRESA);
+            // Ningun pago participa: es plata que fue directa a la DIAN.
+            verifyNoInteractions(paymentRepository);
+        }
+
+        /**
+         * Sin esta comprobacion se podria saldar la factura de septiembre con la
+         * retencion practicada sobre la de agosto: la cartera cuadraria y la
+         * declaracion no, y el descuadre aparece un ano despues.
+         */
+        @Test
+        @DisplayName("una retencion de OTRA factura no salda esta")
+        void la_retencion_tiene_que_ser_de_esta_factura() {
+            resuelveFactura();
+            when(withholdingQueryPort.findByIdAndCompanyId(300L, EMPRESA)).thenReturn(
+                    Optional.of(new WithholdingRef(300L, EMPRESA, 999L, pesos("7160.00"))));
+
+            assertThatThrownBy(() -> service().execute(comandoDeRetencion(pesos("7160.00"), null)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("se practico sobre el documento 999");
+
+            verify(applicationRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("no se puede aplicar dos veces la misma retencion")
+        void la_retencion_no_se_aplica_dos_veces() {
+            resuelveFactura();
+            when(withholdingQueryPort.findByIdAndCompanyId(300L, EMPRESA)).thenReturn(
+                    Optional.of(new WithholdingRef(300L, EMPRESA, 100L, pesos("7160.00"))));
+            when(applicationRepository.sumAppliedFromWithholding(300L, EMPRESA))
+                    .thenReturn(pesos("7160.00"));
+
+            assertThatThrownBy(() -> service().execute(comandoDeRetencion(pesos("7160.00"), null)))
+                    .isInstanceOf(OverAppliedSourceException.class);
+
+            verify(applicationRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("una retencion que no es de esta empresa no se resuelve")
+        void retencion_de_otra_empresa() {
+            resuelveFactura();
+            when(withholdingQueryPort.findByIdAndCompanyId(300L, EMPRESA))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service().execute(comandoDeRetencion(pesos("1.00"), null)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Withholding not found: 300");
+        }
+
+        @Test
+        @DisplayName("un saldo a favor se aplica desde su lote y respeta lo concedido")
+        void el_saldo_a_favor_se_aplica() {
+            resuelveFactura();
+            when(customerCreditQueryPort.lockLotByIdAndCompanyId(800L, EMPRESA)).thenReturn(
+                    Optional.of(new CustomerCreditLotRef(800L, EMPRESA, pesos("100000.00"), null)));
+            when(applicationRepository.sumAppliedFromCreditEntry(800L, EMPRESA))
+                    .thenReturn(pesos("40000.00"));
+            when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            BillingDocumentApplicationDto dto = service()
+                    .execute(comandoDeSaldoAFavor(pesos("60000.00")));
+
+            assertThat(dto.sourceKind()).isEqualTo(ApplicationSourceKind.CUSTOMER_CREDIT);
+            assertThat(dto.creditEntryId()).isEqualTo(800L);
+        }
+
+        @Test
+        @DisplayName("un lote de saldo a favor agotado no puede volver a aplicarse")
+        void el_lote_agotado_no_se_aplica() {
+            resuelveFactura();
+            when(customerCreditQueryPort.lockLotByIdAndCompanyId(800L, EMPRESA)).thenReturn(
+                    Optional.of(new CustomerCreditLotRef(800L, EMPRESA, pesos("100000.00"), null)));
+            when(applicationRepository.sumAppliedFromCreditEntry(800L, EMPRESA))
+                    .thenReturn(pesos("100000.00"));
+
+            assertThatThrownBy(() -> service().execute(comandoDeSaldoAFavor(pesos("1.00"))))
+                    .isInstanceOf(OverAppliedSourceException.class);
+        }
+
+        /**
+         * Un lote caducado ya dio de baja su remanente con su propio asiento de
+         * caducidad; aplicarlo ahora seria gastar dos veces el mismo dinero.
+         */
+        @Test
+        @DisplayName("un lote caducado no se puede aplicar")
+        void el_lote_caducado_no_se_aplica() {
+            resuelveFactura();
+            when(customerCreditQueryPort.lockLotByIdAndCompanyId(800L, EMPRESA))
+                    .thenReturn(Optional.of(new CustomerCreditLotRef(800L, EMPRESA,
+                            pesos("100000.00"), AHORA.toLocalDate().minusDays(1))));
+
+            assertThatThrownBy(() -> service().execute(comandoDeSaldoAFavor(pesos("1.00"))))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("caduco el");
+
+            verify(applicationRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("un residuo de redondeo cierra el saldo que ningun medio de pago mueve")
+        void el_redondeo_cierra_el_saldo() {
+            resuelveFactura();
+            when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            BillingDocumentApplicationDto dto = service().execute(comandoSinReferencia(
+                    ApplicationSourceKind.ROUNDING, pesos("2.00"), null, null));
+
+            assertThat(dto.sourceKind()).isEqualTo(ApplicationSourceKind.ROUNDING);
+            assertThat(dto.paymentId()).isNull();
+            assertThat(dto.withholdingId()).isNull();
+            verify(settlementPort).recalculateSettledAmount(100L, EMPRESA);
+        }
+
+        @Test
+        @DisplayName("un redondeo por encima del tope no entra: no es redondeo, es un descuadre")
+        void el_redondeo_tiene_tope() {
+            resuelveFactura();
+
+            assertThatThrownBy(
+                    () -> service().execute(comandoSinReferencia(ApplicationSourceKind.ROUNDING,
+                            pesos("200000.00"), null, null)))
+                    .isInstanceOf(RoundingCapExceededException.class);
+
+            verify(applicationRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("un castigo firmado da la deuda por incobrable sin borrarla")
+        void el_castigo_firmado_entra() {
+            resuelveFactura();
+            when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            BillingDocumentApplicationDto dto = service()
+                    .execute(comandoSinReferencia(ApplicationSourceKind.WRITE_OFF,
+                            pesos("1000000.00"), 11L, "Cliente liquidado"));
+
+            assertThat(dto.sourceKind()).isEqualTo(ApplicationSourceKind.WRITE_OFF);
+            assertThat(dto.writeOffAuthorizedBySystemUserId()).isEqualTo(11L);
+            assertThat(dto.writeOffReason()).isEqualTo("Cliente liquidado");
+        }
+
+        @Test
+        @DisplayName("un castigo sin firma nominal no se escribe")
+        void el_castigo_sin_firma_no_entra() {
+            resuelveFactura();
+
+            assertThatThrownBy(
+                    () -> service().execute(comandoSinReferencia(ApplicationSourceKind.WRITE_OFF,
+                            pesos("1000.00"), null, "motivo")))
+                    .isInstanceOf(WriteOffSignatureRequiredException.class);
+
+            verify(applicationRepository, never()).save(any());
+        }
+
+        /**
+         * Los dos origenes sin fila de origen tienen por techo el <b>saldo
+         * pendiente</b> de la factura: castigar mas de lo que se debe la dejaria con
+         * saldo negativo.
+         */
+        @Test
+        @DisplayName("no se puede castigar mas deuda de la que la factura tiene viva")
+        void el_castigo_no_pasa_del_saldo() {
+            resuelveFactura();
+
+            assertThatThrownBy(
+                    () -> service().execute(comandoSinReferencia(ApplicationSourceKind.WRITE_OFF,
+                            pesos("1000001.00"), 11L, "motivo")))
+                    .isInstanceOf(OverAppliedSourceException.class);
+
+            verify(applicationRepository, never()).save(any());
+        }
+    }
+
     private void resuelveFactura() {
         when(billingDocumentQueryPort.findByIdAndCompanyId(100L, EMPRESA))
                 .thenReturn(Optional.of(factura()));
+    }
+
+    private static ApplyBillingDocumentCommand comandoDeRetencion(BigDecimal amount,
+            LocalDate valueDate) {
+        return new ApplyBillingDocumentCommand(EMPRESA, 100L, ApplicationSourceKind.WITHHOLDING,
+                null, null, 300L, null, amount, null, null, valueDate, null);
+    }
+
+    private static ApplyBillingDocumentCommand comandoDeSaldoAFavor(BigDecimal amount) {
+        return new ApplyBillingDocumentCommand(EMPRESA, 100L, ApplicationSourceKind.CUSTOMER_CREDIT,
+                null, null, null, 800L, amount, null, null, null, null);
+    }
+
+    private static ApplyBillingDocumentCommand comandoSinReferencia(ApplicationSourceKind kind,
+            BigDecimal amount, Long autorizante, String motivo) {
+        return new ApplyBillingDocumentCommand(EMPRESA, 100L, kind, null, null, null, null, amount,
+                autorizante, motivo, null, null);
     }
 
     private static ApplyBillingDocumentCommand comandoDePago(BigDecimal amount) {

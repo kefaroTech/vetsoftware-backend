@@ -22,6 +22,19 @@
             <column name="revoked" valueBoolean="true"/>
             <where>revoked = false</where>
         </update>
+
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback> explicito, Liquibase intenta auto-invertir el <update> y no
+             puede -"No inverse to UpdateDataChange created"-, porque revocar una marca masiva
+             no es reversible: no hay registro de que token estaba en revoked=false por este
+             motivo y cual ya lo estaba por otro. Se declara el rollback a mano: revierte las
+             dos columnas que SI se pueden deshacer sin ambiguedad y deja la revocacion como
+             dato, mismo criterio que 218 con sus backfills -una marca de seguridad ya aplicada
+             no se deshace sola, y dejarla no compromete el esquema-. -->
+        <rollback>
+            <dropColumn tableName="refresh_tokens" columnName="auth_version"/>
+            <dropColumn tableName="system_users" columnName="auth_version"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha billing_document_status_history). LA PELICULA DEL DOCUMENTO DE COBRO.
+         Los documentos de cobro cambian de estado SIN DEJAR RASTRO, en la unica capa del modelo que
+         promete que solo se agrega. Es la gemela de la bitacora que ya existe para el contrato, y
+         sin ella no se puede responder "cuantos documentos estaban esperando factura externa a 31
+         de marzo" -que es justo la lista de trabajo que el propio modelo propone vigilar-.
+
+         from_status DISTINTO DE to_status, comprobado por la base: una fila que dice que algo paso
+         de DRAFT a DRAFT no es historia, es ruido, y ensucia exactamente la consulta para la que
+         esta tabla existe. Los dos valores se validan contra la misma lista cerrada de
+         subscription_billing_documents.issue_status; si divergieran, la reconstruccion del estado a
+         una fecha daria un valor que la tabla de documentos no puede tener.
+
+         actor es texto y no una clave foranea a proposito: quien mueve un documento puede ser una
+         persona con nombre o EL PROCESO AUTOMATICO, y un proceso no tiene fila en system_users.
+         Obligarlo a tenerla habria significado inventar un usuario tecnico, que es justo lo que
+         otras columnas de este modelo existen para evitar.
+
+         reason obligatorio y legible: "Factura externa FE-1043 registrada", "anulado por nota
+         credito NC-77". Un cambio de estado sin motivo no explica nada seis meses despues.
+
+         SOLO SE AGREGA: sin version y sin enabled. Es una de las seis tablas irreemplazables del
+         modelo -las que no se pueden reconstruir preguntandole a un tercero ni recontando- y por
+         eso una fila que se pudiera desactivar no probaria nada. -->
+    <changeSet id="327_create_billing_document_status_history" author="orlando">
+        <createTable tableName="billing_document_status_history">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="billing_document_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="to_status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="occurred_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="actor" type="VARCHAR(120)"><constraints nullable="false"/></column>
+            <column name="reason" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE billing_document_status_history
+                ADD CONSTRAINT chk_bdsh_statuses
+                    CHECK (from_status IN ('DRAFT','AWAITING_EXTERNAL','EXTERNAL_REGISTERED','VOIDED')
+                           AND to_status IN ('DRAFT','AWAITING_EXTERNAL','EXTERNAL_REGISTERED','VOIDED')),
+                ADD CONSTRAINT chk_bdsh_transition CHECK (from_status <> to_status)
+        ]]></sql>
+
+        <createIndex tableName="billing_document_status_history" indexName="ix_bdsh_document">
+            <column name="company_id"/>
+            <column name="billing_document_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="billing_document_status_history"
+                                 baseColumnNames="company_id, billing_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_bdsh_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="billing_document_status_history"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

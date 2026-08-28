@@ -48,11 +48,16 @@
                              constraintName="uq_products_id_company"/>
         <addUniqueConstraint tableName="branches" columnNames="id,company_id"
                              constraintName="uq_branches_id_company"/>
+        <!-- AJUSTE DE ORDEN (primer rollback end-to-end de la cadena completa, nunca
+             ejecutado hasta hoy): idx_products_base_unit_measure sostiene
+             fk_products_base_unit_measure, asi que soltar el indice antes que la FK revienta
+             con "Cannot drop index ... needed in a foreign key constraint" -mismo defecto que
+             306/218-. La FK se suelta primero; el resto de la secuencia no cambia. -->
         <rollback>
             <dropUniqueConstraint tableName="branches" constraintName="uq_branches_id_company"/>
             <dropUniqueConstraint tableName="products" constraintName="uq_products_id_company"/>
-            <dropIndex tableName="products" indexName="idx_products_base_unit_measure"/>
             <dropForeignKeyConstraint baseTableName="products" constraintName="fk_products_base_unit_measure"/>
+            <dropIndex tableName="products" indexName="idx_products_base_unit_measure"/>
             <dropColumn tableName="products" columnName="base_unit_measure_code"/>
         </rollback>
     </changeSet>

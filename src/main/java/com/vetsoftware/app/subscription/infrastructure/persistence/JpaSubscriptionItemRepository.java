@@ -77,6 +77,14 @@ public class JpaSubscriptionItemRepository implements SubscriptionItemRepository
     }
 
     @Override
+    public List<SubscriptionItem> findAllByCreatedAmendmentIdAndCompanyId(Long amendmentId,
+            Long companyId) {
+        return jpaRepository
+                .findAllByCreatedAmendmentIdAndCompany_IdOrderByTierMinAsc(amendmentId, companyId)
+                .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public List<SubscriptionItem> findOverlapping(Long companyId, Long subscriptionId,
             Long catalogItemId, LocalDate from, LocalDate to, Long excludeItemId) {
         return jpaRepository.findOverlapping(companyId, subscriptionId, catalogItemId, from, to,

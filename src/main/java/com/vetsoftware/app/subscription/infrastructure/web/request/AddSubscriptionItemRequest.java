@@ -31,8 +31,19 @@ import java.time.LocalDate;
  * el importe lo dictaba quien mandaba la peticion. Hoy los calcula el servidor
  * con {@code ProrationCalculator}, sobre el periodo de facturacion en curso del
  * contrato y la fecha efectiva. Mandarlos ya no es posible.
+ *
+ * <p>
+ * <strong>Ni el precio de la linea (R-QUOTE-02).</strong> {@code line} era un
+ * {@code SubscriptionItemLineRequest}, que declaraba {@code unitAmount} —con
+ * {@code @PositiveOrZero}, o sea admitiendo el cero explicitamente—,
+ * {@code itemName}, {@code itemType}, {@code capacityUnit},
+ * {@code includedQuantity} sin techo y {@code taxRate}, y el servicio los
+ * copiaba a la fila. Se podia abrir una linea a cero pesos o con nueve mil
+ * novecientas noventa y nueve unidades incluidas que iban directas al contador.
+ * Hoy es una {@code RequestedSubscriptionItemRequest}: articulo, cantidad y
+ * fechas. El resto lo resuelve el servidor contra la tarifa del contrato.
  */
 public record AddSubscriptionItemRequest(@NotBlank @Size(max = 64) String clientRequestId,
         @NotNull LocalDate effectiveDate, @Size(max = 255) String reason, Long quoteId,
-        @NotNull @Valid SubscriptionItemLineRequest line) {
+        @NotNull @Valid RequestedSubscriptionItemRequest line) {
 }

@@ -6,6 +6,7 @@ import com.vetsoftware.app.subscription.application.dto.SubscriptionItemDto;
 import com.vetsoftware.app.subscription.application.port.in.RemoveSubscriptionItemUseCase;
 import com.vetsoftware.app.subscription.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionAmendmentRepository;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
@@ -50,13 +51,14 @@ public class RemoveSubscriptionItemService implements RemoveSubscriptionItemUseC
     private final SystemUserValidationPort systemUserValidationPort;
     private final SubscriptionNumberPort subscriptionNumberPort;
     private final SubscriptionChangedPort subscriptionChangedPort;
+    private final SubscriptionAuditPort audit;
 
     public RemoveSubscriptionItemService(SubscriptionRepository subscriptionRepository,
             SubscriptionItemRepository itemRepository,
             SubscriptionAmendmentRepository amendmentRepository,
             EmployeeQueryPort employeeQueryPort, SystemUserValidationPort systemUserValidationPort,
             SubscriptionNumberPort subscriptionNumberPort,
-            SubscriptionChangedPort subscriptionChangedPort) {
+            SubscriptionChangedPort subscriptionChangedPort, SubscriptionAuditPort audit) {
         this.subscriptionRepository = subscriptionRepository;
         this.itemRepository = itemRepository;
         this.amendmentRepository = amendmentRepository;
@@ -64,6 +66,7 @@ public class RemoveSubscriptionItemService implements RemoveSubscriptionItemUseC
         this.systemUserValidationPort = systemUserValidationPort;
         this.subscriptionNumberPort = subscriptionNumberPort;
         this.subscriptionChangedPort = subscriptionChangedPort;
+        this.audit = audit;
     }
 
     @Override
@@ -111,6 +114,10 @@ public class RemoveSubscriptionItemService implements RemoveSubscriptionItemUseC
         // Poner la fecha de fin. Nada mas.
         item.endOn(command.effectiveDate(), amendment.getId());
         SubscriptionItem saved = itemRepository.save(item);
+
+        // «Baja de modulo» dejaba de rastro un http_mutation que no decia QUE modulo.
+        audit.itemRemoved(subscription.getId(), saved.getId(), proration.cycleDeltaAmount(),
+                amendment.getId());
 
         subscriptionChangedPort.subscriptionChanged(
                 new SubscriptionChangedEvent(command.companyId(), subscription.getId(),

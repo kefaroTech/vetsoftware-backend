@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA DE REFERENCIA CON VIGENCIA (ficha uvt_values). LA UNIDAD DE VALOR TRIBUTARIO, POR
+         ANO, SIN EMPRESA. Dato anual inerte: se siembra por ano y no se relee para escribir;
+         corregir un ano es publicar la fila del ano siguiente. Exenta E1_APPEND_ONLY, sin version.
+         legal_reference es obligatoria: sin ella el numero es una afirmacion sin respaldo. -->
+    <changeSet id="347_create_uvt_values" author="orlando">
+        <createTable tableName="uvt_values">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fiscal_year" type="SMALLINT"><constraints nullable="false"/></column>
+            <column name="value_amount" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="legal_reference" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE uvt_values
+                ADD CONSTRAINT uq_uvt_values_year UNIQUE (fiscal_year),
+                ADD CONSTRAINT chk_uvt_values_year
+                    CHECK (fiscal_year BETWEEN 2020 AND 2100),
+                ADD CONSTRAINT chk_uvt_values_amount
+                    CHECK (value_amount > 0)
+        ]]></sql>
+
+        <rollback>
+            <dropTable tableName="uvt_values"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

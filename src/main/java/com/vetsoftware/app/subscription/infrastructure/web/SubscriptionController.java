@@ -221,7 +221,7 @@ public class SubscriptionController {
                 addItemUseCase.execute(new AddSubscriptionItemCommand(id, authz.currentCompanyId(),
                         request.clientRequestId(), request.effectiveDate(), request.reason(),
                         authz.currentEmployeeIdOrNull(), authz.currentSystemUserIdOrNull(),
-                        request.quoteId(), toLineCommand(request.line()))));
+                        request.quoteId(), toRequestedItem(request.line()))));
     }
 
     /**
@@ -284,13 +284,26 @@ public class SubscriptionController {
     }
 
     private static SubscriptionItemLineCommand toLineCommand(SubscriptionItemLineRequest line) {
+        // Este camino -consola de plataforma, hasRole('SYSTEM')- sigue trayendo los
+        // snapshots en el cuerpo. Lo que NO trae, y por eso van en null, es el tramo y
+        // el descuento: el tramo unico y abierto es lo que describe una linea sin
+        // escalones, y un descuento que nadie declaro es cero. Quien quiera firmar por
+        // tramos usa el alta resuelta en servidor, que los calcula.
         return line == null
                 ? null
                 : new SubscriptionItemLineCommand(line.catalogItemId(), line.itemCode(),
-                        line.itemName(), line.itemType(), line.capacityUnit(),
+                        line.itemName(), line.itemType(), line.capacityUnit(), null, null,
                         line.includedQuantity(), line.taxTreatment(), line.quantity(),
-                        line.unitAmount(), line.taxRate(), line.effectiveFrom(),
+                        line.unitAmount(), null, null, false, line.taxRate(), line.effectiveFrom(),
                         line.effectiveTo());
+    }
+
+    private static RequestedSubscriptionItemCommand toRequestedItem(
+            RequestedSubscriptionItemRequest line) {
+        return line == null
+                ? null
+                : new RequestedSubscriptionItemCommand(line.catalogItemId(), line.quantity(),
+                        line.effectiveFrom(), line.effectiveTo());
     }
 
     private SubscriptionResponse toResponse(SubscriptionDto dto) {
@@ -305,10 +318,12 @@ public class SubscriptionController {
     private SubscriptionItemResponse toResponse(SubscriptionItemDto dto) {
         return new SubscriptionItemResponse(dto.id(), dto.companyId(), dto.subscriptionId(),
                 dto.catalogItemId(), dto.itemCode(), dto.itemName(), dto.itemType(),
-                dto.capacityUnit(), dto.includedQuantity(), dto.taxTreatment(), dto.quantity(),
-                dto.billableQuantity(), dto.unitAmount(), dto.taxRate(), dto.effectiveFrom(),
-                dto.effectiveTo(), dto.origin(), dto.createdAmendmentId(), dto.endedAmendmentId(),
-                dto.createdDate(), dto.enabled());
+                dto.capacityUnit(), dto.tierMin(), dto.tierMax(), dto.includedQuantity(),
+                dto.taxTreatment(), dto.quantity(), dto.billableQuantity(), dto.unitAmount(),
+                dto.discountPercent(), dto.discountAmount(), dto.discountIsConditional(),
+                dto.taxRate(), dto.taxableBase(), dto.effectiveFrom(), dto.effectiveTo(),
+                dto.origin(), dto.createdAmendmentId(), dto.endedAmendmentId(), dto.createdDate(),
+                dto.enabled());
     }
 
     private SubscriptionAmendmentResponse toResponse(SubscriptionAmendmentDto dto) {

@@ -6,12 +6,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.subscription.application.command.ChangeSubscriptionStatusCommand;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionChangedEvent;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionLifecycleMetrics;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionStatusHistoryRepository;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
@@ -21,6 +24,7 @@ import com.vetsoftware.app.subscription.domain.SubscriptionChangeKind;
 import com.vetsoftware.app.subscription.domain.SubscriptionNotFoundException;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatusChange;
+import com.vetsoftware.app.subscription.domain.SubscriptionStatusChangeReason;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -50,6 +54,10 @@ class ChangeSubscriptionStatusServiceTest {
     private SubscriptionStatusHistoryRepository historyRepository;
     @Mock
     private SubscriptionChangedPort subscriptionChangedPort;
+    @Mock
+    private SubscriptionLifecycleMetrics metrics;
+    @Mock
+    private SubscriptionAuditPort audit;
     @Spy
     private Clock clock = Clock.fixed(Instant.parse("2026-01-15T10:15:30Z"), ZoneOffset.UTC);
 
@@ -63,8 +71,11 @@ class ChangeSubscriptionStatusServiceTest {
     }
 
     private static ChangeSubscriptionStatusCommand comando(SubscriptionStatus destino) {
+        // Era "Factura FE-1043 vencida hace 6 dias": texto libre, que es justo lo que
+        // el canal de auditoria no admite. El detalle de la factura sigue vivo en la
+        // bitacora de cobranza; aqui el motivo es vocabulario cerrado.
         return new ChangeSubscriptionStatusCommand(CONTRATO, EMPRESA, destino,
-                "Factura FE-1043 vencida hace 6 dias", "billing-job");
+                SubscriptionStatusChangeReason.OVERDUE_BALANCE, "billing-job");
     }
 
     private void contratoEn(SubscriptionStatus status) {
@@ -91,6 +102,8 @@ class ChangeSubscriptionStatusServiceTest {
             assertThat(captor.getValue().getFromStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
             assertThat(captor.getValue().getToStatus()).isEqualTo(SubscriptionStatus.PAST_DUE);
             assertThat(captor.getValue().getActor()).isEqualTo("billing-job");
+            // A la columna reason va el codigo del vocabulario, no una frase.
+            assertThat(captor.getValue().getReason()).isEqualTo("overdue_balance");
         }
 
         @Test
@@ -113,6 +126,21 @@ class ChangeSubscriptionStatusServiceTest {
         }
 
         @Test
+        @DisplayName("la transicion emite su metrica y su evento de auditoria")
+        void emiteMetricaYAuditoria() {
+            contratoEn(SubscriptionStatus.PAST_DUE);
+
+            service.execute(comando(SubscriptionStatus.READ_ONLY));
+
+            // El hecho que faltaba entero cuando la escribe un barrido: sin estos dos,
+            // «que clinica amanecio en solo lectura y quien la degrado» solo se
+            // responde abriendo produccion.
+            verify(metrics).statusTransitioned(SubscriptionStatus.READ_ONLY);
+            verify(audit).statusChanged(CONTRATO, SubscriptionStatus.PAST_DUE,
+                    SubscriptionStatus.READ_ONLY, SubscriptionStatusChangeReason.OVERDUE_BALANCE);
+        }
+
+        @Test
         @DisplayName("una transicion invalida no toca ni la bitacora ni el recalculo")
         void transicionInvalida() {
             when(repository.findByIdAndCompanyId(CONTRATO, EMPRESA))
@@ -124,6 +152,9 @@ class ChangeSubscriptionStatusServiceTest {
             verify(repository, never()).save(any());
             verify(historyRepository, never()).append(any());
             verify(subscriptionChangedPort, never()).subscriptionChanged(any());
+            // Una transicion rechazada no es un hecho: ni cuenta como metrica ni deja
+            // rastro de auditoria de algo que no ocurrio.
+            verifyNoInteractions(metrics, audit);
         }
 
         @Test

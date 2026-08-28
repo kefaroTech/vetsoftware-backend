@@ -7,8 +7,10 @@ import com.vetsoftware.app.company.application.dto.CitySummaryDto;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.DeleteCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.FindCompanyUseCase;
+import com.vetsoftware.app.company.application.port.in.ListDisabledCompaniesUseCase;
 import com.vetsoftware.app.company.application.port.in.ListCompaniesUseCase;
 import com.vetsoftware.app.company.application.port.in.ProvisionCompanyUseCase;
+import com.vetsoftware.app.company.application.port.in.ReactivateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.SearchCompaniesUseCase;
 import com.vetsoftware.app.company.application.port.in.UpdateCompanyUseCase;
 import com.vetsoftware.app.company.infrastructure.web.request.CreateCompanyRequest;
@@ -27,20 +29,25 @@ public class CompanyController {
     private final UpdateCompanyUseCase updateUseCase;
     private final FindCompanyUseCase findUseCase;
     private final ListCompaniesUseCase listUseCase;
+    private final ListDisabledCompaniesUseCase listDisabledUseCase;
     private final SearchCompaniesUseCase searchUseCase;
     private final DeleteCompanyUseCase deleteUseCase;
+    private final ReactivateCompanyUseCase reactivateUseCase;
     private final Authz authz;
 
     public CompanyController(ProvisionCompanyUseCase provisionUseCase,
             UpdateCompanyUseCase updateUseCase, FindCompanyUseCase findUseCase,
             ListCompaniesUseCase listUseCase, SearchCompaniesUseCase searchUseCase,
-            DeleteCompanyUseCase deleteUseCase, Authz authz) {
+            ListDisabledCompaniesUseCase listDisabledUseCase, DeleteCompanyUseCase deleteUseCase,
+            ReactivateCompanyUseCase reactivateUseCase, Authz authz) {
         this.provisionUseCase = provisionUseCase;
         this.updateUseCase = updateUseCase;
         this.findUseCase = findUseCase;
         this.listUseCase = listUseCase;
+        this.listDisabledUseCase = listDisabledUseCase;
         this.searchUseCase = searchUseCase;
         this.deleteUseCase = deleteUseCase;
+        this.reactivateUseCase = reactivateUseCase;
         this.authz = authz;
     }
 
@@ -85,6 +92,35 @@ public class CompanyController {
                 this::toResponse);
     }
 
+    /**
+     * El ARCHIVO de empresas, y la pieza que hacia inalcanzable a
+     * {@code PATCH /companies/{id}/enable}: con
+     * {@code @SQLRestriction("enabled = true")} sobre la entidad, ni el listado ni
+     * la busqueda ni {@code GET /companies/{id}} pueden devolver una empresa dada
+     * de baja, asi que hasta ahora restaurarla exigia saberse su id de memoria.
+     *
+     * <p>
+     * Misma forma que los cinco {@code /disabled} ya existentes
+     * ({@code /medicaments/disabled}, {@code /products/disabled},
+     * {@code /services/disabled}, {@code /taxes/disabled} y
+     * {@code /admin/medicaments/disabled}), y mismo alcance derivado del principal
+     * que {@link #listAll}: {@code currentCompanyIdOrNull()} da {@code null} para
+     * la consola de plataforma —que ve el archivo completo— y la empresa del
+     * empleado en cualquier otro caso. El cliente no puede declarar alcance.
+     *
+     * <p>
+     * La ruta literal gana a {@code /{id}} en el emparejamiento de Spring, igual
+     * que {@code /search}: {@code /companies/disabled} no se resuelve como
+     * {@code findById("disabled")}.
+     */
+    @GetMapping("/disabled")
+    public PageResponse<CompanyResponse> listDisabled(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return PageResponse.from(
+                listDisabledUseCase.listDisabled(authz.currentCompanyIdOrNull(), page, pageSize),
+                this::toResponse);
+    }
+
     @GetMapping("/{id}")
     public CompanyResponse findById(@PathVariable Long id) {
         return toResponse(findUseCase.findById(id));
@@ -102,6 +138,21 @@ public class CompanyController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         deleteUseCase.execute(id);
+    }
+
+    /**
+     * Saca del archivo una empresa borrada por error. Mismo verbo y misma forma que
+     * el resto de reactivaciones del sistema ({@code PATCH /cities/{id}/enable} y
+     * sus veintinueve hermanos), y sin cuerpo: no hay nada que elegir, solo el id
+     * de la URL.
+     *
+     * <p>
+     * Hasta que existio este endpoint, deshacer un archivado exigia un
+     * {@code UPDATE} a mano en produccion.
+     */
+    @PatchMapping("/{id}/enable")
+    public CompanyResponse enable(@PathVariable Long id) {
+        return toResponse(reactivateUseCase.execute(id));
     }
 
     private CompanyResponse toResponse(CompanyDto dto) {

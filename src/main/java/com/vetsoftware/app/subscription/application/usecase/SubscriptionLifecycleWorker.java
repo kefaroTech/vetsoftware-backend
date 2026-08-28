@@ -10,6 +10,7 @@ import com.vetsoftware.app.subscription.domain.CancellationRequest;
 import com.vetsoftware.app.subscription.domain.Subscription;
 import com.vetsoftware.app.subscription.domain.SubscriptionChangeKind;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
+import com.vetsoftware.app.subscription.domain.SubscriptionStatusChangeReason;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
@@ -59,6 +60,15 @@ public class SubscriptionLifecycleWorker {
         return new SubscriptionLifecycleBatchResult(subscriptions.size(), lastId);
     }
 
+    /**
+     * <b>Los motivos ya no se concatenan.</b> Antes salian de aqui frases como
+     * «Periodo de prueba finalizado el 2026-01-14» que acababan en la columna
+     * {@code reason} de la bitacora y en el canal de auditoria, junto al texto que
+     * el cliente escribia por HTTP: dos fuentes distintas mezcladas en el mismo
+     * campo, una de ellas ajena. La fecha que llevaban dentro no se pierde —esta en
+     * {@code occurredAt} de la propia fila y en el contrato—, y lo que se gana es
+     * que el campo sea agrupable y no falsificable.
+     */
     private void process(Subscription subscription, LocalDate today) {
         // La consulta del adaptador ya excluye los estados terminales. Esta guarda
         // mantiene idempotente al worker incluso ante un repositorio alternativo o
@@ -71,7 +81,7 @@ public class SubscriptionLifecycleWorker {
         if (cancellation != null && cancellation.hasTakenEffectOn(today)) {
             changeStatusUseCase.execute(new ChangeSubscriptionStatusCommand(subscription.getId(),
                     subscription.getCompanyId(), SubscriptionStatus.CANCELLED,
-                    "Cancelacion efectiva alcanzada el " + cancellation.effectiveDate(), ACTOR));
+                    SubscriptionStatusChangeReason.CANCELLATION_EFFECTIVE, ACTOR));
             return;
         }
 
@@ -79,7 +89,7 @@ public class SubscriptionLifecycleWorker {
                 && subscription.getTrialEndDate().isBefore(today)) {
             changeStatusUseCase.execute(new ChangeSubscriptionStatusCommand(subscription.getId(),
                     subscription.getCompanyId(), SubscriptionStatus.ACTIVE,
-                    "Periodo de prueba finalizado el " + subscription.getTrialEndDate(), ACTOR));
+                    SubscriptionStatusChangeReason.TRIAL_ENDED, ACTOR));
             return;
         }
 

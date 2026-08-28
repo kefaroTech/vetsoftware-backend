@@ -28,10 +28,17 @@ public class SubscriptionItemJpaMapper {
         entity.setItemName(item.getItemName());
         entity.setItemType(item.getItemType());
         entity.setCapacityUnit(item.getCapacityUnit());
+        // D-66: el tramo deja de ser columna muerta. Existia desde el 244 y no lo
+        // escribia nadie, porque el unico camino de precio devolvia un tramo solo.
+        entity.setTierMin(item.getTierMin());
+        entity.setTierMax(item.getTierMax());
         entity.setIncludedQuantity(item.getIncludedQuantity());
         entity.setTaxTreatment(item.getTaxTreatment());
         entity.setQuantity(item.getQuantity());
         entity.setUnitAmount(item.getUnitAmount());
+        entity.setDiscountPercent(item.getDiscountPercent());
+        entity.setDiscountAmount(item.getDiscountAmount());
+        entity.setDiscountIsConditional(item.isDiscountConditional());
         entity.setTaxRate(item.getTaxRate());
         entity.setEffectiveFrom(item.getPeriod().from());
         entity.setEffectiveTo(item.getPeriod().to());
@@ -49,8 +56,10 @@ public class SubscriptionItemJpaMapper {
         return new SubscriptionItem(entity.getId(), entity.getCompany().getId(),
                 entity.getSubscription().getId(), entity.getCatalogItemId(), entity.getItemCode(),
                 entity.getItemName(), entity.getItemType(), entity.getCapacityUnit(),
-                entity.getIncludedQuantity(), entity.getTaxTreatment(), entity.getQuantity(),
-                entity.getUnitAmount(), entity.getTaxRate(),
+                entity.getTierMin(), entity.getTierMax(), entity.getIncludedQuantity(),
+                entity.getTaxTreatment(), entity.getQuantity(), entity.getUnitAmount(),
+                entity.getDiscountPercent(), entity.getDiscountAmount(),
+                entity.isDiscountIsConditional(), entity.getTaxRate(),
                 new EffectivePeriod(entity.getEffectiveFrom(), entity.getEffectiveTo()),
                 entity.getOrigin(), entity.getCreatedAmendmentId(), entity.getEndedAmendmentId(),
                 entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());

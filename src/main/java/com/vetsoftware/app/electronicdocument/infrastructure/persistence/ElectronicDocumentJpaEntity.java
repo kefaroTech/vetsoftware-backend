@@ -103,6 +103,25 @@ public class ElectronicDocumentJpaEntity {
     @Column(name = "issuer_responsibilities", length = 100)
     private String issuerResponsibilities;
 
+    /**
+     * La fila de {@code company_tax_profiles} con la que se emitio este documento.
+     *
+     * <p>
+     * Escalar y no {@code @ManyToOne}: la clave foranea del changeset 364 es
+     * COMPUESTA (de {@code (company_id, company_tax_profile_id)} a
+     * {@code (company_id, id)}), asi que una asociacion JPA corriente no la
+     * expresa, y de la ficha no hay nada que hidratar al leer un documento: los
+     * seis campos de identidad ya estan congelados en las columnas {@code issuer_*}
+     * de esta misma fila.
+     *
+     * <p>
+     * Nullable a proposito: una empresa que emitio sin haber completado su ficha
+     * fiscal no tiene con que enlazar, y en MySQL basta que UNA columna de una FK
+     * multicolumna sea nula para que la fila quede sin comprobar.
+     */
+    @Column(name = "company_tax_profile_id")
+    private Long companyTaxProfileId;
+
     @Column(name = "customer_document_type", length = 30)
     private String customerDocumentType;
 
@@ -379,6 +398,14 @@ public class ElectronicDocumentJpaEntity {
 
     public void setDianValidationDate(LocalDateTime dianValidationDate) {
         this.dianValidationDate = dianValidationDate;
+    }
+
+    public Long getCompanyTaxProfileId() {
+        return companyTaxProfileId;
+    }
+
+    public void setCompanyTaxProfileId(Long companyTaxProfileId) {
+        this.companyTaxProfileId = companyTaxProfileId;
     }
 
     public String getIssuerDocumentType() {

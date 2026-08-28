@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- El número fiscal (prefijo + consecutivo) que este motor entrega en JpaNumberingAllocationPort.allocate()
+         (electronicdocument/infrastructure/persistence/JpaNumberingAllocationPort.java:56-78) no tiene NINGÚN
+         respaldo de unicidad en el esquema: 121_create_electronic_documents.xml declara `consecutive` como un
+         BIGINT pelado, sin índice ni constraint. `allocate()` sí serializa la asignación con
+         `lockActiveForUpdate` (FOR UPDATE sobre numbering_resolutions) dentro de la transacción de emisión, pero
+         eso solo protege LA CARRERA dentro de ese método: cualquier otra vía de escritura -un bug futuro, un
+         backfill manual, una migración de datos, un segundo path de emisión que alguien añada sin pasar por este
+         puerto- puede insertar dos electronic_documents con el mismo (empresa, tipo, prefijo, consecutivo) y nada
+         lo impide ni lo detecta. Eso es una reemisión del mismo número fiscal ante la DIAN: dos documentos
+         electrónicos distintos con idéntico InvoiceID/CUDE-prefix+consecutive, y quien responde ante la
+         autoridad tributaria es la clínica, no este software.
+
+         LA LLAVE ES (company_id, document_type, prefix, consecutive), NO (company_id, resolution_number,
+         consecutive). Verificado contra el esquema y el código, no asumido:
+           - El número que la DIAN valida y que aparece en el XML/CUFE es la CONCATENACIÓN prefijo+consecutivo
+             (Estatuto Tributario art. 617 lit. d) "un número que corresponda a un sistema de numeración
+             consecutiva"; anexo técnico de facturación electrónica DIAN -Resolución 000042/2020 y su sucesora
+             000165/2023- exige rangos autorizados por RESOLUCIÓN, con PREFIJO y rango [range_from, range_to]
+             -ver 120_create_numbering_resolutions.xml-). El resolution_number es la autorización administrativa
+             detrás del rango; el prefijo+consecutivo es lo que se compara para detectar una reemisión.
+           - Por eso resolution_number se deja FUERA de la llave a propósito: si se incluyera, dos resoluciones
+             distintas mal configuradas con el MISMO prefijo (nada en el esquema ni en
+             CreateNumberingResolutionService lo impide hoy -no hay unicidad de prefix, solo de "una resolución
+             ACTIVA por company+sede+tipo" vía uq_numbering_resolutions_active_scope, migración 185-) podrían
+             producir el mismo prefijo+consecutivo bajo dos resolution_number diferentes, y la llave con
+             resolution_number NO lo detectaría -exactamente la reemisión real que hay que atrapar-. Sin
+             resolution_number en la llave, ese caso también cae en la nueva UNIQUE: efecto colateral correcto,
+             no buscado por el encargo pero consecuencia directa de usar la llave real.
+           - document_type SÍ entra, aunque en la práctica cada resolución activa ya es única por
+             (company, sede, tipo) (185): la razón es la misma de arriba -nada impide HOY que dos resoluciones de
+             TIPOS distintos compartan prefijo- y no cuesta nada tenerlo en la concatenación.
+           - branch_id NO entra explícito: 185_add_branch_to_numbering_resolutions.xml documenta el modelo -sede
+             con prefijo propio (branch_id no nulo en la resolución) o prefijo de EMPRESA compartido por todas las
+             sedes (branch_id nulo, fallback)-, así que el prefijo YA distingue la sede cuando la sede tiene
+             resolución propia, y cuando comparten resolución de empresa comparten también el mismo contador
+             (current_number), serializado por el mismo FOR UPDATE, así que nunca colisiona igual. Como efecto
+             colateral correcto: si dos sedes tuvieran, por error de captura, resoluciones distintas con el MISMO
+             prefijo, esta UNIQUE también las atraparía -mismo argumento que con resolution_number-.
+           - consecutive puede ser NULL: un documento nace PENDIENTE sin numerar (comentario de
+             130_add_resolution_number_to_electronic_documents.xml) y F4 lo numera al emitir. La restricción no
+             puede alcanzar a los documentos no numerados sin bloquear también la inserción normal de un
+             PENDIENTE junto a otro PENDIENTE de la misma empresa -tendrían prefix/consecutive ambos NULL-.
+           - Un documento ANULADO/RECHAZADO/con reversed=true NO libera su número: la tabla no tiene soft-delete
+             fiscal -comentario de 121: "el documento NO se soft-deletea ni edita"-, y el propio
+             JpaNumberingAllocationPort.release() (líneas 99-137) documenta la norma que ya rige este motor:
+             "Continúa con el siguiente número secuencial. No repitas números" (FAQ MATIAS) y VAL-ID-003 "Debe
+             ser consecutivo según la resolución; no puede haber saltos (excepto por anulaciones)" -el hueco de
+             un rechazo async fuera de turno es DEFINITIVO-. La UNIQUE de este changeset no hace ninguna excepción
+             por dian_status ni por reversed: cualquier fila con consecutive NO NULO cuenta para siempre, sea cual
+             sea su estado, que es exactamente lo que exige esa norma.
+
+         TRAMPA DEL CONCAT CON NULL: prefix es NULLABLE tanto en numbering_resolutions (120) como en
+         electronic_documents (121) -NumberingResolution.validate() en el dominio nunca exige prefix no nulo, solo
+         limita su longitud a 10 si viene informado-, así que un documento YA NUMERADO (consecutive no nulo) con
+         prefix NULO es posible en el esquema hoy. CONCAT(document_type, '|', prefix, '|', consecutive) con
+         prefix NULL da NULL entero, y como MySQL permite múltiples NULL en un índice único, ese documento se
+         colaría SIN llave -la misma rendija de CONCAT+NULL que 372 cerró con un CHECK-. Se cierra igual aquí:
+         chk_electronic_documents_numbered_has_prefix exige prefix informado en cuanto hay consecutivo. No es un
+         CHECK que se pidiera en el encargo, pero sin él la columna generada de abajo no protege a los documentos
+         con prefijo NULL, que es justo el escenario más fácil de introducir por error (una resolución de empresa
+         mal capturada sin prefijo, numerando ya).
+
+         COSTE DE LA RECONSTRUCCIÓN: igual que en 372, `ADD COLUMN ... GENERATED ... STORED` es
+         ALGORITHM=INPLACE con Rebuilds Table: Yes -reescribe la tabla entera para materializar el valor
+         calculado de cada fila existente-, al contrario que un `ADD COLUMN` normal al final (INSTANT desde
+         8.0.12). `electronic_documents` es de las tablas grandes del dominio de facturación -crece con cada venta
+         cerrada, no es un catálogo-, así que antes de aplicar esto en cualquier entorno con datos:
+         1) medir el volumen real:
+            `SELECT COUNT(*) FROM electronic_documents;`
+            `SELECT data_length, index_length FROM information_schema.tables
+             WHERE table_schema = DATABASE() AND table_name = 'electronic_documents';`
+            para saber si el rebuild es de segundos o de minutos -INPLACE permite DML concurrente mientras dura,
+            no es una tabla bloqueada de punta a punta, pero el tiempo escala con el volumen-. No se pudo medir el
+            tamaño real de ningún entorno vivo -este changeset no consulta bases de datos vivas, por diseño-, así
+            que la medida que sí queda escrita es la del contenedor MySQL desechable de esta sesión, que arranca
+            vacío y aplica el changelog completo: ahí el ALTER corre en milisegundos porque no hay filas que
+            reescribir, y precisamente por eso NO sirve de proxy del coste en un entorno con datos.
+         2) el requisito que puede bloquear el despliegue, más que el tamaño: si el propio defecto que este
+            changeset viene a cerrar ya produjo duplicados reales antes de existir la barandilla, el propio
+            `ADD CONSTRAINT UNIQUE` falla con "Duplicate entry". Se comprueba ANTES de desplegar con:
+            `SELECT company_id, document_type, prefix, consecutive, COUNT(*) AS n
+             FROM electronic_documents
+             WHERE consecutive IS NOT NULL
+             GROUP BY company_id, document_type, prefix, consecutive
+             HAVING COUNT(*) > 1;`
+            -si devuelve filas, hay una reemisión real ya ocurrida ante la DIAN y hace falta decidir con el
+            negocio/DIAN qué documento de cada grupo es el válido antes de que este changeset pueda aplicar,
+            mismo caso que documentan 106/133/144/372 para sus propias tablas-.
+
+         JAVA PENDIENTE (fuera del alcance de este changeset, para backend-feature): GlobalExceptionHandler no
+         mapea todavía `uq_electronic_documents_fiscal_number` en `mapConstraint(...)`
+         (infrastructure/web/GlobalExceptionHandler.java:2004+); sin ese mapeo, si esta UNIQUE llega a saltar en
+         producción -la carrera real que cierra, o el caso límite de dos resoluciones con el mismo prefijo- el
+         cliente recibe el 409 genérico "Database constraint violation" en vez de un error de negocio legible.
+         Añadir una rama con el mismo criterio que `uq_numbering_resolutions_active` (líneas 2150-2158), código
+         de negocio nuevo p.ej. FISCAL_NUMBER_ALREADY_ASSIGNED. -->
+    <changeSet id="373_add_unique_fiscal_number_to_electronic_documents" author="orlando">
+        <sql>
+            ALTER TABLE electronic_documents
+                ADD COLUMN fiscal_number_key VARCHAR(80)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (
+                        CASE WHEN consecutive IS NOT NULL THEN
+                            CONCAT(document_type, '|', prefix, '|', consecutive)
+                        ELSE NULL END
+                    ) STORED,
+                ADD CONSTRAINT uq_electronic_documents_fiscal_number
+                    UNIQUE (company_id, fiscal_number_key),
+                ADD CONSTRAINT chk_electronic_documents_numbered_has_prefix
+                    CHECK (consecutive IS NULL OR prefix IS NOT NULL)
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE electronic_documents
+                    DROP CHECK chk_electronic_documents_numbered_has_prefix,
+                    DROP INDEX uq_electronic_documents_fiscal_number,
+                    DROP COLUMN fiscal_number_key
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

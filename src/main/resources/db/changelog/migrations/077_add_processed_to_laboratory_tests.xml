@@ -19,6 +19,14 @@
                 <constraints nullable="true"/>
             </column>
         </addColumn>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback>, el dropColumn batched auto-generado no suelta la FK primero. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="laboratory_tests"
+                                      constraintName="fk_laboratory_tests_processed_by"/>
+            <dropColumn tableName="laboratory_tests" columnName="processed_date"/>
+            <dropColumn tableName="laboratory_tests" columnName="processed_by_id"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

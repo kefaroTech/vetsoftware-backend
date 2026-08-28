@@ -36,6 +36,9 @@ class ConfiguratorEffectDtoTest {
         assertThat(dto.quantity()).isEqualTo(3);
         assertThat(dto.createdDate()).isEqualTo(CREADA_EL);
         assertThat(dto.enabled()).isTrue();
+        // La prioridad se publica a proposito: es el dato con el que la pantalla
+        // de reordenado pinta el orden actual y manda el siguiente.
+        assertThat(dto.priority()).isZero();
     }
 
     @Test
@@ -48,6 +51,14 @@ class ConfiguratorEffectDtoTest {
         assertThat(dto.questionId()).isEqualTo(Q3_CUANTAS_CAJAS);
         assertThat(dto.quantity()).isNull();
         assertThat(dto.effect()).isEqualTo(EffectType.QUANTITY_FROM_ANSWER);
+    }
+
+    @Test
+    @DisplayName("traslada la prioridad tal cual, que es el orden de aplicacion")
+    void traslada_la_prioridad_tal_cual() {
+        assertThat(ConfiguratorEffectDto
+                .from(efectoPorOpcion(8L, O11_SI_VENDE, ITEM_POS, EffectType.ADD, null, 40))
+                .priority()).isEqualTo(40);
     }
 
     @Test

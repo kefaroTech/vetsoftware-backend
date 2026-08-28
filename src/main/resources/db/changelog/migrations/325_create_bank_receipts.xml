@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha bank_receipts). EL EXTRACTO BANCARIO. LA ULTIMA MILLA DE LA CONCILIACION.
+         Estaba REFERENCIADA POR CLAVE FORANEA desde la liquidacion de la pasarela y no figuraba en
+         ninguna lista de tablas: si se construye el bloque sin ella, gateway_settlements no se
+         puede crear.
+
+         SIN EMPRESA, Y VA SOLA EN SU CHANGESET. Antes de identificar una entrada no hay cliente:
+         una consignacion que llega al banco es un importe, una fecha y una referencia, y quien la
+         mando es justamente lo que hay que averiguar. Ninguna clave lleva empresa aqui, y por eso
+         esta tabla no se empaqueta junto a las que si la tienen -si una entidad de este bloque
+         alcanzara la tabla de empresas, las cuatro reglas duras de aislamiento caerian sobre toda
+         la funcionalidad-.
+
+         El indice (status, received_on) es LA BANDEJA DE LO NO IDENTIFICADO: el trabajo pendiente
+         del mes. Es tambien un barrido de plataforma y por eso no lleva empresa delante -aqui ni
+         siquiera podria-.
+
+         bank_reference con comparacion exacta: es un identificador ajeno y bajo la colacion
+         heredada dos referencias que solo difieren en mayusculas serian la misma entrada, con lo
+         que la segunda consignacion del dia se descartaria como duplicada.
+
+         Con version -el estado muta cuando la entrada se identifica- y sin enabled: una entrada de
+         extracto no se desactiva, se marca DISCARDED y queda. -->
+    <changeSet id="325_create_bank_receipts" author="orlando">
+        <createTable tableName="bank_receipts">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="bank_account_ref" type="VARCHAR(60)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bank_reference" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="received_on" type="DATE"><constraints nullable="false"/></column>
+            <column name="amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="UNIDENTIFIED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="identified_at" type="DATETIME(6)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE bank_receipts
+                MODIFY COLUMN bank_account_ref VARCHAR(60)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN bank_reference VARCHAR(120)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                ADD CONSTRAINT uq_bank_receipts_reference
+                    UNIQUE (bank_reference, received_on),
+                ADD CONSTRAINT chk_bank_receipts_status
+                    CHECK (status IN ('UNIDENTIFIED','IDENTIFIED','DISCARDED')),
+                ADD CONSTRAINT chk_bank_receipts_amount CHECK (amount <> 0),
+                ADD CONSTRAINT chk_bank_receipts_identified
+                    CHECK ((status = 'UNIDENTIFIED' AND identified_at IS NULL)
+                           OR (status IN ('IDENTIFIED','DISCARDED') AND identified_at IS NOT NULL))
+        ]]></sql>
+
+        <createIndex tableName="bank_receipts" indexName="ix_bank_receipts_inbox">
+            <column name="status"/>
+            <column name="received_on"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="bank_receipts"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

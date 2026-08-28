@@ -18,6 +18,18 @@
             <column name="voided_at" type="DATETIME"/>
             <column name="void_reason" type="VARCHAR(255)"/>
         </addColumn>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback>, Liquibase auto-genera un dropColumn batched para las cuatro
+             columnas que no suelta primero la FK, y revienta con "Cannot drop column
+             'voided_by_id' ... needed in a foreign key constraint". Se declara a mano: la FK
+             primero, despues las cuatro columnas. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="product_charge_open_accounts" constraintName="fk_product_charge_open_accounts_voided_by"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="void_reason"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="voided_at"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="voided_by_id"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="voided"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

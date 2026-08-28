@@ -6,10 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.subscription.application.dto.InitialCapacityTemplate;
 import com.vetsoftware.app.subscription.application.dto.InitialContractTemplate;
-import com.vetsoftware.app.subscription.application.dto.SubscriptionItemSnapshot;
+import com.vetsoftware.app.subscription.application.dto.PublishedCatalogItem;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionQuoteSnapshot;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.EmployeeRef;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemType;
 import com.vetsoftware.app.subscription.domain.TaxTreatment;
@@ -44,7 +43,7 @@ import org.springframework.context.annotation.Import;
  */
 @Import({JpaSubscriptionCommercialSnapshotPort.class, JpaSubscriptionQuoteSnapshotPort.class,
         JpaPlatformCatalogPort.class, JpaEmployeeQueryPort.class, JpaCompanyValidationPort.class,
-        JpaCatalogItemValidationPort.class, JpaPriceListValidationPort.class,
+        JpaCatalogItemValidationPort.class, JpaSubscriptionPriceListQueryPort.class,
         JpaSystemUserValidationPort.class})
 @DisplayName("Puertos de salida de subscription — consultas contra MySQL real")
 class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
@@ -70,15 +69,19 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
     @Autowired
     private JpaCatalogItemValidationPort catalogItemValidationPort;
     @Autowired
-    private JpaPriceListValidationPort priceListValidationPort;
+    private JpaSubscriptionPriceListQueryPort priceListQueryPort;
     @Autowired
     private JpaSystemUserValidationPort systemUserValidationPort;
     @PersistenceContext
     private EntityManager entityManager;
 
+    /** Resuelto, no sembrado: el articulo CORE llega del changeset 308. */
+    private Long nucleo;
+
     @BeforeEach
     void seed() {
         SchemaSeed.seed(entityManager);
+        nucleo = SchemaSeed.catalogItemId(entityManager, "CORE");
     }
 
     private void configuracionDePlataforma() {
@@ -112,13 +115,16 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
                 INSERT INTO quote_lines (id, quote_id, catalog_item_id, line_number, item_code,
                                          item_name, item_type, quantity, contracted_quantity,
                                          included_quantity, unit_amount, discount_percent,
-                                         discount_amount, tax_rate, tax_treatment, tax_amount,
+                                         discount_amount, discount_is_conditional,
+                                         trial_eligibility, trial_outcome, trial_days,
+                                         max_trial_days, tax_rate, tax_treatment, tax_amount,
                                          line_total, created_date, enabled)
                 VALUES (:id, :quoteId, :catalogItemId, 1, 'CORE', 'Nucleo de prueba', 'MODULE',
-                        1, 3, 2, 100000.00, 0.00, 0.00, 19.00, 'TAXED', 19000.00, 119000.00,
+                        1, 3, 2, 100000.00, 0.00, 0.00, false,
+                        'NEVER_FREE', NULL, 0, 0, 19.00, 'TAXED', 19000.00, 119000.00,
                         '2026-01-01 00:00:00', true)
                 """).setParameter("id", LINEA_COTIZACION_ID).setParameter("quoteId", COTIZACION_ID)
-                .setParameter("catalogItemId", SchemaSeed.CATALOG_ITEM_CORE_ID).executeUpdate();
+                .setParameter("catalogItemId", nucleo).executeUpdate();
         entityManager.flush();
         entityManager.clear();
     }
@@ -135,21 +141,25 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
             // included_quantity de la columna de al lado y le regala -o le cobra-
             // unidades al cliente durante todo el contrato. Por eso se afirma campo a
             // campo y no solo que devuelva algo.
-            Optional<SubscriptionItemSnapshot> tramo = commercialSnapshotPort.findPublishedItem(
-                    SchemaSeed.PRICE_LIST_ID, BillingCycle.MONTHLY, SchemaSeed.CATALOG_ITEM_CORE_ID,
-                    1, DIA);
+            Optional<PublishedCatalogItem> tramo = commercialSnapshotPort.findPublishedItem(
+                    SchemaSeed.PRICE_LIST_ID, BillingCycle.MONTHLY, nucleo, 1, DIA);
 
-            assertThat(tramo).get().satisfies(snapshot -> {
-                assertThat(snapshot.catalogItemId()).isEqualTo(SchemaSeed.CATALOG_ITEM_CORE_ID);
-                assertThat(snapshot.itemCode()).isEqualTo("CORE");
-                assertThat(snapshot.itemName()).isEqualTo("Nucleo de prueba");
-                assertThat(snapshot.itemType()).isEqualTo(SubscriptionItemType.MODULE);
-                assertThat(snapshot.capacityUnit()).isNull();
-                assertThat(snapshot.includedQuantity()).isEqualTo(2);
-                assertThat(snapshot.taxTreatment()).isEqualTo(TaxTreatment.TAXED);
-                assertThat(snapshot.quantity()).isEqualTo(1);
-                assertThat(snapshot.unitAmount()).isEqualByComparingTo("100000.00");
-                assertThat(snapshot.taxRate()).isEqualByComparingTo("19.00");
+            assertThat(tramo).get().satisfies(publicado -> {
+                assertThat(publicado.catalogItemId()).isEqualTo(nucleo);
+                assertThat(publicado.itemCode()).isEqualTo("CORE");
+                assertThat(publicado.itemName()).isEqualTo("Núcleo: clientes y mascotas");
+                assertThat(publicado.itemType()).isEqualTo(SubscriptionItemType.MODULE);
+                assertThat(publicado.capacityUnit()).isNull();
+                // D-66: devuelve TODOS los tramos, no el que cubre la cantidad. El nucleo
+                // no tiene escalones, asi que es uno solo y abierto por arriba.
+                assertThat(publicado.tiers()).singleElement().satisfies(tier -> {
+                    assertThat(tier.tierMin()).isEqualTo(1);
+                    assertThat(tier.tierMax()).isNull();
+                    assertThat(tier.includedQuantity()).isEqualTo(2);
+                    assertThat(tier.taxTreatment()).isEqualTo(TaxTreatment.TAXED);
+                    assertThat(tier.unitAmount()).isEqualByComparingTo("100000.00");
+                    assertThat(tier.taxRate()).isEqualByComparingTo("19.00");
+                });
             });
         }
 
@@ -157,7 +167,7 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
         @DisplayName("no hay tramo para un ciclo de facturación que la tarifa no publica")
         void sinTramoParaOtroCiclo() {
             assertThat(commercialSnapshotPort.findPublishedItem(SchemaSeed.PRICE_LIST_ID,
-                    BillingCycle.ANNUAL, SchemaSeed.CATALOG_ITEM_CORE_ID, 1, DIA)).isEmpty();
+                    BillingCycle.ANNUAL, nucleo, 1, DIA)).isEmpty();
         }
 
         @Test
@@ -166,15 +176,14 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
             // La lista publicada vale desde 2026-01-01. Firmar contra una tarifa que
             // todavia no ha entrado en vigor es firmar un precio que nadie aprobo.
             assertThat(commercialSnapshotPort.findPublishedItem(SchemaSeed.PRICE_LIST_ID,
-                    BillingCycle.MONTHLY, SchemaSeed.CATALOG_ITEM_CORE_ID, 1,
-                    LocalDate.of(2025, 12, 31))).isEmpty();
+                    BillingCycle.MONTHLY, nucleo, 1, LocalDate.of(2025, 12, 31))).isEmpty();
         }
 
         @Test
         @DisplayName("sin día de referencia no se resuelve ningún tramo")
         void sinDiaDeReferencia() {
             assertThat(commercialSnapshotPort.findPublishedItem(SchemaSeed.PRICE_LIST_ID,
-                    BillingCycle.MONTHLY, SchemaSeed.CATALOG_ITEM_CORE_ID, 1, null)).isEmpty();
+                    BillingCycle.MONTHLY, nucleo, 1, null)).isEmpty();
         }
 
         @Test
@@ -183,7 +192,7 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
             // El nucleo se contrata una vez: min 1, max 1. Pedir dos no es un tramo mas
             // caro, es una peticion que el catalogo no admite.
             assertThat(commercialSnapshotPort.findPublishedItem(SchemaSeed.PRICE_LIST_ID,
-                    BillingCycle.MONTHLY, SchemaSeed.CATALOG_ITEM_CORE_ID, 2, DIA)).isEmpty();
+                    BillingCycle.MONTHLY, nucleo, 2, DIA)).isEmpty();
         }
 
         @Test
@@ -196,8 +205,8 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
         @Test
         @DisplayName("una tarifa que no existe no tiene tramo")
         void tarifaInexistente() {
-            assertThat(commercialSnapshotPort.findPublishedItem(-1L, BillingCycle.MONTHLY,
-                    SchemaSeed.CATALOG_ITEM_CORE_ID, 1, DIA)).isEmpty();
+            assertThat(commercialSnapshotPort.findPublishedItem(-1L, BillingCycle.MONTHLY, nucleo,
+                    1, DIA)).isEmpty();
         }
     }
 
@@ -220,9 +229,9 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
 
             assertThat(plantilla).get().satisfies(template -> {
                 assertThat(template.priceListId()).isEqualTo(SchemaSeed.PRICE_LIST_ID);
-                assertThat(template.catalogItemId()).isEqualTo(SchemaSeed.CATALOG_ITEM_CORE_ID);
+                assertThat(template.catalogItemId()).isEqualTo(nucleo);
                 assertThat(template.itemCode()).isEqualTo("CORE");
-                assertThat(template.itemName()).isEqualTo("Nucleo de prueba");
+                assertThat(template.itemName()).isEqualTo("Núcleo: clientes y mascotas");
                 assertThat(template.itemType()).isEqualTo(SubscriptionItemType.MODULE);
                 assertThat(template.capacityUnit()).isNull();
                 assertThat(template.includedQuantity()).isEqualTo(2);
@@ -279,11 +288,14 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
         entityManager.createNativeQuery("""
                 INSERT INTO catalog_items (id, code, name, item_type, capacity_unit, is_core,
                                            min_quantity, max_quantity, sort_order, status,
-                                           created_date, enabled, version)
+                                           trial_eligibility, default_trial_days, trial_outcome,
+                                           service_nature, created_date, enabled, version)
                 VALUES (:sedeId, 'CAP_BRANCH', 'Sede incluida', 'CAPACITY', 'BRANCH', true,
-                        1, NULL, 5, 'ACTIVE', NOW(), true, 0),
+                        1, NULL, 5, 'ACTIVE', 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
+                        NOW(), true, 0),
                        (:usuarioId, 'CAP_USER', 'Usuario incluido', 'CAPACITY', 'USER', true,
-                        1, NULL, 6, 'ACTIVE', NOW(), true, 0)
+                        1, NULL, 6, 'ACTIVE', 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
+                        NOW(), true, 0)
                 """).setParameter("sedeId", CAPACIDAD_SEDE_ID)
                 .setParameter("usuarioId", CAPACIDAD_USUARIO_ID).executeUpdate();
         entityManager.createNativeQuery("""
@@ -339,7 +351,7 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
                     .findInitialCapacityTemplates(BillingCycle.MONTHLY);
 
             assertThat(capacidades).hasSize(2).extracting(InitialCapacityTemplate::capacityUnit)
-                    .containsExactly(CapacityUnit.BRANCH, CapacityUnit.USER);
+                    .containsExactly("BRANCH", "USER");
             assertThat(capacidades.get(0)).satisfies(sede -> {
                 assertThat(sede.catalogItemId()).isEqualTo(CAPACIDAD_SEDE_ID);
                 assertThat(sede.itemCode()).isEqualTo("CAP_BRANCH");
@@ -370,8 +382,7 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
             entityManager.clear();
 
             assertThat(platformCatalogPort.findInitialCapacityTemplates(BillingCycle.MONTHLY))
-                    .extracting(InitialCapacityTemplate::capacityUnit)
-                    .containsExactly(CapacityUnit.BRANCH);
+                    .extracting(InitialCapacityTemplate::capacityUnit).containsExactly("BRANCH");
         }
 
         @Test
@@ -417,7 +428,7 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
                 assertThat(quote.accepted()).isTrue();
                 assertThat(quote.acceptedBy()).isEqualTo("gerente@clinica.test");
                 assertThat(quote.items()).singleElement().satisfies(item -> {
-                    assertThat(item.catalogItemId()).isEqualTo(SchemaSeed.CATALOG_ITEM_CORE_ID);
+                    assertThat(item.catalogItemId()).isEqualTo(nucleo);
                     assertThat(item.itemCode()).isEqualTo("CORE");
                     assertThat(item.itemName()).isEqualTo("Nucleo de prueba");
                     assertThat(item.itemType()).isEqualTo(SubscriptionItemType.MODULE);
@@ -479,14 +490,25 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
         }
 
         @Test
-        @DisplayName("las cuatro validaciones de existencia aceptan lo sembrado")
+        @DisplayName("las validaciones de existencia aceptan lo sembrado")
         void lasCuatroValidacionesAceptanLoSembrado() {
             assertThatCode(() -> {
                 companyValidationPort.validateExists(SchemaSeed.COMPANY_ID);
-                catalogItemValidationPort.validateExists(SchemaSeed.CATALOG_ITEM_CORE_ID);
-                priceListValidationPort.validateExists(SchemaSeed.PRICE_LIST_ID);
+                catalogItemValidationPort.validateExists(nucleo);
                 systemUserValidationPort.validateExists(SchemaSeed.SYSTEM_USER_ID);
             }).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("la tarifa sembrada vuelve publicada y con su ventana, no como un booleano")
+        void laTarifaVuelveConSuVentana() {
+            // Sustituye al antiguo existsById: la cabecera del contrato necesita saber
+            // si esta PUBLICADA y entre que fechas, no solo si la fila existe (D-73).
+            assertThat(priceListQueryPort.findPublishedById(SchemaSeed.PRICE_LIST_ID))
+                    .hasValueSatisfying(tarifa -> {
+                        assertThat(tarifa.id()).isEqualTo(SchemaSeed.PRICE_LIST_ID);
+                        assertThat(tarifa.validFrom()).isNotNull();
+                    });
         }
 
         @Test
@@ -508,11 +530,11 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
                     .hasMessageContaining("Catalog item not found: -1");
             assertThatThrownBy(() -> catalogItemValidationPort.validateExists(null))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> priceListValidationPort.validateExists(-1L))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Price list not found: -1");
-            assertThatThrownBy(() -> priceListValidationPort.validateExists(null))
-                    .isInstanceOf(IllegalArgumentException.class);
+            // La tarifa no lanza: devuelve vacio. Un id inexistente y una lista en
+            // borrador son el mismo vacio aqui; quien distingue caducada de ausente es
+            // el caso de uso, que compara la ventana contra su reloj zonado.
+            assertThat(priceListQueryPort.findPublishedById(-1L)).isEmpty();
+            assertThat(priceListQueryPort.findPublishedById(null)).isEmpty();
             assertThatThrownBy(() -> systemUserValidationPort.validateExists(-1L))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("System user not found: -1");

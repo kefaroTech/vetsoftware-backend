@@ -79,25 +79,50 @@ public final class ConfiguratorMother {
 
     // --- efectos ---------------------------------------------------------
 
-    /** Efecto disparado por una opción marcada. */
+    /**
+     * Con qué prioridad nace un efecto de fixture cuando el caso no habla del
+     * orden. Es el {@code DEFAULT 0} de la columna: así los casos que solo miran el
+     * disparador o el tipo siguen desempatando por {@code id}, que es como se
+     * escribieron.
+     */
+    public static final int PRIORIDAD_POR_DEFECTO = 0;
+
+    /** Efecto disparado por una opción marcada, con la prioridad por defecto. */
     public static ConfiguratorEffect efectoPorOpcion(Long id, Long optionId, Long catalogItemId,
             EffectType tipo, Integer quantity) {
-        return new ConfiguratorEffect(id, optionId, null, catalogItemId, tipo, quantity, CREADA_EL,
-                0L, true);
+        return efectoPorOpcion(id, optionId, catalogItemId, tipo, quantity, PRIORIDAD_POR_DEFECTO);
+    }
+
+    /**
+     * El mismo, eligiendo el sitio en el orden de aplicación. Es la variante que
+     * necesitan los casos del resolvedor: sin poder fijar la prioridad, un caso que
+     * dice probar el orden en realidad solo prueba el desempate por {@code id}.
+     */
+    public static ConfiguratorEffect efectoPorOpcion(Long id, Long optionId, Long catalogItemId,
+            EffectType tipo, Integer quantity, int priority) {
+        return new ConfiguratorEffect(id, optionId, null, catalogItemId, tipo, quantity, priority,
+                CREADA_EL, 0L, true);
     }
 
     /** Efecto disparado por el número respondido a una pregunta. */
     public static ConfiguratorEffect efectoPorPregunta(Long id, Long questionId, Long catalogItemId,
             EffectType tipo, Integer quantity) {
-        return new ConfiguratorEffect(id, null, questionId, catalogItemId, tipo, quantity,
+        return efectoPorPregunta(id, questionId, catalogItemId, tipo, quantity,
+                PRIORIDAD_POR_DEFECTO);
+    }
+
+    /** Ver {@link #efectoPorOpcion(Long, Long, Long, EffectType, Integer, int)}. */
+    public static ConfiguratorEffect efectoPorPregunta(Long id, Long questionId, Long catalogItemId,
+            EffectType tipo, Integer quantity, int priority) {
+        return new ConfiguratorEffect(id, null, questionId, catalogItemId, tipo, quantity, priority,
                 CREADA_EL, 0L, true);
     }
 
     /** El mismo efecto, dado de baja: no debe disparar nunca. */
     public static ConfiguratorEffect efectoDeshabilitado(Long id, Long optionId, Long catalogItemId,
             EffectType tipo) {
-        return new ConfiguratorEffect(id, optionId, null, catalogItemId, tipo, null, CREADA_EL, 0L,
-                false);
+        return new ConfiguratorEffect(id, optionId, null, catalogItemId, tipo, null,
+                PRIORIDAD_POR_DEFECTO, CREADA_EL, 0L, false);
     }
 
     // --- respuestas ------------------------------------------------------

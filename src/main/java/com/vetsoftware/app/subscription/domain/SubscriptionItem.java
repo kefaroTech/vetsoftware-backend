@@ -39,6 +39,10 @@ public class SubscriptionItem {
     private static final int MAX_CODE_LENGTH = 50;
     private static final int MAX_NAME_LENGTH = 120;
     private static final int MAX_AMOUNT_SCALE = 2;
+    /**
+     * El ancho de {@code limit_dimensions.code}, que es lo que la columna guarda.
+     */
+    private static final int MAX_CAPACITY_UNIT_LENGTH = 50;
 
     private final Long id;
     private final Long companyId;
@@ -47,11 +51,38 @@ public class SubscriptionItem {
     private final String itemCode;
     private final String itemName;
     private final SubscriptionItemType itemType;
-    private final CapacityUnit capacityUnit;
+    /**
+     * El codigo del eje ({@code limit_dimensions.code}) congelado al firmar, no un
+     * enumerado: desde el 333 la columna va atada por clave foranea al catalogo de
+     * ejes y admite los ocho, no cuatro (#655).
+     */
+    private final String capacityUnit;
+    /**
+     * D-66: el tramo que esta linea cubre. Los tramos son ACUMULATIVOS, asi que una
+     * cantidad escalonada se firma como varias lineas del mismo articulo a precios
+     * distintos, y {@code uq_subscription_items_current} ya las admite por tramo.
+     * {@code tierMax} vacio es "de ahi en adelante".
+     *
+     * <p>
+     * Las dos columnas existian desde el 244 y <b>nadie las escribia</b>: eran
+     * columna muerta, porque el unico camino de precio devolvia un tramo solo. Se
+     * escriben desde aqui.
+     */
+    private final int tierMin;
+    private final Integer tierMax;
     private final int includedQuantity;
     private final TaxTreatment taxTreatment;
     private final int quantity;
     private final BigDecimal unitAmount;
+    /**
+     * D-86: el descuento negociado, congelado como todo lo demas. La MARCA es lo
+     * que la auditoria echaba en falta: sin ella el impuesto se liquida sobre el
+     * precio rebajado, y la norma solo excluye de la base del IVA los descuentos
+     * "no sujetos a ninguna condicion".
+     */
+    private final BigDecimal discountPercent;
+    private final BigDecimal discountAmount;
+    private final boolean discountIsConditional;
     private final BigDecimal taxRate;
     private EffectivePeriod period;
     private final ItemOrigin origin;
@@ -62,11 +93,12 @@ public class SubscriptionItem {
     private final boolean enabled;
 
     public SubscriptionItem(Long id, Long companyId, Long subscriptionId, Long catalogItemId,
-            String itemCode, String itemName, SubscriptionItemType itemType,
-            CapacityUnit capacityUnit, int includedQuantity, TaxTreatment taxTreatment,
-            int quantity, BigDecimal unitAmount, BigDecimal taxRate, EffectivePeriod period,
-            ItemOrigin origin, Long createdAmendmentId, Long endedAmendmentId,
-            LocalDateTime createdDate, Long version, boolean enabled) {
+            String itemCode, String itemName, SubscriptionItemType itemType, String capacityUnit,
+            int tierMin, Integer tierMax, int includedQuantity, TaxTreatment taxTreatment,
+            int quantity, BigDecimal unitAmount, BigDecimal discountPercent,
+            BigDecimal discountAmount, boolean discountIsConditional, BigDecimal taxRate,
+            EffectivePeriod period, ItemOrigin origin, Long createdAmendmentId,
+            Long endedAmendmentId, LocalDateTime createdDate, Long version, boolean enabled) {
         if (companyId == null)
             throw new IllegalArgumentException("companyId is required");
         if (catalogItemId == null)
@@ -87,19 +119,42 @@ public class SubscriptionItem {
             throw new IllegalArgumentException("taxTreatment is required");
         // chk_subscription_items_capacity_unit, en los dos sentidos: una capacidad sin
         // unidad no se puede contar, y una unidad colgada de un modulo no significa
-        // nada.
-        if (itemType == SubscriptionItemType.CAPACITY && capacityUnit == null)
+        // nada. Es la MITAD ESTRUCTURAL de la restriccion, la unica que sobrevivio al
+        // 333: la otra mitad -que el valor sea un eje real- ya no es una lista de
+        // cuatro literales sino una clave foranea contra limit_dimensions(code), y
+        // comprobarla es una consulta que vive en el caso de uso, no aqui.
+        if (itemType == SubscriptionItemType.CAPACITY
+                && (capacityUnit == null || capacityUnit.isBlank()))
             throw new IllegalArgumentException("capacityUnit is required for a CAPACITY item");
         if (itemType != SubscriptionItemType.CAPACITY && capacityUnit != null)
             throw new IllegalArgumentException("capacityUnit is only valid for a CAPACITY item");
+        if (capacityUnit != null && capacityUnit.length() > MAX_CAPACITY_UNIT_LENGTH)
+            throw new IllegalArgumentException(
+                    "capacityUnit must be " + MAX_CAPACITY_UNIT_LENGTH + " chars or less");
         if (includedQuantity < 0)
             throw new IllegalArgumentException("includedQuantity must not be negative");
+        // chk_subscription_items_tier, arrastrado al dominio: un tramo que arranca en
+        // cero o que termina antes de empezar no es un tramo.
+        if (tierMin < 1)
+            throw new IllegalArgumentException("tierMin must be 1 or greater");
+        if (tierMax != null && tierMax < tierMin)
+            throw new IllegalArgumentException("tierMax must not be lower than tierMin");
         if (quantity <= 0)
             throw new IllegalArgumentException("quantity must be greater than zero");
         if (unitAmount == null || unitAmount.signum() < 0)
             throw new IllegalArgumentException("unitAmount must not be negative");
         if (unitAmount.scale() > MAX_AMOUNT_SCALE)
             throw new IllegalArgumentException("unitAmount must have at most two decimals");
+        // chk_subscription_items_discount. El importe y el porcentaje se guardan los
+        // dos: saber que se negocio y cuanto costo es lo que permite reconstruir la
+        // base imponible de una linea firmada hace un ano sin volver a la tarifa.
+        if (discountPercent == null || discountPercent.signum() < 0
+                || discountPercent.compareTo(BigDecimal.valueOf(100)) > 0)
+            throw new IllegalArgumentException("discountPercent must be between 0 and 100");
+        if (discountAmount == null || discountAmount.signum() < 0)
+            throw new IllegalArgumentException("discountAmount must not be negative");
+        if (discountAmount.compareTo(Money.multiply(BigDecimal.valueOf(quantity), unitAmount)) > 0)
+            throw new IllegalArgumentException("discountAmount cannot exceed the line gross");
         if (taxRate == null || taxRate.signum() < 0
                 || taxRate.compareTo(BigDecimal.valueOf(100)) > 0)
             throw new IllegalArgumentException("taxRate must be between 0 and 100");
@@ -121,10 +176,15 @@ public class SubscriptionItem {
         this.itemName = itemName;
         this.itemType = itemType;
         this.capacityUnit = capacityUnit;
+        this.tierMin = tierMin;
+        this.tierMax = tierMax;
         this.includedQuantity = includedQuantity;
         this.taxTreatment = taxTreatment;
         this.quantity = quantity;
         this.unitAmount = unitAmount;
+        this.discountPercent = Money.scaled(discountPercent);
+        this.discountAmount = Money.scaled(discountAmount);
+        this.discountIsConditional = discountIsConditional;
         this.taxRate = taxRate;
         this.period = period;
         this.origin = origin;
@@ -136,19 +196,55 @@ public class SubscriptionItem {
     }
 
     /**
+     * La linea de <b>tramo unico y abierto</b> {@code [1, infinito)} y sin
+     * descuento, que es lo que describe cualquier articulo sin escalones y todo lo
+     * firmado hasta hoy.
+     *
+     * <p>
+     * No es un atajo: el tramo y el descuento son datos de la linea, y esta
+     * sobrecarga solo nombra el caso en el que valen lo que valen por defecto. Los
+     * caminos que resuelven precio usan la completa, porque son los unicos que
+     * pueden saber que tramo aplica.
+     */
+    public SubscriptionItem(Long id, Long companyId, Long subscriptionId, Long catalogItemId,
+            String itemCode, String itemName, SubscriptionItemType itemType, String capacityUnit,
+            int includedQuantity, TaxTreatment taxTreatment, int quantity, BigDecimal unitAmount,
+            BigDecimal taxRate, EffectivePeriod period, ItemOrigin origin, Long createdAmendmentId,
+            Long endedAmendmentId, LocalDateTime createdDate, Long version, boolean enabled) {
+        this(id, companyId, subscriptionId, catalogItemId, itemCode, itemName, itemType,
+                capacityUnit, 1, null, includedQuantity, taxTreatment, quantity, unitAmount,
+                BigDecimal.ZERO, BigDecimal.ZERO, false, taxRate, period, origin,
+                createdAmendmentId, endedAmendmentId, createdDate, version, enabled);
+    }
+
+    /** Abre una linea de tramo unico y abierto, sin descuento. */
+    public static SubscriptionItem open(Long companyId, Long subscriptionId, Long catalogItemId,
+            String itemCode, String itemName, SubscriptionItemType itemType, String capacityUnit,
+            int includedQuantity, TaxTreatment taxTreatment, int quantity, BigDecimal unitAmount,
+            BigDecimal taxRate, EffectivePeriod period, ItemOrigin origin,
+            Long createdAmendmentId) {
+        return open(companyId, subscriptionId, catalogItemId, itemCode, itemName, itemType,
+                capacityUnit, 1, null, includedQuantity, taxTreatment, quantity, unitAmount,
+                BigDecimal.ZERO, BigDecimal.ZERO, false, taxRate, period, origin,
+                createdAmendmentId);
+    }
+
+    /**
      * Abre una linea nueva congelando en ella el codigo, el nombre, el tipo, el
      * tratamiento fiscal, el precio unitario, la tarifa de IVA y —sobre todo— lo
      * incluido. A partir de aqui la tarifa puede cambiar cuanto quiera: este
      * cliente ya no la mira.
      */
     public static SubscriptionItem open(Long companyId, Long subscriptionId, Long catalogItemId,
-            String itemCode, String itemName, SubscriptionItemType itemType,
-            CapacityUnit capacityUnit, int includedQuantity, TaxTreatment taxTreatment,
-            int quantity, BigDecimal unitAmount, BigDecimal taxRate, EffectivePeriod period,
-            ItemOrigin origin, Long createdAmendmentId) {
+            String itemCode, String itemName, SubscriptionItemType itemType, String capacityUnit,
+            int tierMin, Integer tierMax, int includedQuantity, TaxTreatment taxTreatment,
+            int quantity, BigDecimal unitAmount, BigDecimal discountPercent,
+            BigDecimal discountAmount, boolean discountIsConditional, BigDecimal taxRate,
+            EffectivePeriod period, ItemOrigin origin, Long createdAmendmentId) {
         return new SubscriptionItem(null, companyId, subscriptionId, catalogItemId, itemCode,
-                itemName, itemType, capacityUnit, includedQuantity, taxTreatment, quantity,
-                unitAmount, taxRate, period, origin, createdAmendmentId, null, null, null, true);
+                itemName, itemType, capacityUnit, tierMin, tierMax, includedQuantity, taxTreatment,
+                quantity, unitAmount, discountPercent, discountAmount, discountIsConditional,
+                taxRate, period, origin, createdAmendmentId, null, null, null, true);
     }
 
     /**
@@ -177,9 +273,15 @@ public class SubscriptionItem {
      * uso, que ademas tiene que emitir el otrosi y comprobar el solape.
      */
     public SubscriptionItem withQuantity(int newQuantity, LocalDate from, Long amendmentId) {
+        // El descuento en pesos se reescala con la cantidad nueva: es un porcentaje
+        // negociado y no un importe fijo, y arrastrarlo tal cual dejaria un descuento
+        // mayor que el bruto -que el constructor rechaza- en cuanto la cantidad baje.
+        BigDecimal newGross = Money.multiply(BigDecimal.valueOf(newQuantity), unitAmount);
         return open(companyId, subscriptionId, catalogItemId, itemCode, itemName, itemType,
-                capacityUnit, includedQuantity, taxTreatment, newQuantity, unitAmount, taxRate,
-                EffectivePeriod.openFrom(from), ItemOrigin.QUANTITY_CHANGE, amendmentId);
+                capacityUnit, tierMin, tierMax, includedQuantity, taxTreatment, newQuantity,
+                unitAmount, discountPercent, Money.percentOf(newGross, discountPercent),
+                discountIsConditional, taxRate, EffectivePeriod.openFrom(from),
+                ItemOrigin.QUANTITY_CHANGE, amendmentId);
     }
 
     /**
@@ -218,7 +320,23 @@ public class SubscriptionItem {
      * cobraria unidades que el contrato firmado regalaba.
      */
     public BigDecimal recurringSubtotal() {
-        return recurringSubtotalOf(quantity, includedQuantity, unitAmount);
+        return recurringSubtotalOf(quantity, includedQuantity, unitAmount).subtract(discountAmount);
+    }
+
+    /**
+     * D-86 / R-TAX-04. La base sobre la que se liquida el impuesto de esta linea:
+     * el bruto menos el descuento, <b>salvo cuando el descuento esta
+     * CONDICIONADO</b>, y entonces el bruto entero.
+     *
+     * <p>
+     * Un veinte por ciento a cambio de quedarse doce meses esta condicionado por
+     * definicion, y la norma solo excluye de la base del IVA los descuentos "no
+     * sujetos a ninguna condicion". Sobre 179.000 son 34.010 de impuesto y no
+     * 27.208: 816.240 en un semestre con veinte clientes rebajados.
+     */
+    public BigDecimal taxableBase() {
+        BigDecimal gross = recurringSubtotalOf(quantity, includedQuantity, unitAmount);
+        return discountIsConditional ? gross : gross.subtract(discountAmount);
     }
 
     /**
@@ -264,8 +382,35 @@ public class SubscriptionItem {
         return itemType;
     }
 
-    public CapacityUnit getCapacityUnit() {
+    public String getCapacityUnit() {
         return capacityUnit;
+    }
+
+    /** Primera unidad facturable que cubre esta linea. Arranca en 1. */
+    public int getTierMin() {
+        return tierMin;
+    }
+
+    /** Ultima unidad cubierta, o vacio para "de ahi en adelante". */
+    public Integer getTierMax() {
+        return tierMax;
+    }
+
+    public BigDecimal getDiscountPercent() {
+        return discountPercent;
+    }
+
+    public BigDecimal getDiscountAmount() {
+        return discountAmount;
+    }
+
+    /**
+     * D-86: si el descuento esta sujeto a condicion, el impuesto se liquida sobre
+     * el precio de lista. La marca nace en el renglon de la cotizacion y llega
+     * hasta aqui congelada: ya no muere ahi.
+     */
+    public boolean isDiscountConditional() {
+        return discountIsConditional;
     }
 
     public int getIncludedQuantity() {

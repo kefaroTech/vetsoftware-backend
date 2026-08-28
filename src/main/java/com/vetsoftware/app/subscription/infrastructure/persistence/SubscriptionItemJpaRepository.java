@@ -22,6 +22,10 @@ public interface SubscriptionItemJpaRepository
             Long companyId);
 
     @EntityGraph(attributePaths = {"company", "subscription"})
+    List<SubscriptionItemJpaEntity> findAllByCreatedAmendmentIdAndCompany_IdOrderByTierMinAsc(
+            Long amendmentId, Long companyId);
+
+    @EntityGraph(attributePaths = {"company", "subscription"})
     Page<SubscriptionItemJpaEntity> findAllBySubscription_IdAndCompany_Id(Long subscriptionId,
             Long companyId, Pageable pageable);
 

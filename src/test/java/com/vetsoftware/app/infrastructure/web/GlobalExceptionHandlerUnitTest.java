@@ -34,6 +34,7 @@ import com.vetsoftware.app.product.domain.ProductNameAlreadyExistsException;
 import com.vetsoftware.app.productchargeopenaccount.domain.ProductChargeOpenAccountAlreadyVoidedException;
 import com.vetsoftware.app.purchaseorder.domain.InvalidPurchaseOrderStatusTransitionException;
 import com.vetsoftware.app.purchaseorder.domain.PurchaseOrderStatus;
+import com.vetsoftware.app.shared.pricing.PriceListNotEffectiveException;
 import com.vetsoftware.app.registration.application.exception.CaptchaVerificationException;
 import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsException;
 import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
@@ -377,6 +378,42 @@ class GlobalExceptionHandlerUnitTest {
             assertThat(pd.getProperties()).doesNotContainKey("overlappingAppointmentIds");
             assertThat(pd.getDetail()).contains("ocupado")
                     .doesNotContain("uq_appointments_active_employee_start", "Duplicate entry");
+        }
+    }
+
+    @Nested
+    @DisplayName("tarifa fuera de vigencia (D-73): codigo propio y la ventana en propiedades")
+    class TarifaNoVigente {
+
+        @Test
+        @DisplayName("COT-021: 409 con su propio codigo, la ventana y el dia con el que se comparo")
+        void tarifa_fuera_de_vigencia() {
+            ProblemDetail pd = handler
+                    .handlePriceListNotEffective(new PriceListNotEffectiveException(7L,
+                            "LISTA-2025-01", LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31),
+                            LocalDate.of(2026, 8, 22)));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties()).containsEntry("code", "PRICE_LIST_NOT_EFFECTIVE")
+                    .containsEntry("priceListId", 7L)
+                    .containsEntry("priceListCode", "LISTA-2025-01")
+                    .containsEntry("validFrom", LocalDate.of(2025, 1, 1))
+                    .containsEntry("validTo", LocalDate.of(2025, 12, 31))
+                    .containsEntry("quotedOn", LocalDate.of(2026, 8, 22));
+            // El detail lo compone el handler; el mensaje de la excepcion no sale (#118).
+            assertThat(pd.getDetail()).contains("no está vigente")
+                    .doesNotContain("Price list is not effective");
+        }
+
+        @Test
+        @DisplayName("COT-020: una lista sin fecha de fin no inventa un validTo en la respuesta")
+        void una_lista_sin_cierre_no_inventa_validTo() {
+            ProblemDetail pd = handler.handlePriceListNotEffective(
+                    new PriceListNotEffectiveException(9L, "LISTA-ABIERTA",
+                            LocalDate.of(2027, 1, 1), null, LocalDate.of(2026, 8, 22)));
+
+            assertThat(pd.getProperties()).containsEntry("validFrom", LocalDate.of(2027, 1, 1))
+                    .doesNotContainKey("validTo");
         }
     }
 

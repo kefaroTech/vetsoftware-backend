@@ -4,7 +4,9 @@ import com.vetsoftware.app.subscription.application.command.ChangeSubscriptionSt
 import com.vetsoftware.app.subscription.application.dto.SubscriptionChangedEvent;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
 import com.vetsoftware.app.subscription.application.port.in.ChangeSubscriptionStatusUseCase;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionLifecycleMetrics;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionStatusHistoryRepository;
 import com.vetsoftware.app.subscription.domain.Subscription;
@@ -39,14 +41,19 @@ public class ChangeSubscriptionStatusService implements ChangeSubscriptionStatus
     private final SubscriptionRepository repository;
     private final SubscriptionStatusHistoryRepository historyRepository;
     private final SubscriptionChangedPort subscriptionChangedPort;
+    private final SubscriptionLifecycleMetrics metrics;
+    private final SubscriptionAuditPort audit;
     private final Clock clock;
 
     public ChangeSubscriptionStatusService(SubscriptionRepository repository,
             SubscriptionStatusHistoryRepository historyRepository,
-            SubscriptionChangedPort subscriptionChangedPort, Clock clock) {
+            SubscriptionChangedPort subscriptionChangedPort, SubscriptionLifecycleMetrics metrics,
+            SubscriptionAuditPort audit, Clock clock) {
         this.repository = repository;
         this.historyRepository = historyRepository;
         this.subscriptionChangedPort = subscriptionChangedPort;
+        this.metrics = metrics;
+        this.audit = audit;
         this.clock = clock;
     }
 
@@ -58,13 +65,24 @@ public class ChangeSubscriptionStatusService implements ChangeSubscriptionStatus
                 .orElseThrow(() -> new SubscriptionNotFoundException(command.id()));
 
         LocalDateTime occurredAt = LocalDateTime.now(clock);
+        // A la bitacora va el codigo del vocabulario cerrado, no una frase: la
+        // columna reason de subscription_status_history es exactamente el sitio
+        // donde antes podia acabar lo que el cliente escribiera en el cuerpo.
         SubscriptionStatusChange change = subscription.changeStatus(command.status(),
-                command.reason(), actorOf(command), occurredAt);
+                command.reason().code(), actorOf(command), occurredAt);
 
         Subscription saved = repository.save(subscription);
         historyRepository.append(new SubscriptionStatusChange(null, saved.getCompanyId(),
                 saved.getId(), change.getFromStatus(), change.getToStatus(), change.getReason(),
                 change.getOccurredAt(), change.getActor(), null));
+
+        // El hecho que faltaba entero cuando lo escribe un barrido (#606/#607): la
+        // transicion no cruza el borde HTTP, asi que no producia ni metrica ni evento
+        // de auditoria. Con esto, «que clinica amanecio en solo lectura y quien la
+        // degrado» se responde con una consulta a Loki en vez de abriendo produccion.
+        metrics.statusTransitioned(change.getToStatus());
+        audit.statusChanged(saved.getId(), change.getFromStatus(), change.getToStatus(),
+                command.reason());
 
         // R11 exige recalcular tambien en el paso a PAST_DUE y a READ_ONLY, no solo en
         // altas y bajas de linea: es donde se decide si el cliente puede escribir.

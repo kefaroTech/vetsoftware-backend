@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.catalogitem.application.command.CreateCatalogItemCommand;
 import com.vetsoftware.app.catalogitem.application.dto.CatalogItemDto;
 import com.vetsoftware.app.catalogitem.application.port.out.CatalogItemRepository;
-import com.vetsoftware.app.catalogitem.domain.CapacityUnit;
+import com.vetsoftware.app.catalogitem.application.port.out.LimitDimensionQueryPort;
 import com.vetsoftware.app.catalogitem.domain.CatalogItem;
 import com.vetsoftware.app.catalogitem.domain.CatalogItemCodeAlreadyExistsException;
 import com.vetsoftware.app.catalogitem.domain.CatalogItemStatus;
@@ -30,12 +30,15 @@ class CreateCatalogItemServiceTest {
 
     @Mock
     private CatalogItemRepository repository;
+    @Mock
+    private LimitDimensionQueryPort limitDimensionQueryPort;
 
     private CreateCatalogItemService service;
 
     @BeforeEach
     void setUp() {
-        service = new CreateCatalogItemService(repository, CatalogItemMother.RELOJ);
+        service = new CreateCatalogItemService(repository, limitDimensionQueryPort,
+                CatalogItemMother.RELOJ);
     }
 
     @Test
@@ -78,7 +81,7 @@ class CreateCatalogItemServiceTest {
         when(repository.existsByCodeIgnoringEnabled("BAD")).thenReturn(false);
 
         CreateCatalogItemCommand command = new CreateCatalogItemCommand("BAD", "Malo", null, null,
-                ItemType.MODULE, CapacityUnit.USER, false, 1, null, 0, CatalogItemStatus.DRAFT);
+                ItemType.MODULE, "USER", false, 1, null, 0, CatalogItemStatus.DRAFT);
 
         assertThatThrownBy(() -> service.execute(command))
                 .isInstanceOf(IllegalArgumentException.class)

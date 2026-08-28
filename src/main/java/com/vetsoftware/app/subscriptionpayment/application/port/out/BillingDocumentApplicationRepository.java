@@ -27,6 +27,27 @@ public interface BillingDocumentApplicationRepository {
     BigDecimal sumAppliedFromSourceDocument(Long sourceDocumentId, Long companyId);
 
     /**
+     * R3 sobre una retencion. Mismo criterio de suma neta.
+     *
+     * <p>
+     * <strong>Sin esto, la misma retencion podria saldar la factura dos
+     * veces.</strong> El certificado dice 7.160 y la cartera bajaria 14.320: la
+     * clinica quedaria a paz y salvo por dinero que la DIAN nunca recibio, y el
+     * descuadre saldria a la luz un ano despues, al conciliar los certificados.
+     */
+    BigDecimal sumAppliedFromWithholding(Long withholdingId, Long companyId);
+
+    /**
+     * R3 sobre un lote de saldo a favor. Mismo criterio de suma neta.
+     *
+     * <p>
+     * El techo es lo que el lote concedio. Sin el, un lote de 100.000 podria saldar
+     * trescientos mil: el saldo a favor dejaria de ser un saldo y pasaria a ser una
+     * linea de credito sin limite.
+     */
+    BigDecimal sumAppliedFromCreditEntry(Long creditEntryId, Long companyId);
+
+    /**
      * Aplicacion ya registrada con esta llave de idempotencia (R13). Se consulta
      * <strong>antes</strong> de insertar y dentro del bloqueo del origen: la
      * constraint unica convierte el duplicado en un error, y un 500 de clave

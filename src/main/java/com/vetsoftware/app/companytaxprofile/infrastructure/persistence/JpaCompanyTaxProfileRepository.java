@@ -25,6 +25,15 @@ public class JpaCompanyTaxProfileRepository implements CompanyTaxProfileReposito
         this.economicActivityJpaRepository = economicActivityJpaRepository;
     }
 
+    /**
+     * <strong>{@code saveAndFlush} y no {@code save}: es el contrato del puerto, no
+     * una preferencia.</strong> La sucesion cierra el perfil vigente y abre el
+     * siguiente en la misma transaccion, e Hibernate ejecuta <em>todos</em> los
+     * {@code INSERT} antes que los {@code UPDATE}: sin el flush intermedio los dos
+     * calcularian el mismo {@code current_profile_marker} y
+     * {@code uq_company_tax_profiles_current} pararia la operacion con un
+     * {@code Duplicate entry} sobre una columna que nadie escribio.
+     */
     @Override
     public CompanyTaxProfile save(CompanyTaxProfile profile) {
         CompanyJpaEntity company = companyJpaRepository.getReferenceById(profile.getCompany().id());
@@ -33,17 +42,23 @@ public class JpaCompanyTaxProfileRepository implements CompanyTaxProfileReposito
                 : economicActivityJpaRepository
                         .getReferenceById(profile.getEconomicActivity().id());
         CompanyTaxProfileJpaEntity saved = jpaRepository
-                .save(mapper.toJpa(profile, company, economicActivity));
+                .saveAndFlush(mapper.toJpa(profile, company, economicActivity));
         return mapper.toDomain(saved, profile.getCompany(), profile.getEconomicActivity());
     }
 
     @Override
-    public Optional<CompanyTaxProfile> findByCompanyId(Long companyId) {
-        return jpaRepository.findByCompany_Id(companyId).map(mapper::toDomain);
+    public int close(CompanyTaxProfile profile) {
+        return jpaRepository.closeCurrent(profile.getId(), profile.getCompany().id(),
+                profile.getValidTo());
     }
 
     @Override
-    public boolean existsByCompanyId(Long companyId) {
-        return jpaRepository.existsByCompany_Id(companyId);
+    public Optional<CompanyTaxProfile> findCurrentByCompanyId(Long companyId) {
+        return jpaRepository.findCurrentByCompanyId(companyId).map(mapper::toDomain);
+    }
+
+    @Override
+    public boolean existsCurrentByCompanyId(Long companyId) {
+        return jpaRepository.existsCurrentByCompanyId(companyId);
     }
 }

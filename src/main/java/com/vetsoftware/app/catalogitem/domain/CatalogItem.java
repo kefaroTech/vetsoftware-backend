@@ -21,13 +21,18 @@ import java.time.LocalDateTime;
  */
 public class CatalogItem {
 
+    /**
+     * El ancho de {@code limit_dimensions.code}, que es lo que la columna guarda.
+     */
+    private static final int MAX_CAPACITY_UNIT_LENGTH = 50;
+
     private Long id;
     private String code;
     private String name;
     private String shortDescription;
     private String longDescription;
     private ItemType itemType;
-    private CapacityUnit capacityUnit;
+    private String capacityUnit;
     private boolean core;
     private int minQuantity;
     private Integer maxQuantity;
@@ -38,7 +43,7 @@ public class CatalogItem {
     private boolean enabled;
 
     public CatalogItem(Long id, String code, String name, String shortDescription,
-            String longDescription, ItemType itemType, CapacityUnit capacityUnit, boolean core,
+            String longDescription, ItemType itemType, String capacityUnit, boolean core,
             int minQuantity, Integer maxQuantity, int sortOrder, CatalogItemStatus status,
             LocalDateTime createdDate, Long version, boolean enabled) {
         validateCode(code);
@@ -70,7 +75,7 @@ public class CatalogItem {
      * de pared se cae solo el día que este cruce medianoche entre dos líneas.
      */
     public static CatalogItem create(String code, String name, String shortDescription,
-            String longDescription, ItemType itemType, CapacityUnit capacityUnit, boolean core,
+            String longDescription, ItemType itemType, String capacityUnit, boolean core,
             int minQuantity, Integer maxQuantity, int sortOrder, CatalogItemStatus status,
             Clock clock) {
         return new CatalogItem(null, code, name, shortDescription, longDescription, itemType,
@@ -86,7 +91,7 @@ public class CatalogItem {
      * de documentos ya firmados.
      */
     public void update(String name, String shortDescription, String longDescription,
-            ItemType itemType, CapacityUnit capacityUnit, boolean core, int minQuantity,
+            ItemType itemType, String capacityUnit, boolean core, int minQuantity,
             Integer maxQuantity, int sortOrder, CatalogItemStatus status) {
         validateTextos(name, shortDescription);
         validateTipo(itemType, capacityUnit);
@@ -122,17 +127,44 @@ public class CatalogItem {
     }
 
     /**
-     * Espejo de {@code chk_catalog_items_capacity_unit}: la unidad va atada al
-     * tipo, en los dos sentidos.
+     * Espejo de la mitad estructural de {@code chk_catalog_items_capacity_unit}: la
+     * unidad va atada al tipo, en los dos sentidos.
+     *
+     * <p>
+     * <strong>Lo que ya NO comprueba, y por que.</strong> Hasta el changeset 333 el
+     * tipo del parametro era un enumerado de cuatro valores —{@code USER},
+     * {@code BRANCH}, {@code TERMINAL}, {@code STORAGE_GB}—, asi que esta firma
+     * cerraba tambien el dominio de la columna. Eso hacia que el catalogo comercial
+     * solo supiera vender cuatro ejes cuando el contador ya sabia contar ocho
+     * (#655): un paquete de mascotas necesitaba tocar el enumerado, el
+     * {@code CHECK} del esquema y desplegar, que es exactamente lo que la capa J
+     * existe para eliminar.
+     *
+     * <p>
+     * Ahora {@code capacityUnit} es el <strong>codigo del eje</strong> —lo que
+     * {@code limit_dimensions.code} guarda— y quien decide si ese codigo existe es
+     * el catalogo, no esta clase. Comprobarlo es una <em>consulta</em>, y una
+     * consulta no cabe en el constructor de una entidad: vive en el caso de uso, a
+     * traves de {@code LimitDimensionQueryPort}, y en la base como clave foranea.
+     * Lo que si se queda aqui es la invariante que no necesita mirar otra tabla, y
+     * que la clave foranea no cubre porque una columna nula la satisface siempre.
+     *
+     * <p>
+     * El limite de longitud es el de la columna del eje ({@code VARCHAR(50)}): un
+     * codigo mas largo no puede corresponder a ninguna fila, asi que se rechaza
+     * aqui con el nombre del campo en vez de llegar al motor como un truncamiento.
      */
-    private static void validateTipo(ItemType itemType, CapacityUnit capacityUnit) {
+    private static void validateTipo(ItemType itemType, String capacityUnit) {
         if (itemType == null)
             throw new IllegalArgumentException("itemType is required");
-        if (itemType == ItemType.CAPACITY && capacityUnit == null)
+        if (itemType == ItemType.CAPACITY && (capacityUnit == null || capacityUnit.isBlank()))
             throw new IllegalArgumentException("capacityUnit is required for CAPACITY items");
         if (itemType != ItemType.CAPACITY && capacityUnit != null)
             throw new IllegalArgumentException(
                     "capacityUnit is only allowed on CAPACITY items, but itemType is " + itemType);
+        if (capacityUnit != null && capacityUnit.length() > MAX_CAPACITY_UNIT_LENGTH)
+            throw new IllegalArgumentException(
+                    "capacityUnit must be " + MAX_CAPACITY_UNIT_LENGTH + " chars or less");
     }
 
     /**
@@ -185,7 +217,7 @@ public class CatalogItem {
         return itemType;
     }
 
-    public CapacityUnit getCapacityUnit() {
+    public String getCapacityUnit() {
         return capacityUnit;
     }
 

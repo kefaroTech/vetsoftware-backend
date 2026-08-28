@@ -1,20 +1,25 @@
 package com.vetsoftware.app.subscription.application.usecase;
 
 import com.vetsoftware.app.subscription.application.command.AddSubscriptionItemCommand;
-import com.vetsoftware.app.subscription.application.command.SubscriptionItemLineCommand;
+import com.vetsoftware.app.subscription.application.command.RequestedSubscriptionItemCommand;
+import com.vetsoftware.app.subscription.application.dto.PublishedCatalogItem;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionChangedEvent;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionItemDto;
 import com.vetsoftware.app.subscription.application.port.in.AddSubscriptionItemUseCase;
-import com.vetsoftware.app.subscription.application.port.out.CatalogItemValidationPort;
 import com.vetsoftware.app.subscription.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionAmendmentRepository;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionCommercialSnapshotPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemCompositionPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
 import com.vetsoftware.app.subscription.application.port.out.SystemUserValidationPort;
 import com.vetsoftware.app.subscription.domain.AmendmentType;
 import com.vetsoftware.app.subscription.domain.BillingPeriod;
+import com.vetsoftware.app.subscription.domain.ContractPriceTiers;
+import com.vetsoftware.app.subscription.domain.ContractTierLine;
 import com.vetsoftware.app.subscription.domain.EffectivePeriod;
 import com.vetsoftware.app.subscription.domain.ItemOrigin;
 import com.vetsoftware.app.subscription.domain.Proration;
@@ -26,14 +31,17 @@ import com.vetsoftware.app.subscription.domain.SubscriptionItem;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemNotFoundException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemOverlapGuard;
 import com.vetsoftware.app.subscription.domain.SubscriptionNotFoundException;
+import com.vetsoftware.app.shared.domain.Money;
 import io.micrometer.observation.annotation.Observed;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Alta de una linea de contrato. Es el caso de uso donde se cruzan las tres
+ * Alta de una linea de contrato. Es el caso de uso donde se cruzan las cuatro
  * cosas que este modelo tiene que garantizar sin ayuda del motor:
  *
  * <ol>
@@ -53,6 +61,26 @@ import org.springframework.transaction.annotation.Transactional;
  * mismo articulo. El indice unico cubre las lineas abiertas; los tramos con
  * fecha de fin futura que se pisan solo los cubre esto.
  * </ol>
+ *
+ * <p>
+ * <strong>Y el precio se resuelve AQUI, no llega del cuerpo
+ * (R-QUOTE-02).</strong> Esta es la correccion que cierra el defecto construido
+ * #2. La peticion traia {@code unitAmount}, {@code itemName}, {@code itemType},
+ * {@code capacityUnit}, {@code includedQuantity} y {@code taxRate}, y este
+ * servicio los copiaba tal cual a la fila con una sola comprobacion —que el
+ * articulo existiera—. Se podia abrir una linea <em>a cero pesos</em>, con
+ * nombre inventado, o con nueve mil novecientas noventa y nueve unidades
+ * incluidas que iban directas al techo del contador sin pasar por ninguna
+ * tarifa. Y el prorrateo «que calcula el servidor» se calculaba sobre ese
+ * importe del cuerpo, asi que la proteccion que su comentario reclamaba era
+ * hueca.
+ *
+ * <p>
+ * El patron es el de {@code CreateRequestedSubscriptionService}: la seleccion
+ * comercial —articulo, cantidad y fechas— es lo unico que viaja, y el resto
+ * sale de la tarifa <strong>del propio contrato</strong>, comprobando que sigue
+ * publicada y vigente por fecha (D-73). Con el precio ya fuera del cuerpo, el
+ * motivo por el que este puerto seguia cerrado al tenant desaparece.
  */
 @Observed(name = "subscription.item.add")
 @Service
@@ -61,27 +89,32 @@ public class AddSubscriptionItemService implements AddSubscriptionItemUseCase {
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionItemRepository itemRepository;
     private final SubscriptionAmendmentRepository amendmentRepository;
-    private final CatalogItemValidationPort catalogItemValidationPort;
+    private final SubscriptionCommercialSnapshotPort commercialSnapshotPort;
+    private final SubscriptionItemCompositionPort compositionPort;
     private final EmployeeQueryPort employeeQueryPort;
     private final SystemUserValidationPort systemUserValidationPort;
     private final SubscriptionNumberPort subscriptionNumberPort;
     private final SubscriptionChangedPort subscriptionChangedPort;
+    private final SubscriptionAuditPort audit;
 
     public AddSubscriptionItemService(SubscriptionRepository subscriptionRepository,
             SubscriptionItemRepository itemRepository,
             SubscriptionAmendmentRepository amendmentRepository,
-            CatalogItemValidationPort catalogItemValidationPort,
-            EmployeeQueryPort employeeQueryPort, SystemUserValidationPort systemUserValidationPort,
+            SubscriptionCommercialSnapshotPort commercialSnapshotPort,
+            SubscriptionItemCompositionPort compositionPort, EmployeeQueryPort employeeQueryPort,
+            SystemUserValidationPort systemUserValidationPort,
             SubscriptionNumberPort subscriptionNumberPort,
-            SubscriptionChangedPort subscriptionChangedPort) {
+            SubscriptionChangedPort subscriptionChangedPort, SubscriptionAuditPort audit) {
         this.subscriptionRepository = subscriptionRepository;
         this.itemRepository = itemRepository;
         this.amendmentRepository = amendmentRepository;
-        this.catalogItemValidationPort = catalogItemValidationPort;
+        this.commercialSnapshotPort = commercialSnapshotPort;
+        this.compositionPort = compositionPort;
         this.employeeQueryPort = employeeQueryPort;
         this.systemUserValidationPort = systemUserValidationPort;
         this.subscriptionNumberPort = subscriptionNumberPort;
         this.subscriptionChangedPort = subscriptionChangedPort;
+        this.audit = audit;
     }
 
     @Override
@@ -95,8 +128,8 @@ public class AddSubscriptionItemService implements AddSubscriptionItemUseCase {
         if (replay.isPresent()) {
             Long amendmentId = replay.get().getId();
             return itemRepository
-                    .findByCreatedAmendmentIdAndCompanyId(amendmentId, command.companyId())
-                    .map(SubscriptionItemDto::from)
+                    .findAllByCreatedAmendmentIdAndCompanyId(amendmentId, command.companyId())
+                    .stream().findFirst().map(SubscriptionItemDto::from)
                     .orElseThrow(() -> new SubscriptionItemNotFoundException(amendmentId));
         }
 
@@ -105,10 +138,14 @@ public class AddSubscriptionItemService implements AddSubscriptionItemUseCase {
                 .lockByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new SubscriptionNotFoundException(command.id()));
 
-        SubscriptionItemLineCommand line = command.line();
+        RequestedSubscriptionItemCommand line = command.line();
         if (line == null)
             throw new IllegalArgumentException("line is required");
-        catalogItemValidationPort.validateExists(line.catalogItemId());
+        if (line.catalogItemId() == null)
+            throw new IllegalArgumentException("catalogItemId is required");
+        int quantity = line.quantity() == null ? 1 : line.quantity();
+        if (quantity < 1)
+            throw new IllegalArgumentException("quantity must be greater than zero");
         // R14: el empleado que firma el otrosi tiene que ser de la misma empresa que el
         // contrato. La FK es simple, asi que la base no puede imponerlo: se resuelve
         // por la variante acotada del puerto, que es la unica que existe.
@@ -126,18 +163,44 @@ public class AddSubscriptionItemService implements AddSubscriptionItemUseCase {
                 line.effectiveFrom() == null ? command.effectiveDate() : line.effectiveFrom(),
                 line.effectiveTo());
 
-        // (3) Solape: lo que el esquema no puede garantizar.
-        SubscriptionItemOverlapGuard.ensureNoOverlap(line.catalogItemId(), period,
-                itemRepository.findOverlapping(command.companyId(), subscription.getId(),
-                        line.catalogItemId(), period.from(), period.to(), null));
+        // (3) El precio, el nombre, el tipo, la unidad, el IVA y lo incluido salen de
+        // la
+        // tarifa DEL CONTRATO —la que se firmo, no una que elija quien llama— y solo si
+        // sigue publicada y vigente el dia en que la linea empieza a servir (D-73).
+        PublishedCatalogItem published = commercialSnapshotPort
+                .findPublishedItem(subscription.getPriceListId(), subscription.getBillingCycle(),
+                        line.catalogItemId(), quantity, period.from())
+                .orElseThrow(
+                        () -> new IllegalArgumentException("No published price for catalog item "
+                                + line.catalogItemId() + " in the price list of subscription "
+                                + subscription.getId() + " on " + period.from()));
+        // D-66: los tramos son acumulativos, asi que una ampliacion escalonada abre una
+        // linea por tramo, cada una a su precio. Trece unidades extra son ocho a 12.000
+        // y cinco a 9.000; cobrarlas todas al tramo alto es el defecto que D-66 cierra.
+        List<ContractTierLine> allocation = ContractPriceTiers.allocate(quantity,
+                published.tiers());
 
-        // (4) Prorrateo: lo calcula el servidor, nunca el cuerpo de la peticion. La
-        // linea todavia no existe —necesita el id del otrosi— asi que la cuota que
-        // aporta se calcula con la sobrecarga estatica, sobre los mismos numeros con
-        // los que se va a abrir.
-        BigDecimal cycleDelta = SubscriptionItem.recurringSubtotalOf(
-                line.quantity() == null ? 1 : line.quantity(),
-                line.includedQuantity() == null ? 0 : line.includedQuantity(), line.unitAmount());
+        // (4) Solape: lo que el esquema no puede garantizar. Se comprueba TRAMO A
+        // TRAMO,
+        // igual que uq_subscription_items_current, porque dos lineas del mismo articulo
+        // en tramos distintos son legitimas y no un cobro doble.
+        for (ContractTierLine tierLine : allocation) {
+            SubscriptionItemOverlapGuard.ensureNoOverlap(line.catalogItemId(),
+                    tierLine.tier().tierMin(), period,
+                    itemRepository.findOverlapping(command.companyId(), subscription.getId(),
+                            line.catalogItemId(), period.from(), period.to(), null));
+        }
+
+        // (5) Prorrateo: lo calcula el servidor sobre el precio de la TARIFA, nunca
+        // sobre un importe del cuerpo. La linea todavia no existe —necesita el id del
+        // otrosi— asi que la cuota que aporta se calcula con la sobrecarga estatica,
+        // sobre los mismos numeros con los que se va a abrir, y sumando todos los
+        // tramos: la ampliacion sube la cuota lo que suman sus lineas.
+        BigDecimal cycleDelta = Money.zero();
+        for (ContractTierLine tierLine : allocation) {
+            cycleDelta = cycleDelta.add(SubscriptionItem.recurringSubtotalOf(tierLine.quantity(),
+                    tierLine.includedQuantity(), tierLine.tier().unitAmount()));
+        }
         // La ventana es el tramo de la propia linea, no la fecha del otrosi: un alta
         // puede traer su effectiveFrom, y hasta su effectiveTo, y prorratear por la
         // fecha del papel cobraria dias que la linea no sirve.
@@ -153,17 +216,33 @@ public class AddSubscriptionItemService implements AddSubscriptionItemUseCase {
                         proration.amount(), proration.cycleDeltaAmount(), command.quoteId(),
                         command.clientRequestId()));
 
-        SubscriptionItem saved = itemRepository.save(SubscriptionItem.open(command.companyId(),
-                subscription.getId(), line.catalogItemId(), line.itemCode(), line.itemName(),
-                line.itemType(), line.capacityUnit(),
-                line.includedQuantity() == null ? 0 : line.includedQuantity(), line.taxTreatment(),
-                line.quantity() == null ? 1 : line.quantity(), line.unitAmount(), line.taxRate(),
-                period, ItemOrigin.ADDON, amendment.getId()));
+        List<SubscriptionItem> opened = new ArrayList<>();
+        for (ContractTierLine tierLine : allocation) {
+            // D-76: la composicion se congela al firmar, tambien en una ampliacion.
+            opened.add(itemRepository.save(SubscriptionItem.open(command.companyId(),
+                    subscription.getId(), published.catalogItemId(), published.itemCode(),
+                    published.itemName(), published.itemType(), published.capacityUnit(),
+                    tierLine.tier().tierMin(), tierLine.tier().tierMax(),
+                    tierLine.includedQuantity(), tierLine.tier().taxTreatment(),
+                    tierLine.quantity(), tierLine.tier().unitAmount(), Money.zero(), Money.zero(),
+                    false, tierLine.tier().taxRate(), period, ItemOrigin.ADDON,
+                    amendment.getId())));
+        }
+        for (SubscriptionItem saved : opened) {
+            compositionPort.freeze(saved.getCompanyId(), saved.getId(), saved.getCatalogItemId());
+        }
+        SubscriptionItem first = opened.get(0);
+
+        // cycleDeltaAmount es lo que sube la cuota recurrente, y es EL campo del
+        // issue #607: el unico dato que prueba que importe se le mostro al cliente
+        // antes de confirmar, cuando niegue haber aceptado la ampliacion.
+        audit.itemAdded(subscription.getId(), first.getId(), first.getCatalogItemId(), quantity,
+                proration.cycleDeltaAmount(), amendment.getId());
 
         subscriptionChangedPort.subscriptionChanged(
                 new SubscriptionChangedEvent(command.companyId(), subscription.getId(),
                         SubscriptionChangeKind.ITEM_ADDED, command.effectiveDate()));
 
-        return SubscriptionItemDto.from(saved);
+        return SubscriptionItemDto.from(first);
     }
 }

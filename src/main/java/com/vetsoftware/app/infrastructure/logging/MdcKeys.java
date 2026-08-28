@@ -68,4 +68,30 @@ public final class MdcKeys {
      * rompe la correlación <b>en silencio</b>: sin error, sin alerta, solo huecos.
      */
     public static final String SYSTEM_USER_REQUEST_ID = "system.user.request.id";
+
+    /**
+     * Nombre del barrido programado en curso, poblado por
+     * {@code ScheduledJobTelemetry} junto con {@code actor.type=SYSTEM}.
+     *
+     * <p>
+     * Es el «desde dónde» de una operación que no cruza el borde HTTP. Sin él, un
+     * cambio de estado escrito por el barrido de cobranza y uno escrito a mano por
+     * un operador de plataforma salen idénticos en el canal {@code AUDIT}, y la
+     * pregunta de las tres de la mañana —«¿quién degradó a esta clínica a solo
+     * lectura?»— no tiene respuesta sin abrir la base de producción (NIST SP 800-53
+     * AU-3, PCI DSS v4.0 req. 10.2).
+     *
+     * <p>
+     * Su conjunto de valores lo cierra {@code ScheduledJobCatalog} más las dos
+     * sondas continuas: es {@code lowercase.dot.notation} generado por el sistema,
+     * nunca texto de usuario, y por eso va {@code VERBATIM} en
+     * {@link LogFieldPolicy}.
+     *
+     * <p>
+     * <b>No se propaga a hilos hijos y es correcto que no lo haga.</b> Un
+     * {@code @Async} lanzado desde un barrido es otra unidad de trabajo; heredar el
+     * {@code job.name} le atribuiría al barrido efectos que ocurren fuera de su
+     * ventana.
+     */
+    public static final String JOB_NAME = "job.name";
 }

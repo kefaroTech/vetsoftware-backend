@@ -3,6 +3,7 @@ package com.vetsoftware.app.subscriptionbilling.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -10,9 +11,13 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.subscriptionbilling.application.command.CreateSubscriptionChargeCommand;
 import com.vetsoftware.app.subscriptionbilling.application.dto.SubscriptionChargeDto;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionAmendmentValidationPort;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingAuditPort;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingMetrics;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionItemValidationPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionQueryPort;
+import com.vetsoftware.app.subscriptionbilling.domain.ItemChargeMode;
+import com.vetsoftware.app.subscriptionbilling.domain.NonBillableSubscriptionItemException;
 import com.vetsoftware.app.subscriptionbilling.domain.ChargeStatus;
 import com.vetsoftware.app.subscriptionbilling.domain.ChargeType;
 import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionCharge;
@@ -78,12 +83,17 @@ class CreateSubscriptionChargeServiceTest {
     @Captor
     private ArgumentCaptor<SubscriptionCharge> guardado;
 
+    @Mock
+    private SubscriptionBillingMetrics metrics;
+    @Mock
+    private SubscriptionBillingAuditPort audit;
+
     private CreateSubscriptionChargeService service;
 
     @BeforeEach
     void montar() {
         service = new CreateSubscriptionChargeService(repository, subscriptionQueryPort,
-                itemValidationPort, amendmentValidationPort, RELOJ);
+                itemValidationPort, amendmentValidationPort, metrics, audit, RELOJ);
     }
 
     @Nested
@@ -95,7 +105,8 @@ class CreateSubscriptionChargeServiceTest {
                 + " inyectado")
         void guarda_el_devengo_pendiente_con_el_contrato_resuelto() {
             contratoPropio();
-            when(itemValidationPort.existsInCompany(LINEA, EMPRESA)).thenReturn(true);
+            when(itemValidationPort.findChargeModeInCompany(LINEA, EMPRESA))
+                    .thenReturn(Optional.of(ItemChargeMode.PAID));
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             SubscriptionChargeDto dto = service.execute(comando(LINEA, null));
@@ -148,13 +159,14 @@ class CreateSubscriptionChargeServiceTest {
         @DisplayName("con linea y otrosi se comprueban los dos, cada uno contra su empresa")
         void con_linea_y_otrosi_se_comprueban_los_dos() {
             contratoPropio();
-            when(itemValidationPort.existsInCompany(LINEA, EMPRESA)).thenReturn(true);
+            when(itemValidationPort.findChargeModeInCompany(LINEA, EMPRESA))
+                    .thenReturn(Optional.of(ItemChargeMode.PAID));
             when(amendmentValidationPort.existsInCompany(OTROSI, EMPRESA)).thenReturn(true);
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             service.execute(comando(LINEA, OTROSI));
 
-            verify(itemValidationPort).existsInCompany(LINEA, EMPRESA);
+            verify(itemValidationPort).findChargeModeInCompany(LINEA, EMPRESA);
             verify(amendmentValidationPort).existsInCompany(OTROSI, EMPRESA);
         }
     }
@@ -167,7 +179,8 @@ class CreateSubscriptionChargeServiceTest {
         @DisplayName("una linea de otra clinica se rechaza nombrando el campo y no escribe nada")
         void una_linea_ajena_se_rechaza_nombrando_el_campo() {
             contratoPropio();
-            when(itemValidationPort.existsInCompany(LINEA, EMPRESA)).thenReturn(false);
+            when(itemValidationPort.findChargeModeInCompany(LINEA, EMPRESA))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.execute(comando(LINEA, null)))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -182,7 +195,8 @@ class CreateSubscriptionChargeServiceTest {
                 + " es el error de dos pestanas con ids consecutivos")
         void un_otrosi_ajeno_se_rechaza_nombrando_el_campo() {
             contratoPropio();
-            when(itemValidationPort.existsInCompany(LINEA, EMPRESA)).thenReturn(true);
+            when(itemValidationPort.findChargeModeInCompany(LINEA, EMPRESA))
+                    .thenReturn(Optional.of(ItemChargeMode.PAID));
             when(amendmentValidationPort.existsInCompany(OTROSI, EMPRESA)).thenReturn(false);
 
             assertThatThrownBy(() -> service.execute(comando(LINEA, OTROSI)))
@@ -256,6 +270,84 @@ class CreateSubscriptionChargeServiceTest {
 
             verify(repository).save(guardado.capture());
             assertThat(guardado.getValue().getProration()).isNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("R-TRIAL-14 · solo la linea que cobra devenga")
+    class SoloLaLineaQueCobraDevenga {
+
+        /**
+         * <b>El caso violador, tal como lo escribe el catalogo de reglas.</b>
+         *
+         * <p>
+         * El peligro no es que se cobre de mas por descuido: es que <strong>el precio
+         * real sigue guardado dentro de la linea gratuita</strong>. Una linea en prueba
+         * lleva su cuota completa en {@code unit_amount} porque es la que se cobrara el
+         * dia que convierta; lo unico que la separa de un cargo es el modo. Una
+         * consulta de cobro que filtre solo por vigencia y olvide el modo no emite un
+         * importe raro que alguien note: emite la cuota correcta, a todos los clientes
+         * en prueba, el mismo mes.
+         */
+        @Test
+        @DisplayName("una linea en prueba no devenga: el precio vive dentro de la linea"
+                + " gratuita y cobrarlo factura la cuota entera a quien esta probando")
+        void una_consulta_de_facturacion_que_omite_charge_mode_le_cobra_a_los_clientes_en_prueba() {
+            contratoPropio();
+            when(itemValidationPort.findChargeModeInCompany(LINEA, EMPRESA))
+                    .thenReturn(Optional.of(ItemChargeMode.TRIAL));
+
+            assertThatThrownBy(() -> service.execute(comando(LINEA, null)))
+                    .isInstanceOf(NonBillableSubscriptionItemException.class)
+                    .hasMessageContaining("TRIAL");
+
+            verify(repository, never()).save(any());
+        }
+
+        /** El gratis con techo tampoco: no caduca, asi que cobrarlo no prescribe. */
+        @Test
+        @DisplayName("una linea FREE_LIMITED tampoco devenga")
+        void una_linea_free_limited_tampoco_devenga() {
+            contratoPropio();
+            when(itemValidationPort.findChargeModeInCompany(LINEA, EMPRESA))
+                    .thenReturn(Optional.of(ItemChargeMode.FREE_LIMITED));
+
+            assertThatThrownBy(() -> service.execute(comando(LINEA, null)))
+                    .isInstanceOf(NonBillableSubscriptionItemException.class);
+
+            verify(repository, never()).save(any());
+        }
+
+        /** Y la prueba vencida en solo lectura: se le dejo ver, no se le cobra. */
+        @Test
+        @DisplayName("una linea EXPIRED_READ_ONLY tampoco devenga")
+        void una_linea_expired_read_only_tampoco_devenga() {
+            contratoPropio();
+            when(itemValidationPort.findChargeModeInCompany(LINEA, EMPRESA))
+                    .thenReturn(Optional.of(ItemChargeMode.EXPIRED_READ_ONLY));
+
+            assertThatThrownBy(() -> service.execute(comando(LINEA, null)))
+                    .isInstanceOf(NonBillableSubscriptionItemException.class);
+
+            verify(repository, never()).save(any());
+        }
+
+        /**
+         * R-TRIAL-13: el estado del contrato no decide nada. Un contrato TRIALING con
+         * una linea de pago obligatorio SI devenga, y ese es el caso que la trampa
+         * anterior --descartar los contratos en prueba-- dejaba sin facturar.
+         */
+        @Test
+        @DisplayName("una linea PAID devenga aunque su contrato este en prueba")
+        void una_linea_paid_devenga_aunque_el_contrato_este_en_prueba() {
+            contratoPropio();
+            when(itemValidationPort.findChargeModeInCompany(LINEA, EMPRESA))
+                    .thenReturn(Optional.of(ItemChargeMode.PAID));
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.execute(comando(LINEA, null));
+
+            verify(repository).save(any());
         }
     }
 

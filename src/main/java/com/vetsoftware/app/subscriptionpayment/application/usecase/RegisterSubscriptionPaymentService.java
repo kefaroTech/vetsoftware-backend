@@ -3,6 +3,8 @@ package com.vetsoftware.app.subscriptionpayment.application.usecase;
 import com.vetsoftware.app.subscriptionpayment.application.command.RegisterSubscriptionPaymentCommand;
 import com.vetsoftware.app.subscriptionpayment.application.dto.SubscriptionPaymentDto;
 import com.vetsoftware.app.subscriptionpayment.application.port.in.RegisterSubscriptionPaymentUseCase;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentAuditPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentMetrics;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentRepository;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPayment;
 import io.micrometer.observation.annotation.Observed;
@@ -31,11 +33,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class RegisterSubscriptionPaymentService implements RegisterSubscriptionPaymentUseCase {
 
     private final SubscriptionPaymentRepository repository;
+    private final SubscriptionPaymentMetrics metrics;
+    private final SubscriptionPaymentAuditPort audit;
     private final Clock clock;
 
     public RegisterSubscriptionPaymentService(SubscriptionPaymentRepository repository,
-            Clock clock) {
+            SubscriptionPaymentMetrics metrics, SubscriptionPaymentAuditPort audit, Clock clock) {
         this.repository = repository;
+        this.metrics = metrics;
+        this.audit = audit;
         this.clock = clock;
     }
 
@@ -54,7 +60,15 @@ public class RegisterSubscriptionPaymentService implements RegisterSubscriptionP
                 command.amount(), command.currency(), command.paymentMethod(), command.gateway(),
                 command.gatewayReference(), command.receivedAt(), command.clientRequestId(),
                 LocalDateTime.now(clock));
-        return SubscriptionPaymentDto.from(repository.save(payment));
+        SubscriptionPayment saved = repository.save(payment);
+
+        // Los dos caminos de idempotencia de arriba NO pasan por aqui, y es lo
+        // correcto:
+        // un reintento no es un pago nuevo, y contarlo duplicaria la plata que entro.
+        metrics.paymentRegistered(saved.getPaymentMethod(), saved.getStatus());
+        audit.paymentRegistered(saved.getId(), saved.getPaymentMethod(), saved.getAmount(),
+                saved.getStatus());
+        return SubscriptionPaymentDto.from(saved);
     }
 
     /** Cubre el doble clic del operador que registra un pago manual. */

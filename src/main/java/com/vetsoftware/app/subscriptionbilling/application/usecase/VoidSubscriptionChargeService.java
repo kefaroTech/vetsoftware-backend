@@ -3,6 +3,8 @@ package com.vetsoftware.app.subscriptionbilling.application.usecase;
 import com.vetsoftware.app.subscriptionbilling.application.command.VoidSubscriptionChargeCommand;
 import com.vetsoftware.app.subscriptionbilling.application.dto.SubscriptionChargeDto;
 import com.vetsoftware.app.subscriptionbilling.application.port.in.VoidSubscriptionChargeUseCase;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingAuditPort;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingMetrics;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionCharge;
 import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionChargeNotFoundException;
@@ -30,10 +32,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class VoidSubscriptionChargeService implements VoidSubscriptionChargeUseCase {
 
     private final SubscriptionChargeRepository repository;
+    private final SubscriptionBillingMetrics metrics;
+    private final SubscriptionBillingAuditPort audit;
     private final Clock clock;
 
-    public VoidSubscriptionChargeService(SubscriptionChargeRepository repository, Clock clock) {
+    public VoidSubscriptionChargeService(SubscriptionChargeRepository repository,
+            SubscriptionBillingMetrics metrics, SubscriptionBillingAuditPort audit, Clock clock) {
         this.repository = repository;
+        this.metrics = metrics;
+        this.audit = audit;
         this.clock = clock;
     }
 
@@ -46,6 +53,13 @@ public class VoidSubscriptionChargeService implements VoidSubscriptionChargeUseC
         SubscriptionCharge compensacion = SubscriptionCharge.voidingOf(original,
                 command.description(), clock);
         repository.save(original);
-        return SubscriptionChargeDto.from(repository.save(compensacion));
+        SubscriptionCharge saved = repository.save(compensacion);
+
+        // Los dos ids salen juntos: el rastro sin el par no permite reconstruir el
+        // saldo, porque aqui el dinero no se corrige encima, se compensa.
+        metrics.chargeVoided(original.getChargeType());
+        audit.chargeVoided(original.getId(), saved.getId(), original.getSubscriptionId(),
+                saved.getSubtotalAmount());
+        return SubscriptionChargeDto.from(saved);
     }
 }

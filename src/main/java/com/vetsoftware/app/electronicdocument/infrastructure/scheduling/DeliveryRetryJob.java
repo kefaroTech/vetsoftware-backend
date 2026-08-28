@@ -4,6 +4,7 @@ import com.vetsoftware.app.electronicdocument.application.port.out.DianJobLeaseP
 import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDocumentRepository;
 import com.vetsoftware.app.electronicdocument.application.usecase.DeliverElectronicDocumentService;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
+import com.vetsoftware.app.infrastructure.observability.ScheduledJobCatalog;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry.Outcome;
 import java.time.Clock;
@@ -43,9 +44,12 @@ import org.springframework.stereotype.Component;
  * {@code pdf_representation IS NULL}.
  *
  * <p>
- * <b>El ciclo es de 12 h</b> ({@code dian.delivery.retry-delay-ms}), contadas
- * desde que TERMINA la pasada anterior; el reloj se reinicia en cada
- * despliegue.
+ * <b>Dos pasadas diarias a hora fija</b> ({@code dian.delivery.cron}, por
+ * defecto {@code 0 45 2,14 * * *} en {@code America/Bogota}), declaradas en
+ * {@link com.vetsoftware.app.infrastructure.observability.ScheduledJobCatalog}.
+ * Antes era {@code fixedDelay} de 12 h desde el fin de la pasada anterior, asi
+ * que la hora era la del ultimo despliegue y no habia umbral que fijar para
+ * «este job no corrio» (#609).
  *
  * <p>
  * <b>Cota de reintentos: ventana de plazo, sin cap de intentos.</b>
@@ -79,7 +83,7 @@ public class DeliveryRetryJob {
     // Bajo el prefijo «dian.» como sus dos hermanos, aunque este job no hable con
     // la DIAN: comparte su arriendo y su ciclo de vida, y el label queda agrupable
     // en un solo job.name=~"dian.*" en los tableros.
-    private static final String JOB_NAME = "dian.delivery.retry";
+    private static final ScheduledJobCatalog JOB = ScheduledJobCatalog.DIAN_DELIVERY_RETRY;
     /** Techo del recuerdo en memoria de documentos ya reportados como agotados. */
     private static final int REPORTED_EXHAUSTED_CAPACITY = 5_000;
 
@@ -119,9 +123,9 @@ public class DeliveryRetryJob {
         this.lease = lease;
     }
 
-    @Scheduled(initialDelayString = "${dian.delivery.initial-delay-ms:180000}", fixedDelayString = "${dian.delivery.retry-delay-ms:43200000}")
+    @Scheduled(cron = "${dian.delivery.cron:0 45 2,14 * * *}", zone = ScheduledJobCatalog.ZONE)
     public void retryDeliveries() {
-        telemetry.observe(JOB_NAME, this::executeRetries);
+        telemetry.observe(JOB, this::executeRetries);
     }
 
     private Outcome executeRetries() {

@@ -14,7 +14,12 @@
                              references="suppliers(id)"/>
             </column>
         </addColumn>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): dropColumn a secas revienta con "Cannot drop column ... needed in a foreign
+             key constraint", porque la columna sostiene fk_products_supplier. La FK se suelta
+             primero. -->
         <rollback>
+            <dropForeignKeyConstraint baseTableName="products" constraintName="fk_products_supplier"/>
             <dropColumn tableName="products" columnName="supplier_id"/>
         </rollback>
     </changeSet>

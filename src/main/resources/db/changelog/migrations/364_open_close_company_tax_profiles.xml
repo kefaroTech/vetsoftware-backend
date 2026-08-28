@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CIERRA EL DEFECTO VIVO DE company_tax_profiles (116): hoy PUT /company-tax-profile
+         REESCRIBE la fila en sitio (CompanyTaxProfile.update(...), ver
+         companytaxprofile/domain/CompanyTaxProfile.java:63). Una empresa que cambia de NIT, de
+         regimen o de responsabilidades reescribe hacia atras con que identidad se emitio una
+         factura de hace un ano -salvo los SEIS campos que electronic_documents ya congela desde
+         121/136 (issuer_document_type/id/verification_digit/legal_name/tax_regime/email, los
+         mismos seis que pinta FeDocumentParties.vue en el publico) y que el propio
+         JpaCompanyFiscalProfileQueryPort.toIssuer() copia al emitir. Nombre comercial, actividad
+         economica y la ficha vigente en si misma NO tenian esa foto: se leian siempre de la fila
+         viva vía CompanyTaxProfileJpaRepository.findByCompany_Id.
+
+         MISMO MOLDE QUE company_billing_profiles (316), copiado y no reinventado: vigencia
+         semiabierta (valid_from/valid_to), marcador generado de perfil vigente
+         (current_profile_marker, UNIQUE) y una clave foranea desde el documento a la FILA exacta
+         con la que se emitio -no solo a la empresa-.
+
+         EL DESBLOQUEO REAL ES EL ORDEN DEL INDICE. uq_company_tax_profiles_company (116) es
+         UNIQUE sobre company_id a secas y ademas respalda fk_company_tax_profiles_company: no se
+         puede soltar sin dejar la FK sin indice que la respalde (el mismo tropiezo que el propio
+         116 ya documenta en su rollback -"Cannot drop index ... needed in a foreign key
+         constraint"-). Por eso el segundo changeSet crea PRIMERO uq_company_tax_profiles_company_id
+         (company_id, id) -company_id sigue siendo el prefijo izquierdo, así que InnoDB la puede
+         usar para respaldar la FK existente- y solo DESPUES suelta la unique original.
+
+         SIN JAVA EN ESTE CHANGESET, A PROPOSITO. Con este esquema por delante, sigue haciendo
+         falta en Java (para otro agente):
+           1. CompanyTaxProfileJpaEntity.company: quitar @JoinColumn(unique = true) (linea 36) -el
+              esquema ya no lo es, y dejarlo mentiria sobre la validacion aunque Hibernate en modo
+              validate no compruebe uniques-.
+           2. CompanyTaxProfileJpaEntity: anadir validFrom/validTo (y opcionalmente el
+              currentProfileMarker generado, solo lectura) - mismo patron que
+              CompanyBillingProfileJpaEntity.
+           3. UpdateCompanyTaxProfileUseCase / CompanyTaxProfile.update(...): dejar de mutar en
+              sitio. Cerrar la fila vigente (valid_to = hoy) y CREAR una fila nueva (valid_from =
+              hoy) con los datos nuevos, dentro de la misma transaccion -mismo patron que
+              OpenCompanyBillingProfileService/SucceedCompanyBillingProfileService-.
+           4. CompanyTaxProfileJpaRepository.findByCompany_Id: filtrar por valid_to IS NULL (o
+              current_profile_marker IS NOT NULL) para no devolver un perfil cerrado.
+           5. JpaCompanyFiscalProfileQueryPort / EmitElectronicDocumentXxxService: resolver el
+              company_tax_profile_id vigente y guardarlo en electronic_documents al emitir (la
+              columna y su FK ya existen desde el cuarto changeSet de este archivo). -->
+    <changeSet id="364_add_validity_to_company_tax_profiles" author="orlando">
+        <addColumn tableName="company_tax_profiles">
+            <column name="valid_from" type="DATE"/>
+            <column name="valid_to" type="DATE"/>
+        </addColumn>
+        <!-- Backfill deterministico: hasta este changeset solo podia existir UNA fila por
+             empresa (uq_company_tax_profiles_company), asi que "vigente desde que se creo" es
+             exacto, no una suposicion. -->
+        <sql>
+            UPDATE company_tax_profiles SET valid_from = DATE(created_date) WHERE valid_from IS NULL;
+        </sql>
+        <addNotNullConstraint tableName="company_tax_profiles" columnName="valid_from"
+                              columnDataType="DATE"/>
+        <rollback>
+            <dropColumn tableName="company_tax_profiles" columnName="valid_to"/>
+            <dropColumn tableName="company_tax_profiles" columnName="valid_from"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="364_replace_company_tax_profiles_unique_index" author="orlando">
+        <addUniqueConstraint tableName="company_tax_profiles" columnNames="company_id, id"
+                             constraintName="uq_company_tax_profiles_company_id"/>
+        <addUniqueConstraint tableName="company_tax_profiles" columnNames="company_id, valid_from"
+                             constraintName="uq_company_tax_profiles_validity"/>
+        <dropUniqueConstraint tableName="company_tax_profiles"
+                              constraintName="uq_company_tax_profiles_company"/>
+        <rollback>
+            <addUniqueConstraint tableName="company_tax_profiles" columnNames="company_id"
+                                 constraintName="uq_company_tax_profiles_company"/>
+            <dropUniqueConstraint tableName="company_tax_profiles"
+                                  constraintName="uq_company_tax_profiles_validity"/>
+            <dropUniqueConstraint tableName="company_tax_profiles"
+                                  constraintName="uq_company_tax_profiles_company_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="364_current_profile_marker_company_tax_profiles" author="orlando">
+        <!-- AVISO SOBRE LA COLUMNA GENERADA (mismo aviso que 316): NO es un indice disperso.
+             MySQL no tiene indices parciales y si indexa los vacios; lo que se gana es unicidad
+             condicional (un solo perfil vigente por empresa), no tamano. -->
+        <sql><![CDATA[
+            ALTER TABLE company_tax_profiles
+                ADD COLUMN current_profile_marker BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE WHEN valid_to IS NULL THEN company_id ELSE NULL END
+                    ) STORED,
+                ADD CONSTRAINT uq_company_tax_profiles_current
+                    UNIQUE (current_profile_marker),
+                ADD CONSTRAINT chk_company_tax_profiles_validity
+                    CHECK (valid_to IS NULL OR valid_to > valid_from)
+        ]]></sql>
+        <createIndex tableName="company_tax_profiles" indexName="ix_company_tax_profiles_current">
+            <column name="company_id"/>
+            <column name="valid_to"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="company_tax_profiles" indexName="ix_company_tax_profiles_current"/>
+            <sql>
+                ALTER TABLE company_tax_profiles
+                    DROP CONSTRAINT chk_company_tax_profiles_validity,
+                    DROP CONSTRAINT uq_company_tax_profiles_current,
+                    DROP COLUMN current_profile_marker
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="364_add_tax_profile_to_electronic_documents" author="orlando">
+        <!-- LA CLAVE HACIA ATRAS que hoy no existe: "nada guarda con que perfil se emitio un
+             documento". Nullable a proposito: un documento sin fila de perfil coincidente (empresa
+             que emitio sin haber completado su ficha fiscal, dato hoy posible) no tiene con que
+             enlazar. El backfill de abajo SI es exacto para las filas que hoy existen -antes de
+             este changeset solo podia haber existido un perfil por empresa-.
+             FK compuesta (company_id, company_tax_profile_id) -> (company_id, id): en MySQL basta
+             que UNA columna de una FK multicolumna sea NULL para que la fila quede sin comprobar
+             (no hace falta NO ACTION especial), asi que los documentos sin perfil asociado no
+             chocan con la constraint. -->
+        <addColumn tableName="electronic_documents">
+            <column name="company_tax_profile_id" type="BIGINT"/>
+        </addColumn>
+        <sql>
+            UPDATE electronic_documents ed
+            JOIN company_tax_profiles ctp ON ctp.company_id = ed.company_id
+            SET ed.company_tax_profile_id = ctp.id
+            WHERE ed.company_tax_profile_id IS NULL;
+        </sql>
+        <createIndex tableName="electronic_documents"
+                     indexName="ix_electronic_documents_tax_profile">
+            <column name="company_id"/>
+            <column name="company_tax_profile_id"/>
+        </createIndex>
+        <addForeignKeyConstraint baseTableName="electronic_documents"
+                                 baseColumnNames="company_id, company_tax_profile_id"
+                                 referencedTableName="company_tax_profiles"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_electronic_documents_tax_profile"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="electronic_documents"
+                                      constraintName="fk_electronic_documents_tax_profile"/>
+            <dropIndex tableName="electronic_documents"
+                       indexName="ix_electronic_documents_tax_profile"/>
+            <dropColumn tableName="electronic_documents" columnName="company_tax_profile_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

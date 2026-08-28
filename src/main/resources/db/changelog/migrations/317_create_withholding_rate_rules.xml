@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha withholding_rate_rules). QUE RETENCION ESPERAR DE CADA CLIENTE.
+         Sin ella cada retencion llega como una sorpresa que deja la factura sin saldar y arranca el
+         reloj de la mora contra alguien que pago bien. Con ella se sabe de antemano que de 213.010
+         se van a girar 205.850, y el saldo cierra solo.
+
+         TABLA GLOBAL, SIN EMPRESA, Y VA SOLA EN SU CHANGESET. No es estetica: si una entidad de
+         este bloque alcanzara la tabla de empresas, las cuatro reglas duras de aislamiento caen
+         sobre la funcionalidad entera. La tarifa depende del tipo de retencion, de la naturaleza
+         del servicio y del municipio -no del cliente-; lo que depende del cliente es si es agente
+         de retencion, y eso vive en company_billing_profiles.
+
+         service_nature COMPARTE LISTA CERRADA con catalog_items (229) y hay que escribirla igual
+         en los dos sitios. Es la mas peligrosa del modelo: si divergen en un valor, la busqueda de
+         la tarifa devuelve VACIO, la retencion esperada sale cero y NO HAY ERROR -nadie se entera
+         hasta que el cliente gira de menos-. Por eso va como CHECK aqui tambien y no como
+         comentario.
+
+         TRES ARREGLOS DE CLAVE QUE LA FICHA NO TENIA:
+         1. EL MUNICIPIO VACIO ROMPIA LA UNICIDAD DE LAS NACIONALES. Dos tarifas para el mismo
+            servicio y la misma fecha -una al 3,5 y otra al 4- no chocan si el municipio va vacio,
+            porque en un indice unico dos NULL no son iguales. La base admitia las dos, la consulta
+            devolvia dos filas y el codigo tomaba la primera que llegara. Remedio: municipality_code
+            sigue NULABLE para poder llevar FK real contra cities.dane_code, y la unicidad se
+            construye sobre municipality_key, columna generada con CENTINELA '-' que nunca es vacia.
+            Las dos cosas a la vez: clave foranea de verdad y unicidad que si restringe.
+         2. FALTABA LA OTRA MITAD: nada impedia dos vigencias SOLAPADAS. current_rule_marker cierra
+            eso con el mismo patron de columna generada que el modelo usa nueve veces: mientras la
+            regla no tenga fecha de fin, el marcador vale el supuesto completo; en cuanto se cierra,
+            vale vacio y libera el hueco.
+         3. LA TARIFA NO DECIA EN QUE UNIDAD ESTABA. Con cuatro decimales, una de las dos lecturas
+            trunca: si la columna guardara la FRACCION, el 4,14 por mil de Bogota se corta a 0,0041
+            y se retiene casi un uno por ciento de menos en cada factura, calculado en silencio.
+            Se resuelve por el nombre -rate_percent, la unidad va en la columna y no en un
+            comentario- y subiendo la precision a seis decimales. Es la decision de tipo mas barata
+            hoy y la unica sin arreglo barato despues.
+
+         minimum_base_amount y minimum_base_uvt: la base minima en pesos Y en unidades, porque el
+         numero en pesos envejece cada ano y el numero en UVT no. Son DOS unidades tributarias
+         -105.000 en 2026, no 210.000-; el cambio es reciente y esta discutido en tribunales, y por
+         eso la regla lleva vigencia y no es una constante en el codigo. Al menos una de las dos
+         tiene que estar escrita. -->
+    <changeSet id="317_create_withholding_rate_rules" author="orlando">
+        <createTable tableName="withholding_rate_rules">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="withholding_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="service_nature" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="municipality_code" type="VARCHAR(5)"/>
+            <column name="rate_percent" type="DECIMAL(9,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="minimum_base_amount" type="DECIMAL(19,2)"/>
+            <column name="minimum_base_uvt" type="DECIMAL(9,2)"/>
+            <column name="legal_reference" type="VARCHAR(255)"/>
+            <column name="valid_from" type="DATE"><constraints nullable="false"/></column>
+            <column name="valid_to" type="DATE"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE withholding_rate_rules
+                MODIFY COLUMN municipality_code VARCHAR(5)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD COLUMN municipality_key VARCHAR(5)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (COALESCE(municipality_code, '-')) STORED,
+                ADD COLUMN current_rule_marker VARCHAR(60)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN valid_to IS NULL
+                            THEN CONCAT(withholding_type, '|', service_nature, '|',
+                                        COALESCE(municipality_code, '-'))
+                            ELSE NULL
+                        END
+                    ) STORED,
+                ADD CONSTRAINT uq_withholding_rate_rules_case
+                    UNIQUE (withholding_type, service_nature, municipality_key, valid_from),
+                ADD CONSTRAINT uq_withholding_rate_rules_current
+                    UNIQUE (current_rule_marker),
+                ADD CONSTRAINT chk_withholding_rate_rules_type
+                    CHECK (withholding_type IN ('INCOME_TAX','VAT','ICA')),
+                ADD CONSTRAINT chk_withholding_rate_rules_service_nature
+                    CHECK (service_nature IN ('SOFTWARE_LICENSING','TECHNICAL_SERVICE',
+                                              'CONSULTING')),
+                ADD CONSTRAINT chk_withholding_rate_rules_municipality
+                    CHECK ((withholding_type = 'ICA' AND municipality_code IS NOT NULL)
+                           OR (withholding_type <> 'ICA' AND municipality_code IS NULL)),
+                ADD CONSTRAINT chk_withholding_rate_rules_rate
+                    CHECK (rate_percent > 0 AND rate_percent <= 100),
+                ADD CONSTRAINT chk_withholding_rate_rules_minimum_base
+                    CHECK (minimum_base_amount IS NOT NULL OR minimum_base_uvt IS NOT NULL),
+                ADD CONSTRAINT chk_withholding_rate_rules_minimum_base_sign
+                    CHECK ((minimum_base_amount IS NULL OR minimum_base_amount >= 0)
+                           AND (minimum_base_uvt IS NULL OR minimum_base_uvt >= 0)),
+                ADD CONSTRAINT chk_withholding_rate_rules_validity
+                    CHECK (valid_to IS NULL OR valid_to > valid_from)
+        ]]></sql>
+
+        <createIndex tableName="withholding_rate_rules"
+                     indexName="ix_withholding_rate_rules_open">
+            <column name="valid_to"/>
+        </createIndex>
+        <createIndex tableName="withholding_rate_rules"
+                     indexName="ix_withholding_rate_rules_municipality">
+            <column name="municipality_code"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="withholding_rate_rules"
+                                 baseColumnNames="municipality_code"
+                                 referencedTableName="cities"
+                                 referencedColumnNames="dane_code"
+                                 constraintName="fk_withholding_rate_rules_municipality"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="withholding_rate_rules"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

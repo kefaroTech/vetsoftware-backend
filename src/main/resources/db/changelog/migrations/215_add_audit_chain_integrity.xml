@@ -24,10 +24,24 @@
             ALTER TABLE audit_event_outbox
                 MODIFY COLUMN payload LONGTEXT NOT NULL
         </sql>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): 224 retira audit_event_outbox A PROPOSITO y documenta que SU rollback es
+             <empty/> -no la recrea; si hace falta, se recupera desde git-. Eso significa que,
+             en una reversion completa, este rollback siempre encuentra la tabla ya ausente.
+             Se guarda con un chequeo de existencia (PREPARE/EXECUTE dinamico) en vez de
+             asumir que la tabla sigue ahi: si 224 no se ha aplicado todavia -rollback parcial
+             a un punto anterior-, revierte de verdad; si ya se aplico, no hace nada en vez de
+             reventar con "Unknown table". Solo se toca el bloque <rollback>. -->
         <rollback>
             <sql>
-                ALTER TABLE audit_event_outbox
-                    MODIFY COLUMN payload JSON NOT NULL
+                SET @tbl_exists_215_01 = (SELECT COUNT(*) FROM information_schema.tables
+                     WHERE table_schema = DATABASE() AND table_name = 'audit_event_outbox');
+                SET @stmt_215_01 = IF(@tbl_exists_215_01 > 0,
+                    'ALTER TABLE audit_event_outbox MODIFY COLUMN payload JSON NOT NULL',
+                    'DO 0');
+                PREPARE rollback_215_01 FROM @stmt_215_01;
+                EXECUTE rollback_215_01;
+                DEALLOCATE PREPARE rollback_215_01;
             </sql>
         </rollback>
     </changeSet>
@@ -53,14 +67,19 @@
             <column name="id"/>
         </createIndex>
 
+        <!-- AJUSTE (mismo motivo que 215_01): guardado por existencia, combinado en un solo
+             ALTER TABLE para poder envolverlo en un unico PREPARE/EXECUTE. -->
         <rollback>
-            <dropIndex tableName="audit_event_outbox" indexName="idx_audit_outbox_unsequenced"/>
-            <dropUniqueConstraint tableName="audit_event_outbox"
-                                  constraintName="uq_audit_outbox_chain_sequence"/>
-            <dropColumn tableName="audit_event_outbox" columnName="chain_hash"/>
-            <dropColumn tableName="audit_event_outbox" columnName="previous_hash"/>
-            <dropColumn tableName="audit_event_outbox" columnName="chain_sequence"/>
-            <dropColumn tableName="audit_event_outbox" columnName="payload_hash"/>
+            <sql>
+                SET @tbl_exists_215_02 = (SELECT COUNT(*) FROM information_schema.tables
+                     WHERE table_schema = DATABASE() AND table_name = 'audit_event_outbox');
+                SET @stmt_215_02 = IF(@tbl_exists_215_02 > 0,
+                    'ALTER TABLE audit_event_outbox DROP INDEX idx_audit_outbox_unsequenced, DROP INDEX uq_audit_outbox_chain_sequence, DROP COLUMN chain_hash, DROP COLUMN previous_hash, DROP COLUMN chain_sequence, DROP COLUMN payload_hash',
+                    'DO 0');
+                PREPARE rollback_215_02 FROM @stmt_215_02;
+                EXECUTE rollback_215_02;
+                DEALLOCATE PREPARE rollback_215_02;
+            </sql>
         </rollback>
     </changeSet>
 
@@ -76,8 +95,18 @@
                SET payload_hash = SHA2(payload, 256)
              WHERE payload_hash IS NULL
         </sql>
+        <!-- AJUSTE (mismo motivo que 215_01): guardado por existencia. -->
         <rollback>
-            <sql>UPDATE audit_event_outbox SET payload_hash = NULL</sql>
+            <sql>
+                SET @tbl_exists_215_03 = (SELECT COUNT(*) FROM information_schema.tables
+                     WHERE table_schema = DATABASE() AND table_name = 'audit_event_outbox');
+                SET @stmt_215_03 = IF(@tbl_exists_215_03 > 0,
+                    'UPDATE audit_event_outbox SET payload_hash = NULL',
+                    'DO 0');
+                PREPARE rollback_215_03 FROM @stmt_215_03;
+                EXECUTE rollback_215_03;
+                DEALLOCATE PREPARE rollback_215_03;
+            </sql>
         </rollback>
     </changeSet>
 
@@ -86,10 +115,17 @@
             ALTER TABLE audit_event_outbox
                 MODIFY COLUMN payload_hash CHAR(64) NOT NULL
         </sql>
+        <!-- AJUSTE (mismo motivo que 215_01): guardado por existencia. -->
         <rollback>
             <sql>
-                ALTER TABLE audit_event_outbox
-                    MODIFY COLUMN payload_hash CHAR(64) NULL
+                SET @tbl_exists_215_04 = (SELECT COUNT(*) FROM information_schema.tables
+                     WHERE table_schema = DATABASE() AND table_name = 'audit_event_outbox');
+                SET @stmt_215_04 = IF(@tbl_exists_215_04 > 0,
+                    'ALTER TABLE audit_event_outbox MODIFY COLUMN payload_hash CHAR(64) NULL',
+                    'DO 0');
+                PREPARE rollback_215_04 FROM @stmt_215_04;
+                EXECUTE rollback_215_04;
+                DEALLOCATE PREPARE rollback_215_04;
             </sql>
         </rollback>
     </changeSet>
@@ -135,8 +171,13 @@
             <column name="updated_at" valueComputed="UTC_TIMESTAMP(6)"/>
         </insert>
 
+        <!-- AJUSTE (mismo motivo que 215_01, aplicado a audit_chain_head en vez de
+             audit_event_outbox): 224_02_drop_audit_chain_head ya se llevo esta tabla por
+             delante y tampoco la recrea. dropTable a secas revienta con "Unknown table" en
+             una reversion completa; DROP TABLE IF EXISTS es tolerante sin dejar de revertir
+             de verdad cuando la tabla si existe (rollback parcial anterior a 224). -->
         <rollback>
-            <dropTable tableName="audit_chain_head"/>
+            <sql>DROP TABLE IF EXISTS audit_chain_head;</sql>
         </rollback>
     </changeSet>
 </databaseChangeLog>

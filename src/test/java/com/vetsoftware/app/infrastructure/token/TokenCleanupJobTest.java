@@ -3,7 +3,6 @@ package com.vetsoftware.app.infrastructure.token;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,6 +14,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.vetsoftware.app.infrastructure.observability.ScheduledJobCatalog;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import com.vetsoftware.app.infrastructure.token.TokenCleanupMetrics.PurgedTokens;
 import com.vetsoftware.app.infrastructure.token.TokenCleanupRepository.TokenCounts;
@@ -23,13 +23,21 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 
+@ExtendWith(MockitoExtension.class)
 class TokenCleanupJobTest {
 
-    private final TokenCleanupRepository repository = mock(TokenCleanupRepository.class);
-    private final TokenCleanupMetrics metrics = mock(TokenCleanupMetrics.class);
-    private final ScheduledJobTelemetry telemetry = mock(ScheduledJobTelemetry.class);
+    @Mock
+    private TokenCleanupRepository repository;
+    @Mock
+    private TokenCleanupMetrics metrics;
+    @Mock
+    private ScheduledJobTelemetry telemetry;
+
     private final TokenCleanupProperties properties = new TokenCleanupProperties();
     private TokenCleanupJob job;
 
@@ -100,7 +108,11 @@ class TokenCleanupJobTest {
 
         ArgumentCaptor<Supplier<ScheduledJobTelemetry.Outcome>> actionCaptor = ArgumentCaptor
                 .forClass(Supplier.class);
-        verify(telemetry).observe(eq("security.tokens.cleanup"), actionCaptor.capture());
+        // La constante del catalogo, no el literal: `observe` esta sobrecargado y la
+        // sobrecarga de String no se invoca sobre un doble. Verificar el literal daba
+        // por buena una llamada que nunca ocurrio en esa forma.
+        verify(telemetry).observe(eq(ScheduledJobCatalog.SECURITY_TOKENS_CLEANUP),
+                actionCaptor.capture());
         assertThat(actionCaptor.getValue().get()).isEqualTo(ScheduledJobTelemetry.Outcome.NO_WORK);
     }
 }

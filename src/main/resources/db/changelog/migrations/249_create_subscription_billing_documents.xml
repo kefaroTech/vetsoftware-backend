@@ -17,7 +17,22 @@
          FK compuestas fk_sbd_subscription y fk_sbd_corrects (autorreferencial, par P5). uq_sbd_company_id
          es la clave auxiliar que necesitan subscription_charges, subscription_billing_document_taxes,
          billing_document_applications (x2), dunning_events y ella misma. ix_sbd_subscription_period se
-         crea ANTES de la FK compuesta (Apéndice C). -->
+         crea ANTES de la FK compuesta (Apéndice C). 
+
+         CAPA K: billing_profile_id + colacion exacta en los identificadores ajenos.
+         billing_profile_id CONGELA A QUIEN SE EMITIO. Sin esta columna, company_billing_profiles
+         guardaba vigencias para nada: la factura habria seguido resolviendo el perfil vigente HOY,
+         y una emitida hace un ano cambiaria de destinatario al cambiar el NIT -exactamente el
+         defecto que esa tabla existe para corregir-. La FK compuesta (company_id, billing_profile_id)
+         se declara HACIA ATRAS desde 316; el indice que la sostiene se crea aqui.
+         NULABLE, y esto es una desviacion consciente de la ficha, que la pide obligatoria: hacerla
+         NOT NULL exige que GenerateBillingDocumentService resuelva el perfil vigente y que el alta
+         de una empresa cree uno, que es una funcionalidad entera y no un cambio de esquema. Con
+         NOT NULL hoy, TODO documento de cobro deja de poder emitirse. Queda con issue.
+         Colacion: document_number, external_invoice_number, external_cufe y external_provider son
+         identificadores -propios o ajenos- y viven bajo uq_sbd_number y uq_sbd_external. Bajo la
+         comparacion heredada, "FE-1043" y "fe-1043" empatan y la segunda factura externa se
+         rechaza como duplicada de otra que no lo es. -->
     <changeSet id="249_create_subscription_billing_documents" author="orlando">
         <createTable tableName="subscription_billing_documents">
             <column name="id" type="BIGINT" autoIncrement="true">
@@ -31,6 +46,7 @@
                              references="companies(id)"/>
             </column>
             <column name="subscription_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="billing_profile_id" type="BIGINT"/>
             <column name="document_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
             <column name="billing_reason" type="VARCHAR(20)"><constraints nullable="false"/></column>
             <column name="period_start" type="DATE"><constraints nullable="false"/></column>
@@ -123,7 +139,15 @@
                 ADD CONSTRAINT chk_sbd_due_date
                     CHECK (due_date IS NULL OR external_issued_at IS NULL OR due_date >= external_issued_at),
                 ADD CONSTRAINT chk_sbd_corrects_kind
-                    CHECK (corrects_document_id IS NULL OR document_kind IN ('CREDIT_NOTE','DEBIT_NOTE'))
+                    CHECK (corrects_document_id IS NULL OR document_kind IN ('CREDIT_NOTE','DEBIT_NOTE')),
+                MODIFY COLUMN document_number VARCHAR(30)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN external_invoice_number VARCHAR(60)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN external_cufe VARCHAR(100)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN external_provider VARCHAR(40)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL
         ]]></sql>
 
         <createIndex tableName="subscription_billing_documents" indexName="ix_sbd_subscription_period">
@@ -138,6 +162,10 @@
         <createIndex tableName="subscription_billing_documents" indexName="ix_sbd_awaiting">
             <column name="issue_status"/>
             <column name="created_date"/>
+        </createIndex>
+        <createIndex tableName="subscription_billing_documents" indexName="ix_sbd_billing_profile">
+            <column name="company_id"/>
+            <column name="billing_profile_id"/>
         </createIndex>
 
         <addForeignKeyConstraint baseTableName="subscription_billing_documents"

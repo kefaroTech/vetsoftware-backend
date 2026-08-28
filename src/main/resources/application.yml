@@ -304,8 +304,12 @@ vetsoftware:
     enabled: ${TOKEN_CLEANUP_ENABLED:true}
     # Los tokens terminales o expirados se conservan brevemente para diagnóstico y luego se eliminan.
     retention: ${TOKEN_CLEANUP_RETENTION:P7D}
-    interval: ${TOKEN_CLEANUP_INTERVAL:PT1H}
-    initial-delay: ${TOKEN_CLEANUP_INITIAL_DELAY:PT5M}
+    # Cada hora al minuto :20 de America/Bogota, no "cada hora desde el arranque" (#609).
+    # La alerta VetSoftwareSecurityTokenTableGrowth razona sobre "despues de varias
+    # ejecuciones de la purga", y eso exige saber cuando son. La expresion tambien esta
+    # declarada en ScheduledJobCatalog.SECURITY_TOKENS_CLEANUP y las dos tienen que
+    # coincidir LITERALMENTE: lo comprueba ScheduledJobCatalogParityTest.
+    cron: ${TOKEN_CLEANUP_CRON:0 20 * * * *}
     batch-size: ${TOKEN_CLEANUP_BATCH_SIZE:1000}
     max-batches-per-run: ${TOKEN_CLEANUP_MAX_BATCHES_PER_RUN:10}
     growth-warning-threshold: ${TOKEN_CLEANUP_GROWTH_WARNING_THRESHOLD:50000}
@@ -355,13 +359,20 @@ vetsoftware:
 # Jobs @Scheduled de documento electronico. Van en la raiz `dian` (no bajo `vetsoftware.dian`)
 # porque asi los declaran los @Value de ContingencyRetryJob y PendingReconciliationJob.
 #
-# Los dos ciclos son fixedDelay de 12h: el reloj corre desde que TERMINA la pasada anterior, no
-# desde una hora fija del dia. El initial-delay se deja corto a proposito —cada despliegue dispara
-# una pasada al minuto o dos—, que es la unica ventana de reintento rapido que queda con 12h.
+# YA NO SON fixedDelay (#609). Los tres pasaron a `cron` con zona America/Bogota, declarado en
+# ScheduledJobCatalog: con fixedDelay la hora de cada pasada era la del ultimo despliegue mas el
+# retardo inicial, asi que no habia forma de fijar el umbral de "este job no corrio" — que es la
+# unica manera de detectar un barrido que dejo de programarse, porque un job que no corre no
+# incrementa ningun contador ni escribe ningun log.
+#
+# LO QUE SE PIERDE Y SE ASUME: la pasada corta tras cada despliegue que daba el initial-delay. Era
+# la unica ventana de reintento rapido con un ciclo de 12 h. A cambio, las dos pasadas diarias
+# quedan a las 02:15/14:15, 02:30/14:30 y 02:45/14:45, y la de la tarde se mantiene a proposito —la
+# DIAN se cae por horas y esperar a la madrugada siguiente alargaria la contingencia un dia entero.
+# Un reintento inmediato tras un despliegue se pide a mano por el endpoint de sistema.
 dian:
   contingency:
-    initial-delay-ms: ${DIAN_CONTINGENCY_INITIAL_DELAY_MS:60000}
-    retry-delay-ms: ${DIAN_CONTINGENCY_RETRY_DELAY_MS:43200000}
+    cron: ${DIAN_CONTINGENCY_CRON:0 15 2,14 * * *}
     batch-size: ${DIAN_CONTINGENCY_BATCH_SIZE:25}
     # El lease NO acompaña al ciclo: acota cuanto retiene una replica el lote mientras lo procesa.
     # Corto a proposito, para que un documento no espere 12h si la replica que lo reclamo muere.
@@ -372,7 +383,6 @@ dian:
     max-attempts: ${DIAN_CONTINGENCY_MAX_ATTEMPTS:4}
     deadline-hours: ${DIAN_CONTINGENCY_DEADLINE_HOURS:48}
   reconciliation:
-    initial-delay-ms: ${DIAN_RECONCILIATION_INITIAL_DELAY_MS:120000}
-    poll-delay-ms: ${DIAN_RECONCILIATION_POLL_DELAY_MS:43200000}
+    cron: ${DIAN_RECONCILIATION_CRON:0 30 2,14 * * *}
     batch-size: ${DIAN_RECONCILIATION_BATCH_SIZE:50}
     lease: ${DIAN_RECONCILIATION_LEASE:PT15M}

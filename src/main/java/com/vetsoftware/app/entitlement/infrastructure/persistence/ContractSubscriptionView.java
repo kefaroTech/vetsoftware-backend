@@ -10,4 +10,11 @@ public interface ContractSubscriptionView {
     String getStatus();
 
     LocalDate getTrialEndDate();
+
+    /**
+     * {@code subscriptions.start_date}: el dia en que el contrato empezo a existir.
+     * Es la fecha contra la que D-74 decide si un eje nacio antes o despues de la
+     * firma.
+     */
+    LocalDate getStartDate();
 }

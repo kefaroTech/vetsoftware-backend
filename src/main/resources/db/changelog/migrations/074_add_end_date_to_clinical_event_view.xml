@@ -102,9 +102,91 @@
               JOIN spa_types spt ON spt.id = sp.spa_type_id
              WHERE sp.enabled = TRUE
         ]]></createView>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): el <rollback> original apuntaba con <sqlFile> a
+             071_filter_enabled_in_clinical_event_view.xml -un CHANGELOG XML, no un script SQL-,
+             asi que MySQL recibia el XML entero como sentencia y reventaba con un error de
+             sintaxis literal sobre "<?xml version...". La intencion era clara -devolver la
+             vista a como la dejo 071, sin end_date-, pero sqlFile ejecuta el archivo TAL CUAL de
+             SQL, nunca interpreta un changelog. Se declara aqui el createView inline con el
+             cuerpo exacto de 071, en vez de intentar referenciar otro changeset. -->
         <rollback>
-            <sqlFile path="db/changelog/migrations/071_filter_enabled_in_clinical_event_view.xml"
-                     relativeToChangelogFile="false"/>
+            <createView viewName="v_clinical_event" replaceIfExists="true"><![CDATA[
+            SELECT CAST(CONCAT('CONSULTATION-', c.id) AS CHAR(64)) AS composite_key,
+                   c.id AS source_id,
+                   c.animal_id AS animal_id,
+                   c.company_id AS company_id,
+                   NULLIF(c.id, c.id) AS consultation_id,
+                   c.date AS event_date,
+                   CAST('CONSULTATION' AS CHAR(32)) AS event_type,
+                   CAST(ct.name AS CHAR(255)) AS summary
+              FROM consultations c
+              JOIN consultation_types ct ON ct.id = c.consultation_type_id
+             WHERE c.enabled = TRUE
+            UNION ALL
+            SELECT CAST(CONCAT('SURGERY-', s.id) AS CHAR(64)),
+                   s.id, s.animal_id, s.company_id, s.consultation_id, s.date,
+                   CAST('SURGERY' AS CHAR(32)),
+                   CAST(st.name AS CHAR(255))
+              FROM surgeries s
+              JOIN surgery_types st ON st.id = s.surgery_type_id
+             WHERE s.enabled = TRUE
+            UNION ALL
+            SELECT CAST(CONCAT('VACCINATION-', v.id) AS CHAR(64)),
+                   v.id, v.animal_id, v.company_id, v.consultation_id, v.date,
+                   CAST('VACCINATION' AS CHAR(32)),
+                   CAST(vt.name AS CHAR(255))
+              FROM vaccinations v
+              JOIN vaccination_types vt ON vt.id = v.vaccination_type_id
+             WHERE v.enabled = TRUE
+            UNION ALL
+            SELECT CAST(CONCAT('DEWORMING-', d.id) AS CHAR(64)),
+                   d.id, d.animal_id, d.company_id, d.consultation_id, d.date,
+                   CAST('DEWORMING' AS CHAR(32)),
+                   CAST(d.product AS CHAR(255))
+              FROM dewormings d
+             WHERE d.enabled = TRUE
+            UNION ALL
+            SELECT CAST(CONCAT('HOSPITALIZATION-', h.id) AS CHAR(64)),
+                   h.id, h.animal_id, h.company_id, h.consultation_id, h.start_date,
+                   CAST('HOSPITALIZATION' AS CHAR(32)),
+                   CAST(LEFT(h.reason, 255) AS CHAR(255))
+              FROM hospitalizations h
+             WHERE h.enabled = TRUE
+            UNION ALL
+            SELECT CAST(CONCAT('LABORATORY_TEST-', l.id) AS CHAR(64)),
+                   l.id, l.animal_id, l.company_id, l.consultation_id, l.date,
+                   CAST('LABORATORY_TEST' AS CHAR(32)),
+                   CAST(lt.name AS CHAR(255))
+              FROM laboratory_tests l
+              JOIN laboratory_test_types lt ON lt.id = l.test_type_id
+             WHERE l.enabled = TRUE
+            UNION ALL
+            SELECT CAST(CONCAT('DIAGNOSTIC_IMAGING-', di.id) AS CHAR(64)),
+                   di.id, di.animal_id, di.company_id, di.consultation_id, di.date,
+                   CAST('DIAGNOSTIC_IMAGING' AS CHAR(32)),
+                   CAST(dit.name AS CHAR(255))
+              FROM diagnostic_imagings di
+              JOIN diagnostic_imaging_types dit ON dit.id = di.diagnostic_imaging_type_id
+             WHERE di.enabled = TRUE
+            UNION ALL
+            SELECT CAST(CONCAT('PRESCRIPTION-', p.id) AS CHAR(64)),
+                   p.id, p.animal_id, p.company_id, p.consultation_id, p.date,
+                   CAST('PRESCRIPTION' AS CHAR(32)),
+                   CAST(LEFT(p.diagnosis, 255) AS CHAR(255))
+              FROM prescriptions p
+             WHERE p.enabled = TRUE
+            UNION ALL
+            SELECT CAST(CONCAT('SPA-', sp.id) AS CHAR(64)),
+                   sp.id, sp.animal_id, sp.company_id,
+                   NULLIF(sp.id, sp.id) AS consultation_id,
+                   sp.date,
+                   CAST('SPA' AS CHAR(32)),
+                   CAST(spt.name AS CHAR(255))
+              FROM spas sp
+              JOIN spa_types spt ON spt.id = sp.spa_type_id
+             WHERE sp.enabled = TRUE
+        ]]></createView>
         </rollback>
     </changeSet>
 

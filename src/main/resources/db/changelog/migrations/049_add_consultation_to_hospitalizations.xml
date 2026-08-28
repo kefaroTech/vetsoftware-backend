@@ -11,6 +11,13 @@
                              references="consultations(id)"/>
             </column>
         </addColumn>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback>, el dropColumn auto-generado no suelta la FK primero y
+             revienta con "Cannot drop column ... needed in a foreign key constraint". -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="hospitalizations" constraintName="fk_hospitalizations_consultation"/>
+            <dropColumn tableName="hospitalizations" columnName="consultation_id"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

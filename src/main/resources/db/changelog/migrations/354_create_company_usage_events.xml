@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CUMPLIR Y MEDIR - CAPA O (ficha company_usage_events). EL HECHO QUE SOSTIENE EL COBRO,
+         POR EMPRESA. La tabla mas grande del bloque -proyeccion a diez anos y 500 clinicas: unos
+         doce millones de filas- y la unica cuyo volumen hay que mirar.
+
+         DEPENDE DEL PRERREQUISITO 341: las cuatro ramas clinicas (owner/animal/appointment/
+         electronic_document) son FK compuestas contra (company_id, id) de sus tablas, y el eje
+         contra (id, code) de limit_dimensions -mismo patron que fk_company_capacities_dimension
+         (314)-.
+
+         UNA CLAVE FORANEA POR RAMA, NUNCA UN IDENTIFICADOR POLIMORFICO: es la Polymorphic
+         Association que SQL Antipatterns (Karwin, cap. 8) rechaza, y aqui sostiene un cobro.
+         chk_cue_branch hace dos cosas a la vez: impide que un hecho de un eje apunte a la fila
+         equivocada, e impide que EXISTA un hecho de uso para un eje de existencias (USER, BRANCH,
+         TERMINAL, STORAGE_GB) -esos se cuentan, no se acumulan hecho a hecho-. Consecuencia
+         honesta: vender un eje CONTABLE nuevo es un despliegue (columna, clave y CHECK nuevos);
+         vender un eje DE EXISTENCIAS nuevo sigue siendo insertar una fila.
+
+         period_key es VARCHAR(7) y NO CHAR(7) -al reves que posting_period-: admite tres
+         longitudes de contenido distintas (2026-03, 2026-Q3, ALLTIME) y el relleno de un CHAR
+         seria real. Misma desviacion deliberada que 314 documenta para company_capacities.
+
+         LA UNICIDAD (uq_cue_fact, via usage_ref_key) NO ESTABA EN EL DOCUMENTO: sin ella el
+         reintento del proceso de medicion duplica el hecho y el excedente facturado. Depende de
+         que occurred_at sea EL INSTANTE DEL REGISTRO CONSUMIDO Y NO EL DEL RELOJ DEL PROCESO -si
+         se rellena con now(), el reintento deja de chocar y la proteccion desaparece sin ruido.
+         Esta es una REGLA DE CODIGO, no garantizada por la base; el caso de uso que la escribe
+         necesita su prueba de rodaja-.
+
+         SIN enabled: la ficha excluye expresamente los hechos de uso de la marca de activo -un
+         hecho no se desactiva-.
+
+         LA VENTANA DE CONSERVACION (S7.3 de la especificacion) NO ES UN CAMPO NI UN DISPARADOR:
+         el detalle de esta tabla NO SE CONSOLIDA NI SE PURGA mientras exista una tax_returns de
+         tipo INCOME_TAX que cubra el ano gravable del subscription_charges al que apunta charge_id
+         y cuya firmeza_until no haya pasado (art. 632 ET modificado por el art. 46 de la Ley 962
+         de 2005: el termino de conservacion es el de firmeza de la declaracion de renta que los
+         documentos soportan, NO los 24 meses del documento maestro -con esa regla el detalle se
+         habria consolidado 27 meses antes de que la declaracion quedara en firme-). Suelo minimo
+         si esa declaracion aun no existe: CINCO ANOS desde occurred_at (art. 632 ET para agentes
+         de retencion y responsables de IVA). ix_tax_returns_firmeza (351) es el indice que hace
+         barata esa consulta. Esto lo escribe el proceso de purga de backend-feature, no el
+         esquema; y S13 de la especificacion deja pendiente de un contador si aplica el termino de
+         tres o de cinco anos segun compensacion de perdidas fiscales.
+
+         PROYECCION DE ESCALA, NO MEDICION: a ~40 bytes por entrada de indice secundario, ocho
+         indices sobre doce millones de filas rondan los 3 GB solo de indices, sobre un buffer pool
+         de ~1,4 GiB utilizables en una db.t4g.small. No se aplica particion, replica ni
+         consolidacion hoy -la tabla no existe y no hay nada que medir-; se mide al ano del primer
+         cliente con information_schema y sys.schema_unused_indexes. -->
+    <changeSet id="354_create_company_usage_events" author="orlando">
+        <createTable tableName="company_usage_events">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="limit_dimension_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limit_dimension_code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="usage_owner_id" type="BIGINT"/>
+            <column name="usage_animal_id" type="BIGINT"/>
+            <column name="usage_appointment_id" type="BIGINT"/>
+            <column name="usage_electronic_document_id" type="BIGINT"/>
+            <column name="occurred_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="period_key" type="VARCHAR(7)"><constraints nullable="false"/></column>
+            <column name="billable" type="BOOLEAN"><constraints nullable="false"/></column>
+            <column name="charge_id" type="BIGINT"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE company_usage_events
+                MODIFY COLUMN limit_dimension_code VARCHAR(50)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN period_key VARCHAR(7)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                ADD COLUMN usage_ref_key VARCHAR(80)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (CONCAT(limit_dimension_code, '|',
+                        COALESCE(usage_owner_id, usage_animal_id, usage_appointment_id,
+                                 usage_electronic_document_id))) STORED,
+                ADD CONSTRAINT uq_cue_fact
+                    UNIQUE (company_id, limit_dimension_id, usage_ref_key, occurred_at),
+                ADD CONSTRAINT chk_cue_period_key
+                    CHECK (period_key REGEXP
+                        '^([0-9]{4}-(0[1-9]|1[0-2])|[0-9]{4}-Q[1-4]|[0-9]{4}-S[12]|ALLTIME)$'),
+                ADD CONSTRAINT chk_cue_billable
+                    CHECK (charge_id IS NULL OR billable = TRUE),
+                ADD CONSTRAINT chk_cue_branch
+                    CHECK (
+                         (limit_dimension_code = 'OWNER'       AND usage_owner_id IS NOT NULL
+                              AND usage_animal_id IS NULL AND usage_appointment_id IS NULL
+                              AND usage_electronic_document_id IS NULL)
+                      OR (limit_dimension_code = 'ANIMAL'      AND usage_animal_id IS NOT NULL
+                              AND usage_owner_id IS NULL AND usage_appointment_id IS NULL
+                              AND usage_electronic_document_id IS NULL)
+                      OR (limit_dimension_code = 'APPOINTMENT' AND usage_appointment_id IS NOT NULL
+                              AND usage_owner_id IS NULL AND usage_animal_id IS NULL
+                              AND usage_electronic_document_id IS NULL)
+                      OR (limit_dimension_code = 'INVOICE'
+                              AND usage_electronic_document_id IS NOT NULL
+                              AND usage_owner_id IS NULL AND usage_animal_id IS NULL
+                              AND usage_appointment_id IS NULL))
+        ]]></sql>
+
+        <createIndex tableName="company_usage_events" indexName="ix_cue_period">
+            <column name="company_id"/>
+            <column name="limit_dimension_id"/>
+            <column name="period_key"/>
+            <column name="occurred_at"/>
+        </createIndex>
+        <createIndex tableName="company_usage_events" indexName="ix_cue_charge">
+            <column name="company_id"/>
+            <column name="charge_id"/>
+        </createIndex>
+        <createIndex tableName="company_usage_events" indexName="ix_cue_dimension">
+            <column name="limit_dimension_id"/>
+            <column name="limit_dimension_code"/>
+        </createIndex>
+        <createIndex tableName="company_usage_events" indexName="ix_cue_owner">
+            <column name="company_id"/>
+            <column name="usage_owner_id"/>
+        </createIndex>
+        <createIndex tableName="company_usage_events" indexName="ix_cue_animal">
+            <column name="company_id"/>
+            <column name="usage_animal_id"/>
+        </createIndex>
+        <createIndex tableName="company_usage_events" indexName="ix_cue_appointment">
+            <column name="company_id"/>
+            <column name="usage_appointment_id"/>
+        </createIndex>
+        <createIndex tableName="company_usage_events" indexName="ix_cue_document">
+            <column name="company_id"/>
+            <column name="usage_electronic_document_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="company_usage_events"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_cue_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_usage_events"
+                                 baseColumnNames="limit_dimension_id, limit_dimension_code"
+                                 referencedTableName="limit_dimensions"
+                                 referencedColumnNames="id, code"
+                                 constraintName="fk_cue_dimension"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_usage_events"
+                                 baseColumnNames="company_id, charge_id"
+                                 referencedTableName="subscription_charges"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_cue_charge"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_usage_events"
+                                 baseColumnNames="company_id, usage_owner_id"
+                                 referencedTableName="owners"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_cue_owner"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_usage_events"
+                                 baseColumnNames="company_id, usage_animal_id"
+                                 referencedTableName="animals"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_cue_animal"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_usage_events"
+                                 baseColumnNames="company_id, usage_appointment_id"
+                                 referencedTableName="appointments"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_cue_appointment"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_usage_events"
+                                 baseColumnNames="company_id, usage_electronic_document_id"
+                                 referencedTableName="electronic_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_cue_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="company_usage_events"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

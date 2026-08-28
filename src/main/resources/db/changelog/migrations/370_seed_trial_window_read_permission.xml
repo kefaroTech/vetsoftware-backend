@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Encargo del coordinador (frente de autorizacion, tras cerrar los diez puertos muertos de
+         216/339/340/366): a NUEVE puertos de subscriptionitemlimit/companytrialgrant/
+         companytrialwindow/companylimitoverride/companylimitevent/companyentitlementsnapshot se
+         les anadio `and hasAuthority('<code>')` a su @PreAuthorize -366 los sembro cuando esos
+         guards eran solo `hasRole('SYSTEM') or @authz.isMyCompany(#companyId)`, SIN autoridad-.
+         VERIFICADO PUERTO A PUERTO contra el @PreAuthorize real (no de segunda mano), los nueve
+         reparten en SEIS codigos:
+           subscriptionItemLimit.read, companyTrialGrant.read, companyLimitOverride.read (SI, dos
+           puertos -ListCompanyLimitOverridesUseCase y ResolveEffectiveLimitUseCase- comparten el
+           mismo codigo), companyLimitEvent.read, companyEntitlementSnapshot.read: LOS CINCO YA
+           SEMBRADOS EN 366. No hace falta tocar nada: 366 sembro por CODIGO, no por puerto, asi
+           que un segundo puerto con el mismo `hasAuthority('companyLimitOverride.read')` ya queda
+           cubierto por la fila que 366 dejo en base_permissions/base_role_permissions/permissions/
+           role_permissions.
+           companyTrialWindow.read (FindCurrentTrialWindowUseCase): EL UNICO CODIGO NUEVO de los
+           seis. Mismo patron exacto que 366 -sub_module ENTITLEMENT, mismos cuatro pasos idempotentes,
+           backfill acotado por company_entitlements.access_level IN ('FULL','READ_ONLY')-, porque
+           es lectura de plataforma/tenant admin, igual que sus cinco hermanos.
+
+         LOS OTROS DOS CODIGOS DEL ENCARGO -companyLimitEvent.create (RecordLimitEventUseCase) y
+         companyEntitlementSnapshot.create (RecordEntitlementSnapshotUseCase)- NO SE SIEMBRAN AQUI,
+         A PROPOSITO. Los dos javadoc de esos puertos son explicitos: "tiene que estar sembrado en
+         el rol base de empleado, no en uno administrativo" -ninguno de los dos lo expone un
+         endpoint (los controllers respectivos solo declaran @GetMapping); los llaman
+         LimitDenialAdapter y CompanyEntitlementSnapshotAdapter (entitlement/infrastructure/
+         orchestration) bajo el principal del empleado que esta usando la aplicacion, sea quien sea-.
+
+         VERIFICADO: ESE ROL BASE NO EXISTE EN ESTE ESQUEMA. base_roles tiene una sola fila
+         sembrada -ADMIN, mandatory=TRUE- desde 266, y el propio comentario de 266 lo deja escrito:
+         "no se inventa una taxonomia de roles adicional -RECEPTIONIST, VETERINARIAN...- porque
+         ningun seed ni caso de uso la pide todavia". Los empleados que no son el dueno reciben su
+         rol de forma explicita via el slice `employeerole` (CreateEmployeeRoleUseCase), nunca por
+         herencia automatica de un rol base compartido. Colgar los dos codigos de create del rol
+         ADMIN -que es lo unico que hoy tiene fila en base_roles- dejaria el portazo SIN REGISTRAR
+         para cualquier empleado que no sea administrador -recepcion, peluqueria-, que es
+         exactamente el fallo silencioso que el propio javadoc de RecordLimitEventUseCase advierte
+         y que el encargo pide evitar. Sembrarlos activaria una autorizacion que hoy no tiene donde
+         colgarse sin inventar un rol nuevo, y esa es una decision de producto -crear el rol base
+         de empleado, o cambiar el @PreAuthorize de esos dos puertos para que no dependa de un
+         hasAuthority- que no le corresponde a un changeset de datos. QUEDA PENDIENTE, sin issue
+         -restriccion explicita del encargo de esta sesion-: ver el informe de la sesion. -->
+    <changeSet id="370_seed_trial_window_read_base_permission" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Ver ventana de prueba', 'companyTrialWindow.read', sm.id, TRUE
+            FROM sub_modules sm
+            WHERE sm.code = 'ENTITLEMENT'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_permissions existing
+                  WHERE existing.code = 'companyTrialWindow.read');
+        ]]></sql>
+        <rollback>
+            <sql>DELETE FROM base_permissions WHERE code = 'companyTrialWindow.read';</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="370_seed_trial_window_read_base_role_permission_admin" author="orlando">
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code = 'companyTrialWindow.read'
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id FROM base_permissions WHERE code = 'companyTrialWindow.read');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="370_seed_trial_window_read_permissions_backfill_companies" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'ENTITLEMENT'
+            CROSS JOIN base_permissions bp
+            WHERE bp.code = 'companyTrialWindow.read'
+              AND ce.access_level IN ('FULL', 'READ_ONLY')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>DELETE FROM permissions WHERE code = 'companyTrialWindow.read';</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="370_seed_trial_window_read_role_permissions_backfill_admin" author="orlando">
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id AND p.code = 'companyTrialWindow.read'
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM role_permissions
+                WHERE permission_id IN (
+                    SELECT id FROM permissions WHERE code = 'companyTrialWindow.read');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

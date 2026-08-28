@@ -60,12 +60,15 @@
                 ) STORED,
                 ADD CONSTRAINT uq_cash_session_open UNIQUE (company_id, branch_id, terminal, open_marker)
         </sql>
+        <!-- CORRECCION (el primer intento de arreglo de esta misma sesion solo revertia el
+             ALTER de open_marker/unique con drop+recreate de fk_cash_session_company, y se
+             quedaba corto: createTable y el ALTER estan en el MISMO changeset, y un <rollback>
+             explicito sustituye por completo la auto-generacion -no se combina con ella-, asi
+             que ese primer intento JAMAS soltaba la tabla cash_session. dropTable es mas simple
+             Y mas correcto: se lleva la tabla, sus tres FK y el indice de un solo golpe, sin
+             tener que razonar sobre cual de los indices sostiene cual FK. -->
         <rollback>
-            <sql>
-                ALTER TABLE cash_session
-                    DROP INDEX uq_cash_session_open,
-                    DROP COLUMN open_marker
-            </sql>
+            <dropTable tableName="cash_session"/>
         </rollback>
     </changeSet>
 
@@ -113,12 +116,13 @@
                 ) STORED,
                 ADD CONSTRAINT uq_cash_movement_reference UNIQUE (session_id, reference_key)
         </sql>
+        <!-- CORRECCION (mismo error que en 195_create_cash_session, arriba): createTable +
+             createIndex + el ALTER de reference_key estan en el MISMO changeset, y un
+             <rollback> explicito sustituye a la auto-generacion entera -no revierte createTable
+             ni createIndex por su cuenta-. dropTable se lleva la tabla, sus FK, sus indices y la
+             columna generada de un solo golpe. -->
         <rollback>
-            <sql>
-                ALTER TABLE cash_movement
-                    DROP INDEX uq_cash_movement_reference,
-                    DROP COLUMN reference_key
-            </sql>
+            <dropTable tableName="cash_movement"/>
         </rollback>
     </changeSet>
 
@@ -147,6 +151,15 @@
         <createIndex tableName="cash_session_count" indexName="idx_cash_session_count_session">
             <column name="session_id"/>
         </createIndex>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback> explicito, Liquibase auto-invierte createIndex+createTable en
+             orden inverso -dropIndex primero, dropTable despues- y el dropIndex revienta con
+             "Cannot drop index ... needed in a foreign key constraint" porque
+             idx_cash_session_count_session sostiene fk_cash_session_count_session. dropTable a
+             secas se lleva la FK y el indice de un solo golpe, sin el problema de orden. -->
+        <rollback>
+            <dropTable tableName="cash_session_count"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

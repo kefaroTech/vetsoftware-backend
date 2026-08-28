@@ -27,24 +27,27 @@ class CatalogPricePersistenceIT extends AbstractDataJpaTest {
     @PersistenceContext
     private EntityManager entityManager;
 
+    /** Resuelto, no sembrado: el articulo CORE llega del changeset 308. */
+    private Long nucleo;
+
     @BeforeEach
     void seed() {
         SchemaSeed.seed(entityManager);
+        nucleo = SchemaSeed.catalogItemId(entityManager, "CORE");
     }
 
     @Test
     @DisplayName("la consulta de tramo conserva ciclo, importes e impuesto")
     void la_consulta_de_tramo_conserva_importes_e_impuesto() {
-        CatalogPrice guardado = repository.save(CatalogPrice.create(SchemaSeed.PRICE_LIST_ID,
-                SchemaSeed.CATALOG_ITEM_CORE_ID, BillingCycle.ANNUAL, 1, null, 2,
-                new BigDecimal("950000.00"), BigDecimal.ZERO, new BigDecimal("19.00"),
-                TaxTreatment.TAXED, CatalogPriceMother.CREADO_EL));
+        CatalogPrice guardado = repository
+                .save(CatalogPrice.create(SchemaSeed.PRICE_LIST_ID, nucleo, BillingCycle.ANNUAL, 1,
+                        null, 2, new BigDecimal("950000.00"), BigDecimal.ZERO,
+                        new BigDecimal("19.00"), TaxTreatment.TAXED, CatalogPriceMother.CREADO_EL));
         entityManager.flush();
         entityManager.clear();
 
-        assertThat(repository.findTierScope(SchemaSeed.PRICE_LIST_ID,
-                SchemaSeed.CATALOG_ITEM_CORE_ID, BillingCycle.ANNUAL)).singleElement()
-                .satisfies(precio -> {
+        assertThat(repository.findTierScope(SchemaSeed.PRICE_LIST_ID, nucleo, BillingCycle.ANNUAL))
+                .singleElement().satisfies(precio -> {
                     assertThat(precio.getId()).isEqualTo(guardado.getId());
                     assertThat(precio.getUnitAmount()).isEqualByComparingTo("950000.00");
                     assertThat(precio.getTaxRate()).isEqualByComparingTo("19.00");
@@ -63,21 +66,18 @@ class CatalogPricePersistenceIT extends AbstractDataJpaTest {
     @Test
     @DisplayName("el alcance de tramos acota por lista, articulo y ciclo, los tres a la vez")
     void el_alcance_de_tramos_acota_por_los_tres_criterios() {
-        repository
-                .save(CatalogPrice.create(SchemaSeed.PRICE_LIST_ID, SchemaSeed.CATALOG_ITEM_CORE_ID,
-                        BillingCycle.ANNUAL, 1, 10, 0, new BigDecimal("900000.00"), BigDecimal.ZERO,
-                        new BigDecimal("19.00"), TaxTreatment.TAXED, CatalogPriceMother.CREADO_EL));
+        repository.save(CatalogPrice.create(SchemaSeed.PRICE_LIST_ID, nucleo, BillingCycle.ANNUAL,
+                1, 10, 0, new BigDecimal("900000.00"), BigDecimal.ZERO, new BigDecimal("19.00"),
+                TaxTreatment.TAXED, CatalogPriceMother.CREADO_EL));
         entityManager.flush();
         entityManager.clear();
 
         // El seed ya dejo un MONTHLY [1, *) sobre el mismo articulo y la misma lista.
-        assertThat(repository.findTierScope(SchemaSeed.PRICE_LIST_ID,
-                SchemaSeed.CATALOG_ITEM_CORE_ID, BillingCycle.ANNUAL)).singleElement()
-                .satisfies(precio -> assertThat(precio.getBillingCycle())
+        assertThat(repository.findTierScope(SchemaSeed.PRICE_LIST_ID, nucleo, BillingCycle.ANNUAL))
+                .singleElement().satisfies(precio -> assertThat(precio.getBillingCycle())
                         .isEqualTo(BillingCycle.ANNUAL));
-        assertThat(repository.findTierScope(SchemaSeed.PRICE_LIST_ID,
-                SchemaSeed.CATALOG_ITEM_CORE_ID, BillingCycle.MONTHLY)).singleElement()
-                .satisfies(precio -> assertThat(precio.getBillingCycle())
+        assertThat(repository.findTierScope(SchemaSeed.PRICE_LIST_ID, nucleo, BillingCycle.MONTHLY))
+                .singleElement().satisfies(precio -> assertThat(precio.getBillingCycle())
                         .isEqualTo(BillingCycle.MONTHLY));
         assertThat(
                 repository.findTierScope(SchemaSeed.PRICE_LIST_ID, 999_999L, BillingCycle.ANNUAL))
@@ -94,9 +94,8 @@ class CatalogPricePersistenceIT extends AbstractDataJpaTest {
     @Test
     @DisplayName("el listado por lista pagina con un orden total, con desempate por id")
     void el_listado_por_lista_pagina_con_orden_total() {
-        repository.save(CatalogPrice.create(SchemaSeed.PRICE_LIST_ID,
-                SchemaSeed.CATALOG_ITEM_CORE_ID, BillingCycle.ANNUAL, 1, null, 0,
-                new BigDecimal("900000.00"), BigDecimal.ZERO, new BigDecimal("19.00"),
+        repository.save(CatalogPrice.create(SchemaSeed.PRICE_LIST_ID, nucleo, BillingCycle.ANNUAL,
+                1, null, 0, new BigDecimal("900000.00"), BigDecimal.ZERO, new BigDecimal("19.00"),
                 TaxTreatment.TAXED, CatalogPriceMother.CREADO_EL));
         entityManager.flush();
         entityManager.clear();
@@ -122,10 +121,10 @@ class CatalogPricePersistenceIT extends AbstractDataJpaTest {
     @Test
     @DisplayName("el borrado logico retira el precio del alcance de tramos y de la cuenta")
     void el_borrado_logico_retira_el_precio_del_alcance() {
-        CatalogPrice guardado = repository.save(CatalogPrice.create(SchemaSeed.PRICE_LIST_ID,
-                SchemaSeed.CATALOG_ITEM_CORE_ID, BillingCycle.ANNUAL, 1, null, 0,
-                new BigDecimal("900000.00"), BigDecimal.ZERO, new BigDecimal("19.00"),
-                TaxTreatment.TAXED, CatalogPriceMother.CREADO_EL));
+        CatalogPrice guardado = repository
+                .save(CatalogPrice.create(SchemaSeed.PRICE_LIST_ID, nucleo, BillingCycle.ANNUAL, 1,
+                        null, 0, new BigDecimal("900000.00"), BigDecimal.ZERO,
+                        new BigDecimal("19.00"), TaxTreatment.TAXED, CatalogPriceMother.CREADO_EL));
         entityManager.flush();
         entityManager.clear();
         assertThat(repository.countByPriceListId(SchemaSeed.PRICE_LIST_ID)).isEqualTo(2L);
@@ -135,8 +134,8 @@ class CatalogPricePersistenceIT extends AbstractDataJpaTest {
         entityManager.clear();
 
         assertThat(repository.findById(guardado.getId())).isEmpty();
-        assertThat(repository.findTierScope(SchemaSeed.PRICE_LIST_ID,
-                SchemaSeed.CATALOG_ITEM_CORE_ID, BillingCycle.ANNUAL)).isEmpty();
+        assertThat(repository.findTierScope(SchemaSeed.PRICE_LIST_ID, nucleo, BillingCycle.ANNUAL))
+                .isEmpty();
         assertThat(repository.countByPriceListId(SchemaSeed.PRICE_LIST_ID)).isEqualTo(1L);
     }
 
@@ -161,10 +160,10 @@ class CatalogPricePersistenceIT extends AbstractDataJpaTest {
     @Test
     @DisplayName("un precio retirado sigue ocupando su tramo, pero la guardia de solape no lo ve")
     void un_precio_retirado_sigue_ocupando_su_tramo_y_la_guardia_no_lo_ve() {
-        CatalogPrice guardado = repository.save(CatalogPrice.create(SchemaSeed.PRICE_LIST_ID,
-                SchemaSeed.CATALOG_ITEM_CORE_ID, BillingCycle.ANNUAL, 1, null, 0,
-                new BigDecimal("900000.00"), BigDecimal.ZERO, new BigDecimal("19.00"),
-                TaxTreatment.TAXED, CatalogPriceMother.CREADO_EL));
+        CatalogPrice guardado = repository
+                .save(CatalogPrice.create(SchemaSeed.PRICE_LIST_ID, nucleo, BillingCycle.ANNUAL, 1,
+                        null, 0, new BigDecimal("900000.00"), BigDecimal.ZERO,
+                        new BigDecimal("19.00"), TaxTreatment.TAXED, CatalogPriceMother.CREADO_EL));
         entityManager.flush();
 
         repository.delete(guardado.getId());
@@ -172,8 +171,8 @@ class CatalogPricePersistenceIT extends AbstractDataJpaTest {
         entityManager.clear();
 
         // La guardia de solape cree que el tramo [1, *) quedo libre...
-        assertThat(repository.findTierScope(SchemaSeed.PRICE_LIST_ID,
-                SchemaSeed.CATALOG_ITEM_CORE_ID, BillingCycle.ANNUAL)).isEmpty();
+        assertThat(repository.findTierScope(SchemaSeed.PRICE_LIST_ID, nucleo, BillingCycle.ANNUAL))
+                .isEmpty();
 
         // ...y la fila sigue ahi, ocupando uq_catalog_prices_tier.
         Number filas = (Number) entityManager.createNativeQuery("""
@@ -181,7 +180,7 @@ class CatalogPricePersistenceIT extends AbstractDataJpaTest {
                 WHERE price_list_id = :lista AND catalog_item_id = :articulo
                   AND billing_cycle = 'ANNUAL' AND tier_min = 1
                 """).setParameter("lista", SchemaSeed.PRICE_LIST_ID)
-                .setParameter("articulo", SchemaSeed.CATALOG_ITEM_CORE_ID).getSingleResult();
+                .setParameter("articulo", nucleo).getSingleResult();
         assertThat(filas.longValue()).isEqualTo(1L);
     }
 }

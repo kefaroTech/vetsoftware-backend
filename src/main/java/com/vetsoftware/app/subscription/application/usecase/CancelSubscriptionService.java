@@ -6,6 +6,7 @@ import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
 import com.vetsoftware.app.subscription.application.port.in.CancelSubscriptionUseCase;
 import com.vetsoftware.app.subscription.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionAmendmentRepository;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
@@ -63,13 +64,14 @@ public class CancelSubscriptionService implements CancelSubscriptionUseCase {
     private final SystemUserValidationPort systemUserValidationPort;
     private final SubscriptionNumberPort subscriptionNumberPort;
     private final SubscriptionChangedPort subscriptionChangedPort;
+    private final SubscriptionAuditPort audit;
 
     public CancelSubscriptionService(SubscriptionRepository repository,
             SubscriptionItemRepository itemRepository,
             SubscriptionAmendmentRepository amendmentRepository,
             EmployeeQueryPort employeeQueryPort, SystemUserValidationPort systemUserValidationPort,
             SubscriptionNumberPort subscriptionNumberPort,
-            SubscriptionChangedPort subscriptionChangedPort) {
+            SubscriptionChangedPort subscriptionChangedPort, SubscriptionAuditPort audit) {
         this.repository = repository;
         this.itemRepository = itemRepository;
         this.amendmentRepository = amendmentRepository;
@@ -77,6 +79,7 @@ public class CancelSubscriptionService implements CancelSubscriptionUseCase {
         this.systemUserValidationPort = systemUserValidationPort;
         this.subscriptionNumberPort = subscriptionNumberPort;
         this.subscriptionChangedPort = subscriptionChangedPort;
+        this.audit = audit;
     }
 
     @Override
@@ -127,6 +130,11 @@ public class CancelSubscriptionService implements CancelSubscriptionUseCase {
                         command.clientRequestId()));
 
         Subscription saved = repository.save(subscription);
+
+        // La solicitud se registra aparte del cambio de estado porque ocurre antes: el
+        // contrato sigue vigente hasta effectiveDate, y la distancia entre las dos
+        // fechas es justo lo que se discute cuando el cliente reclama el ultimo mes.
+        audit.cancellationRequested(saved.getId(), command.effectiveDate());
 
         subscriptionChangedPort.subscriptionChanged(
                 new SubscriptionChangedEvent(saved.getCompanyId(), saved.getId(),

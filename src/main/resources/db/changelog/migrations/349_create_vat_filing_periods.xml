@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA DE REFERENCIA CON VIGENCIA (ficha vat_filing_periods). CADA CUANTO SE DECLARA IVA,
+         ANO POR ANO, SIN EMPRESA. Exenta E1_APPEND_ONLY, sin version.
+
+         uq_vat_filing_periods_frequency (fiscal_year, frequency) NO ESTABA EN EL DOCUMENTO Y ES
+         OBLIGATORIA: es la clave auxiliar contra la que apunta fk_tax_returns_vat_frequency (351).
+         Es redundante con uq_vat_filing_periods_year en el sentido logico -si el ano es unico, el
+         par tambien- pero no en el fisico: InnoDB necesita un indice cuyas columnas de la
+         izquierda sean exactamente las referenciadas por la clave foranea compuesta. -->
+    <changeSet id="349_create_vat_filing_periods" author="orlando">
+        <createTable tableName="vat_filing_periods">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fiscal_year" type="SMALLINT"><constraints nullable="false"/></column>
+            <column name="frequency" type="VARCHAR(15)"><constraints nullable="false"/></column>
+            <column name="legal_reference" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE vat_filing_periods
+                ADD CONSTRAINT uq_vat_filing_periods_year UNIQUE (fiscal_year),
+                ADD CONSTRAINT uq_vat_filing_periods_frequency UNIQUE (fiscal_year, frequency),
+                ADD CONSTRAINT chk_vat_filing_periods_year
+                    CHECK (fiscal_year BETWEEN 2020 AND 2100),
+                ADD CONSTRAINT chk_vat_filing_periods_frequency
+                    CHECK (frequency IN ('BIMONTHLY','FOURMONTHLY','ANNUAL'))
+        ]]></sql>
+
+        <rollback>
+            <dropTable tableName="vat_filing_periods"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

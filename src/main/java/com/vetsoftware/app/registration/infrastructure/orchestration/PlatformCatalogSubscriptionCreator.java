@@ -47,9 +47,31 @@ import org.springframework.stereotype.Component;
  * {@code InitializeCompanyEntitlementsService} es {@code @Transactional} con
  * {@code REQUIRED} a proposito, para unirse a la transaccion del alta: con
  * {@code REQUIRES_NEW} quedaria una empresa creada y sin permisos, que es
- * exactamente el estado que esta regla existe para impedir. Tampoco va bajo
- * {@link SystemAuthRunner}: ese puerto es interno, lleva
- * {@code @NoAuthorizationRequired} y no necesita principal.
+ * exactamente el estado que esta regla existe para impedir.
+ *
+ * <p>
+ * <b>El paso 2 SI va bajo {@link SystemAuthRunner}, y antes no hacia falta.</b>
+ * Durante mucho tiempo basto con dejarlo desnudo: el puerto es interno, lleva
+ * {@code @NoAuthorizationRequired} y no necesitaba principal. Esa premisa era
+ * cierta mientras el recalculo solo tocaba puertos de salida, y dejo de serlo
+ * en cuanto {@code CompanyEntitlementRecalculator} empezo a escribir la foto
+ * del recalculo por {@code RecordEntitlementSnapshotUseCase}, que es un puerto
+ * de entrada gateado: exige rol {@code SYSTEM} o que la empresa del command sea
+ * la del principal. En el alta publica no hay ninguna de las dos cosas —no hay
+ * token, luego no hay SYSTEM y no hay empresa propia—, asi que el alta entera
+ * moria en un <b>403</b> que ni siquiera mencionaba a las suscripciones: el
+ * usuario pedia registrarse y le contestaban «Acceso denegado». Un gate anadido
+ * tres slices mas abajo invalido en silencio la premisa escrita aqui arriba; el
+ * envoltorio es lo que la vuelve a hacer cierta, y ademas es lo que ya hacen
+ * los otros ocho adaptadores del alta.
+ *
+ * <p>
+ * Se envuelve <b>aqui</b> y no se abre el gate del snapshot: ese gate es
+ * correcto —admite a plataforma y al propio tenant, que es quien puede pedir el
+ * recalculo de reparacion— y relajarlo por comodidad del alta abriria la foto
+ * de permisos de cualquier empresa a un anonimo. {@link SystemAuthRunner} solo
+ * cambia el {@code SecurityContext} y lo restaura en un {@code finally}: no
+ * toca la propagacion transaccional, asi que el parrafo de arriba sigue en pie.
  *
  * <p>
  * <b>Por que el paso 1 si va bajo {@link SystemAuthRunner}.</b> El alta es un
@@ -95,9 +117,12 @@ public class PlatformCatalogSubscriptionCreator implements InitialSubscriptionCr
 
         // El contrato ya existe: derivar sus permisos es lo unico que falta para que la
         // empresa pueda hacer algo. Se descarta lo que devuelve —son contadores— para
-        // no
-        // importar un DTO de aplicacion de otra feature.
-        initializeCompanyEntitlementsUseCase
-                .execute(new InitializeCompanyEntitlementsCommand(companyId));
+        // no importar un DTO de aplicacion de otra feature.
+        //
+        // Bajo SystemAuthRunner porque el recalculo escribe su foto por un puerto
+        // gateado (RecordEntitlementSnapshotUseCase) y aqui todavia no hay principal:
+        // ver el javadoc de la clase. Sin esto, el alta publica devuelve 403.
+        systemAuthRunner.run(() -> initializeCompanyEntitlementsUseCase
+                .execute(new InitializeCompanyEntitlementsCommand(companyId)));
     }
 }

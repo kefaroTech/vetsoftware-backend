@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha company_billing_profiles). A QUIEN SE LE FACTURA.
+         Hoy el documento de cobro guarda numero, periodo, totales y referencia externa, y ni un
+         solo dato de a quien va dirigido. Se da por hecho que es la empresa, y eso se rompe con el
+         primer cliente que pide la factura a nombre de su sociedad: Ana atiende como Spa Ana Pet y
+         factura a Inversiones Pet SAS.
+
+         EL NOMBRE VA PARTIDO EN CUATRO, no en uno ni en dos. La informacion exogena que hay que
+         reportar cada ano exige primer apellido, segundo apellido, primer nombre y otros nombres
+         POR SEPARADO cuando el tercero es persona natural -y ya esta decidido que habra clientes
+         persona natural-. Guardarlo junto obliga a partirlo despues a mano, cliente por cliente, y
+         eso no se rellena hacia atras. Va ademas tax_id_kind, que es parte de la llave del formato
+         y que la ficha original tampoco tenia.
+
+         withholding_agent SI, is_self_withholder NO. Aqui va si EL CLIENTE es agente de retencion.
+         Que VetSoftware sea autorretenedor es dato propio y vive en platform_billing_config; la
+         ficha lo tenia puesto en el cliente y el propio documento lo reconoce como error de
+         modelado suyo. La norma dice ademas que las dos condiciones COEXISTEN, asi que deducir una
+         de la otra habria sido falso.
+         Las tarifas que se espera que aplique NO van aqui: van en withholding_rate_rules (317), que
+         es global y no lleva empresa. Meterlas en un blob de este documento habria impedido que la
+         base comprobara sus rangos, y son datos que se leen para calcular dinero.
+
+         current_profile_marker: el truco de la casa. Vale la empresa mientras el perfil no tenga
+         fecha de cierre, y vacio cuando la tiene. Dos vacios no chocan, asi que la historia cabe
+         entera y solo hay un perfil vigente. Cambiar el NIT NO EDITA ESTA FILA: la cierra y abre
+         otra, que es lo unico que hace que una factura de hace un ano siga diciendo a quien se
+         emitio.
+
+         AVISO SOBRE LA COLUMNA GENERADA, que el documento repite mal cuatro veces: esto NO es un
+         indice disperso. MySQL no tiene indices parciales y si indexa los vacios; el indice
+         contiene todas las filas. Lo que se gana es unicidad condicional, no tamano. -->
+    <changeSet id="316_create_company_billing_profiles" author="orlando">
+        <createTable tableName="company_billing_profiles">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="person_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="tax_id_kind" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="tax_id" type="VARCHAR(50)"><constraints nullable="false"/></column>
+            <column name="verification_digit" type="VARCHAR(1)"/>
+            <column name="legal_name" type="VARCHAR(255)"/>
+            <column name="first_name" type="VARCHAR(80)"/>
+            <column name="middle_name" type="VARCHAR(80)"/>
+            <column name="last_name" type="VARCHAR(80)"/>
+            <column name="second_last_name" type="VARCHAR(80)"/>
+            <column name="address" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="city_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="billing_email" type="VARCHAR(160)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tax_regime" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="withholding_agent" type="BOOLEAN"><constraints nullable="false"/></column>
+            <column name="valid_from" type="DATE"><constraints nullable="false"/></column>
+            <column name="valid_to" type="DATE"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="company_billing_profiles" columnNames="company_id, id"
+                             constraintName="uq_company_billing_profiles_company_id"/>
+        <addUniqueConstraint tableName="company_billing_profiles"
+                             columnNames="company_id, valid_from"
+                             constraintName="uq_company_billing_profiles_validity"/>
+
+        <sql><![CDATA[
+            ALTER TABLE company_billing_profiles
+                MODIFY COLUMN tax_id VARCHAR(50)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                ADD COLUMN current_profile_marker BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE WHEN valid_to IS NULL THEN company_id ELSE NULL END
+                    ) STORED,
+                ADD CONSTRAINT uq_company_billing_profiles_current
+                    UNIQUE (current_profile_marker),
+                ADD CONSTRAINT chk_company_billing_profiles_person_kind
+                    CHECK (person_kind IN ('NATURAL','LEGAL')),
+                ADD CONSTRAINT chk_company_billing_profiles_tax_id_kind
+                    CHECK (tax_id_kind IN ('NIT','CC','CE','PASSPORT','FOREIGN_ID')),
+                ADD CONSTRAINT chk_company_billing_profiles_tax_regime
+                    CHECK (tax_regime IN ('COMMON','SIMPLE','NOT_RESPONSIBLE_VAT','SPECIAL')),
+                ADD CONSTRAINT chk_company_billing_profiles_name_shape
+                    CHECK ((person_kind = 'LEGAL'
+                            AND legal_name IS NOT NULL
+                            AND first_name IS NULL AND middle_name IS NULL
+                            AND last_name IS NULL AND second_last_name IS NULL)
+                           OR (person_kind = 'NATURAL'
+                            AND legal_name IS NULL
+                            AND first_name IS NOT NULL AND last_name IS NOT NULL)),
+                ADD CONSTRAINT chk_company_billing_profiles_validity
+                    CHECK (valid_to IS NULL OR valid_to > valid_from),
+                ADD CONSTRAINT chk_company_billing_profiles_email
+                    CHECK (billing_email LIKE '%_@_%._%')
+        ]]></sql>
+
+        <createIndex tableName="company_billing_profiles"
+                     indexName="ix_company_billing_profiles_current">
+            <column name="company_id"/>
+            <column name="valid_to"/>
+        </createIndex>
+        <createIndex tableName="company_billing_profiles"
+                     indexName="ix_company_billing_profiles_city">
+            <column name="city_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="company_billing_profiles"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_billing_profiles_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_billing_profiles"
+                                 baseColumnNames="city_id"
+                                 referencedTableName="cities"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_billing_profiles_city"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <!-- La clave HACIA ATRAS. subscription_billing_documents (249) nace antes que esta tabla y
+             lleva desde alli la columna y su indice; la clave solo se puede cerrar aqui. Es la
+             misma tecnica que el documento prescribe para el ciclo del configurador, y la
+             alternativa era renumerar cincuenta y seis archivos. -->
+        <addForeignKeyConstraint baseTableName="subscription_billing_documents"
+                                 baseColumnNames="company_id, billing_profile_id"
+                                 referencedTableName="company_billing_profiles"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_sbd_billing_profile"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="subscription_billing_documents"
+                                      constraintName="fk_sbd_billing_profile"/>
+            <dropTable tableName="company_billing_profiles"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

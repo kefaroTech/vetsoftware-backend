@@ -356,7 +356,8 @@ class SaasBillingMutationAuthorizationTest {
 
     private static ChangeSubscriptionStatusCommand changeStatusSubscription() {
         return new ChangeSubscriptionStatusCommand(11L, COMPANY_ID, SubscriptionStatus.READ_ONLY,
-                "mora", "SYSTEM:TEST");
+                com.vetsoftware.app.subscription.domain.SubscriptionStatusChangeReason.OVERDUE_BALANCE,
+                "SYSTEM:TEST");
     }
 
     private static CancelSubscriptionCommand cancelCommand() {

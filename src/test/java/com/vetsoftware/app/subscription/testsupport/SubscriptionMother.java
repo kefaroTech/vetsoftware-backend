@@ -7,7 +7,6 @@ import com.vetsoftware.app.subscription.application.dto.SubscriptionItemOverlapD
 import com.vetsoftware.app.subscription.application.dto.SubscriptionStatusChangeDto;
 import com.vetsoftware.app.subscription.domain.AmendmentType;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.EffectivePeriod;
 import com.vetsoftware.app.subscription.domain.ItemOrigin;
 import com.vetsoftware.app.subscription.domain.Subscription;
@@ -75,8 +74,8 @@ public final class SubscriptionMother {
 
     public static SubscriptionItem lineaEntre(LocalDate desde, LocalDate hasta) {
         return SubscriptionItem.open(EMPRESA, CONTRATO, ARTICULO, "EXTRA_USER", "Usuario adicional",
-                SubscriptionItemType.CAPACITY, CapacityUnit.USER, 2, TaxTreatment.TAXED, 5, PRECIO,
-                IVA, new EffectivePeriod(desde, hasta), ItemOrigin.ADDON, 11L);
+                SubscriptionItemType.CAPACITY, "USER", 2, TaxTreatment.TAXED, 5, PRECIO, IVA,
+                new EffectivePeriod(desde, hasta), ItemOrigin.ADDON, 11L);
     }
 
     /** Modulo sin unidad de capacidad, que es lo que exige el dominio. */

@@ -4,6 +4,7 @@ import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.domain.ChargeStatus;
+import com.vetsoftware.app.subscriptionbilling.domain.RecurringChargeKey;
 import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionCharge;
 import java.time.LocalDate;
 import java.util.List;
@@ -42,11 +43,28 @@ public class JpaSubscriptionChargeRepository implements SubscriptionChargeReposi
                 .map(mapper::toDomain).toList();
     }
 
+    /**
+     * El estado viaja como texto porque la consulta de abajo es nativa: tiene que
+     * mirar {@code subscription_items.charge_mode}, que es de otro slice y no tiene
+     * entidad en este. {@code name()} y no {@code toString()} — el nombre de la
+     * constante es lo que hay en la columna.
+     */
     @Override
     public List<SubscriptionCharge> findPendingByCompanyIdAndSubscription(Long companyId,
             Long subscriptionId, LocalDate periodStart, LocalDate periodEnd) {
-        return jpaRepository.findPendingForPeriod(companyId, subscriptionId, ChargeStatus.PENDING,
-                periodStart, periodEnd).stream().map(mapper::toDomain).toList();
+        return jpaRepository.findPendingForPeriod(companyId, subscriptionId,
+                ChargeStatus.PENDING.name(), periodStart, periodEnd).stream().map(mapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public boolean existsRecurringCharge(RecurringChargeKey key) {
+        if (key == null)
+            throw new IllegalArgumentException("recurring charge key is required");
+        // La comparacion con cero vive aqui y no en el JPQL a proposito: un booleano
+        // proyectado con CASE WHEN revienta con Hibernate 7.
+        return jpaRepository.countRecurringCharge(key.companyId(), key.subscriptionId(),
+                key.subscriptionItemId(), key.periodStart(), key.periodEnd()) > 0;
     }
 
     @Override
@@ -65,5 +83,14 @@ public class JpaSubscriptionChargeRepository implements SubscriptionChargeReposi
         if (ids == null || ids.isEmpty())
             return 0;
         return jpaRepository.sealAsInvoiced(ids, companyId, billingDocumentId);
+    }
+
+    @Override
+    public int releaseFromVoidedDocument(Long billingDocumentId, Long companyId) {
+        if (billingDocumentId == null)
+            throw new IllegalArgumentException("billingDocumentId is required");
+        if (companyId == null)
+            throw new IllegalArgumentException("companyId is required");
+        return jpaRepository.releaseFromVoidedDocument(billingDocumentId, companyId);
     }
 }

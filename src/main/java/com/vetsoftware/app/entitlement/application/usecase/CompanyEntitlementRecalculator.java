@@ -4,6 +4,7 @@ import com.vetsoftware.app.entitlement.application.dto.EntitlementRecalculationD
 import com.vetsoftware.app.entitlement.application.port.out.AdminPermissionReconciliationPort;
 import com.vetsoftware.app.entitlement.application.port.out.CompanyCapacityRepository;
 import com.vetsoftware.app.entitlement.application.port.out.CompanyEntitlementRepository;
+import com.vetsoftware.app.entitlement.application.port.out.EntitlementSnapshotPort;
 import com.vetsoftware.app.entitlement.application.port.out.SubscriptionQueryPort;
 import com.vetsoftware.app.entitlement.domain.CompanyCapacity;
 import com.vetsoftware.app.entitlement.domain.CompanyEntitlement;
@@ -11,6 +12,7 @@ import com.vetsoftware.app.entitlement.domain.CompanyWithoutContractException;
 import com.vetsoftware.app.entitlement.domain.ContractSnapshot;
 import com.vetsoftware.app.entitlement.domain.EntitlementCalculator;
 import com.vetsoftware.app.entitlement.domain.EntitlementRecalculation;
+import com.vetsoftware.app.entitlement.domain.SnapshotReason;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -41,16 +43,19 @@ class CompanyEntitlementRecalculator {
     private final CompanyEntitlementRepository entitlementRepository;
     private final CompanyCapacityRepository capacityRepository;
     private final AdminPermissionReconciliationPort adminPermissionReconciliationPort;
+    private final EntitlementSnapshotPort snapshotPort;
     private final Clock clock;
 
     CompanyEntitlementRecalculator(SubscriptionQueryPort subscriptionQueryPort,
             CompanyEntitlementRepository entitlementRepository,
             CompanyCapacityRepository capacityRepository,
-            AdminPermissionReconciliationPort adminPermissionReconciliationPort, Clock clock) {
+            AdminPermissionReconciliationPort adminPermissionReconciliationPort,
+            EntitlementSnapshotPort snapshotPort, Clock clock) {
         this.subscriptionQueryPort = subscriptionQueryPort;
         this.entitlementRepository = entitlementRepository;
         this.capacityRepository = capacityRepository;
         this.adminPermissionReconciliationPort = adminPermissionReconciliationPort;
+        this.snapshotPort = snapshotPort;
         this.clock = clock;
     }
 
@@ -66,8 +71,25 @@ class CompanyEntitlementRecalculator {
      *             mensaje que lo explique.
      */
     EntitlementRecalculationDto recalculate(Long companyId) {
+        return recalculate(companyId, SnapshotReason.MANUAL);
+    }
+
+    /**
+     * El mismo recalculo, diciendo <strong>por que</strong> se dispara. El motivo
+     * es lo que distingue en la foto "perdio acceso porque vencio su prueba" de "lo
+     * perdio porque dejo de pagar", y esas dos conversaciones con el cliente no se
+     * parecen en nada.
+     */
+    EntitlementRecalculationDto recalculate(Long companyId, SnapshotReason reason) {
         LocalDateTime now = LocalDateTime.now(clock);
         LocalDate today = now.toLocalDate();
+
+        // EL CONTRATO PRIMERO, SIEMPRE (R-ENT-08). Antes de leer nada y antes de
+        // tocar nada: es el orden de bloqueo que pone en fila dos recalculos
+        // simultaneos de la misma empresa, y el que impide que un otrosi confirmado
+        // a mitad de camino acabe en un reinsert sin la linea nueva --que no falla,
+        // no avisa, y deja al cliente sin el modulo que acaba de firmar--.
+        subscriptionQueryPort.lockContractByCompanyId(companyId);
 
         ContractSnapshot contract = subscriptionQueryPort
                 .findCurrentContractByCompanyId(companyId, today)
@@ -89,13 +111,23 @@ class CompanyEntitlementRecalculator {
         entitlementRepository.deleteDerivedByCompanyId(companyId);
         entitlementRepository.saveAll(recalculated.entitlements());
 
+        // El techo se escribe SIN nombrar la columna del consumo (#648). La lista
+        // que sale de reconcile() lleva el usedQuantity que se leyo hace un instante,
+        // y volcarlo en un UPDATE de fila entera pisa cualquier alta o baja que haya
+        // ocurrido mientras el recalculo corria: se pierde sin excepcion y sin log, y
+        // el cliente se queda con un techo que no puede llenar.
         List<CompanyCapacity> capacities = EntitlementCalculator.reconcile(
                 capacityRepository.findAllByCompanyId(companyId), recalculated.capacities(), now);
-        capacityRepository.saveAll(capacities);
+        capacityRepository.upsertCeilings(capacities);
 
         // Proyeccion operativa para el ADMIN. La autorizacion por request no confia en
         // esta copia: vuelve a cruzar permisos y entitlements vigentes siempre.
         adminPermissionReconciliationPort.reconcile(companyId, now);
+
+        // La foto, dentro de la misma transaccion: si el recalculo se revierte, se
+        // va con el. Una foto de un estado que nunca existio es peor que no tener
+        // foto, porque nadie sabe cual de las dos miente (R-ENT-15).
+        snapshotPort.record(companyId, now, reason, recalculated.entitlements(), capacities);
 
         return new EntitlementRecalculationDto(companyId, contract.subscription().id(),
                 contract.subscription().status().name(),

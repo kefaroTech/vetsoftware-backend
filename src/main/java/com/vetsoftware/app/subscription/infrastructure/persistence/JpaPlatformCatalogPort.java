@@ -4,7 +4,6 @@ import com.vetsoftware.app.subscription.application.dto.InitialCapacityTemplate;
 import com.vetsoftware.app.subscription.application.dto.InitialContractTemplate;
 import com.vetsoftware.app.subscription.application.port.out.PlatformCatalogPort;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemType;
 import com.vetsoftware.app.subscription.domain.TaxTreatment;
 import com.vetsoftware.app.subscription.infrastructure.persistence.PlatformCatalogTemplateJpaRepository.InitialContractRow;
@@ -62,25 +61,37 @@ public class JpaPlatformCatalogPort implements PlatformCatalogPort {
                 SubscriptionItemType.valueOf(row.getItemType()),
                 // El nucleo es un MODULE y no lleva unidad; la columna viene nula y asi
                 // tiene que quedarse, porque el dominio rechaza una unidad colgada de un
-                // modulo (chk_subscription_items_capacity_unit).
-                row.getCapacityUnit() == null ? null : CapacityUnit.valueOf(row.getCapacityUnit()),
-                orZero(row.getIncludedQuantity()), orZero(row.getMinQuantity()),
-                row.getUnitAmount(), row.getTaxRate(), TaxTreatment.valueOf(row.getTaxTreatment()),
-                orZero(row.getDefaultGraceDays()), orZero(row.getDefaultTrialDays()));
+                // modulo (chk_subscription_items_capacity_unit). Desde el 333 el valor
+                // pasa tal cual: es el codigo del eje, no un enumerado que traducir.
+                row.getCapacityUnit(), orZero(row.getIncludedQuantity()),
+                orZero(row.getMinQuantity()), row.getUnitAmount(), row.getTaxRate(),
+                TaxTreatment.valueOf(row.getTaxTreatment()), orZero(row.getDefaultGraceDays()),
+                orZero(row.getDefaultTrialDays()));
     }
 
     /**
      * La contraria de la de arriba: aqui la unidad <strong>no</strong> puede venir
      * nula. La consulta ya filtra {@code capacity_unit IS NOT NULL}, asi que un
-     * {@code null} en este punto significaria que alguien aflojo ese filtro; se
-     * deja que {@code valueOf} reviente aqui, con la fila delante, y no tres capas
-     * mas adelante en el constructor de {@code SubscriptionItem}.
+     * {@code null} en este punto significaria que alguien aflojo ese filtro.
+     *
+     * <p>
+     * <strong>La comprobacion va explicita desde el changeset 333.</strong> Antes
+     * la hacia gratis {@code CapacityUnit.valueOf(null)}, que lanzaba
+     * {@code NullPointerException} con la fila delante; ahora el valor es una
+     * cadena que pasa tal cual, asi que un nulo se colaria hasta el constructor de
+     * {@code SubscriptionItem} —tres capas mas adelante y sin decir de que
+     * articulo—. Se falla aqui, nombrando el articulo, que es donde se puede
+     * arreglar.
      */
     private static InitialCapacityTemplate toCapacity(InitialContractRow row) {
+        if (row.getCapacityUnit() == null || row.getCapacityUnit().isBlank())
+            throw new IllegalStateException("catalog_items row " + row.getCatalogItemId() + " ("
+                    + row.getItemCode() + ") is a core CAPACITY item with no capacity_unit:"
+                    + " the query that filters capacity_unit IS NOT NULL was loosened");
         return new InitialCapacityTemplate(row.getCatalogItemId(), row.getItemCode(),
-                row.getItemName(), CapacityUnit.valueOf(row.getCapacityUnit()),
-                orZero(row.getIncludedQuantity()), orZero(row.getMinQuantity()),
-                row.getUnitAmount(), row.getTaxRate(), TaxTreatment.valueOf(row.getTaxTreatment()));
+                row.getItemName(), row.getCapacityUnit(), orZero(row.getIncludedQuantity()),
+                orZero(row.getMinQuantity()), row.getUnitAmount(), row.getTaxRate(),
+                TaxTreatment.valueOf(row.getTaxTreatment()));
     }
 
     private static int orZero(Integer value) {

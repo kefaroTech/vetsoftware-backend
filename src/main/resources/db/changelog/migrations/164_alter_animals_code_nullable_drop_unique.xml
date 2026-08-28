@@ -34,6 +34,13 @@
         </preConditions>
         <dropUniqueConstraint tableName="animals"
                               constraintName="uq_animals_company_code"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): dropUniqueConstraint no tiene inversa automatica. Se restaura el unique
+             original. -->
+        <rollback>
+            <addUniqueConstraint tableName="animals" columnNames="company_id, code"
+                                 constraintName="uq_animals_company_code"/>
+        </rollback>
     </changeSet>
 
     <changeSet id="164_drop_not_null_animals_code" author="orlando">
@@ -48,6 +55,11 @@
         <dropNotNullConstraint tableName="animals"
                                columnName="code"
                                columnDataType="VARCHAR(50)"/>
+        <!-- AJUSTE (mismo motivo): restaura el NOT NULL original. -->
+        <rollback>
+            <addNotNullConstraint tableName="animals" columnName="code"
+                                  columnDataType="VARCHAR(50)"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

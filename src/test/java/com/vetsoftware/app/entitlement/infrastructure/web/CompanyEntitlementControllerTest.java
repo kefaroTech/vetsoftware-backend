@@ -67,15 +67,24 @@ class CompanyEntitlementControllerTest {
     @DisplayName("GET /entitlements/access devuelve el acceso de la empresa del principal")
     void get_access_devuelve_el_acceso_de_la_empresa_del_principal() throws Exception {
         when(authz.currentCompanyId()).thenReturn(10L);
-        when(findAccessUseCase.findByCompanyId(10L)).thenReturn(new CompanyAccessDto(10L,
-                List.of(permiso()),
-                List.of(new CompanyCapacityDto(31L, 10L, "USER", 3, 5, true, 500L, AHORA)), AHORA));
+        when(findAccessUseCase.findByCompanyId(10L))
+                .thenReturn(new CompanyAccessDto(
+                        10L, List.of(permiso()), List.of(new CompanyCapacityDto(31L, 10L, 41L,
+                                "USER", "STOCK", "ALLTIME", 3, 5, true, false, 500L, AHORA, null)),
+                        AHORA));
 
         mockMvc.perform(get("/entitlements/access")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.companyId").value(10))
                 .andExpect(jsonPath("$.entitlements[0].subModule.code").value("CLINICAL_HISTORY"))
                 .andExpect(jsonPath("$.entitlements[0].accessLevel").value("READ_ONLY"))
-                .andExpect(jsonPath("$.capacities[0].exhausted").value(true));
+                .andExpect(jsonPath("$.capacities[0].exhausted").value(true))
+                // El contador se identifica por el eje del catalogo, no por una unidad
+                // de una lista cerrada (#629), y los dos sellos viajan separados.
+                .andExpect(jsonPath("$.capacities[0].dimensionCode").value("USER"))
+                .andExpect(jsonPath("$.capacities[0].limitDimensionId").value(41))
+                .andExpect(jsonPath("$.capacities[0].measureKind").value("STOCK"))
+                .andExpect(jsonPath("$.capacities[0].periodKey").value("ALLTIME"))
+                .andExpect(jsonPath("$.capacities[0].usageReconciledAt").doesNotExist());
     }
 
     @Test

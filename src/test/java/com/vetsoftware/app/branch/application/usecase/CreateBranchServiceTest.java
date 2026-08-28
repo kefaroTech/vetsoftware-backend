@@ -19,7 +19,6 @@ import com.vetsoftware.app.branch.application.port.out.FullCoverageBranchAssignm
 import com.vetsoftware.app.branch.domain.Branch;
 import com.vetsoftware.app.branch.domain.CityRef;
 import com.vetsoftware.app.branch.domain.CompanyRef;
-import com.vetsoftware.app.entitlement.domain.CapacityUnit;
 import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -154,7 +153,7 @@ class CreateBranchServiceTest {
         when(repository.codeExists(9L, "NORTE")).thenReturn(false);
         when(cityQueryPort.findById(5L)).thenReturn(Optional.of(city));
         when(companyQueryPort.findById(9L)).thenReturn(Optional.of(company));
-        doThrow(new CompanyCapacityLimitExceededException(9L, CapacityUnit.BRANCH, 2, 2, 1))
+        doThrow(new CompanyCapacityLimitExceededException(9L, "BRANCH", 2, 2, 1))
                 .when(branchCapacityPort).reserve(9L);
 
         assertThatThrownBy(

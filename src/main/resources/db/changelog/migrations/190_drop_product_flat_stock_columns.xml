@@ -12,24 +12,66 @@
       IMPORTANTE: correr DESPUÉS de que 189 haya poblado stock_lot/stock_balance (el backfill lee estas columnas).
     -->
 
+    <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta hoy):
+         los cinco dropColumn de abajo no tenian <rollback>, y Liquibase no genera inversa
+         automatica para un dropColumn -"No inverse to DropColumnChange created"-. Se declaran a
+         mano recreando exactamente el tipo/nulabilidad que la columna tenia en el momento en que
+         190 la elimino -current_stock/min_stock/purchase_price NOT NULL sin default en 092
+         (aqui con defaultValueNumeric="0" solo para que el ADD COLUMN no falle si ya hay filas;
+         es un valor de relleno de reversion, no un dato real -la propia 190 explica que esta
+         columna quedo deprecada en favor de stock_lot/stock_balance-); expire_date/lot_number
+         nullable, tal como los dejo 159 (DATE / VARCHAR(50)), no la bandera BOOLEAN original de
+         092 -esa la restaura 159 en SU PROPIO rollback, que corre despues de este en la reversion
+         completa-. -->
     <changeSet id="190_drop_products_current_stock" author="orlando">
         <dropColumn tableName="products" columnName="current_stock"/>
+        <rollback>
+            <addColumn tableName="products">
+                <column name="current_stock" type="INT" defaultValueNumeric="0">
+                    <constraints nullable="false"/>
+                </column>
+            </addColumn>
+        </rollback>
     </changeSet>
 
     <changeSet id="190_drop_products_min_stock" author="orlando">
         <dropColumn tableName="products" columnName="min_stock"/>
+        <rollback>
+            <addColumn tableName="products">
+                <column name="min_stock" type="INT" defaultValueNumeric="0">
+                    <constraints nullable="false"/>
+                </column>
+            </addColumn>
+        </rollback>
     </changeSet>
 
     <changeSet id="190_drop_products_purchase_price" author="orlando">
         <dropColumn tableName="products" columnName="purchase_price"/>
+        <rollback>
+            <addColumn tableName="products">
+                <column name="purchase_price" type="DECIMAL(12,2)" defaultValueNumeric="0">
+                    <constraints nullable="false"/>
+                </column>
+            </addColumn>
+        </rollback>
     </changeSet>
 
     <changeSet id="190_drop_products_expire_date" author="orlando">
         <dropColumn tableName="products" columnName="expire_date"/>
+        <rollback>
+            <addColumn tableName="products">
+                <column name="expire_date" type="DATE"/>
+            </addColumn>
+        </rollback>
     </changeSet>
 
     <changeSet id="190_drop_products_lot_number" author="orlando">
         <dropColumn tableName="products" columnName="lot_number"/>
+        <rollback>
+            <addColumn tableName="products">
+                <column name="lot_number" type="VARCHAR(50)"/>
+            </addColumn>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

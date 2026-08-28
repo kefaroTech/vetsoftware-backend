@@ -13,17 +13,20 @@ import com.vetsoftware.app.subscription.application.command.CreateSubscriptionCo
 import com.vetsoftware.app.subscription.application.command.SubscriptionItemLineCommand;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionChangedEvent;
 import com.vetsoftware.app.subscription.application.port.out.CatalogItemValidationPort;
+import com.vetsoftware.app.subscription.application.port.out.LimitDimensionQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.PlatformCatalogPort;
 import com.vetsoftware.app.subscription.application.port.out.CompanyValidationPort;
-import com.vetsoftware.app.subscription.application.port.out.PriceListValidationPort;
+import com.vetsoftware.app.subscription.application.port.out.PriceListQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemCompositionPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionStatusHistoryRepository;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
 import com.vetsoftware.app.subscription.domain.CompanyAlreadyHasActiveSubscriptionException;
 import com.vetsoftware.app.subscription.domain.ItemOrigin;
+import com.vetsoftware.app.subscription.domain.PriceListRef;
 import com.vetsoftware.app.subscription.domain.Subscription;
 import com.vetsoftware.app.subscription.domain.SubscriptionChangeKind;
 import com.vetsoftware.app.subscription.domain.SubscriptionItem;
@@ -38,6 +41,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -67,11 +71,16 @@ class CreateSubscriptionServiceTest {
     @Mock
     private CompanyValidationPort companyValidationPort;
     @Mock
-    private PriceListValidationPort priceListValidationPort;
+    private PriceListQueryPort priceListQueryPort;
     @Mock
     private CatalogItemValidationPort catalogItemValidationPort;
     @Mock
+    private LimitDimensionQueryPort limitDimensionQueryPort;
+    @Mock
     private PlatformCatalogPort platformCatalogPort;
+    // D-76: el alta congela la composicion de cada linea en la misma transaccion.
+    @Mock
+    private SubscriptionItemCompositionPort compositionPort;
     @Mock
     private SubscriptionNumberPort subscriptionNumberPort;
     @Mock
@@ -106,6 +115,11 @@ class CreateSubscriptionServiceTest {
         // de la misma transaccion, para que un fallo deshaga la reserva.
         lenient().when(subscriptionNumberPort.nextSubscriptionNumber(anyInt()))
                 .thenReturn("SUS-2026-00184");
+        // La cabecera ya no comprueba existencia: exige tarifa PUBLICADA y VIGENTE el
+        // dia del alta (D-73). El reloj de este test marca 2026-01-01, dentro de la
+        // ventana que devuelve esta tarifa.
+        lenient().when(priceListQueryPort.findPublishedById(3L)).thenReturn(Optional
+                .of(new PriceListRef(3L, "LISTA-2026", ENERO_1, LocalDate.of(2026, 12, 31))));
     }
 
     @Nested
@@ -234,7 +248,7 @@ class CreateSubscriptionServiceTest {
             service.execute(comando(List.of()));
 
             verify(companyValidationPort).validateExists(EMPRESA);
-            verify(priceListValidationPort).validateExists(3L);
+            verify(priceListQueryPort).findPublishedById(3L);
         }
 
         @Test

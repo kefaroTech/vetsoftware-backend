@@ -103,8 +103,7 @@ class DunningStatusEscalationAuthorizationTest {
             autenticarAdminDeTenant();
 
             assertThatCode(() -> subscriptionPort.changeStatus(SUBSCRIPTION_ID, COMPANY_ID,
-                    DunningSubscriptionStatus.ACTIVE, "Sin facturas vencidas", "SYSTEM:DUNNING"))
-                    .doesNotThrowAnyException();
+                    DunningSubscriptionStatus.ACTIVE, "SYSTEM:DUNNING")).doesNotThrowAnyException();
 
             assertThat(registro.invocaciones()).hasSize(1);
         }
@@ -115,7 +114,7 @@ class DunningStatusEscalationAuthorizationTest {
             autenticarAdminDeTenant();
 
             subscriptionPort.changeStatus(SUBSCRIPTION_ID, COMPANY_ID,
-                    DunningSubscriptionStatus.READ_ONLY, "Gracia agotada", "SYSTEM:DUNNING");
+                    DunningSubscriptionStatus.READ_ONLY, "SYSTEM:DUNNING");
 
             assertThat(registro.invocaciones()).singleElement()
                     .satisfies(autoridades -> assertThat(autoridades).contains("ROLE_SYSTEM"));
@@ -127,7 +126,7 @@ class DunningStatusEscalationAuthorizationTest {
             autenticarAdminDeTenant();
 
             subscriptionPort.changeStatus(SUBSCRIPTION_ID, COMPANY_ID,
-                    DunningSubscriptionStatus.ACTIVE, "Sin facturas vencidas", "SYSTEM:DUNNING");
+                    DunningSubscriptionStatus.ACTIVE, "SYSTEM:DUNNING");
 
             Authentication despues = SecurityContextHolder.getContext().getAuthentication();
             assertThat(autoridadesDe(despues)).contains("ROLE_ADMIN").doesNotContain("ROLE_SYSTEM");
@@ -141,7 +140,8 @@ class DunningStatusEscalationAuthorizationTest {
 
     private static ChangeSubscriptionStatusCommand unCambioAActivo() {
         return new ChangeSubscriptionStatusCommand(SUBSCRIPTION_ID, COMPANY_ID,
-                com.vetsoftware.app.subscription.domain.SubscriptionStatus.ACTIVE, "Sin deuda",
+                com.vetsoftware.app.subscription.domain.SubscriptionStatus.ACTIVE,
+                com.vetsoftware.app.subscription.domain.SubscriptionStatusChangeReason.PAYMENT_RECEIVED,
                 "SYSTEM:DUNNING");
     }
 

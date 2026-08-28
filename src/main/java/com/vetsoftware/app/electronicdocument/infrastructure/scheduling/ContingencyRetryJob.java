@@ -7,6 +7,7 @@ import com.vetsoftware.app.electronicdocument.application.port.out.TransmissionL
 import com.vetsoftware.app.electronicdocument.application.usecase.DocumentTransmitter;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
+import com.vetsoftware.app.infrastructure.observability.ScheduledJobCatalog;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry.Outcome;
 import com.vetsoftware.app.infrastructure.observability.business.BusinessMetricNames;
@@ -29,11 +30,27 @@ import org.springframework.stereotype.Component;
  * en CONTINGENCIA y se reintenta en el siguiente ciclo.
  *
  * <p>
- * <b>El ciclo es de 12h</b> ({@code dian.contingency.retry-delay-ms}), contadas
- * desde que TERMINA la pasada anterior; no es una hora fija del dia. El reloj
- * se reinicia en cada despliegue, y el {@code initial-delay-ms} de 60s es la
- * unica pasada rapida que queda: un documento que cae en contingencia justo
- * despues de una corrida espera hasta 12h a su primer reintento automatico.
+ * <b>Dos pasadas diarias a hora fija</b> ({@code dian.contingency.cron}, por
+ * defecto {@code 0 15 2,14 * * *} en {@code America/Bogota}), declaradas en
+ * {@link com.vetsoftware.app.infrastructure.observability.ScheduledJobCatalog}.
+ * La de la tarde se mantiene a proposito: la DIAN se cae por horas y esperar a
+ * la madrugada siguiente alargaria la contingencia un dia entero.
+ *
+ * <p>
+ * <b>Antes era {@code fixedDelay} de 12 h desde el fin de la pasada anterior, y
+ * eso significaba que la hora era la del ultimo despliegue</b> (#609). El
+ * cambio compra lo unico que no se podia tener asi: un umbral para
+ * {@code VetSoftwareScheduledJobOverdue}, que detecta el barrido que <b>no
+ * corrio</b> — cosa que ningun contador de fallos puede ver, porque un job que
+ * no se ejecuta no incrementa nada ni escribe nada.
+ *
+ * <p>
+ * <b>Lo que se pierde y se asume:</b> el {@code initial-delay} de 60 s daba una
+ * pasada rapida tras cada despliegue, que era la unica ventana de reintento
+ * corto con un ciclo de 12 h. Un documento que cae en contingencia justo
+ * despues de una corrida espera ahora hasta la pasada siguiente. Un reintento
+ * inmediato se pide a mano por
+ * {@code POST /electronic-documents/{id}/transmit}.
  *
  * <p>
  * El reintento se acota por dos límites (configurables): un <b>cap de
@@ -73,7 +90,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ContingencyRetryJob {
     private static final Logger log = LoggerFactory.getLogger(ContingencyRetryJob.class);
-    private static final String JOB_NAME = "dian.contingency.retry";
+    private static final ScheduledJobCatalog JOB = ScheduledJobCatalog.DIAN_CONTINGENCY_RETRY;
     /** Techo del recuerdo en memoria de documentos ya reportados como agotados. */
     private static final int REPORTED_EXHAUSTED_CAPACITY = 5_000;
 
@@ -110,9 +127,9 @@ public class ContingencyRetryJob {
         this.lease = lease;
     }
 
-    @Scheduled(initialDelayString = "${dian.contingency.initial-delay-ms:60000}", fixedDelayString = "${dian.contingency.retry-delay-ms:43200000}")
+    @Scheduled(cron = "${dian.contingency.cron:0 15 2,14 * * *}", zone = ScheduledJobCatalog.ZONE)
     public void retryContingencies() {
-        telemetry.observe(JOB_NAME, this::executeRetries);
+        telemetry.observe(JOB, this::executeRetries);
     }
 
     private Outcome executeRetries() {

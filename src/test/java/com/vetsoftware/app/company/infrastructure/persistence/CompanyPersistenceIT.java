@@ -11,6 +11,7 @@ import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -76,6 +77,18 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
 
     private Company guardar(String nombre) {
         return repository.save(nueva(nombre));
+    }
+
+    /**
+     * Los ids de una pagina, en el orden exacto en que los devolvio el motor.
+     *
+     * <p>
+     * Es la pieza que permite afirmar contra el listado GLOBAL sin depender de
+     * cuantas empresas haya en la tabla: una pagina se compara contra OTRA lectura
+     * de la misma consulta, nunca contra una lista escrita a mano.
+     */
+    private static List<Long> ids(PageResult<Company> pagina) {
+        return pagina.content().stream().map(Company::getId).toList();
     }
 
     /** Soft delete + flush: el UPDATE tiene que llegar a la BD antes de releer. */
@@ -206,45 +219,75 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
          * no garantiza el orden de las empatadas entre dos consultas distintas. Con
          * {@code name ASC, id ASC} la particion es una particion de verdad: las tres
          * paginas concatenadas son el registro entero, sin repetir ni omitir.
+         *
+         * <p>
+         * <b>Por que no se afirma «Alfa, Bravo» a pelo.</b> Este listado es GLOBAL y el
+         * contenedor de {@link AbstractDataJpaTest} lo comparte la suite entera, asi
+         * que el numero de filas no lo decide este caso: cualquier clase que CONFIRME
+         * una empresa —hoy {@code RecordLimitEventRollbackIT}, que corre con
+         * {@code NOT_SUPPORTED} y deja sembradas las dos de {@code SchemaSeed}— corre
+         * las paginas y pone rojo un aserto posicional. La particion se comprueba
+         * contra otra lectura de la misma consulta: las tres paginas de dos en dos
+         * tienen que ser, exactamente, los seis primeros elementos del registro
+         * partidos en tres. Es mas estricto que la version anterior, no mas laxo — esa
+         * solo miraba el caso de tabla vacia.
          */
         @Test
         @DisplayName("tres paginas consecutivas parten el registro sin repetir ni omitir filas")
         void tres_paginas_consecutivas_parten_el_registro() {
-            guardar("Delta");
-            guardar("Alfa");
-            guardar("Charlie");
-            guardar("Bravo");
-            guardar("Echo");
+            long antes = repository.findAllVisibleTo(null, 0, 1).totalElements();
+            Company delta = guardar("Delta");
+            Company alfa = guardar("Alfa");
+            Company charlie = guardar("Charlie");
+            Company bravo = guardar("Bravo");
+            Company echo = guardar("Echo");
+            Company foxtrot = guardar("Foxtrot");
 
+            List<Long> registro = ids(repository.findAllVisibleTo(null, 0, 200));
             PageResult<Company> primera = repository.findAllVisibleTo(null, 0, 2);
             PageResult<Company> segunda = repository.findAllVisibleTo(null, 1, 2);
             PageResult<Company> tercera = repository.findAllVisibleTo(null, 2, 2);
 
-            assertThat(primera.content()).extracting(Company::getName).containsExactly("Alfa",
-                    "Bravo");
-            assertThat(segunda.content()).extracting(Company::getName).containsExactly("Charlie",
-                    "Delta");
-            assertThat(tercera.content()).extracting(Company::getName).containsExactly("Echo");
-            assertThat(primera.totalElements()).isEqualTo(5L);
-            assertThat(primera.totalPages()).isEqualTo(3);
+            assertThat(ids(primera)).containsExactlyElementsOf(registro.subList(0, 2));
+            assertThat(ids(segunda)).containsExactlyElementsOf(registro.subList(2, 4));
+            assertThat(ids(tercera)).containsExactlyElementsOf(registro.subList(4, 6));
+            // El orden que declara el adaptador lo aplica el motor: las seis sembradas
+            // salen alfabeticamente aunque se guardaran desordenadas.
+            assertThat(registro).containsSubsequence(alfa.getId(), bravo.getId(), charlie.getId(),
+                    delta.getId(), echo.getId(), foxtrot.getId());
+            // El total crece exactamente en las seis de este caso, y los metadatos
+            // siguen siendo coherentes entre si: paginas = techo(elementos / pageSize).
+            assertThat(primera.totalElements()).isEqualTo(antes + 6);
+            assertThat(primera.totalPages()).isEqualTo((int) ((primera.totalElements() + 1) / 2));
         }
 
         /**
          * El caso que hace falta el desempate: tres empresas homonimas. Sin
          * {@code id ASC} el nombre no distingue nada y la fila puede saltar de pagina
          * entre dos peticiones.
+         *
+         * <p>
+         * Se afirma sobre el registro entero y no sobre las paginas 0 y 1 porque la
+         * POSICION de estas tres en un listado global la decide cuantas empresas haya
+         * confirmado otra clase. Lo que el desempate promete es justo lo que se
+         * comprueba: las homonimas salen en orden de id, CONSECUTIVAS —no se intercala
+         * nada entre ellas— y ninguna aparece dos veces. El aserto posicional anterior
+         * era mas debil, porque no decia nada del resto del registro.
          */
         @Test
-        @DisplayName("con nombres iguales el id desempata y ninguna fila salta de pagina")
+        @DisplayName("con nombres iguales el id desempata: las homonimas salen consecutivas, en"
+                + " orden de id y una sola vez")
         void con_nombres_iguales_el_id_desempata() {
             Company primera = guardar("Clinica Homonima");
             Company segunda = guardar("Clinica Homonima");
             Company tercera = guardar("Clinica Homonima");
 
-            assertThat(repository.findAllVisibleTo(null, 0, 2).content()).extracting(Company::getId)
-                    .containsExactly(primera.getId(), segunda.getId());
-            assertThat(repository.findAllVisibleTo(null, 1, 2).content()).extracting(Company::getId)
-                    .containsExactly(tercera.getId());
+            List<Long> registro = ids(repository.findAllVisibleTo(null, 0, 200));
+
+            assertThat(registro).containsSequence(primera.getId(), segunda.getId(),
+                    tercera.getId());
+            assertThat(registro).containsOnlyOnce(primera.getId(), segunda.getId(),
+                    tercera.getId());
         }
 
         /**
@@ -266,17 +309,25 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
          * Sin normalizar, {@code ?page=-1} revienta con
          * {@code IllegalArgumentException} desde dentro de Spring Data y el cliente ve
          * un 500 por escribir un numero.
+         *
+         * <p>
+         * «Se normaliza a 0» se comprueba contra la pagina 0 de verdad, no contra una
+         * lista de un elemento: pedir {@code -3} tiene que devolver EXACTAMENTE lo
+         * mismo que pedir {@code 0}. El aserto anterior confundia «es la pagina cero»
+         * con «la tabla solo tiene mi fila», y por eso se caia en cuanto otra clase
+         * confirmaba una empresa.
          */
         @Test
         @DisplayName("un page negativo se normaliza a 0 en vez de reventar dentro de Spring Data")
         void un_page_negativo_se_normaliza_a_cero() {
             Company sembrada = guardar("Clinica Norte");
 
-            PageResult<Company> pagina = repository.findAllVisibleTo(null, -3, 20);
+            PageResult<Company> negativa = repository.findAllVisibleTo(null, -3, 20);
+            PageResult<Company> cero = repository.findAllVisibleTo(null, 0, 20);
 
-            assertThat(pagina.page()).isZero();
-            assertThat(pagina.content()).extracting(Company::getId)
-                    .containsExactly(sembrada.getId());
+            assertThat(negativa.page()).isZero();
+            assertThat(ids(negativa)).containsExactlyElementsOf(ids(cero))
+                    .contains(sembrada.getId());
         }
     }
 
@@ -340,7 +391,7 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
         @DisplayName("un termino que casa con varias empresas se recorta al alcance del empleado")
         void un_termino_que_casa_con_varias_se_recorta_al_alcance() {
             Company propia = guardar("Clinica Norte");
-            guardar("Clinica Sur");
+            Company ajena = guardar("Clinica Sur");
 
             PageResult<Company> acotada = repository.searchVisibleTo(propia.getId(), "Clinica", 0,
                     20);
@@ -348,19 +399,34 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
             assertThat(acotada.content()).extracting(Company::getId)
                     .containsExactly(propia.getId());
             assertThat(acotada.totalElements()).isEqualTo(1L);
-            assertThat(repository.searchVisibleTo(null, "Clinica", 0, 20).totalElements())
-                    .isEqualTo(2L);
+            // Sin acotar, ese mismo termino SI alcanza a las dos: lo que falta no es el
+            // dato, es el derecho. Por pertenencia y no con un total exacto, que
+            // contaria tambien las «Clinica ...» que confirme cualquier otra clase.
+            assertThat(ids(repository.searchVisibleTo(null, "Clinica", 0, 20)))
+                    .contains(propia.getId(), ajena.getId());
         }
 
+        /**
+         * «El mismo alcance que el listado» se comprueba, literalmente, contra el
+         * listado: con termino vacio las dos consultas devuelven la misma pagina y el
+         * mismo total, sea cual sea el numero de empresas de la tabla. El
+         * {@code isEqualTo(2L)} anterior no media esa equivalencia — media que la tabla
+         * estuviera vacia, que es otra cosa y ademas no la controla este caso.
+         */
         @Test
         @DisplayName("un termino vacio devuelve el mismo alcance que el listado")
         void un_termino_vacio_devuelve_el_mismo_alcance_que_el_listado() {
             Company propia = guardar("Clinica Norte");
-            guardar("Veterinaria Sur");
+            Company ajena = guardar("Veterinaria Sur");
+
+            PageResult<Company> busquedaVacia = repository.searchVisibleTo(null, "", 0, 20);
+            PageResult<Company> listado = repository.findAllVisibleTo(null, 0, 20);
 
             assertThat(repository.searchVisibleTo(propia.getId(), "", 0, 20).content())
                     .extracting(Company::getId).containsExactly(propia.getId());
-            assertThat(repository.searchVisibleTo(null, "", 0, 20).totalElements()).isEqualTo(2L);
+            assertThat(ids(busquedaVacia)).containsExactlyElementsOf(ids(listado))
+                    .contains(propia.getId(), ajena.getId());
+            assertThat(busquedaVacia.totalElements()).isEqualTo(listado.totalElements());
         }
 
         @Test
@@ -374,6 +440,191 @@ class CompanyPersistenceIT extends AbstractDataJpaTest {
                     .extracting(Company::getName).containsExactly("Clinica Alfa", "Clinica Bravo");
             assertThat(repository.searchVisibleTo(null, "Clinica", 1, 2).content())
                     .extracting(Company::getName).containsExactly("Clinica Delta");
+        }
+    }
+
+    /**
+     * El ARCHIVO: la mitad que faltaba del soft delete. Todo lo que hay debajo es
+     * SQL nativo, porque es la unica forma de que una consulta alcance una fila que
+     * el {@code @SQLRestriction("enabled = true")} esconde — y esa es exactamente
+     * la razon por la que estas pruebas tienen que correr contra MySQL real: un
+     * doble del repositorio no ejecuta ni la restriccion que se esquiva ni el
+     * {@code WHERE} que la sustituye.
+     *
+     * <p>
+     * <b>Cada prueba siembra una archivada Y una activa.</b> Con solo archivadas en
+     * el fixture, una consulta que devolviera la tabla entera pasaria igual de
+     * verde: la asercion que muerde es la de la activa que <em>no</em> debe salir.
+     */
+    @Nested
+    @DisplayName("archivo de empresas — findAllDisabledVisibleTo")
+    class Archivadas {
+
+        @Test
+        @DisplayName("trae la archivada y NO trae la activa: el listado no es la tabla entera")
+        void trae_la_archivada_y_no_la_activa() {
+            Company archivada = guardar("Clinica Archivada");
+            Company activa = guardar("Clinica Activa");
+            deshabilitar(archivada.getId());
+
+            PageResult<Company> pagina = repository.findAllDisabledVisibleTo(null, 0, 20);
+
+            assertThat(pagina.content()).extracting(Company::getId).contains(archivada.getId())
+                    .doesNotContain(activa.getId());
+            // Y la activa sigue estando donde debe: las dos consultas son
+            // complementarias, no alternativas.
+            assertThat(repository.findAllVisibleTo(null, 0, 20).content())
+                    .extracting(Company::getId).contains(activa.getId())
+                    .doesNotContain(archivada.getId());
+        }
+
+        /**
+         * El campo del que cuelga el distintivo de deshabilitada en la consola. Si la
+         * consulta nativa lo perdiera por el camino —o el mapeo lo forzara a
+         * {@code true}—, la pantalla pintaria el archivo como si estuviera operativo.
+         */
+        @Test
+        @DisplayName("la empresa archivada llega con enabled=false y sus campos intactos")
+        void la_archivada_llega_con_enabled_false() {
+            Company archivada = guardar("Clinica Archivada");
+            deshabilitar(archivada.getId());
+
+            Company leida = repository.findAllDisabledVisibleTo(null, 0, 20).content().stream()
+                    .filter(c -> c.getId().equals(archivada.getId())).findFirst().orElseThrow();
+
+            assertThat(leida.isEnabled()).isFalse();
+            assertThat(leida.getName()).isEqualTo("Clinica Archivada");
+            assertThat(leida.getIdentifier()).isEqualTo(archivada.getIdentifier());
+            // La ciudad viaja hidratada pese a que la consulta nativa no admite
+            // @EntityGraph: el service corre @Transactional(readOnly = true) y aqui la
+            // rodaja tambien esta en transaccion.
+            assertThat(leida.getCity().name()).isEqualTo("Bogota (test)");
+        }
+
+        /**
+         * El {@code AND id = :companyId} de la consulta nativa es TODA la barrera de
+         * tenant que hay en este camino: al saltarse el {@code @SQLRestriction} no
+         * queda ninguna lectura previa que valide la propiedad de la fila. Si el
+         * predicado desapareciera, este test seria el unico que lo notaria — y en
+         * produccion la fuga responderia 200.
+         */
+        @Test
+        @DisplayName("acotada a una empresa no devuelve la archivada de otra")
+        void acotada_no_devuelve_la_archivada_de_otra() {
+            Company archivadaAjena = guardar("Clinica Ajena");
+            Company propia = guardar("Clinica Propia");
+            deshabilitar(archivadaAjena.getId());
+            deshabilitar(propia.getId());
+
+            PageResult<Company> pagina = repository.findAllDisabledVisibleTo(propia.getId(), 0, 20);
+
+            assertThat(pagina.content()).extracting(Company::getId).containsExactly(propia.getId());
+            assertThat(pagina.totalElements()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("acotada a una empresa activa devuelve pagina vacia, no su ficha")
+        void acotada_a_una_activa_devuelve_pagina_vacia() {
+            Company activa = guardar("Clinica Activa");
+            Company archivada = guardar("Clinica Archivada");
+            deshabilitar(archivada.getId());
+
+            PageResult<Company> pagina = repository.findAllDisabledVisibleTo(activa.getId(), 0, 20);
+
+            assertThat(pagina.content()).isEmpty();
+            assertThat(pagina.totalElements()).isZero();
+        }
+
+        /**
+         * El {@code countQuery} de la consulta nativa cuenta el ARCHIVO, no la tabla.
+         * Se comprueba pidiendo paginas de una fila sobre dos archivadas y una activa:
+         * el total tiene que decir dos, no tres.
+         */
+        @Test
+        @DisplayName("la paginacion parte el archivo y el total no cuenta las activas")
+        void la_paginacion_parte_el_archivo_sin_contar_las_activas() {
+            Company primera = guardar("Archivada A");
+            Company segunda = guardar("Archivada B");
+            Company activa = guardar("Activa C");
+            deshabilitar(primera.getId());
+            deshabilitar(segunda.getId());
+
+            PageResult<Company> pagina0 = repository.findAllDisabledVisibleTo(null, 0, 1);
+            PageResult<Company> pagina1 = repository.findAllDisabledVisibleTo(null, 1, 1);
+
+            assertThat(pagina0.content()).hasSize(1);
+            assertThat(pagina1.content()).hasSize(1);
+            assertThat(pagina0.content().getFirst().getId())
+                    .isNotEqualTo(pagina1.content().getFirst().getId());
+            assertThat(pagina0.totalElements()).isEqualTo(2L);
+            assertThat(pagina0.content()).extracting(Company::getId).doesNotContain(activa.getId());
+            assertThat(pagina1.content()).extracting(Company::getId).doesNotContain(activa.getId());
+        }
+
+        /**
+         * El {@code ORDER BY} va embebido en el SQL nativo y el {@code Pageable} llega
+         * sin {@code Sort}. Con nombres iguales el {@code id} desempata: sin orden
+         * total, dos paginas consecutivas pueden repetir u omitir filas.
+         */
+        @Test
+        @DisplayName("en el archivo, con nombres iguales el id desempata y el orden es total")
+        void con_nombres_iguales_el_id_desempata_en_el_archivo() {
+            Company primera = guardar("Clinica Homonima");
+            Company segunda = guardar("Clinica Homonima");
+            deshabilitar(primera.getId());
+            deshabilitar(segunda.getId());
+
+            PageResult<Company> pagina = repository.findAllDisabledVisibleTo(null, 0, 20);
+
+            assertThat(pagina.content()).extracting(Company::getId)
+                    .containsSequence(primera.getId(), segunda.getId());
+        }
+
+        /**
+         * El tope lo pone el kernel de paginacion: esquivar el {@code @SQLRestriction}
+         * no esquiva tambien a {@code Pages}.
+         */
+        @Test
+        @DisplayName("un pageSize desmedido tambien se topa en el maximo al listar el archivo")
+        void un_page_size_desmedido_se_topa_en_el_maximo_del_archivo() {
+            Company archivada = guardar("Clinica Archivada");
+            deshabilitar(archivada.getId());
+
+            assertThat(repository.findAllDisabledVisibleTo(null, 0, 100_000).pageSize())
+                    .isEqualTo(200);
+        }
+
+        @Test
+        @DisplayName("un page negativo tambien se normaliza a 0 al listar el archivo")
+        void un_page_negativo_se_normaliza_a_cero_en_el_archivo() {
+            Company archivada = guardar("Clinica Archivada");
+            deshabilitar(archivada.getId());
+
+            assertThat(repository.findAllDisabledVisibleTo(null, -1, 20).page()).isZero();
+        }
+
+        /**
+         * El ciclo completo que este listado desbloquea: la empresa aparece en el
+         * archivo, se restaura con {@code reactivate} y deja de aparecer. Antes de
+         * existir el listado, ese primer paso solo se podia dar sabiendose el id de
+         * memoria.
+         */
+        @Test
+        @DisplayName("tras reactivar, la empresa sale del archivo y vuelve al listado activo")
+        void tras_reactivar_sale_del_archivo() {
+            Company archivada = guardar("Clinica Norte");
+            deshabilitar(archivada.getId());
+            assertThat(repository.findAllDisabledVisibleTo(null, 0, 20).content())
+                    .extracting(Company::getId).contains(archivada.getId());
+
+            repository.reactivate(archivada.getId());
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(repository.findAllDisabledVisibleTo(null, 0, 20).content())
+                    .extracting(Company::getId).doesNotContain(archivada.getId());
+            assertThat(repository.findAllVisibleTo(null, 0, 20).content())
+                    .extracting(Company::getId).contains(archivada.getId());
         }
     }
 

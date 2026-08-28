@@ -16,6 +16,7 @@
             <columnExists tableName="spa_types" columnName="general"/>
         </preConditions>
         <sql>DO 0;</sql>
+        <rollback/>
     </changeSet>
 
     <changeSet id="298_seed_spa_types_catalog" author="orlando">
@@ -88,6 +89,7 @@
             <sqlCheck expectedResult="32">SELECT COUNT(*) FROM spa_types WHERE general = TRUE AND enabled = 1</sqlCheck>
         </preConditions>
         <sql>DO 0;</sql>
+        <rollback/>
     </changeSet>
 
 </databaseChangeLog>

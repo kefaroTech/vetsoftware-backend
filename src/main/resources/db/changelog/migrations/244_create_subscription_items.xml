@@ -13,7 +13,93 @@
          fk_subscription_items_ended_amendment. uq_subscription_items_company_id es la clave auxiliar
          que necesitan company_entitlements (par P6) y subscription_charges.
          ix_subscription_items_vigencia contiene como prefijo (company_id, subscription_id): se crea
-         ANTES que la FK compuesta para que MySQL no genere un índice redundante (Apéndice C). -->
+         ANTES que la FK compuesta para que MySQL no genere un índice redundante (Apéndice C).
+
+         REESCRITO PARA LAS CAPAS I Y J (D-53). Aquí vive la prueba de verdad. Al vencer NO se edita
+         la fila: se le pone effective_to y se abre otra, exactamente como ya se hace al cambiar un
+         precio.
+
+         · charge_mode ES LA COLUMNA QUE DECIDE SI SE COBRA. TRIAL gratis con caducidad · PAID se
+           cobra · FREE_LIMITED gratis para siempre pero con techo · EXPIRED_READ_ONLY la prueba
+           venció y el artículo quedó en consulta. VARCHAR(20) y no (15): el cuarto valor tiene
+           dieciocho caracteres, y con quince el desenlace de solo lectura sería literalmente
+           inescribible y el barrido nocturno fallaría sobre todos los clientes a la vez.
+           Y LA TRAMPA QUE HAY QUE DESACTIVAR EL MISMO DÍA: con esto, subscriptions.status =
+           'TRIALING' deja de significar "a este cliente no se le cobra". Ana está en prueba desde el
+           día 0 y a la vez se le factura Facturación DIAN. El filtro de cobro pasa a ser POR LÍNEA
+           -se cobra lo que esté en PAID-, nunca por contrato. Su gemela: unit_amount NO se pone a
+           cero en las líneas de prueba, así que una consulta de facturación que filtre solo por
+           vigencia y olvide charge_mode le cobra a todos los clientes en prueba. La base no puede
+           impedirlo -una restricción no puede mirar otra tabla-: es prueba automática, no cuidado.
+         · trial_end_date NO ES UN DATO QUE SE ELIJA. Es parte de la clave foránea
+           fk_subscription_items_trial_grant (declarada en 302, cuando nace la tabla apuntada) contra
+           la concesión de prueba de la empresa, así que la única fecha que la base admite aquí es la
+           que se concedió. Si el código intentara poner otra, la operación muere en el motor. Eso
+           cierra de golpe las cinco vías de reinicio de la prueba. Obligatorio si la línea está en
+           prueba y prohibido si no: una prueba sin fecha es una prueba eterna, y una fecha en una
+           línea de pago es un dato que alguien leerá mal. El índice que sostiene esa clave,
+           ix_subscription_items_trial, se crea aquí -antes que la clave, como manda el apéndice-.
+         · trial_eligibility es la copia congelada de la marca del catálogo, y es lo que permite que
+           la base impida conceder gratis un módulo de pago obligatorio (D-04), porque una restricción
+           no puede mirar otra tabla. Y AQUÍ ACABAN LAS COPIAS: ni el desenlace ni el tope de días de
+           la ventana se repiten en la línea; ya están congelados en la concesión y la clave foránea
+           impone la regla aguas arriba. Tres copias del mismo dato son tres oportunidades de que
+           diverja.
+         · tier_min / tier_max: la corrección que destapó la revisión financiera, y no es de
+           métricas, es de caja. La lista de precios vende por tramos acumulativos (D-66) y la línea
+           solo admite un precio unitario; con la unicidad mirando solo el artículo, un cliente con
+           quince usuarios necesita dos líneas y la base las rechazaba -así que o se le cobraba todo
+           al tramo caro o todo al barato-. tier_min NACE EN 1 Y NUNCA VACÍO: una unicidad no
+           restringe filas que llevan un vacío en cualquiera de sus columnas, así que con el tramo
+           vacío en las líneas normales la regla dejaría de proteger justo el caso corriente -dos
+           líneas vivas del mismo módulo, facturado dos veces-. Es una de las tres columnas del
+           modelo con valor por defecto declarado.
+           Lo que la base NO puede impedir: que dos tramos con fechas de fin futuras se pisen entre
+           sí. No hay restricciones de exclusión en MySQL; eso va como consulta de vigilancia.
+         · months_in_cycle es la mitad que faltaba de la corrección del ciclo (D-39): el ciclo del
+           contrato dice cada cuánto se emite el cobro y SE SOBRESCRIBE al cambiarlo; este dice
+           cuántos meses vale este importe y no se mueve jamás. Sin él, una línea anual se suma al
+           ingreso recurrente como si fuera mensual.
+         · succeeds_item_id hace visible la conversión de gratuito a pago, que es LA métrica del
+           modelo freemium y hoy no se puede consultar: sin puntero, las dos filas quedan sueltas y
+           hay que emparejarlas por artículo y fechas. NO lleva CHECK de autorreferencia
+           (succeeds_item_id <> id): el manual de MySQL 8.4 prohíbe que un CHECK referencie una
+           columna AUTO_INCREMENT (suscripciones-modelo.md §1.9), así que "una línea no se sucede a
+           sí misma" baja a regla de código con su consulta de vigilancia, igual que ya pasa con
+           "una nota crédito no se corrige a sí misma".
+         · activation_path registra EL CANAL, no restringe el cobro (D-58). Una versión anterior
+           usaba esta columna para impedir que una línea de pago naciera por autoservicio, y confundía
+           "lo aprobó VetSoftware" con "lo aprobó el cliente". Lo que hay que impedir es un cargo que
+           NADIE ACEPTÓ, y eso se comprueba contra la aceptación enlazada -capa L-, no contra el
+           canal.
+         · billing_effect va AQUÍ, en la línea, y no en el papel del cambio: un mismo otrosí puede
+           añadir a la vez un módulo en prueba y uno de pago obligatorio, y una casilla del documento
+           tendría que valer dos cosas a la vez -el mismo error que la fecha de fin única-.
+
+         current_item_marker + current_tier_marker: el marcador pasa a valer artículo MÁS TRAMO
+         INFERIOR, porque quince usuarios son dos líneas legítimas del mismo artículo. Se implementa
+         con dos columnas generadas y una unicidad de tres, en vez de concatenar artículo y tramo en
+         un texto: mismo efecto -dos vacíos no chocan entre sí, así que el índice solo restringe a
+         las vivas- y sin perder los tipos.
+
+         · discount_percent / discount_amount / discount_is_conditional (D-86 / R-QUOTE-05 /
+           R-TAX-04): el descuento negociado, CONGELADO igual que unit_amount -renegociar el
+           descuento es cerrar la línea y abrir otra, nunca editarla-. La marca nace en
+           quote_lines.discount_is_conditional y sin estas tres columnas no tenía dónde llegar:
+           moría en el renglón de la oferta, y el impuesto se liquidaba sobre el precio rebajado
+           aunque la norma solo excluya de la base del IVA los descuentos "no sujetos a ninguna
+           condición" -un veinte por ciento a cambio de quedarse doce meses está condicionado por
+           definición-. Entran las TRES y no solo la marca: para reconstruir la base imponible de
+           una línea firmada hace un año hacen falta el porcentaje negociado, el importe en pesos
+           que produjo y si estaba condicionado.
+           chk_subscription_items_discount protege lo que la aritmética no puede recuperar: un
+           porcentaje fuera de [0,100] y un importe negativo. Que el importe cuadre con el
+           porcentaje lo comprueba el dominio en cada construcción -lectura incluida-, porque una
+           restricción no puede multiplicar por la cantidad.
+           REESCRITO PARA LA CAPA I (D-53): esta tabla nace ya con las tres columnas; nunca existió
+           sin ellas, así que no hace falta rellenar nada. -->
+
+
     <changeSet id="244_create_subscription_items" author="orlando">
         <createTable tableName="subscription_items">
             <column name="id" type="BIGINT" autoIncrement="true">
@@ -43,9 +129,36 @@
             <column name="tax_rate" type="DECIMAL(5,2)" defaultValueNumeric="0.00">
                 <constraints nullable="false"/>
             </column>
+            <column name="tier_min" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tier_max" type="INT"/>
+            <column name="discount_percent" type="DECIMAL(5,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="discount_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
+            <column name="discount_is_conditional" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="months_in_cycle" type="INT"><constraints nullable="false"/></column>
+            <column name="charge_mode" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="trial_eligibility" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="max_trial_days" type="INT"><constraints nullable="false"/></column>
+            <column name="trial_end_date" type="DATE"/>
+            <column name="activation_path" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="billing_effect" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
             <column name="effective_from" type="DATE"><constraints nullable="false"/></column>
             <column name="effective_to" type="DATE"/>
             <column name="origin" type="VARCHAR(25)"><constraints nullable="false"/></column>
+            <column name="succeeds_item_id" type="BIGINT"/>
             <column name="created_amendment_id" type="BIGINT"/>
             <column name="ended_amendment_id" type="BIGINT"/>
             <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
@@ -72,7 +185,16 @@
                             ELSE NULL
                         END
                     ) STORED,
-                ADD CONSTRAINT uq_subscription_items_current UNIQUE (subscription_id, current_item_marker),
+                ADD COLUMN current_tier_marker INT
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN enabled = TRUE AND effective_to IS NULL
+                            THEN tier_min
+                            ELSE NULL
+                        END
+                    ) STORED,
+                ADD CONSTRAINT uq_subscription_items_current
+                    UNIQUE (subscription_id, current_item_marker, current_tier_marker),
                 ADD CONSTRAINT chk_subscription_items_dates
                     CHECK (effective_to IS NULL OR effective_to >= effective_from),
                 ADD CONSTRAINT chk_subscription_items_quantity CHECK (quantity > 0),
@@ -89,7 +211,32 @@
                     CHECK ((item_type = 'CAPACITY' AND capacity_unit IN ('USER','BRANCH','TERMINAL','STORAGE_GB'))
                            OR (item_type <> 'CAPACITY' AND capacity_unit IS NULL)),
                 ADD CONSTRAINT chk_subscription_items_ended
-                    CHECK (ended_amendment_id IS NULL OR effective_to IS NOT NULL)
+                    CHECK (ended_amendment_id IS NULL OR effective_to IS NOT NULL),
+                ADD CONSTRAINT chk_subscription_items_tier
+                    CHECK (tier_min >= 1 AND (tier_max IS NULL OR tier_max >= tier_min)),
+                ADD CONSTRAINT chk_subscription_items_months_in_cycle
+                    CHECK (months_in_cycle >= 1),
+                ADD CONSTRAINT chk_subscription_items_charge_mode
+                    CHECK (charge_mode IN ('TRIAL','PAID','FREE_LIMITED','EXPIRED_READ_ONLY')),
+                ADD CONSTRAINT chk_subscription_items_trial_eligibility
+                    CHECK (trial_eligibility IN ('ELIGIBLE','NEVER_FREE')),
+                ADD CONSTRAINT chk_subscription_items_never_free_is_paid
+                    CHECK (trial_eligibility <> 'NEVER_FREE' OR charge_mode = 'PAID'),
+                ADD CONSTRAINT chk_subscription_items_bundle_not_trialable
+                    CHECK (item_type <> 'BUNDLE' OR trial_eligibility = 'NEVER_FREE'),
+                ADD CONSTRAINT chk_subscription_items_max_trial_days
+                    CHECK ((trial_eligibility = 'ELIGIBLE' AND max_trial_days > 0)
+                           OR (trial_eligibility = 'NEVER_FREE' AND max_trial_days = 0)),
+                ADD CONSTRAINT chk_subscription_items_trial_end
+                    CHECK ((charge_mode = 'TRIAL' AND trial_end_date IS NOT NULL)
+                           OR (charge_mode <> 'TRIAL' AND trial_end_date IS NULL)),
+                ADD CONSTRAINT chk_subscription_items_activation_path
+                    CHECK (activation_path IN ('QUOTE','PLATFORM','SELF_SERVICE')),
+                ADD CONSTRAINT chk_subscription_items_billing_effect
+                    CHECK (billing_effect IN ('NONE','PRORATION','NEXT_CYCLE')),
+                ADD CONSTRAINT chk_subscription_items_discount
+                    CHECK (discount_percent >= 0 AND discount_percent <= 100
+                           AND discount_amount >= 0)
         ]]></sql>
 
         <createIndex tableName="subscription_items" indexName="ix_subscription_items_vigencia">
@@ -97,6 +244,21 @@
             <column name="subscription_id"/>
             <column name="effective_from"/>
             <column name="effective_to"/>
+        </createIndex>
+
+        <!-- Sostiene fk_subscription_items_trial_grant, que se declara en 302 porque la tabla
+             apuntada (company_trial_grants) todavía no existe aquí. El índice va antes que la
+             clave, como manda el apéndice de claves, para que el motor no genere uno redundante
+             encima. -->
+        <createIndex tableName="subscription_items" indexName="ix_subscription_items_trial">
+            <column name="company_id"/>
+            <column name="catalog_item_id"/>
+            <column name="trial_end_date"/>
+        </createIndex>
+
+        <createIndex tableName="subscription_items" indexName="ix_subscription_items_succeeds">
+            <column name="company_id"/>
+            <column name="succeeds_item_id"/>
         </createIndex>
 
         <addForeignKeyConstraint baseTableName="subscription_items"
@@ -116,6 +278,12 @@
                                  referencedTableName="subscription_amendments"
                                  referencedColumnNames="company_id, id"
                                  constraintName="fk_subscription_items_ended_amendment"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_items"
+                                 baseColumnNames="company_id, succeeds_item_id"
+                                 referencedTableName="subscription_items"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_subscription_items_succeeds"
                                  onDelete="RESTRICT" onUpdate="RESTRICT"/>
 
         <rollback>

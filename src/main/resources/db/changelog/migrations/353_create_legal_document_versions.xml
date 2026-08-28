@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CUMPLIR Y MEDIR - CAPA O (ficha legal_document_versions). QUE TEXTO ACEPTO, EXACTAMENTE,
+         SIN EMPRESA.
+
+         EL CHOQUE DE NOMBRES QUE EL DOCUMENTO NO VEIA: la ficha pedia una columna "version" de
+         negocio Y a la vez pone la tabla entre las que llevan columna de concurrencia, tambien
+         "version". Dos columnas con el mismo nombre no caben. DECISION: la de negocio es
+         document_version; version queda para el bloqueo optimista, igual que en las otras 83
+         entidades versionadas.
+
+         content MEDIUMTEXT y no TEXT: TEXT acaba a los 64 KiB y un contrato de adhesion con
+         anexos lo pasa; ampliarlo despues reconstruye la tabla.
+
+         uq_ldv_code_version es la del documento. uq_ldv_content (code, content_hash) y
+         uq_ldv_current (via current_version_marker) NO ESTABAN: la primera impide publicar dos
+         veces el mismo texto bajo el mismo documento, la segunda impide dos versiones vigentes a
+         la vez -sin ella la aceptacion apuntaria a la que llegara primero-.
+
+         SIN enabled: un texto legal publicado no se desactiva, se sucede. SI version: la vigencia
+         se cierra (superseded_at) sobre la misma fila.
+
+         DISPARADOR DE INMUTABILIDAD (S6.3): sin el, editar content deja la huella vieja
+         (content_hash) apuntando a un texto que ya no existe y la prueba de que "se acepto por
+         huella" se evapora en silencio. Solo pueden moverse superseded_at y version -por eso el
+         trigger compara todas las demas columnas y usa <=> para content, la unica columna larga y
+         la unica para la que null-safe importa-. -->
+    <changeSet id="353_create_legal_document_versions" author="orlando">
+        <createTable tableName="legal_document_versions">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+            <column name="document_version" type="INT"><constraints nullable="false"/></column>
+            <column name="kind" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="title" type="VARCHAR(200)"><constraints nullable="false"/></column>
+            <column name="content" type="MEDIUMTEXT"><constraints nullable="false"/></column>
+            <column name="content_hash" type="CHAR(64)"><constraints nullable="false"/></column>
+            <column name="published_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="published_by_system_user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_from" type="DATE"><constraints nullable="false"/></column>
+            <column name="superseded_at" type="DATETIME(6)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE legal_document_versions
+                MODIFY COLUMN code VARCHAR(50)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN content_hash CHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                ADD COLUMN current_version_marker VARCHAR(50)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (
+                        CASE WHEN superseded_at IS NULL THEN code ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_ldv_code_version UNIQUE (code, document_version),
+                ADD CONSTRAINT uq_ldv_content      UNIQUE (code, content_hash),
+                ADD CONSTRAINT uq_ldv_current      UNIQUE (current_version_marker),
+                ADD CONSTRAINT chk_ldv_document_version
+                    CHECK (document_version >= 1),
+                ADD CONSTRAINT chk_ldv_kind
+                    CHECK (kind IN ('TERMS','PRIVACY_POLICY','DATA_PROCESSING_AGREEMENT',
+                                     'PRIVACY_NOTICE','COMMITMENT_ANNEX')),
+                ADD CONSTRAINT chk_ldv_hash
+                    CHECK (content_hash REGEXP '^[0-9a-f]{64}$'),
+                ADD CONSTRAINT chk_ldv_supersede
+                    CHECK (superseded_at IS NULL OR superseded_at >= published_at)
+        ]]></sql>
+
+        <createIndex tableName="legal_document_versions" indexName="ix_ldv_kind">
+            <column name="kind"/>
+            <column name="published_at"/>
+        </createIndex>
+        <createIndex tableName="legal_document_versions" indexName="ix_ldv_published_by">
+            <column name="published_by_system_user_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="legal_document_versions"
+                                 baseColumnNames="published_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_ldv_published_by"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <sql splitStatements="false"><![CDATA[
+CREATE TRIGGER trg_ldv_bu_immutable BEFORE UPDATE ON legal_document_versions
+FOR EACH ROW
+BEGIN
+    IF NEW.code <> OLD.code OR NEW.document_version <> OLD.document_version
+       OR NEW.kind <> OLD.kind OR NEW.content_hash <> OLD.content_hash
+       OR NEW.published_at <> OLD.published_at
+       OR NEW.published_by_system_user_id <> OLD.published_by_system_user_id
+       OR NOT (NEW.content <=> OLD.content) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'una version publicada no se edita: se sucede';
+    END IF;
+END
+        ]]></sql>
+
+        <rollback>
+            <sql>DROP TRIGGER trg_ldv_bu_immutable</sql>
+            <dropTable tableName="legal_document_versions"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

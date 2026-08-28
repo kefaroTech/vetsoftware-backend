@@ -22,7 +22,63 @@
          protege, sorprende. `client_request_id` sigue NULABLE (a diferencia de
          subscription_amendments): las filas de origen no-cliente (webhook de pasarela) no llevan
          esta llave, y MySQL permite varios NULL en un índice único aunque sea compuesto en cuanto
-         una de sus columnas lo es. -->
+         una de sus columnas lo es. 
+
+         CAPA K (ficha subscription_payments). TRES NUMEROS, NO UNO. El cliente paga 100.000, la
+         pasarela se queda 3.200, al banco entran 96.800. Con un solo importe hay que elegir entre
+         cuadrar el extracto y saldar la factura de Ana, y las dos opciones son falsas.
+           `amount` SIGUE SIENDO EL BRUTO -no se renombra a gross_amount-. El renombrado habria
+           obligado a mover SubscriptionPaymentJpaEntity, su mapper, el dominio, el controlador y
+           sus pruebas, y este trabajo es de esquema; la divergencia de nombre respecto de la ficha
+           queda declarada y con issue. La factura se salda SIEMPRE por el bruto.
+           fee_amount y net_amount NULABLES a proposito, y no por comodidad: la comision se conoce
+           cuando LIQUIDA la pasarela, dias despues del cobro. Es exactamente el caso que la regla
+           de nulabilidad del documento admite -un hecho que aun no ha ocurrido-. Cuando llegan,
+           llegan las dos y cuadran (chk_subscription_payments_net).
+         settlement_reference + settled_on: en que lote viajo el cobro y cuando cayo al banco. La FK
+         compuesta contra gateway_settlements(gateway, settlement_reference) se declara HACIA ATRAS
+         desde 326, porque esa tabla nace despues; el indice que la sostiene se crea aqui.
+
+         COLACION EXACTA, y esto arregla un defecto YA CONSTRUIDO, no una carencia de diseno:
+         gateway_reference heredaba la comparacion por defecto del servidor, que ignora mayusculas
+         y acentos. Bajo ella "ABC123" y "abc123" son la misma referencia, y uq_subscription_
+         payments_gateway descarta el segundo aviso de la pasarela COMO DUPLICADO, en silencio.
+         Plata que entro, no quedo registrada, factura viva y el reloj de la mora corriendo.
+         Y su hermano: chk_..._currency comparaba `currency = UPPER(currency)`, condicion que bajo
+         esa misma colacion SIEMPRE se cumple -no comprobaba nada desde el dia que se escribio-.
+         Se sustituye por lista cerrada, que es lo que el documento pide.
+
+         refunded_amount ES LA BARANDILLA DE LAS DEVOLUCIONES, y hace falta porque la regla que la
+         pedia -"la suma de devoluciones no supera el pago original, ni sumando varias parciales"-
+         NO ES EXPRESABLE COMO CHECK: MySQL prohibe subconsultas ahi, asi que un CHECK sobre
+         payment_refunds no puede mirar las otras filas del mismo pago. Sin esto, devolver 60.000 y
+         luego 50.000 de un pago de 100.000 lo acepta la base: son dos filas con importe positivo y
+         ninguna sabe de la otra. Salen 110.000 contra un cobro de 100.000 y el descuadre aparece en
+         la conciliacion del mes siguiente sin dueno.
+         Se resuelve con la MISMA disciplina que customer_credit_balances usa para el saldo a favor:
+         una proyeccion que se actualiza EN LA MISMA INSTRUCCION que escribe la devolucion, con la
+         condicion dentro del propio WHERE:
+
+             UPDATE subscription_payments
+                SET refunded_amount = refunded_amount + :importe, version = version + 1
+              WHERE id = :pago AND company_id = :empresa
+                AND refunded_amount + :importe <= amount;
+
+         Cero filas afectadas = no cabe, y la operacion se aborta. El bloqueo de fila serializa a los
+         dos escritores y chk_subscription_payments_refunded es el cinturon encima del tirante, por
+         si alguien escribe el UPDATE sin la condicion.
+         LLEVA DEFECTO CERO, y es la unica clase de importe que lo lleva: es un acumulador que nace
+         vacio, no un importe calculado -mismo criterio que settled_amount en 249-. La regla que
+         prohibe defectos en importes existe para que un fallo de calculo no se disfrace de dato
+         plausible, y aqui no hay calculo que fallar.
+
+         LO QUE ESTE CHANGESET NO TOCA, con su motivo: chk_..._method sigue admitiendo TRANSFER,
+         CASH y OTHER, y chk_..._status sigue admitiendo REFUNDED. El documento cierra la lista a
+         tarjeta y debito en linea (D-48) y retira REFUNDED porque la devolucion pasa a vivir en
+         payment_refunds. Las dos cosas exigen retirar valores de los enums PaymentMethod y
+         SubscriptionPaymentStatus, que tienen 32 y 5 usos en el codigo: es trabajo de dominio, no
+         de esquema, y estrechar el CHECK antes que el enum convierte cada INSERT existente en un
+         409 sin explicacion. Van con issue propio. -->
     <changeSet id="252_create_subscription_payments" author="orlando">
         <createTable tableName="subscription_payments">
             <column name="id" type="BIGINT" autoIncrement="true">
@@ -44,6 +100,13 @@
                 <constraints nullable="false"/>
             </column>
             <column name="reconciled_at" type="DATETIME(6)"/>
+            <column name="fee_amount" type="DECIMAL(19,2)"/>
+            <column name="net_amount" type="DECIMAL(19,2)"/>
+            <column name="settlement_reference" type="VARCHAR(120)"/>
+            <column name="settled_on" type="DATE"/>
+            <column name="refunded_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
+                <constraints nullable="false"/>
+            </column>
             <column name="client_request_id" type="VARCHAR(64)">
                 <constraints nullable="true"/>
             </column>
@@ -72,18 +135,44 @@
                     CHECK (status IN ('PENDING','CONFIRMED','FAILED','REFUNDED')),
                 ADD CONSTRAINT chk_subscription_payments_amount CHECK (amount > 0),
                 ADD CONSTRAINT chk_subscription_payments_currency
-                    CHECK (CHAR_LENGTH(currency) = 3 AND currency = UPPER(currency)),
+                    CHECK (currency IN ('COP')),
                 ADD CONSTRAINT chk_subscription_payments_gateway_pair
                     CHECK ((gateway IS NULL AND gateway_reference IS NULL)
                            OR (gateway IS NOT NULL AND gateway_reference IS NOT NULL)),
                 ADD CONSTRAINT chk_subscription_payments_reconciled
-                    CHECK (reconciled_at IS NULL OR status = 'CONFIRMED')
+                    CHECK (reconciled_at IS NULL OR status = 'CONFIRMED'),
+                ADD CONSTRAINT chk_subscription_payments_fee
+                    CHECK (fee_amount IS NULL OR (fee_amount >= 0 AND fee_amount < amount)),
+                ADD CONSTRAINT chk_subscription_payments_net
+                    CHECK ((fee_amount IS NULL AND net_amount IS NULL)
+                           OR (fee_amount IS NOT NULL AND net_amount IS NOT NULL
+                               AND net_amount = amount - fee_amount)),
+                ADD CONSTRAINT chk_subscription_payments_refunded
+                    CHECK (refunded_amount >= 0 AND refunded_amount <= amount),
+                ADD CONSTRAINT chk_subscription_payments_settlement
+                    CHECK ((settlement_reference IS NULL AND settled_on IS NULL)
+                           OR (settlement_reference IS NOT NULL AND settled_on IS NOT NULL
+                               AND gateway IS NOT NULL)),
+                MODIFY COLUMN currency CHAR(3)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'COP',
+                MODIFY COLUMN gateway VARCHAR(40)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN gateway_reference VARCHAR(120)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN settlement_reference VARCHAR(120)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN client_request_id VARCHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL
         ]]></sql>
 
         <createIndex tableName="subscription_payments" indexName="ix_subscription_payments_company_status">
             <column name="company_id"/>
             <column name="status"/>
             <column name="received_at"/>
+        </createIndex>
+        <createIndex tableName="subscription_payments" indexName="ix_subscription_payments_settlement">
+            <column name="gateway"/>
+            <column name="settlement_reference"/>
         </createIndex>
 
         <rollback>

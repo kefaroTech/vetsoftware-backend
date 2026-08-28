@@ -83,8 +83,33 @@ public class JpaCompanyRepository implements CompanyRepository {
         return Pages.result(result, mapper::toDomain);
     }
 
+    /**
+     * Mismo reparto de ramas que {@link #findAllVisibleTo}, contra el archivo. El
+     * {@code Pageable} va SIN {@code Sort} a proposito: el orden lo lleva embebido
+     * el SQL nativo, porque en una consulta nativa Spring Data concatena las
+     * propiedades del {@code Sort} como nombres de columna sin traducirlas.
+     *
+     * <p>
+     * {@code Pages.request} sigue siendo quien normaliza el indice negativo y topa
+     * el tamaño en {@code MAX_SIZE}: esquivar el {@code @SQLRestriction} no es
+     * excusa para esquivar tambien el kernel de paginacion.
+     */
+    @Override
+    public PageResult<Company> findAllDisabledVisibleTo(Long companyId, int page, int pageSize) {
+        Pageable pageable = Pages.request(page, pageSize);
+        Page<CompanyJpaEntity> result = companyId == null
+                ? jpaRepository.findDisabledPage(pageable)
+                : jpaRepository.findDisabledPageByCompanyId(companyId, pageable);
+        return Pages.result(result, mapper::toDomain);
+    }
+
     @Override
     public void delete(Long id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public int reactivate(Long id) {
+        return jpaRepository.reactivate(id);
     }
 }

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PRERREQUISITO DEL BLOQUE DE CONTABILIDAD, FISCAL PROPIO Y CUMPLIMIENTO
+         (docs/db/contabilidad-fiscal-cumplimiento-tablas.md, S3). Cinco unicidades auxiliares
+         sobre tablas que YA EXISTEN, sin las cuales cinco claves foraneas compuestas de ese
+         bloque no se pueden crear: company_usage_events (354) necesita (company_id, id) en
+         animals, owners, appointments y electronic_documents para sus cuatro ramas clinicas, y
+         (id, code) en limit_dimensions para copiar el codigo del eje igual que company_capacities
+         lo hace desde 314.
+
+         SEGUNDA EXCEPCION A "NO SE TOCA LO EXISTENTE" -la primera fue 315 sobre cities.dane_code,
+         por el mismo motivo exacto: sin alinear la columna del padre, la clave foranea del hijo no
+         se puede crear.
+
+         COSTE VERIFICADO, NO SOLO CITADO: ADD UNIQUE INDEX es In Place (manual de MySQL 8.4,
+         InnoDB Online DDL Operations), no reconstruye la tabla y permite DML concurrente. Se
+         confirmo en la verificacion de este bloque ejecutando el ALTER equivalente con
+         ALGORITHM=INPLACE, LOCK=NONE explicitos contra copias de las cinco tablas: los cinco
+         terminaron sin error, que es la prueba de que el motor los trata como in-place y no como
+         COPY. Y no hay riesgo de datos: (company_id, id) es unicamente cierto por construccion
+         porque id ya es PK; (id, code) lo mismo. La unicidad no puede fallar. -->
+    <changeSet id="341_add_tenant_uniques_for_compliance_prerequisites" author="orlando">
+        <addUniqueConstraint tableName="animals" columnNames="company_id, id"
+                             constraintName="uq_animals_company_id"/>
+        <addUniqueConstraint tableName="owners" columnNames="company_id, id"
+                             constraintName="uq_owners_company_id"/>
+        <addUniqueConstraint tableName="appointments" columnNames="company_id, id"
+                             constraintName="uq_appointments_company_id"/>
+        <addUniqueConstraint tableName="electronic_documents" columnNames="company_id, id"
+                             constraintName="uq_electronic_documents_company_id"/>
+        <addUniqueConstraint tableName="limit_dimensions" columnNames="id, code"
+                             constraintName="uq_limit_dimensions_id_code"/>
+
+        <rollback>
+            <dropUniqueConstraint tableName="animals"
+                                  constraintName="uq_animals_company_id"/>
+            <dropUniqueConstraint tableName="owners"
+                                  constraintName="uq_owners_company_id"/>
+            <dropUniqueConstraint tableName="appointments"
+                                  constraintName="uq_appointments_company_id"/>
+            <dropUniqueConstraint tableName="electronic_documents"
+                                  constraintName="uq_electronic_documents_company_id"/>
+            <dropUniqueConstraint tableName="limit_dimensions"
+                                  constraintName="uq_limit_dimensions_id_code"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

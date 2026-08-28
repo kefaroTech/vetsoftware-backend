@@ -33,7 +33,7 @@ class SubscriptionItemOverlapGuardTest {
         // Sin esta comprobacion, en mayo y junio ese modulo se factura dos veces.
         List<SubscriptionItem> existentes = List.of(tramo(ENERO_1, JUNIO_30));
 
-        assertThatThrownBy(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO,
+        assertThatThrownBy(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO, 1,
                 new EffectivePeriod(MAYO_1, DICIEMBRE_31), existentes))
                 .isInstanceOf(SubscriptionItemOverlapException.class)
                 .hasMessageContaining(ARTICULO.toString());
@@ -44,7 +44,7 @@ class SubscriptionItemOverlapGuardTest {
     void abrirSobreUnaLineaAbierta() {
         List<SubscriptionItem> existentes = List.of(tramo(ENERO_1, null));
 
-        assertThatThrownBy(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO,
+        assertThatThrownBy(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO, 1,
                 new EffectivePeriod(MAYO_1, DICIEMBRE_31), existentes))
                 .isInstanceOf(SubscriptionItemOverlapException.class);
     }
@@ -54,16 +54,16 @@ class SubscriptionItemOverlapGuardTest {
     void tramoConsecutivo() {
         List<SubscriptionItem> existentes = List.of(tramo(ENERO_1, JUNIO_30));
 
-        assertThatCode(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO,
+        assertThatCode(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO, 1,
                 EffectivePeriod.openFrom(JUNIO_30), existentes)).doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("sin lineas previas no hay nada que comprobar")
     void sinLineasPrevias() {
-        assertThatCode(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO,
+        assertThatCode(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO, 1,
                 EffectivePeriod.openFrom(ENERO_1), List.of())).doesNotThrowAnyException();
-        assertThatCode(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO,
+        assertThatCode(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO, 1,
                 EffectivePeriod.openFrom(ENERO_1), null)).doesNotThrowAnyException();
     }
 
@@ -73,7 +73,7 @@ class SubscriptionItemOverlapGuardTest {
         List<SubscriptionItem> existentes = List.of(tramo(ENERO_1, LocalDate.of(2026, 2, 1)),
                 tramo(MAYO_1, DICIEMBRE_31));
 
-        assertThatThrownBy(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO,
+        assertThatThrownBy(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO, 1,
                 new EffectivePeriod(JUNIO_30, null), existentes))
                 .isInstanceOf(SubscriptionItemOverlapException.class);
     }
@@ -82,14 +82,14 @@ class SubscriptionItemOverlapGuardTest {
     @DisplayName("sin tramo candidato falla: no hay nada que comparar")
     void sinTramoCandidato() {
         assertThatThrownBy(
-                () -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO, null, List.of()))
+                () -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO, 1, null, List.of()))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("candidate");
     }
 
     @Test
     @DisplayName("una lista nula de lineas previas se trata igual que ninguna linea")
     void listaNulaDeLineasPrevias() {
-        assertThatCode(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO,
+        assertThatCode(() -> SubscriptionItemOverlapGuard.ensureNoOverlap(ARTICULO, 1,
                 EffectivePeriod.openFrom(ENERO_1), null)).doesNotThrowAnyException();
     }
 }

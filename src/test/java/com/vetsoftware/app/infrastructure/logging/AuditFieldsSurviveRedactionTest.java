@@ -9,6 +9,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
@@ -94,6 +95,8 @@ class AuditFieldsSurviveRedactionTest {
                 new AuditCase("companyRegistered", "company_registered",
                         audit -> audit.companyRegistered(3L, "Clinica Vetrina", "900123456", 77L,
                                 "OWNER01")),
+                new AuditCase("companyReactivated", "company_reactivated",
+                        audit -> audit.companyReactivated(3L, "Clinica Vetrina", "900123456")),
                 new AuditCase("employeeInvited", "employee_invited",
                         audit -> audit.employeeInvited(88L, "EMP0042", 3L)),
                 new AuditCase("employeeInvitationResent", "employee_invitation_resent",
@@ -147,7 +150,57 @@ class AuditFieldsSurviveRedactionTest {
                 new AuditCase("systemUserWelcomeUndelivered", "system_user_welcome_undelivered",
                         audit -> audit.systemUserWelcomeUndelivered(4271L, "clinica.com")),
                 new AuditCase("systemUserProvisioned", "system_user_provisioned",
-                        audit -> audit.systemUserProvisioned(4271L, 9001L)));
+                        audit -> audit.systemUserProvisioned(4271L, 9001L)),
+                // Dinero de suscripciones (#607). Catorce hechos que cambian lo que un
+                // cliente paga. Los importes son deliberadamente GRANDES -mas de diez
+                // digitos- porque ese es el tamano al que el redactor confunde una cifra
+                // con un documento personal y la suprime: un importe enmascarado en el
+                // rastro del dinero es peor que no tenerlo, porque parece un dato.
+                new AuditCase("subscriptionItemAdded", "subscription_item_added",
+                        audit -> audit.subscriptionItemAdded(7L, 41L, 15L, 3,
+                                new BigDecimal("12500000000.00"), 88L)),
+                new AuditCase("subscriptionItemRemoved", "subscription_item_removed",
+                        audit -> audit.subscriptionItemRemoved(7L, 41L,
+                                new BigDecimal("-12500000000.00"), 88L)),
+                new AuditCase("subscriptionItemQuantityChanged",
+                        "subscription_item_quantity_changed",
+                        audit -> audit.subscriptionItemQuantityChanged(7L, 41L, 3, 12,
+                                new BigDecimal("45000000000.00"), 88L)),
+                new AuditCase("subscriptionStatusChanged", "subscription_status_changed",
+                        audit -> audit.subscriptionStatusChanged(7L, "PAST_DUE", "READ_ONLY",
+                                "saldo vencido a 45 dias")),
+                new AuditCase("subscriptionCancellationRequested",
+                        "subscription_cancellation_requested",
+                        audit -> audit.subscriptionCancellationRequested(7L, "2026-09-30")),
+                new AuditCase("subscriptionChargeAccrued", "subscription_charge_accrued",
+                        audit -> audit.subscriptionChargeAccrued(910L, 7L, "RECURRING",
+                                new BigDecimal("12500000000.00"), 88L)),
+                new AuditCase("subscriptionChargeVoided", "subscription_charge_voided",
+                        audit -> audit.subscriptionChargeVoided(910L, 911L, 7L,
+                                new BigDecimal("-12500000000.00"))),
+                new AuditCase("subscriptionDocumentIssued", "subscription_document_issued",
+                        audit -> audit.subscriptionDocumentIssued(500L, "DC-000123", 7L,
+                                "AWAITING_EXTERNAL", new BigDecimal("14875000000.00"), 9)),
+                new AuditCase("subscriptionDocumentVoided", "subscription_document_voided",
+                        audit -> audit.subscriptionDocumentVoided(500L, "DC-000123", 7L,
+                                "emitida sobre el periodo equivocado")),
+                new AuditCase("subscriptionPaymentRegistered", "subscription_payment_registered",
+                        audit -> audit.subscriptionPaymentRegistered(300L, "TRANSFER",
+                                new BigDecimal("14875000000.00"), "PENDING")),
+                new AuditCase("subscriptionPaymentStatusChanged",
+                        "subscription_payment_status_changed",
+                        audit -> audit.subscriptionPaymentStatusChanged(300L, "CONFIRMED",
+                                "REFUNDED")),
+                new AuditCase("subscriptionDocumentApplied", "subscription_document_applied",
+                        audit -> audit.subscriptionDocumentApplied(700L, 500L, "CREDIT_NOTE",
+                                new BigDecimal("14875000000.00"))),
+                new AuditCase("subscriptionApplicationReversed",
+                        "subscription_application_reversed",
+                        audit -> audit.subscriptionApplicationReversed(700L, 500L,
+                                new BigDecimal("14875000000.00"))),
+                new AuditCase("companyEntitlementsRecalculated",
+                        "company_entitlements_recalculated",
+                        audit -> audit.companyEntitlementsRecalculated(3L, "scheduled_sweep", 42)));
     }
 
     /**
@@ -225,6 +278,13 @@ class AuditFieldsSurviveRedactionTest {
         MDC.put("email.domain", "clinica.com");
         MDC.put("attempts.remaining", "3");
         MDC.put("seconds_since_consumption", "1800");
+
+        // Origen de una operacion que NO cruza el borde HTTP: lo pone
+        // ScheduledJobTelemetry junto con actor.type=SYSTEM. Sin declararlo en
+        // LogFieldPolicy, cada evento de auditoria emitido por un barrido saldria con
+        // job.name='***' y la pregunta «quien degrado a esta clinica» volveria a no
+        // tener respuesta, con la suite en verde.
+        MDC.put(MdcKeys.JOB_NAME, "subscription.dunning");
     }
 
     @AfterEach

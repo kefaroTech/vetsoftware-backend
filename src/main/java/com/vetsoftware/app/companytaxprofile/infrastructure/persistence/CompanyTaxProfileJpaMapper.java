@@ -26,6 +26,8 @@ public class CompanyTaxProfileJpaMapper {
         entity.setFiscalEmail(profile.getFiscalEmail());
         entity.setCommercialName(profile.getCommercialName());
         entity.setEconomicActivity(economicActivity);
+        entity.setValidFrom(profile.getValidFrom());
+        entity.setValidTo(profile.getValidTo());
         entity.setCreatedDate(profile.getCreatedDate());
         entity.setVersion(profile.getVersion());
         entity.setEnabled(profile.isEnabled());
@@ -67,6 +69,7 @@ public class CompanyTaxProfileJpaMapper {
                 entity.getCompanyDocumentId(), entity.getCompanyDocumentVerificationDigit(),
                 entity.getLegalName(), entity.getTaxRegime(), entity.getFiscalEmail(),
                 entity.getCommercialName(), economicActivityRef, responsibilities,
-                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
+                entity.getValidFrom(), entity.getValidTo(), entity.getCreatedDate(),
+                entity.getVersion(), entity.isEnabled());
     }
 }

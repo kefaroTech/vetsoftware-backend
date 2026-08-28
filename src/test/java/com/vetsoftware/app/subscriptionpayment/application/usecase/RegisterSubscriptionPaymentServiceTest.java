@@ -15,6 +15,8 @@ import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.subscriptionpayment.application.command.RegisterSubscriptionPaymentCommand;
 import com.vetsoftware.app.subscriptionpayment.application.dto.SubscriptionPaymentDto;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentAuditPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentMetrics;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentRepository;
 import com.vetsoftware.app.subscriptionpayment.domain.PaymentMethod;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPayment;
@@ -45,11 +47,16 @@ class RegisterSubscriptionPaymentServiceTest {
     @Mock
     private SubscriptionPaymentRepository repository;
 
+    @Mock
+    private SubscriptionPaymentMetrics metrics;
+    @Mock
+    private SubscriptionPaymentAuditPort audit;
+
     private RegisterSubscriptionPaymentService service;
 
     @BeforeEach
     void setUp() {
-        service = new RegisterSubscriptionPaymentService(repository, RELOJ);
+        service = new RegisterSubscriptionPaymentService(repository, metrics, audit, RELOJ);
     }
 
     @Nested

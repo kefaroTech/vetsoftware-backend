@@ -76,6 +76,16 @@ public class JpaBillingDocumentApplicationRepository
     }
 
     @Override
+    public BigDecimal sumAppliedFromWithholding(Long withholdingId, Long companyId) {
+        return jpaRepository.sumAppliedFromWithholding(withholdingId, companyId);
+    }
+
+    @Override
+    public BigDecimal sumAppliedFromCreditEntry(Long creditEntryId, Long companyId) {
+        return jpaRepository.sumAppliedFromCreditEntry(creditEntryId, companyId);
+    }
+
+    @Override
     public Optional<BillingDocumentApplication> findByCompanyIdAndClientRequestId(Long companyId,
             String clientRequestId) {
         return jpaRepository.findByCompanyIdAndClientRequestId(companyId, clientRequestId)

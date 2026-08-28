@@ -4,9 +4,13 @@ import com.vetsoftware.app.subscriptionbilling.application.command.CreateSubscri
 import com.vetsoftware.app.subscriptionbilling.application.dto.SubscriptionChargeDto;
 import com.vetsoftware.app.subscriptionbilling.application.port.in.CreateSubscriptionChargeUseCase;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionAmendmentValidationPort;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingAuditPort;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingMetrics;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionItemValidationPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionQueryPort;
+import com.vetsoftware.app.subscriptionbilling.domain.ItemChargeMode;
+import com.vetsoftware.app.subscriptionbilling.domain.NonBillableSubscriptionItemException;
 import com.vetsoftware.app.subscriptionbilling.domain.ProrationBasis;
 import com.vetsoftware.app.subscriptionbilling.domain.ServicePeriod;
 import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionCharge;
@@ -39,6 +43,18 @@ import org.springframework.stereotype.Service;
  * mensaje que lo nombra.
  *
  * <p>
+ * <b>Y la linea, ademas de existir, tiene que cobrar</b> (R-TRIAL-14). La FK no
+ * dice nada de eso: una linea en {@code TRIAL} la cumple igual de bien que una
+ * {@code PAID}, y como la linea gratuita <b>conserva su tarifa real</b> el
+ * cargo resultante no sale en cero sino por el importe completo. Esta es la
+ * puerta de entrada del devengo, asi que cerrarla aqui es lo que impide que esa
+ * fila llegue a existir; la consulta que selecciona lo que se factura vuelve a
+ * filtrar por su cuenta, para las filas devengadas antes de que esta guarda
+ * existiera. Lo que <b>no</b> se mira en ningun punto es el estado del contrato
+ * (R-TRIAL-13): un contrato {@code TRIALING} devenga sus lineas {@code PAID}
+ * con total normalidad.
+ *
+ * <p>
  * Los dos campos son opcionales, asi que la comprobacion solo aplica cuando
  * vienen informados: un cargo puede no nacer de ninguna linea concreta ni de
  * ningun otrosi.
@@ -51,16 +67,21 @@ public class CreateSubscriptionChargeService implements CreateSubscriptionCharge
     private final SubscriptionQueryPort subscriptionQueryPort;
     private final SubscriptionItemValidationPort subscriptionItemValidationPort;
     private final SubscriptionAmendmentValidationPort subscriptionAmendmentValidationPort;
+    private final SubscriptionBillingMetrics metrics;
+    private final SubscriptionBillingAuditPort audit;
     private final Clock clock;
 
     public CreateSubscriptionChargeService(SubscriptionChargeRepository repository,
             SubscriptionQueryPort subscriptionQueryPort,
             SubscriptionItemValidationPort subscriptionItemValidationPort,
-            SubscriptionAmendmentValidationPort subscriptionAmendmentValidationPort, Clock clock) {
+            SubscriptionAmendmentValidationPort subscriptionAmendmentValidationPort,
+            SubscriptionBillingMetrics metrics, SubscriptionBillingAuditPort audit, Clock clock) {
         this.repository = repository;
         this.subscriptionQueryPort = subscriptionQueryPort;
         this.subscriptionItemValidationPort = subscriptionItemValidationPort;
         this.subscriptionAmendmentValidationPort = subscriptionAmendmentValidationPort;
+        this.metrics = metrics;
+        this.audit = audit;
         this.clock = clock;
     }
 
@@ -71,7 +92,7 @@ public class CreateSubscriptionChargeService implements CreateSubscriptionCharge
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Subscription not found: " + command.subscriptionId()));
         subscription.exigirEmpresa(command.companyId());
-        exigirLineaDeLaEmpresa(command);
+        exigirLineaQueCobra(command);
         exigirOtrosiDeLaEmpresa(command);
         SubscriptionCharge charge = SubscriptionCharge.create(command.companyId(),
                 subscription.id(), command.subscriptionItemId(), command.chargeType(),
@@ -81,21 +102,44 @@ public class CreateSubscriptionChargeService implements CreateSubscriptionCharge
                 command.taxRate(), command.taxTreatment(),
                 ProrationBasis.of(command.prorationDays(), command.periodDays()),
                 command.amendmentId(), clock);
-        return SubscriptionChargeDto.from(repository.save(charge));
+        SubscriptionCharge saved = repository.save(charge);
+
+        // El hecho contable que no tenia contador: cuando esto lo emite el cierre de
+        // mes, «cuantos cargos salieron anoche y por cuanto» solo se podia responder
+        // abriendo la base de produccion. subscription_charges es ademas la unica tabla
+        // del bloque sin llave antiduplicados, asi que el conteo es la unica forma de
+        // ver que el barrido se reinicio a mitad de lote y volvio a devengar.
+        metrics.chargeAccrued(saved.getChargeType(), saved.getSubtotalAmount());
+        audit.chargeAccrued(saved.getId(), saved.getSubscriptionId(), saved.getChargeType(),
+                saved.getSubtotalAmount(), saved.getAmendmentId());
+        return SubscriptionChargeDto.from(saved);
     }
 
     /**
      * La linea del contrato es opcional; cuando viene, tiene que ser de la misma
-     * empresa que el cargo. Es lo que exige {@code fk_subscription_charges_item},
-     * comprobado aqui para que el fallo diga cual es el id malo.
+     * empresa que el cargo —lo que exige {@code fk_subscription_charges_item},
+     * comprobado aqui para que el fallo diga cual es el id malo— <b>y tiene que
+     * estar en un modo que devengue</b>.
+     *
+     * <p>
+     * Las dos negativas son distintas a proposito. Que no exista o sea de otra
+     * empresa es un id mal escrito: {@code IllegalArgumentException} y 400. Que
+     * exista y no cobre es un conflicto de estado —el id esta bien, la linea esta
+     * en prueba—: {@link NonBillableSubscriptionItemException} y 409, con el modo
+     * dentro del mensaje para que el operador sepa si toca esperar a la conversion
+     * o revisar el tope del plan.
      */
-    private void exigirLineaDeLaEmpresa(CreateSubscriptionChargeCommand command) {
+    private void exigirLineaQueCobra(CreateSubscriptionChargeCommand command) {
         if (command.subscriptionItemId() == null)
             return;
-        if (!subscriptionItemValidationPort.existsInCompany(command.subscriptionItemId(),
-                command.companyId()))
-            throw new IllegalArgumentException("Subscription item not found for company "
-                    + command.companyId() + ": " + command.subscriptionItemId());
+        ItemChargeMode chargeMode = subscriptionItemValidationPort
+                .findChargeModeInCompany(command.subscriptionItemId(), command.companyId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Subscription item not found for company " + command.companyId() + ": "
+                                + command.subscriptionItemId()));
+        if (!chargeMode.generatesCharge())
+            throw new NonBillableSubscriptionItemException(command.subscriptionItemId(),
+                    chargeMode);
     }
 
     /**

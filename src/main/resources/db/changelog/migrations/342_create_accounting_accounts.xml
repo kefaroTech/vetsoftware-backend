@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA M (ficha accounting_accounts). EL CATALOGO DE CUENTAS, GLOBAL Y SIN EMPRESA.
+         Nace primero de todo el bloque de contabilidad: es el destino de las tres claves foraneas
+         de account_mappings (343) y sin el ese changeset no se puede aplicar.
+
+         code UNICO GLOBALMENTE, NO POR VIGENCIA (decision documentada, coste alto de revertir):
+         un codigo no puede significar dos cosas distintas en dos epocas. ascii_bin para
+         comparacion exacta -es un identificador ajeno, no texto de negocio-.
+
+         account_level Y NO level: LEVEL es palabra reservada de MySQL 8 y obligaria a comillas
+         invertidas en cada consulta. chk_accounting_accounts_postable es la que impide asentar
+         contra un grupo -sin ella el balance de prueba deja de cuadrar por arrastre-.
+
+         chk_accounting_accounts_parent lleva las DOS ramas escritas (nivel 1 sin padre, nivel>1
+         con padre): un CHECK que evalua a NULL acepta la fila, asi que sin la segunda rama una
+         subcuenta huerfana entra en silencio. -->
+    <changeSet id="342_create_accounting_accounts" author="orlando">
+        <createTable tableName="accounting_accounts">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(10)"><constraints nullable="false"/></column>
+            <column name="name" type="VARCHAR(120)"><constraints nullable="false"/></column>
+            <column name="account_class" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="parent_code" type="VARCHAR(10)"/>
+            <column name="account_level" type="TINYINT"><constraints nullable="false"/></column>
+            <column name="postable" type="BOOLEAN"><constraints nullable="false"/></column>
+            <column name="requires_third_party" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="valid_from" type="DATE"><constraints nullable="false"/></column>
+            <column name="valid_to" type="DATE"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE accounting_accounts
+                MODIFY COLUMN code VARCHAR(10)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN parent_code VARCHAR(10)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD CONSTRAINT uq_accounting_accounts_code UNIQUE (code),
+                ADD CONSTRAINT chk_accounting_accounts_class
+                    CHECK (account_class IN ('ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE',
+                                              'COST')),
+                ADD CONSTRAINT chk_accounting_accounts_level
+                    CHECK (account_level IN (1,2,4,6)),
+                ADD CONSTRAINT chk_accounting_accounts_postable
+                    CHECK (postable = FALSE OR account_level = 6),
+                ADD CONSTRAINT chk_accounting_accounts_validity
+                    CHECK (valid_to IS NULL OR valid_to > valid_from),
+                ADD CONSTRAINT chk_accounting_accounts_parent
+                    CHECK ((account_level = 1 AND parent_code IS NULL)
+                           OR (account_level > 1 AND parent_code IS NOT NULL))
+        ]]></sql>
+
+        <createIndex tableName="accounting_accounts" indexName="ix_accounting_accounts_plan">
+            <column name="account_class"/>
+            <column name="valid_to"/>
+        </createIndex>
+        <createIndex tableName="accounting_accounts" indexName="ix_accounting_accounts_parent">
+            <column name="parent_code"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="accounting_accounts"
+                                 baseColumnNames="parent_code"
+                                 referencedTableName="accounting_accounts"
+                                 referencedColumnNames="code"
+                                 constraintName="fk_accounting_accounts_parent"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="accounting_accounts"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

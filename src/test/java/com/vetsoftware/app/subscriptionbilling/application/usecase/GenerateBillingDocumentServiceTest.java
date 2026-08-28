@@ -16,6 +16,8 @@ import com.vetsoftware.app.subscriptionbilling.application.command.GenerateBilli
 import com.vetsoftware.app.subscriptionbilling.application.dto.BillingDocumentDto;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentSequenceRepository;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingAuditPort;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingMetrics;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionQueryPort;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingReason;
@@ -66,12 +68,17 @@ class GenerateBillingDocumentServiceTest {
     @Mock
     private SubscriptionQueryPort subscriptionQueryPort;
 
+    @Mock
+    private SubscriptionBillingMetrics metrics;
+    @Mock
+    private SubscriptionBillingAuditPort audit;
+
     private GenerateBillingDocumentService service;
 
     @BeforeEach
     void setUp() {
         service = new GenerateBillingDocumentService(documentRepository, chargeRepository,
-                sequenceRepository, subscriptionQueryPort, RELOJ);
+                sequenceRepository, subscriptionQueryPort, metrics, audit, RELOJ);
     }
 
     private static SubscriptionCharge cargo(Long id, String subtotal) {

@@ -10,7 +10,6 @@ import com.vetsoftware.app.subscription.application.port.in.CreateInitialSubscri
 import com.vetsoftware.app.subscription.application.port.in.CreateSubscriptionUseCase;
 import com.vetsoftware.app.subscription.application.port.out.PlatformCatalogPort;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.PlatformCatalogNotConfiguredForSubscriptionException;
 import com.vetsoftware.app.subscription.domain.StructuralCapacityMinimum;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemType;
@@ -19,8 +18,9 @@ import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -132,9 +132,13 @@ public class CreateInitialSubscriptionService implements CreateInitialSubscripti
      */
     private static void requireOperableMinimum(Long companyId,
             List<InitialCapacityTemplate> capacities) {
-        Set<CapacityUnit> granted = capacities.stream().map(InitialCapacityTemplate::capacityUnit)
-                .collect(Collectors.toCollection(() -> EnumSet.noneOf(CapacityUnit.class)));
-        Set<CapacityUnit> missing = StructuralCapacityMinimum.missingFrom(granted);
+        // LinkedHashSet y no un conjunto de enumerado: desde el 333 la unidad es el
+        // codigo del eje y ya no hay tipo cerrado que enumerar. Se filtran los nulos
+        // porque un conjunto con null dentro haria que removeAll se comportara segun
+        // la implementacion en vez de segun la regla.
+        Set<String> granted = capacities.stream().map(InitialCapacityTemplate::capacityUnit)
+                .filter(Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> missing = StructuralCapacityMinimum.missingFrom(granted);
         if (!missing.isEmpty()) {
             throw new PlatformCatalogNotConfiguredForSubscriptionException(companyId, missing);
         }
@@ -155,11 +159,13 @@ public class CreateInitialSubscriptionService implements CreateInitialSubscripti
      */
     private static SubscriptionItemLineCommand capacityLine(InitialCapacityTemplate capacity,
             LocalDate start) {
+        // Tramo unico y abierto y sin descuento: el alta inicial firma la cantidad
+        // minima del articulo, que siempre cae en el primer tramo, y no negocia nada.
         return new SubscriptionItemLineCommand(capacity.catalogItemId(), capacity.itemCode(),
-                capacity.itemName(), SubscriptionItemType.CAPACITY, capacity.capacityUnit(),
-                capacity.includedQuantity(), capacity.taxTreatment(),
-                Math.max(capacity.minQuantity(), 1), capacity.unitAmount(), capacity.taxRate(),
-                start, null);
+                capacity.itemName(), SubscriptionItemType.CAPACITY, capacity.capacityUnit(), 1,
+                null, capacity.includedQuantity(), capacity.taxTreatment(),
+                Math.max(capacity.minQuantity(), 1), capacity.unitAmount(), null, null, false,
+                capacity.taxRate(), start, null);
     }
 
     /**
@@ -170,10 +176,10 @@ public class CreateInitialSubscriptionService implements CreateInitialSubscripti
     private static SubscriptionItemLineCommand coreLine(InitialContractTemplate template,
             LocalDate start) {
         return new SubscriptionItemLineCommand(template.catalogItemId(), template.itemCode(),
-                template.itemName(), template.itemType(), template.capacityUnit(),
+                template.itemName(), template.itemType(), template.capacityUnit(), 1, null,
                 template.includedQuantity(), template.taxTreatment(),
-                Math.max(template.minQuantity(), 1), template.unitAmount(), template.taxRate(),
-                start, null);
+                Math.max(template.minQuantity(), 1), template.unitAmount(), null, null, false,
+                template.taxRate(), start, null);
     }
 
 }

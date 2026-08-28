@@ -9,6 +9,7 @@ import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
 import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,8 +35,19 @@ class ConfiguratorQuestionPersistenceIT extends AbstractDataJpaTest {
         entityManager.flush();
         entityManager.clear();
 
-        assertThat(repository.findAllOrdered()).extracting(ConfiguratorQuestion::getCode)
-                .containsExactly("HAS_LAB", "SIZE");
+        // La regla es EL ORDEN, y se comprueba sobre la lista entera. Afirmar
+        // "exactamente estas dos" era afirmar de paso que la tabla estaba vacia, y
+        // eso dejo de ser cierto cuando 312_seed_configurator sembro el cuestionario
+        // real: seis preguntas mas, ninguna de esta prueba. Lo que hay que defender
+        // es que findAllOrdered ordene por sortOrder, no cuantas filas hay.
+        List<ConfiguratorQuestion> ordenadas = repository.findAllOrdered();
+
+        assertThat(ordenadas).extracting(ConfiguratorQuestion::getSortOrder).isSorted();
+        // Y que las dos propias salgan en orden de sortOrder (10 antes que 20) y NO
+        // en el de insercion, que fue el contrario: es lo unico que distingue una
+        // consulta ordenada de una que devuelve lo que le da la gana.
+        assertThat(ordenadas).extracting(ConfiguratorQuestion::getCode)
+                .containsSubsequence("HAS_LAB", "SIZE");
         assertThat(repository.findById(primero.getId())).get().satisfies(leida -> {
             assertThat(leida.getQuestionText()).isEqualTo("¿Tiene laboratorio?");
             assertThat(leida.getAnswerType()).isEqualTo(AnswerType.BOOLEAN);

@@ -19,7 +19,26 @@
          Los importes de catalog_prices son marcadores de laboratorio: NO representan
          ninguna decision comercial (esa sigue pendiente, ver el documento §5.3).
          tax_rate=19.00/TAXED es un valor de relleno coherente con el IVA general
-         colombiano, no una decision fiscal tomada por este changeSet. -->
+         colombiano, no una decision fiscal tomada por este changeSet.
+
+         AJUSTE (hallazgo de OwnerBranchAssignmentIT ejecutado aislado: 409
+         PRICE_LIST_NOT_EFFECTIVE). valid_from ERA CURRENT_DATE -la fecha real del
+         dia en que corre este seed, no una fecha de negocio-, y esa dinamica es la
+         causa raiz de un solape que 311_archive_lab_price_list no puede evitar con
+         ningun corte fijo: en cuanto el calendario real supera ese corte, un
+         contenedor local/e2e recien construido siembra LISTA-LOCAL-LAB con
+         valid_from = hoy, que cae DESPUES del corte, y GREATEST() elige entonces
+         "hoy" en vez del corte -exactamente la ventana de un solo dia que se solapa
+         con LISTA-2026-01-. No es un caso raro: es lo que le pasaba a esta semilla
+         desde el primer dia que alguien construyera un contenedor de laboratorio
+         despues del 2026-08-31, y ahora tras adelantar LISTA-2026-01.valid_from al
+         2026-08-27 (ver 310), ese "despues" ya es HOY.
+         La correccion ataca la raiz: valid_from pasa a ser una fecha FIJA y
+         suficientemente anterior (2026-01-01, sin significado de negocio, solo
+         ancla segura) para que la ventana archivada -[2026-01-01, 2026-08-26], ver
+         311- sea completamente estatica. Ya no depende de que dia se construya el
+         contenedor: nunca vuelve a tocar "hoy", asi que nunca vuelve a solaparse
+         con la tarifa real, hoy ni en ningun futuro. -->
 
     <changeSet id="264_seed_local_e2e_price_list" author="orlando" context="local,e2e">
         <sql><![CDATA[
@@ -27,7 +46,7 @@
                     (code, name, currency, valid_from, status, published_at,
                      published_by_system_user_id)
             SELECT 'LISTA-LOCAL-LAB', 'Tarifa de laboratorio (local/e2e)', 'COP',
-                   CURRENT_DATE, 'PUBLISHED', NOW(),
+                   '2026-01-01', 'PUBLISHED', NOW(),
                    (SELECT id FROM system_users WHERE code = 'local-admin')
              WHERE NOT EXISTS (SELECT 1 FROM price_lists WHERE code = 'LISTA-LOCAL-LAB')
                AND EXISTS (SELECT 1 FROM system_users WHERE code = 'local-admin');

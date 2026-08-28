@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.vetsoftware.app.configurator.application.command.CreateConfiguratorEffectCommand;
 import com.vetsoftware.app.configurator.application.command.CreateConfiguratorOptionCommand;
 import com.vetsoftware.app.configurator.application.command.CreateConfiguratorQuestionCommand;
+import com.vetsoftware.app.configurator.application.command.ReorderConfiguratorEffectsCommand;
 import com.vetsoftware.app.configurator.application.command.UpdateConfiguratorEffectCommand;
 import com.vetsoftware.app.configurator.application.command.UpdateConfiguratorOptionCommand;
 import com.vetsoftware.app.configurator.application.command.UpdateConfiguratorQuestionCommand;
@@ -40,6 +41,7 @@ import com.vetsoftware.app.configurator.application.port.in.FindConfiguratorQues
 import com.vetsoftware.app.configurator.application.port.in.ListConfiguratorEffectsUseCase;
 import com.vetsoftware.app.configurator.application.port.in.ListConfiguratorOptionsByQuestionUseCase;
 import com.vetsoftware.app.configurator.application.port.in.ListConfiguratorQuestionsUseCase;
+import com.vetsoftware.app.configurator.application.port.in.ReorderConfiguratorEffectsUseCase;
 import com.vetsoftware.app.configurator.application.port.in.UpdateConfiguratorEffectUseCase;
 import com.vetsoftware.app.configurator.application.port.in.UpdateConfiguratorOptionUseCase;
 import com.vetsoftware.app.configurator.application.port.in.UpdateConfiguratorQuestionUseCase;
@@ -88,6 +90,8 @@ class ConfiguratorAdminControllerTest {
     private DeleteConfiguratorEffectUseCase deleteEffectUseCase;
     @MockitoBean
     private ListConfiguratorEffectsUseCase listEffectsUseCase;
+    @MockitoBean
+    private ReorderConfiguratorEffectsUseCase reorderEffectsUseCase;
 
     private static final LocalDateTime CREADA = LocalDateTime.of(2026, 8, 22, 10, 0);
 
@@ -99,7 +103,7 @@ class ConfiguratorAdminControllerTest {
             "YES", "Sí, vendo", null, 0, CREADA, true);
 
     private static final ConfiguratorEffectDto UN_EFECTO = new ConfiguratorEffectDto(5L, 11L, null,
-            100L, EffectType.SET_QUANTITY, 3, CREADA, true);
+            100L, EffectType.SET_QUANTITY, 3, 20, CREADA, true);
 
     @Test
     @DisplayName("pagina las preguntas globales sin inventar un tenant")
@@ -348,6 +352,97 @@ class ConfiguratorAdminControllerTest {
                     .andExpect(status().isNoContent());
 
             verify(deleteEffectUseCase).execute(5L);
+        }
+    }
+
+    /**
+     * La operación que faltaba. Sin ella, corregir el orden de los efectos obligaba
+     * a borrar el efecto y volver a crearlo — lo que le cambia el {@code id}, y con
+     * él el desempate, y reordena de paso todo lo demás.
+     */
+    @Nested
+    @DisplayName("reordenado de efectos")
+    class ReordenadoDeEfectos {
+
+        @Test
+        @DisplayName("traslada los pares al command sin cruzarlos y devuelve la prioridad guardada")
+        void traslada_los_pares_al_command_sin_cruzarlos() throws Exception {
+            when(reorderEffectsUseCase.execute(any())).thenReturn(List.of(UN_EFECTO));
+
+            mockMvc.perform(put("/configurator/effects/priorities").contentType(APPLICATION_JSON)
+                    .content("""
+                            {
+                              "priorities": [
+                                {"effectId": 5, "priority": 20},
+                                {"effectId": 9, "priority": 10}
+                              ]
+                            }
+                            """)).andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(5))
+                    .andExpect(jsonPath("$[0].priority").value(20));
+
+            ArgumentCaptor<ReorderConfiguratorEffectsCommand> command = ArgumentCaptor
+                    .forClass(ReorderConfiguratorEffectsCommand.class);
+            verify(reorderEffectsUseCase).execute(command.capture());
+            assertThat(command.getValue().priorities())
+                    .extracting(par -> par.effectId(), par -> par.priority())
+                    .containsExactly(org.assertj.core.groups.Tuple.tuple(5L, 20),
+                            org.assertj.core.groups.Tuple.tuple(9L, 10));
+        }
+
+        @Test
+        @DisplayName("/effects/priorities no cae en el mapeo de PUT /effects/{id}")
+        void priorities_no_cae_en_el_mapeo_por_id() throws Exception {
+            // Son dos rutas que compiten y la resolucion la decide Spring, no el
+            // orden en que estan escritas: si algun dia cambiara, esto contestaria un
+            // 400 de conversion de tipo intentando leer "priorities" como Long.
+            when(reorderEffectsUseCase.execute(any())).thenReturn(List.of(UN_EFECTO));
+
+            mockMvc.perform(put("/configurator/effects/priorities").contentType(APPLICATION_JSON)
+                    .content("""
+                            {"priorities": [{"effectId": 5, "priority": 20}]}
+                            """)).andExpect(status().isOk());
+
+            verifyNoInteractions(updateEffectUseCase);
+        }
+
+        @Test
+        @DisplayName("una lista vacia sale 400: no es un reordenado, es una llamada que no hace nada")
+        void una_lista_vacia_sale_400() throws Exception {
+            mockMvc.perform(put("/configurator/effects/priorities").contentType(APPLICATION_JSON)
+                    .content("""
+                            {"priorities": []}
+                            """)).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+            verifyNoInteractions(reorderEffectsUseCase);
+        }
+
+        @Test
+        @DisplayName("una prioridad fuera de rango dentro de la lista sale 400 y no llega al caso de uso")
+        void una_prioridad_fuera_de_rango_sale_400() throws Exception {
+            // Este es el caso que congela la mitad que se olvida: las restricciones
+            // de EffectPriorityRequest viven en el argumento generico de la lista y
+            // NO se evaluan si el campo no lleva ademas su propio @Valid (#135). Sin
+            // ese @Valid el binder deja pasar el 10000 y lo para la entidad, con otro
+            // errorCode y otra forma que el front no sabe pintar bajo el campo.
+            mockMvc.perform(put("/configurator/effects/priorities").contentType(APPLICATION_JSON)
+                    .content("""
+                            {"priorities": [{"effectId": 5, "priority": 10000}]}
+                            """)).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+            verifyNoInteractions(reorderEffectsUseCase);
+        }
+
+        @Test
+        @DisplayName("un par sin effectId sale 400 con el campo nombrado")
+        void un_par_sin_effect_id_sale_400() throws Exception {
+            mockMvc.perform(put("/configurator/effects/priorities").contentType(APPLICATION_JSON)
+                    .content("""
+                            {"priorities": [{"priority": 10}]}
+                            """)).andExpect(status().isBadRequest());
+
+            verifyNoInteractions(reorderEffectsUseCase);
         }
     }
 }

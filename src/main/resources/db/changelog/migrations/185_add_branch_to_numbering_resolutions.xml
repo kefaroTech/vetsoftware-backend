@@ -39,8 +39,15 @@
                     ) STORED,
                 ADD CONSTRAINT uq_numbering_resolutions_active_scope UNIQUE (company_id, active_scope)
         </sql>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): uq_numbering_resolutions_active_scope (company_id, active_scope) sostiene
+             fk_numbering_resolutions_company (120, sin indice propio) -mismo defecto que
+             154/203/197/150/027/144. La FK se suelta antes y se devuelve identica despues de
+             restaurar el estado de 144. -->
         <rollback>
             <sql>
+                ALTER TABLE numbering_resolutions DROP FOREIGN KEY fk_numbering_resolutions_company;
+
                 ALTER TABLE numbering_resolutions
                     DROP INDEX uq_numbering_resolutions_active_scope,
                     DROP COLUMN active_scope,
@@ -48,7 +55,11 @@
                         GENERATED ALWAYS AS (
                             CASE WHEN enabled = TRUE THEN document_type ELSE NULL END
                         ) STORED,
-                    ADD CONSTRAINT uq_numbering_resolutions_active UNIQUE (company_id, active_document_type)
+                    ADD CONSTRAINT uq_numbering_resolutions_active UNIQUE (company_id, active_document_type);
+
+                ALTER TABLE numbering_resolutions
+                    ADD CONSTRAINT fk_numbering_resolutions_company
+                        FOREIGN KEY (company_id) REFERENCES companies (id);
             </sql>
         </rollback>
     </changeSet>

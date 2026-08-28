@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PRIMERA SIEMBRA REAL DE withholding_rate_rules (317). NO ES UNA CORRECCION DE DATOS YA
+         SEMBRADOS: se comprobo contra el arbol completo de migrations/ -grep de "withholding_rate_
+         rules" y de las tres tarifas involucradas, mas el propio comentario de 308-313 y de la
+         cabecera del bloque K en db.changelog-master.xml ("no hay siembra: las tarifas de
+         retencion ... son catalogos anuales de otra capa")- y la tabla esta VACIA desde que 317 la
+         creo. Los "6,9 por mil de Bogota" que aparecen en los comentarios de 317 y 328 son solo el
+         ejemplo ilustrativo de por que la columna necesita seis decimales; nunca llegaron a un
+         INSERT. Se deja constancia aqui porque el pedido original asumia una correccion sobre dato
+         existente y no lo era.
+
+         Con la tabla vacia, ResolveWithholdingRateRuleService.resolve(...) lanza
+         NoEffectiveWithholdingRateRuleException para CUALQUIER supuesto: hoy ninguna factura puede
+         calcular su retencion esperada. Esta siembra cubre los DOS supuestos que se pidio
+         corregir -ICA Bogota dependiente de actividad, y renta sobre software sin cuantia minima-
+         mas las dos filas de ICA que hacen falta para que "dependa de la actividad" signifique algo
+         real y no una unica fila disfrazada. NO se siembra INCOME_TAX para TECHNICAL_SERVICE ni
+         CONSULTING -el parrafo del art. 1.2.4.3.1 nombra mantenimiento/implementacion/consultoria,
+         que encajarian ahi tambien, pero no se pidio y no hay cifra de base minima confirmada para
+         esos dos supuestos-: queda fuera a proposito, no es un olvido.
+
+         SI service_nature BASTA PARA EXPRESAR LA ACTIVIDAD ECONOMICA: A MEDIAS. Los tres valores
+         cerrados de ServiceNature (317/229) alcanzan para separar las TRES tarifas de ICA que se
+         pidieron -CONSULTING = consultoria informatica (6,9x1.000), TECHNICAL_SERVICE = desarrollo
+         de sistemas informaticos/alojamiento/portales web (9,66x1.000), SOFTWARE_LICENSING =
+         edicion de software (11,04x1.000)-, y esa asignacion es una decision de este changeset, no
+         un dato que venga dado: el enum documenta "licenciamiento/servicio tecnico/consultoria" en
+         terminos genericos, sin atarlos a un codigo CIIU o de actividad distrital. Si Bogota (u otro
+         municipio) publicara una CUARTA actividad de software con tarifa propia, la lista cerrada
+         de tres SI se quedaria corta -y ensancharla exige tocar el mismo CHECK a la vez en 229
+         (catalog_items) y su enum Java, cambio que no toca este changeset (solo XML de
+         changelog, sin Java)-. Con las tres actividades que se pidieron, alcanza.
+
+         LA BASE MINIMA DE ICA (LAS TRES FILAS) NO SE PUDO VERIFICAR EN FUENTE OFICIAL: esta sesion
+         no tiene herramienta de navegacion web. Se asume 0 UVT -"retiene desde el primer peso",
+         valor explicitamente valido segun WithholdingRateRule.validateMinimumBase, que acepta cero
+         y no lo trata como ausencia-, consistente con que la retencion municipal de ICA no repite
+         el esquema de cuantias minimas en UVT que si tiene la retencion de renta nacional (DUR
+         1625/2016, art. 1.2.4.3.2). QUEDA EXPLICITO EN legal_reference DE CADA FILA como pendiente
+         de confirmar contra la Resolucion SDH vigente antes de depender de esto en produccion -
+         mismo patron que 360 dejo con el numero de resolucion de uvt_values 2025-.
+
+         LA CORRECCION REAL, LA QUE SI VENIA CON TODOS SUS DATOS: INCOME_TAX/SOFTWARE_LICENSING.
+         3,5%, SIN cuantia minima -minimum_base_uvt = 0, no porque se asuma sino porque el
+         paragrafo del art. 1.2.4.3.1 del DUR 1625/2016 no remite a la cuantia minima de servicios
+         del art. 1.2.4.3.2-, y nombra literalmente mantenimiento, implementacion y consultoria en
+         programas de informatica al 3,5% dentro del capitulo de honorarios y comisiones. -->
+    <changeSet id="361_seed_withholding_rate_rules" author="orlando">
+        <insert tableName="withholding_rate_rules">
+            <column name="withholding_type" value="ICA"/>
+            <column name="service_nature" value="CONSULTING"/>
+            <column name="municipality_code" value="11001"/>
+            <column name="rate_percent" valueNumeric="0.690000"/>
+            <column name="minimum_base_uvt" valueNumeric="0.00"/>
+            <column name="legal_reference"
+                    value="ICA Bogota D.C. - actividad 'consultoria informatica'. Tarifa 6,9x1.000. Base minima no verificada en fuente oficial esta sesion, asumida en 0 - confirmar contra Resolucion SDH vigente."/>
+            <column name="valid_from" valueDate="2026-01-01"/>
+        </insert>
+        <insert tableName="withholding_rate_rules">
+            <column name="withholding_type" value="ICA"/>
+            <column name="service_nature" value="TECHNICAL_SERVICE"/>
+            <column name="municipality_code" value="11001"/>
+            <column name="rate_percent" valueNumeric="0.966000"/>
+            <column name="minimum_base_uvt" valueNumeric="0.00"/>
+            <column name="legal_reference"
+                    value="ICA Bogota D.C. - actividad 'desarrollo de sistemas informaticos, alojamiento y portales web'. Tarifa 9,66x1.000. Base minima no verificada, asumida en 0 - confirmar contra Resolucion SDH vigente."/>
+            <column name="valid_from" valueDate="2026-01-01"/>
+        </insert>
+        <insert tableName="withholding_rate_rules">
+            <column name="withholding_type" value="ICA"/>
+            <column name="service_nature" value="SOFTWARE_LICENSING"/>
+            <column name="municipality_code" value="11001"/>
+            <column name="rate_percent" valueNumeric="1.104000"/>
+            <column name="minimum_base_uvt" valueNumeric="0.00"/>
+            <column name="legal_reference"
+                    value="ICA Bogota D.C. - actividad 'edicion de software'. Tarifa 11,04x1.000. Base minima no verificada, asumida en 0 - confirmar contra Resolucion SDH vigente."/>
+            <column name="valid_from" valueDate="2026-01-01"/>
+        </insert>
+        <insert tableName="withholding_rate_rules">
+            <column name="withholding_type" value="INCOME_TAX"/>
+            <column name="service_nature" value="SOFTWARE_LICENSING"/>
+            <column name="rate_percent" valueNumeric="3.500000"/>
+            <column name="minimum_base_uvt" valueNumeric="0.00"/>
+            <column name="legal_reference"
+                    value="Art. 1.2.4.3.1 DUR 1625/2016, paragrafo (honorarios y comisiones): mantenimiento, implementacion y consultoria de software, 3,5%, SIN cuantia minima (no remite a la base del art. 1.2.4.3.2)."/>
+            <column name="valid_from" valueDate="2026-01-01"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="withholding_rate_rules">
+                <where>withholding_type = 'ICA' AND service_nature = 'CONSULTING'
+                       AND municipality_code = '11001' AND valid_from = '2026-01-01'</where>
+            </delete>
+            <delete tableName="withholding_rate_rules">
+                <where>withholding_type = 'ICA' AND service_nature = 'TECHNICAL_SERVICE'
+                       AND municipality_code = '11001' AND valid_from = '2026-01-01'</where>
+            </delete>
+            <delete tableName="withholding_rate_rules">
+                <where>withholding_type = 'ICA' AND service_nature = 'SOFTWARE_LICENSING'
+                       AND municipality_code = '11001' AND valid_from = '2026-01-01'</where>
+            </delete>
+            <delete tableName="withholding_rate_rules">
+                <where>withholding_type = 'INCOME_TAX' AND service_nature = 'SOFTWARE_LICENSING'
+                       AND municipality_code IS NULL AND valid_from = '2026-01-01'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

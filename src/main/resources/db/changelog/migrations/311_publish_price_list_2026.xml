@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ====================================================================================
+         PUBLICA LA TARIFA 2026 Y LA DEJA COMO LISTA POR DEFECTO DE LA PLATAFORMA.
+         Sin `context`: todos los entornos. Es el último eslabón de las ocho condiciones que hoy
+         hacen fallar el alta de una empresa.
+
+         >>> SUPUESTO S-04, Y ES EL ÚNICO PUNTO DONDE ESTA SIEMBRA DEPENDE DEL ENTORNO <<<
+         chk_price_lists_published exige que toda lista no-DRAFT lleve published_at Y
+         published_by_system_user_id, que es FK a system_users. El modelo es explícito en que la
+         firma tiene que ser HUMANA, NOMINAL Y AUDITABLE -«nunca un PLATFORM-SEED técnico»: la
+         columna existe justamente para evitar eso-, y a la vez publicar a mano desde la consola
+         dejaría el alta bloqueada hasta que alguien pulse un botón en cada entorno.
+
+         La vía intermedia que se toma aquí: se firma con LA CUENTA REAL DE PLATAFORMA QUE YA EXISTA
+         en el entorno, resuelta por precedencia y sin crear ninguna. La precedencia es
+         'admin' (la cuenta de desarrollo y producción, que NO sembró Liquibase: ver el comentario
+         de 262) > 'local-admin' (laboratorio) > la más antigua que haya, y siempre habilitada.
+
+         SI NO HAY NINGUNA CUENTA DE SISTEMA, ESTE CHANGESET NO PUBLICA NADA Y LO HACE EN SILENCIO
+         DELIBERADO: la lista se queda en DRAFT, POST /api/v1/register sigue devolviendo
+         PLATFORM_CATALOG_NOT_CONFIGURED y hay que publicarla desde la consola con la cuenta del
+         dueño. Es el estado honesto -no hay a quién atribuir la firma- y es lo que ocurre en una
+         base recién creada, incluidas las de Testcontainers. Inventar aquí una cuenta técnica para
+         que «funcione» sería fabricar exactamente el rastro de auditoría falso que el modelo
+         prohíbe. QUEDA COMO DECISIÓN PENDIENTE DEL DUEÑO: hace falta el `code` de su cuenta.
+
+         El repunte de platform_billing_config va CONDICIONADO a que la publicación haya ocurrido de
+         verdad. Apuntar la configuración a una lista en DRAFT sería peor que no tocarla: las dos
+         consultas del mínimo estructural exigen pl.status = 'PUBLISHED' y published_at NO NULO, así
+         que en local/e2e -donde hoy apunta a LISTA-LOCAL-LAB, que sí está publicada- cambiarla a
+         una lista en borrador ROMPERÍA un alta que hoy funciona.
+
+         Y por eso el archivado de la lista de laboratorio va también condicionado, y en tercer
+         lugar: solo se retira el andamio cuando la tarifa real ya está en pie.
+         ==================================================================================== -->
+
+    <changeSet id="311_publish_price_list_2026" author="orlando">
+        <sql><![CDATA[
+            UPDATE price_lists pl
+               SET pl.status                     = 'PUBLISHED',
+                   pl.published_at               = NOW(),
+                   pl.published_by_system_user_id = (
+                       SELECT su.id
+                         FROM system_users su
+                        WHERE su.enabled = TRUE
+                        ORDER BY (su.code = 'admin') DESC,
+                                 (su.code = 'local-admin') DESC,
+                                 su.id ASC
+                        LIMIT 1),
+                   pl.version                    = pl.version + 1
+             WHERE pl.code   = 'LISTA-2026-01'
+               AND pl.status = 'DRAFT'
+               AND EXISTS (SELECT 1 FROM system_users su2 WHERE su2.enabled = TRUE);
+        ]]></sql>
+        <rollback>
+            <sql>
+                UPDATE price_lists
+                   SET status = 'DRAFT',
+                       published_at = NULL,
+                       published_by_system_user_id = NULL,
+                       version = version + 1
+                 WHERE code = 'LISTA-2026-01';
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- La fila singleton ya existe desde 255, que la siembra en el mismo changeSet que crea la
+         tabla. Aquí solo se reapunta. `version` se mueve a mano porque es un UPDATE de Liquibase y
+         no un save() de Hibernate: la misma disciplina que UPDATE_MASIVO_MUEVE_LA_VERSION exige en
+         el código.
+
+         A diferencia de 264 -que solo apuntaba `AND default_price_list_id IS NULL`-, aquí se
+         reapunta AUNQUE YA APUNTE A OTRA LISTA: en local y e2e apunta a LISTA-LOCAL-LAB, y dejarlo
+         así sería perpetuar la divergencia entre entornos que toda esta tanda de changesets existe
+         para cerrar. -->
+    <changeSet id="311_point_platform_billing_config_to_2026" author="orlando">
+        <sql><![CDATA[
+            UPDATE platform_billing_config cfg
+               SET cfg.default_price_list_id = (
+                       SELECT pl.id FROM price_lists pl WHERE pl.code = 'LISTA-2026-01'),
+                   cfg.version = cfg.version + 1
+             WHERE cfg.singleton = 1
+               AND EXISTS (
+                   SELECT 1 FROM price_lists pl2
+                    WHERE pl2.code          = 'LISTA-2026-01'
+                      AND pl2.status        = 'PUBLISHED'
+                      AND pl2.published_at IS NOT NULL
+                      AND pl2.enabled       = TRUE);
+        ]]></sql>
+        <rollback>
+            <sql>
+                UPDATE platform_billing_config cfg
+                   SET cfg.default_price_list_id = (
+                           SELECT pl.id FROM price_lists pl WHERE pl.code = 'LISTA-LOCAL-LAB'),
+                       cfg.version = cfg.version + 1
+                 WHERE cfg.singleton = 1;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Retira el andamio de laboratorio. LISTA-LOCAL-LAB queda ARCHIVED con su valid_to cerrado el
+         día anterior a la entrada en vigor de la tarifa real, conservando published_at y su firma
+         -chk_price_lists_published solo prohíbe la firma en DRAFT, no en ARCHIVED-, así que el
+         rastro de qué se cotizó con ella no se pierde.
+
+         AJUSTE (hallazgo de OwnerBranchAssignmentIT ejecutado aislado sobre una base recién
+         migrada: 409 PRICE_LIST_NOT_EFFECTIVE). El corte pasa de GREATEST(pl.valid_from,
+         '2026-08-31') a un literal fijo, '2026-08-26' -el día anterior al nuevo
+         LISTA-2026-01.valid_from (310), sin hueco y sin solape-. El GREATEST ya NO hace falta:
+         existía para proteger chk_price_lists_validity contra un valid_from dinámico
+         (CURRENT_DATE, en 264) que en un contenedor recreado después del corte fijo podía
+         quedar POR DELANTE de ese corte -exactamente lo que pasaba HOY, 2026-08-27, con el
+         corte original del 2026-08-31 ya superado-. 264 fija ahora su propio valid_from en
+         2026-01-01: la ventana [2026-01-01, 2026-08-26] es válida siempre, sin importar qué día
+         se construya el contenedor, así que el literal simple ya no puede reventar
+         chk_price_lists_validity ni solaparse con la tarifa real.
+
+         CONSECUENCIA QUE HAY QUE CONOCER, y no es un efecto secundario: a partir de aquí local y
+         e2e cotizan con la tarifa REAL. Cualquier prueba de Playwright que espere el núcleo a
+         50.000 verá 69.000, y la que espere techo de tres usuarios verá dos. Es el precio de que
+         los entornos dejen de divergir, y es exactamente lo que se pedía. -->
+    <changeSet id="311_archive_lab_price_list" author="orlando">
+        <sql><![CDATA[
+            UPDATE price_lists pl
+              JOIN (SELECT COUNT(*) AS publicadas
+                      FROM price_lists
+                     WHERE code = 'LISTA-2026-01' AND status = 'PUBLISHED') ya
+                ON ya.publicadas > 0
+               SET pl.status   = 'ARCHIVED',
+                   pl.valid_to = '2026-08-26',
+                   pl.version  = pl.version + 1
+             WHERE pl.code   = 'LISTA-LOCAL-LAB'
+               AND pl.status <> 'ARCHIVED';
+        ]]></sql>
+        <rollback>
+            <sql>
+                UPDATE price_lists
+                   SET status = 'PUBLISHED',
+                       valid_to = NULL,
+                       version = version + 1
+                 WHERE code = 'LISTA-LOCAL-LAB';
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

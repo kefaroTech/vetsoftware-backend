@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CUMPLIR Y MEDIR - CAPA O (ficha company_activity_months). LA ACTIVIDAD, MES A MES, POR
+         EMPRESA. La tabla mas barata del bloque: 500 clinicas x 12 = 6.000 filas al ano.
+
+         commercial_state IN ('PAID','FREE','TRIAL','CHURNED') -decision propia, S8: la ficha
+         decia "pagando, gratuito, en prueba o ido" sin dar los codigos-.
+
+         mrr_snapshot guarda el MRR ya normalizado a mensual: evita recalcular el pasado y evita
+         que dos procesos lo calculen distinto. Una columna de "ultimo acceso" repetiria el
+         defecto que el documento acaba de corregir en el ciclo de facturacion: se sobrescribe y
+         se pierde la serie -por eso el mes en curso se actualiza cada dia hasta que termina, sobre
+         la misma fila, y por eso lleva version-. SIN enabled. -->
+    <changeSet id="355_create_company_activity_months" author="orlando">
+        <createTable tableName="company_activity_months">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="period_key" type="CHAR(7)"><constraints nullable="false"/></column>
+            <column name="commercial_state" type="VARCHAR(15)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active_days" type="INT"><constraints nullable="false"/></column>
+            <column name="active_users" type="INT"><constraints nullable="false"/></column>
+            <column name="records_created" type="INT"><constraints nullable="false"/></column>
+            <column name="mrr_snapshot" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE company_activity_months
+                MODIFY COLUMN period_key CHAR(7)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                ADD CONSTRAINT uq_cam_month UNIQUE (company_id, period_key),
+                ADD CONSTRAINT chk_cam_period_key
+                    CHECK (period_key REGEXP '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+                ADD CONSTRAINT chk_cam_state
+                    CHECK (commercial_state IN ('PAID','FREE','TRIAL','CHURNED')),
+                ADD CONSTRAINT chk_cam_active_days
+                    CHECK (active_days BETWEEN 0 AND 31),
+                ADD CONSTRAINT chk_cam_active_users
+                    CHECK (active_users >= 0),
+                ADD CONSTRAINT chk_cam_records
+                    CHECK (records_created >= 0),
+                ADD CONSTRAINT chk_cam_mrr
+                    CHECK (mrr_snapshot >= 0)
+        ]]></sql>
+
+        <!-- Barrido de plataforma: hallar los dormidos. -->
+        <createIndex tableName="company_activity_months" indexName="ix_cam_dormant">
+            <column name="period_key"/>
+            <column name="active_days"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="company_activity_months"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_cam_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="company_activity_months"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

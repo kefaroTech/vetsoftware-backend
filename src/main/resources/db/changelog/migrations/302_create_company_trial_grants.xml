@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Capa I (modelo-datos-suscripciones.html, ficha company_trial_grants). Qué probó ya esta
+         empresa, y hasta cuándo. Una fila por empresa y artículo, PARA SIEMPRE.
+
+         uq_company_trial_grants_item (company_id, catalog_item_id) ES LA INVARIANTE, no una
+         optimización (D-03): un artículo no se regala dos veces a la misma empresa, jamás. Cierra
+         de un golpe las cinco vías de reinicio -reponer un módulo, cambiar de ciclo, migrar de
+         tarifa, reactivar tras suspender y recontratar tras cancelar-. Sin ella, quitar un módulo
+         el día 29 y reponerlo el 30 es software gratis indefinido, y ninguna fila del modelo
+         estaría mal.
+
+         LA CLAVE FORÁNEA TRIPLE ES EL MECANISMO CENTRAL DE LA CAPA. El fin de la ventana se copia
+         aquí dentro y esa copia está atada por clave a la ventana real: (company_id,
+         trial_window_id, trial_window_end_date) -> company_trial_windows(company_id, id, end_date).
+         Lleva la empresa dentro porque sin ella la prueba de una clínica podría colgar de la
+         ventana de otra y heredar un techo ajeno -el mismo defecto que la primera auditoría
+         encontró seis veces en el bloque del dinero-. Y va RESTRICT también AL ACTUALIZAR, que
+         aquí no es prudencia sino el mecanismo: mover el fin de una ventana con pruebas colgando
+         tiene que ser un error del motor. Poner CASCADE ahí convierte "la ventana no se estira" de
+         hecho en promesa.
+
+         chk_company_trial_grants_end escribe la regla del cliente, literal: el fin es el MENOR
+         entre "alta más sus días" y "fin de ventana", con el día final incluido. Inventario añadido
+         el día 15 de una ventana de 30 sale el 30; Caja con 14 días de política sale a los 14 días
+         contados desde su alta, ambos extremos incluidos. No se elige: se calcula y la base lo
+         verifica.
+
+         SIN enabled, a propósito y por escrito: una prueba concedida no se puede desconceder. Ese
+         es exactamente el punto de la tabla.
+
+         ix_company_trial_grants_sweep NO lleva la empresa delante, y es deliberado: es uno de los
+         nueve barridos de plataforma. Igualdad primero (consumed_at IS NULL) y rango después
+         (trial_end_date <= hoy). El caso de uso que lo consuma nace con autorización restringida a
+         plataforma; su hermano acotado por empresa es otro caso de uso.
+
+         Y AQUÍ SE CIERRA EL LAZO CON LA LÍNEA DEL CONTRATO. La FK
+         fk_subscription_items_trial_grant vive en el segundo changeset de este archivo y no en el
+         de subscription_items porque la tabla apuntada nace aquí; el índice que la sostiene
+         (ix_subscription_items_trial) ya se creó en 244, antes que la clave, para que el motor no
+         genere uno redundante encima. Con ella, una línea del contrato no puede inventarse una
+         fecha de fin de prueba distinta de la concedida: la fecha deja de calcularse y pasa a ser
+         parte de una clave foránea. InnoDB no comprueba la clave cuando alguna de sus columnas es
+         NULA, que es justo lo que deja pasar sin ruido las líneas de pago (trial_end_date vacío).
+
+         R-TRIAL-23 / SEGUNDO AJUSTE DE ESTA SESIÓN (ciclo apply→rollback total→reapply, nunca
+         verificado hasta hoy). Mismo defecto y misma solución que en 301: el primer ajuste soltaba
+         las FK salientes en el rollback para que un rollback total pudiera llegar hasta
+         catalog_items/quotes/subscription_amendments, pero eso dejaba el REAPLIQUE roto -la tabla
+         nunca se borra (R-TRIAL-23), así que el CREATE TABLE de este changeset revienta con "Table
+         already exists" en cuanto se intenta reconstruir desde un rollback total.
+
+         LA PREMISA QUE LO HABILITA es la misma que en 301: esta base de datos está vacía en todo
+         entorno real (D-53), así que tocar getChanges() aquí no rompe ningún checksum desplegado.
+
+         LA SOLUCIÓN, partida en TRES changesets:
+           1. Este -mismo id, misma estructura- con la PRECONDICIÓN de tabla-no-existe
+              (MARK_RAN si ya existe). Incluye fk_company_trial_grants_window: esa FK NUNCA se
+              suelta -ver el porqué en el segundo changeset- así que vive aquí, protegida por la
+              misma precondición que el resto de la estructura, y no en el changeset de enlace.
+           2. 302_link_company_trial_grants_fk: las otras cuatro FK salientes de
+              company_trial_grants (company, item, quote, amendment) MÁS
+              fk_subscription_items_trial_grant sobre subscription_items. Estas cinco sí hay que
+              volver a añadirlas tras un rollback total, porque su rollback las suelta.
+           3. Sigue siendo un solo archivo -no hace falta un tercero-: subscription_items en sí no
+              necesita guardia porque ESA tabla no sobrevive al rollback (no es una de las dos
+              excepciones de R-TRIAL-23) y se recrea entera con su propio changeset 244 antes de
+              llegar aquí. -->
+    <changeSet id="302_create_company_trial_grants" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="company_trial_grants"/>
+            </not>
+        </preConditions>
+        <createTable tableName="company_trial_grants">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="catalog_item_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="trial_window_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="trial_window_end_date" type="DATE"><constraints nullable="false"/></column>
+            <column name="granted_on" type="DATE"><constraints nullable="false"/></column>
+            <column name="days_granted" type="INT"><constraints nullable="false"/></column>
+            <column name="trial_end_date" type="DATE"><constraints nullable="false"/></column>
+            <column name="policy_trial_days" type="INT"><constraints nullable="false"/></column>
+            <column name="policy_trial_outcome" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_quote_id" type="BIGINT"/>
+            <column name="granting_amendment_id" type="BIGINT"/>
+            <column name="consumed_at" type="DATETIME(6)"/>
+            <column name="outcome" type="VARCHAR(20)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="company_trial_grants"
+                             columnNames="company_id, catalog_item_id"
+                             constraintName="uq_company_trial_grants_item"/>
+        <addUniqueConstraint tableName="company_trial_grants"
+                             columnNames="company_id, catalog_item_id, trial_end_date"
+                             constraintName="uq_company_trial_grants_line"/>
+
+        <sql><![CDATA[
+            ALTER TABLE company_trial_grants
+                ADD CONSTRAINT chk_company_trial_grants_days
+                    CHECK (days_granted > 0 AND policy_trial_days > 0
+                           AND days_granted <= policy_trial_days),
+                ADD CONSTRAINT chk_company_trial_grants_within_window
+                    CHECK (granted_on <= trial_window_end_date),
+                ADD CONSTRAINT chk_company_trial_grants_end
+                    CHECK (trial_end_date = LEAST(
+                        DATE_ADD(granted_on, INTERVAL (days_granted - 1) DAY),
+                        trial_window_end_date)),
+                ADD CONSTRAINT chk_company_trial_grants_policy_outcome
+                    CHECK (policy_trial_outcome IN ('CONVERT_TO_PAID','LIMITED','READ_ONLY')),
+                ADD CONSTRAINT chk_company_trial_grants_paper
+                    CHECK (((source_quote_id IS NOT NULL)
+                            + (granting_amendment_id IS NOT NULL)) = 1),
+                ADD CONSTRAINT chk_company_trial_grants_outcome
+                    CHECK ((consumed_at IS NULL AND outcome IS NULL)
+                           OR (consumed_at IS NOT NULL AND outcome IS NOT NULL
+                               AND outcome IN ('CONVERTED','LIMITED','READ_ONLY','ABANDONED')))
+        ]]></sql>
+
+        <createIndex tableName="company_trial_grants" indexName="ix_company_trial_grants_window">
+            <column name="company_id"/>
+            <column name="trial_window_id"/>
+            <column name="trial_window_end_date"/>
+        </createIndex>
+        <createIndex tableName="company_trial_grants" indexName="ix_company_trial_grants_sweep">
+            <column name="consumed_at"/>
+            <column name="trial_end_date"/>
+        </createIndex>
+        <createIndex tableName="company_trial_grants" indexName="ix_company_trial_grants_quote">
+            <column name="source_quote_id"/>
+        </createIndex>
+        <createIndex tableName="company_trial_grants" indexName="ix_company_trial_grants_amendment">
+            <column name="company_id"/>
+            <column name="granting_amendment_id"/>
+        </createIndex>
+
+        <!-- fk_company_trial_grants_window vive AQUÍ y no en el changeset de enlace porque apunta
+             a company_trial_windows (301), que sobrevive exactamente igual y por el mismo
+             R-TRIAL-23: esta FK nunca bloquea nada y nunca hace falta soltarla, así que viaja con
+             el resto de la estructura protegida por la misma precondición. -->
+        <addForeignKeyConstraint baseTableName="company_trial_grants"
+                                 baseColumnNames="company_id, trial_window_id, trial_window_end_date"
+                                 referencedTableName="company_trial_windows"
+                                 referencedColumnNames="company_id, id, end_date"
+                                 constraintName="fk_company_trial_grants_window"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <!-- R-TRIAL-23: la marcha atrás del despliegue NO borra company_trial_grants. Es el
+             registro PARA SIEMPRE de qué probó ya cada empresa; borrarlo con el rollback del
+             despliegue devolvería a todo el mundo el derecho a probarlo todo otra vez -el mismo
+             argumento que 301-. Vacío y explícito a propósito: sin esta línea, Liquibase
+             auto-generaría dropTable para deshacer el createTable de arriba. Las cinco FK que sí
+             hacía falta soltar -las cuatro salientes restantes más la que cierra el lazo con
+             subscription_items- viven ahora en 302_link_company_trial_grants_fk, con su propio
+             rollback. -->
+        <rollback/>
+    </changeSet>
+
+    <!-- Segundo changeset, deliberadamente separado del anterior: las cuatro FK salientes de
+         company_trial_grants que SÍ pueden bloquear un rollback total (company, item, quote,
+         amendment apuntan a tablas que no sobreviven) más la FK que cierra el lazo con la línea
+         del contrato (fk_subscription_items_trial_grant, sobre subscription_items -que tampoco
+         sobrevive: se recrea entera con su propio changeset 244 antes de llegar aquí, así que esta
+         FK siempre hace falta volver a añadirla-). Sin precondición: solo se ejecuta en el alta
+         desde cero (nada de esto existe todavía) y en el reaplique tras un rollback total (su
+         propio rollback, más abajo, se llevó las cinco por delante). -->
+    <changeSet id="302_link_company_trial_grants_fk" author="orlando">
+        <addForeignKeyConstraint baseTableName="company_trial_grants"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_trial_grants_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_trial_grants"
+                                 baseColumnNames="catalog_item_id"
+                                 referencedTableName="catalog_items"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_trial_grants_item"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_trial_grants"
+                                 baseColumnNames="source_quote_id"
+                                 referencedTableName="quotes"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_trial_grants_quote"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_trial_grants"
+                                 baseColumnNames="company_id, granting_amendment_id"
+                                 referencedTableName="subscription_amendments"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_company_trial_grants_amendment"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <addForeignKeyConstraint baseTableName="subscription_items"
+                                 baseColumnNames="company_id, catalog_item_id, trial_end_date"
+                                 referencedTableName="company_trial_grants"
+                                 referencedColumnNames="company_id, catalog_item_id, trial_end_date"
+                                 constraintName="fk_subscription_items_trial_grant"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <!-- AJUSTE (ciclo apply→rollback total→reapply, nunca verificado hasta hoy): dejar vivas
+             estas cinco FK bloqueaba para siempre el DROP TABLE de catalog_items, quotes,
+             subscription_amendments y subscription_items en cualquier rollback que llegara tan
+             atrás -mismo defecto estructural que en 301, con el mismo motivo: no hay forma de
+             arreglarlo desde el lado de esas tablas, que son anteriores en la cadena y no conocen
+             esta-. Se sueltan aquí: la concesión conserva sus filas y sus columnas, solo pierde la
+             FK hacia tablas que un rollback hasta el vacío ya se llevó por delante. Y por eso este
+             changeset SÍ necesita volver a correr en el reaplique -a diferencia del changeset de
+             arriba, que se salta con la precondición-: sin él, estas cinco FK quedarían perdidas
+             para siempre tras el primer rollback total. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="subscription_items"
+                                      constraintName="fk_subscription_items_trial_grant"/>
+            <dropForeignKeyConstraint baseTableName="company_trial_grants"
+                                      constraintName="fk_company_trial_grants_amendment"/>
+            <dropForeignKeyConstraint baseTableName="company_trial_grants"
+                                      constraintName="fk_company_trial_grants_quote"/>
+            <dropForeignKeyConstraint baseTableName="company_trial_grants"
+                                      constraintName="fk_company_trial_grants_item"/>
+            <dropForeignKeyConstraint baseTableName="company_trial_grants"
+                                      constraintName="fk_company_trial_grants_company"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

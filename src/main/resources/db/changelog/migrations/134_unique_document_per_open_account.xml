@@ -15,9 +15,18 @@
         <addUniqueConstraint tableName="electronic_documents"
                              columnNames="open_account_id"
                              constraintName="uq_electronic_documents_open_account"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): uq_electronic_documents_open_account (open_account_id) es el unico indice
+             sobre esa columna y sostiene fk_electronic_documents_open_account (121, sin indice
+             propio). La FK se suelta antes y se devuelve identica. -->
         <rollback>
+            <dropForeignKeyConstraint baseTableName="electronic_documents"
+                                      constraintName="fk_electronic_documents_open_account"/>
             <dropUniqueConstraint tableName="electronic_documents"
                                   constraintName="uq_electronic_documents_open_account"/>
+            <addForeignKeyConstraint baseTableName="electronic_documents" baseColumnNames="open_account_id"
+                                     referencedTableName="open_accounts" referencedColumnNames="id"
+                                     constraintName="fk_electronic_documents_open_account"/>
         </rollback>
     </changeSet>
 

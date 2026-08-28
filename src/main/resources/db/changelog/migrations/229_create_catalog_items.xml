@@ -6,7 +6,35 @@
 
     <!-- Modelo de suscripciones, fase 1 (suscripciones-tablas.md #1). Catálogo global de plataforma,
          sin company_id: el estante de la tienda. Ninguna columna de texto declara COLLATE/CHARACTER
-         SET (ver suscripciones-modelo.md §1.1) y los booleanos son type="BOOLEAN", nunca TINYINT(1). -->
+         SET (ver suscripciones-modelo.md §1.1) y los booleanos son type="BOOLEAN", nunca TINYINT(1).
+
+         REESCRITO PARA LA CAPA I (D-53: se rehace la línea base, cada tabla nace ya correcta en su
+         propio changeset en vez de recibir parches encima; la base arranca vacía y los entornos se
+         recrean). Lo que se añade es LA POLÍTICA DE PRUEBA DEL ARTÍCULO y la naturaleza del
+         servicio:
+
+         · trial_eligibility va NOT NULL por una razón técnica que no es cosmética: un vacío haría
+           que chk_catalog_items_trial_policy dejara pasar justo lo que existe para impedir. Y la
+           regla se escribe como "solo un modo permitido", no como "un modo prohibido" (D-04): si
+           dijera "no puede estar en prueba", quedaría abierta la puerta peor, la del gratis con
+           techo, que a diferencia de la prueba NO CADUCA NUNCA.
+         · default_trial_days y trial_outcome son la rama no elegida de un arco exclusivo: existen
+           si el artículo admite prueba y están prohibidos si no.
+         · chk_catalog_items_bundle_not_trialable escribe D-05 en el esquema: un paquete no se prueba
+           COMO PAQUETE, se abre en una línea por pieza al cotizar. Sin esta restricción, un paquete
+           marcado como probable regala los módulos de pago obligatorio que lleve dentro, porque la
+           comprobación mira la marca del paquete y los permisos sí se propagan a las piezas.
+         · service_nature es la clase de servicio a ojos de la retención, y VIVE EN EL ARTÍCULO y no
+           en la configuración de plataforma porque un contrato mixto lleva dos clases a la vez y hay
+           que anticipar el giro de cada una. Comparte lista cerrada con la tarifa de retención: si
+           divergen en un valor, la búsqueda devuelve vacío, la retención esperada sale cero y NO HAY
+
+         Y UNA TRAMPA DEL MOTOR: MySQL rechaza una fila cuando el CHECK evalua a FALSE; SI EVALUA A
+         NULL, LA ACEPTA. Y `NULL IN ('A','B')` vale NULL, no FALSE. Por eso la rama que valida trial_outcome
+         antepone su IS NOT NULL: sin el, un articulo ELIGIBLE con dias de prueba y sin desenlace daba NULL y la fila
+         prohibida entraba sin ruido, con el DDL aplicandose sin una queja y la regla leyendose
+         perfecta en revision. Regla general: si una columna NULABLE entra en una comparacion dentro
+         de un CHECK, delante va su IS NOT NULL. -->
     <changeSet id="229_create_catalog_items" author="orlando">
         <createTable tableName="catalog_items">
             <column name="id" type="BIGINT" autoIncrement="true">
@@ -33,6 +61,14 @@
             <column name="status" type="VARCHAR(20)" defaultValue="DRAFT">
                 <constraints nullable="false"/>
             </column>
+            <column name="trial_eligibility" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="default_trial_days" type="INT"/>
+            <column name="trial_outcome" type="VARCHAR(20)"/>
+            <column name="service_nature" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
             <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
@@ -56,7 +92,21 @@
                 ADD CONSTRAINT chk_catalog_items_quantity_range
                     CHECK (min_quantity >= 0 AND (max_quantity IS NULL OR max_quantity >= min_quantity)),
                 ADD CONSTRAINT chk_catalog_items_sort_order
-                    CHECK (sort_order >= 0)
+                    CHECK (sort_order >= 0),
+                ADD CONSTRAINT chk_catalog_items_trial_eligibility
+                    CHECK (trial_eligibility IN ('ELIGIBLE','NEVER_FREE')),
+                ADD CONSTRAINT chk_catalog_items_trial_policy
+                    CHECK ((trial_eligibility = 'ELIGIBLE'
+                            AND default_trial_days IS NOT NULL AND default_trial_days > 0
+                            AND trial_outcome IS NOT NULL
+                            AND trial_outcome IN ('CONVERT_TO_PAID','LIMITED','READ_ONLY'))
+                           OR (trial_eligibility = 'NEVER_FREE'
+                               AND default_trial_days IS NULL AND trial_outcome IS NULL)),
+                ADD CONSTRAINT chk_catalog_items_bundle_not_trialable
+                    CHECK (item_type <> 'BUNDLE' OR trial_eligibility = 'NEVER_FREE'),
+                ADD CONSTRAINT chk_catalog_items_service_nature
+                    CHECK (service_nature IN ('SOFTWARE_LICENSING','TECHNICAL_SERVICE',
+                                              'CONSULTING'))
         ]]></sql>
 
         <createIndex tableName="catalog_items" indexName="ix_catalog_items_status_sort">

@@ -3,8 +3,13 @@ package com.vetsoftware.app.subscription.infrastructure.orchestration;
 import com.vetsoftware.app.auth.infrastructure.security.SystemAuthRunner;
 import com.vetsoftware.app.entitlement.application.command.InitializeCompanyEntitlementsCommand;
 import com.vetsoftware.app.entitlement.application.port.in.InitializeCompanyEntitlementsUseCase;
+import com.vetsoftware.app.infrastructure.logging.MdcKeys;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionChangedEvent;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionEntitlementMetrics;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionEntitlementMetrics.Trigger;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 /**
@@ -92,19 +97,61 @@ public class EntitlementRecalculationAdapter implements SubscriptionChangedPort 
 
     private final InitializeCompanyEntitlementsUseCase initializeCompanyEntitlementsUseCase;
     private final SystemAuthRunner systemAuthRunner;
+    private final SubscriptionEntitlementMetrics metrics;
+    private final SubscriptionAuditPort audit;
 
     public EntitlementRecalculationAdapter(
             InitializeCompanyEntitlementsUseCase initializeCompanyEntitlementsUseCase,
-            SystemAuthRunner systemAuthRunner) {
+            SystemAuthRunner systemAuthRunner, SubscriptionEntitlementMetrics metrics,
+            SubscriptionAuditPort audit) {
         this.initializeCompanyEntitlementsUseCase = initializeCompanyEntitlementsUseCase;
         this.systemAuthRunner = systemAuthRunner;
+        this.metrics = metrics;
+        this.audit = audit;
     }
 
+    /**
+     * <b>Aqui se instrumenta el lazo, y no dentro de entitlements</b> (#606): lo
+     * que interesa medir es que un cambio de lo que el cliente PAGA se convierta en
+     * un cambio de lo que el cliente PUEDE USAR. Medirlo en el otro slice contaria
+     * tambien los recalculos que no nacen de un cambio de contrato y mezclaria dos
+     * poblaciones.
+     *
+     * <p>
+     * El fallo se cuenta y se relanza: el recalculo corre dentro de la transaccion
+     * del cambio de contrato, asi que la excepcion se lleva por delante tambien el
+     * cambio —eso esta bien— pero sin contador nadie se entera de que hubo intento,
+     * y el sintoma que llega es «varias clinicas dicen que no pueden entrar» sin
+     * ninguna serie que apunte aqui. No se registra ademas un log en esta capa: la
+     * excepcion se propaga y se registra donde se maneja, no donde pasa de largo.
+     */
     @Override
     public void subscriptionChanged(SubscriptionChangedEvent event) {
-        // Se descarta lo que devuelve —son contadores— para no arrastrar a este slice
-        // un DTO de aplicacion de otra feature.
-        systemAuthRunner.run(() -> initializeCompanyEntitlementsUseCase
-                .execute(new InitializeCompanyEntitlementsCommand(event.companyId())));
+        Trigger trigger = currentTrigger();
+        try {
+            // Se descarta lo que devuelve —son contadores— para no arrastrar a este slice
+            // un DTO de aplicacion de otra feature.
+            systemAuthRunner.run(() -> initializeCompanyEntitlementsUseCase
+                    .execute(new InitializeCompanyEntitlementsCommand(event.companyId())));
+        } catch (RuntimeException exception) {
+            metrics.recalculationFailed(trigger);
+            throw exception;
+        }
+        metrics.recalculated(trigger);
+        audit.entitlementsRecalculated(event.companyId(), trigger.value());
+    }
+
+    /**
+     * Dos poblaciones con dueno y urgencia distintos, y la unica senal que las
+     * separa es si hay un barrido en el MDC: un pico a las tres de la manana es el
+     * barrido nocturno haciendo su trabajo; el mismo pico al mediodia son clientes
+     * esperando frente a una pantalla. Se lee el MDC y no un parametro porque el
+     * disparador es una propiedad del CONTEXTO DE EJECUCION, no del evento: el
+     * mismo SubscriptionChangedEvent lo emite un controller y lo emite el barrido.
+     */
+    private static Trigger currentTrigger() {
+        return MDC.get(MdcKeys.JOB_NAME) == null
+                ? Trigger.SUBSCRIPTION_CHANGED
+                : Trigger.SCHEDULED_SWEEP;
     }
 }

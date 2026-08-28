@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CUMPLIR Y MEDIR - CAPA O (ficha security_incidents). CUANDO ALGO SE ROMPE Y HAY QUE
+         AVISAR, SIN EMPRESA -el reparto por clinica va en la puente 357-.
+
+         summary VARCHAR(255) OBLIGATORIO (decision propia, S8): una lista de incidentes sin
+         titulo es ilegible y la ficha no daba ninguna descripcion corta.
+
+         escalated_at -HALLAZGO DEL COORDINADOR, CONTRA FUENTE OFICIAL, VERIFICADO EN ESTA
+         SESION-. La Circular Unica de la SIC, Titulo V, numeral 2.1 literal f) romanillo (ii),
+         fija el plazo de reporte en QUINCE DIAS HABILES, y el "dies a quo" NO es
+         detected_at -el instante en que alguien se entera- sino el momento en que el incidente
+         LLEGA AL AREA QUE LO ATIENDE, es decir el escalamiento interno. Sin esta columna el
+         vencimiento se calculaba desde detected_at y salia MAS LARGO de lo real: exactamente la
+         direccion que produce el incumplimiento. deadline_at sigue siendo un dato (no una
+         formula, mismo motivo de antes), pero ahora se valida contra escalated_at, no contra
+         detected_at.
+         Segunda precision de la misma fuente: el reporte NO se hace por el registro nacional de
+         bases de datos (RNBD) sino por el micrositio de la Delegatura, y no estar inscrito en el
+         RNBD no exime de reportar. Esta tabla nunca ato el reporte al RNBD -no hay columna ni
+         CHECK que lo mencione-, asi que en ese punto no hacia falta corregir nada; queda dicho
+         aqui para que quede escrito que se reviso.
+
+         deadline_at se guarda COMO DATO, no como formula: es el plazo de reporte, para poder
+         listar lo que esta a punto de incumplirse sin depender del calendario de festivos en el
+         momento de la consulta.
+
+         chk_security_incidents_close impide cerrar un incidente sin causa raiz ni contencion
+         escritas -un incidente que no se documento en su momento es indistinguible de uno que se
+         oculto-. SIN enabled: una prueba que se puede desactivar no prueba nada. SIN unicidad
+         natural, a proposito: un incidente es un hecho, no tiene clave; el riesgo de alta doble
+         por reintento queda declarado como invariante no garantizada por la base (se crea a
+         mano, no por proceso). -->
+    <changeSet id="356_create_security_incidents" author="orlando">
+        <createTable tableName="security_incidents">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="detected_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="occurred_at" type="DATETIME(6)"/>
+            <column name="escalated_at" type="DATETIME(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="kind" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="severity" type="VARCHAR(10)"><constraints nullable="false"/></column>
+            <column name="summary" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="affected_subject_count" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deadline_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="reported_to_authority_at" type="DATETIME(6)"/>
+            <column name="report_reference" type="VARCHAR(100)"/>
+            <column name="notified_subjects_at" type="DATETIME(6)"/>
+            <column name="containment" type="TEXT"/>
+            <column name="root_cause" type="TEXT"/>
+            <column name="closed_at" type="DATETIME(6)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE security_incidents
+                ADD CONSTRAINT chk_security_incidents_kind
+                    CHECK (kind IN ('UNAUTHORIZED_ACCESS','DATA_LOSS','DATA_LEAK','RANSOMWARE',
+                                     'SERVICE_ABUSE','OTHER')),
+                ADD CONSTRAINT chk_security_incidents_severity
+                    CHECK (severity IN ('LOW','MEDIUM','HIGH','CRITICAL')),
+                ADD CONSTRAINT chk_security_incidents_occurred
+                    CHECK (occurred_at IS NULL OR occurred_at <= detected_at),
+                ADD CONSTRAINT chk_security_incidents_escalated
+                    CHECK (escalated_at >= detected_at),
+                ADD CONSTRAINT chk_security_incidents_count
+                    CHECK (affected_subject_count >= 0),
+                ADD CONSTRAINT chk_security_incidents_deadline
+                    CHECK (deadline_at > escalated_at),
+                ADD CONSTRAINT chk_security_incidents_report
+                    CHECK ((reported_to_authority_at IS NULL AND report_reference IS NULL)
+                           OR (reported_to_authority_at IS NOT NULL
+                                AND report_reference IS NOT NULL
+                                AND reported_to_authority_at >= detected_at)),
+                ADD CONSTRAINT chk_security_incidents_close
+                    CHECK (closed_at IS NULL
+                           OR (containment IS NOT NULL AND root_cause IS NOT NULL
+                                AND closed_at >= detected_at))
+        ]]></sql>
+
+        <!-- Barridos de plataforma: sin empresa porque la tabla no la tiene. -->
+        <createIndex tableName="security_incidents" indexName="ix_security_incidents_detected">
+            <column name="detected_at"/>
+        </createIndex>
+        <createIndex tableName="security_incidents" indexName="ix_security_incidents_unreported">
+            <column name="reported_to_authority_at"/>
+            <column name="deadline_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="security_incidents"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

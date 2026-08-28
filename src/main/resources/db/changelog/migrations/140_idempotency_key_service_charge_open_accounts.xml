@@ -14,6 +14,21 @@
         <addUniqueConstraint tableName="service_charge_open_accounts"
                              columnNames="open_account_id, client_request_id"
                              constraintName="uq_service_charge_open_accounts_request"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback>, Liquibase auto-invierte dropUniqueConstraint antes que
+             dropColumn y revienta con "Cannot drop index ... needed in a foreign key
+             constraint" -uq_service_charge_open_accounts_request sostiene fk_service_charge_open_accounts_open_account-. Se declara a
+             mano: suelta la FK, el unique y la columna, y devuelve la FK identica. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="service_charge_open_accounts"
+                                      constraintName="fk_service_charge_open_accounts_open_account"/>
+            <dropUniqueConstraint tableName="service_charge_open_accounts"
+                                  constraintName="uq_service_charge_open_accounts_request"/>
+            <dropColumn tableName="service_charge_open_accounts" columnName="client_request_id"/>
+            <addForeignKeyConstraint baseTableName="service_charge_open_accounts" baseColumnNames="open_account_id"
+                                     referencedTableName="open_accounts" referencedColumnNames="id"
+                                     constraintName="fk_service_charge_open_accounts_open_account"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

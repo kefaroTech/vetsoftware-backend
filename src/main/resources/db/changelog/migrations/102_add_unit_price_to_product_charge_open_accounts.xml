@@ -19,6 +19,12 @@
         </sql>
         <addNotNullConstraint tableName="product_charge_open_accounts" columnName="unit_price"
                               columnDataType="DECIMAL(12,2)" defaultNullValue="0"/>
+    <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): el <sql> de backfill bloquea la auto-inversion. dropColumn restaura el
+             esquema. -->
+        <rollback>
+            <dropColumn tableName="product_charge_open_accounts" columnName="unit_price"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

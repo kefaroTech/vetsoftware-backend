@@ -49,11 +49,22 @@
                 ) STORED,
                 ADD CONSTRAINT uq_suppliers_company_active_name UNIQUE (company_id, active_name)
         </sql>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): mismo defecto que 203/supplier_invoices -uq_suppliers_company_active_name
+             (company_id, active_name) es el unico indice con company_id como prefijo izquierdo
+             y sostiene fk_suppliers_company (declarada en 197_create_suppliers sin indice
+             propio). La FK se suelta antes y se devuelve identica. -->
         <rollback>
             <sql>
+                ALTER TABLE suppliers DROP FOREIGN KEY fk_suppliers_company;
+
                 ALTER TABLE suppliers
                     DROP INDEX uq_suppliers_company_active_name,
-                    DROP COLUMN active_name
+                    DROP COLUMN active_name;
+
+                ALTER TABLE suppliers
+                    ADD CONSTRAINT fk_suppliers_company
+                        FOREIGN KEY (company_id) REFERENCES companies (id);
             </sql>
         </rollback>
     </changeSet>

@@ -19,6 +19,17 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * F4 - libro de compras (reporte contable de solo lectura). Complementa el
  * libro de ventas (punto 16).
+ *
+ * <p>
+ * <strong>Pacto con el libro de ventas.</strong> {@code PurchaseBookDto} sale
+ * por HTTP tal cual, sin capa {@code web/response} intermedia, y sus anidados
+ * {@code EntryDto} y {@code TotalsDto} tienen gemelos de nombre simple en
+ * {@code SalesBookDto}. Springdoc funde por nombre simple, no por clase
+ * contenedora: los dos lados llevan {@code @Schema(name = ...)}
+ * ({@code PurchaseBookEntryDto} / {@code PurchaseBookTotalsDto} aqui,
+ * {@code SalesBookEntryDto} / {@code SalesBookTotalsDto} alla). Si quitas uno,
+ * este endpoint vuelve a publicar la forma del otro libro. El razonamiento
+ * completo esta en el javadoc de {@code PurchaseBookDto}.
  */
 @RestController
 @RequestMapping("/purchase-reports")

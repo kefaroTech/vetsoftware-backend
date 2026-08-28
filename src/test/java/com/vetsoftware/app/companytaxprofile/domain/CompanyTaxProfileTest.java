@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.companytaxprofile.testsupport.CompanyTaxProfileMother;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -373,107 +374,195 @@ class CompanyTaxProfileTest {
         }
     }
 
+    /**
+     * <b>Lo que sustituye al {@code @Nested "Actualizacion"} borrado.</b> Aquel
+     * probaba {@code update(...)}, que ya no existe: la ficha fiscal no se muta, se
+     * <em>sucede</em>. Las invariantes que aquel defendia -que un cambio no puede
+     * dejar la empresa en un estado incoherente- siguen vivas, pero ahora se
+     * expresan sobre la vigencia semiabierta {@code [validFrom, validTo)}.
+     *
+     * <p>
+     * <b>Lo que aqui NO se puede probar, y donde esta probado.</b> «Dos vigentes no
+     * pueden convivir» lo impone {@code uq_company_tax_profiles_current} sobre la
+     * columna generada {@code current_profile_marker}, no un {@code if} de esta
+     * clase: un agregado suelto no sabe nada de sus hermanos. Su prueba vive en
+     * {@code CompanyTaxProfilePersistenceIT.la_base_rechaza_un_segundo_perfil}. Lo
+     * que si es del dominio, y esta aqui, es que una ficha cerrada <b>no vuelve</b>
+     * a ser vigente y que la sucesora no puede empezar antes que la anterior:
+     * juntas son las que hacen que la historia quede cubierta entera, sin hueco y
+     * sin solape.
+     */
     @Nested
-    @DisplayName("Actualizacion")
-    class Actualizacion {
+    @DisplayName("Vigencia")
+    class Vigencia {
+
+        private static final LocalDate DESDE = LocalDate.of(2026, 3, 10);
 
         @Test
-        @DisplayName("reemplaza los datos fiscales editables")
-        void reemplaza_los_datos_fiscales_editables() {
-            CompanyTaxProfile profile = perfilValido();
+        @DisplayName("open deja la ficha vigente: sin fecha de cierre y regida desde el dia pedido")
+        void open_deja_la_ficha_vigente() {
+            CompanyTaxProfile abierta = CompanyTaxProfile.open(CompanyTaxProfileMother.CLINICA,
+                    CompanyDocumentType.NIT, DOCUMENTO, DV, RAZON, TaxRegime.RESPONSABLE_IVA, EMAIL,
+                    null, null, List.of(), DESDE, DESDE.atStartOfDay());
 
-            profile.update(CompanyDocumentType.CEDULA_CIUDADANIA, "1020304050", null, "Ana Ruiz",
-                    TaxRegime.NO_RESPONSABLE_IVA, "ana@ruiz.com", "Consultorio Ana",
-                    CompanyTaxProfileMother.COMERCIO, List.of(CompanyTaxProfileMother.O15));
-
-            assertThat(profile.getCompanyDocumentType())
-                    .isEqualTo(CompanyDocumentType.CEDULA_CIUDADANIA);
-            assertThat(profile.getCompanyDocumentId()).isEqualTo("1020304050");
-            assertThat(profile.getCompanyDocumentVerificationDigit()).isNull();
-            assertThat(profile.getLegalName()).isEqualTo("Ana Ruiz");
-            assertThat(profile.getTaxRegime()).isEqualTo(TaxRegime.NO_RESPONSABLE_IVA);
-            assertThat(profile.getFiscalEmail()).isEqualTo("ana@ruiz.com");
-            assertThat(profile.getCommercialName()).isEqualTo("Consultorio Ana");
-            assertThat(profile.getEconomicActivity()).isEqualTo(CompanyTaxProfileMother.COMERCIO);
-            assertThat(profile.getResponsibilities()).containsExactly(CompanyTaxProfileMother.O15);
+            assertThat(abierta.getValidFrom()).isEqualTo(DESDE);
+            assertThat(abierta.getValidTo()).isNull();
+            assertThat(abierta.isCurrent()).isTrue();
+            assertThat(abierta.getId()).as("nace sin id: es fila nueva").isNull();
         }
 
         @Test
-        @DisplayName("no toca id, empresa, fecha de creacion ni el estado habilitado")
-        void no_toca_id_empresa_fecha_ni_estado() {
-            CompanyTaxProfile profile = perfilValido();
+        @DisplayName("isCurrent pasa de verdadero a falso justo al cerrar, y no antes")
+        void is_current_dice_la_verdad() {
+            CompanyTaxProfile vigente = CompanyTaxProfileMother.perfilVigenteDesde(DESDE);
+            assertThat(vigente.isCurrent()).isTrue();
 
-            profile.update(CompanyDocumentType.NIT, "830053800", "4", "Otra Razon S.A.S.",
-                    TaxRegime.NO_RESPONSABLE_IVA, "otro@correo.com", null, null, null);
+            vigente.closeOn(DESDE.plusDays(1));
 
-            assertThat(profile.getId()).isEqualTo(CompanyTaxProfileMother.PROFILE_ID);
-            assertThat(profile.getCompany()).isEqualTo(CompanyTaxProfileMother.CLINICA);
-            assertThat(profile.getCreatedDate()).isEqualTo(CompanyTaxProfileMother.CREADO);
-            assertThat(profile.isEnabled()).isTrue();
+            assertThat(vigente.isCurrent()).isFalse();
+            assertThat(vigente.getValidTo()).isEqualTo(DESDE.plusDays(1));
         }
 
         @Test
-        @DisplayName("permite limpiar nombre comercial, actividad economica y responsabilidades")
-        void permite_limpiar_los_campos_opcionales() {
-            CompanyTaxProfile profile = perfilValido();
+        @DisplayName("cerrar sella con la fecha en que empieza la sucesora, no con la vispera")
+        void cerrar_sella_con_la_fecha_de_la_sucesora() {
+            // El intervalo es semiabierto: esta ficha cubre hasta la vispera y la nueva
+            // rige desde validTo inclusive. Escribirlo al reves dejaria el ultimo dia
+            // sin ficha aplicable o, peor, con dos.
+            CompanyTaxProfile vigente = CompanyTaxProfileMother.perfilVigenteDesde(DESDE);
 
-            profile.update(CompanyDocumentType.NIT, DOCUMENTO, DV, RAZON, TaxRegime.RESPONSABLE_IVA,
-                    EMAIL, null, null, null);
+            vigente.closeOn(DESDE.plusMonths(1));
 
-            assertThat(profile.getCommercialName()).isNull();
-            assertThat(profile.getEconomicActivity()).isNull();
-            assertThat(profile.getResponsibilities()).isEmpty();
+            assertThat(vigente.getValidTo()).isEqualTo(LocalDate.of(2026, 4, 10));
         }
 
         @Test
-        @DisplayName("rechaza la actualizacion que deja el perfil sin DV siendo NIT")
-        void rechaza_la_actualizacion_sin_dv_siendo_nit() {
-            CompanyTaxProfile profile = perfilValido();
+        @DisplayName("cerrar una ficha ya cerrada no vale: no se puede suceder dos veces")
+        void cerrar_una_ya_cerrada_no_vale() {
+            CompanyTaxProfile vigente = CompanyTaxProfileMother.perfilVigenteDesde(DESDE);
+            vigente.closeOn(DESDE.plusDays(1));
 
-            assertThatThrownBy(() -> profile.update(CompanyDocumentType.NIT, DOCUMENTO, null, RAZON,
-                    TaxRegime.RESPONSABLE_IVA, EMAIL, null, null, null))
+            assertThatThrownBy(() -> vigente.closeOn(DESDE.plusDays(2)))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("required when document type is NIT");
+                    .hasMessageContaining("ya esta cerrado desde el");
+            assertThat(vigente.getValidTo()).as("el segundo intento no mueve el cierre")
+                    .isEqualTo(DESDE.plusDays(1));
         }
 
         @Test
-        @DisplayName("una actualizacion invalida deja el perfil intacto")
-        void una_actualizacion_invalida_deja_el_perfil_intacto() {
-            CompanyTaxProfile profile = perfilValido();
+        @DisplayName("la sucesora no puede empezar antes de que rija la anterior")
+        void la_sucesora_no_puede_empezar_antes() {
+            CompanyTaxProfile vigente = CompanyTaxProfileMother.perfilVigenteDesde(DESDE);
 
-            assertThatThrownBy(() -> profile.update(CompanyDocumentType.NIT, "830053800", "4",
-                    "Otra Razon S.A.S.", TaxRegime.NO_RESPONSABLE_IVA, "sin-arroba", null, null,
-                    null)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> vigente.closeOn(DESDE.minusDays(1)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("no puede empezar antes del");
+            assertThat(vigente.isCurrent()).as("la ficha sigue vigente").isTrue();
+        }
 
-            assertThat(profile.getCompanyDocumentId()).isEqualTo(DOCUMENTO);
-            assertThat(profile.getLegalName()).isEqualTo(RAZON);
-            assertThat(profile.getFiscalEmail()).isEqualTo(EMAIL);
-            assertThat(profile.getTaxRegime()).isEqualTo(TaxRegime.RESPONSABLE_IVA);
+        /**
+         * <b>Este es el borde que cambio el comportamiento visible.</b> Un PUT del
+         * perfil fiscal dos veces el <em>mismo dia</em> ahora responde 400:
+         * {@code chk_company_tax_profiles_validity} exige {@code valid_to >
+         * valid_from} estricto, asi que la sucesion intradia no es representable. El
+         * dominio <b>no</b> la adelanta al dia siguiente por su cuenta -esa fecha es la
+         * que decide con que identidad se emitio un documento del intervalo-, asi que
+         * rechaza y nombra la primera fecha posible.
+         */
+        @Test
+        @DisplayName("suceder el mismo dia en que la ficha empezo a regir no es representable")
+        void suceder_el_mismo_dia_no_es_representable() {
+            CompanyTaxProfile abiertaHoy = CompanyTaxProfileMother.perfilVigenteDesde(DESDE);
+
+            assertThatThrownBy(() -> abiertaHoy.closeOn(DESDE))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("no puede empezar antes del 2026-03-11");
+            assertThat(abiertaHoy.isCurrent()).isTrue();
         }
 
         @Test
-        @DisplayName("normaliza a null el DV en blanco al actualizar a un documento que no es NIT")
-        void normaliza_a_null_el_dv_en_blanco_al_actualizar() {
-            CompanyTaxProfile profile = perfilValido();
+        @DisplayName("el dia siguiente si vale: es la primera fecha en que cabe una sucesora")
+        void el_dia_siguiente_si_vale() {
+            CompanyTaxProfile vigente = CompanyTaxProfileMother.perfilVigenteDesde(DESDE);
 
-            profile.update(CompanyDocumentType.PASAPORTE, "AB12345", "  ", RAZON,
-                    TaxRegime.RESPONSABLE_IVA, EMAIL, null, null, null);
+            vigente.closeOn(DESDE.plusDays(1));
 
-            assertThat(profile.getCompanyDocumentVerificationDigit()).isNull();
+            assertThat(vigente.getValidTo()).isEqualTo(LocalDate.of(2026, 3, 11));
         }
 
         @Test
-        @DisplayName("copia la lista de responsabilidades recibida al actualizar")
-        void copia_la_lista_de_responsabilidades_al_actualizar() {
-            CompanyTaxProfile profile = perfilValido();
-            List<CompanyTaxProfileResponsibility> origen = new ArrayList<>(
-                    List.of(CompanyTaxProfileMother.O15));
+        @DisplayName("cerrar exige la fecha desde la que rige la sucesora")
+        void cerrar_exige_la_fecha() {
+            CompanyTaxProfile vigente = CompanyTaxProfileMother.perfilVigenteDesde(DESDE);
 
-            profile.update(CompanyDocumentType.NIT, DOCUMENTO, DV, RAZON, TaxRegime.RESPONSABLE_IVA,
-                    EMAIL, null, null, origen);
-            origen.clear();
+            assertThatThrownBy(() -> vigente.closeOn(null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("effectiveFrom is required");
+        }
 
-            assertThat(profile.getResponsibilities()).containsExactly(CompanyTaxProfileMother.O15);
+        @Test
+        @DisplayName("una ficha sin fecha de inicio no se puede suceder")
+        void una_ficha_sin_fecha_de_inicio_no_se_puede_suceder() {
+            // createdDate nulo deja validFrom nulo: es el caso de una fila que nunca
+            // llego a ser persistible. Cerrarla produciria un intervalo sin principio.
+            CompanyTaxProfile sinInicio = new CompanyTaxProfile(CompanyTaxProfileMother.PROFILE_ID,
+                    CompanyTaxProfileMother.CLINICA, CompanyDocumentType.NIT, DOCUMENTO, DV, RAZON,
+                    TaxRegime.RESPONSABLE_IVA, EMAIL, null, null, List.of(), null, null, true);
+
+            assertThatThrownBy(() -> sinInicio.closeOn(DESDE))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("no tiene fecha de inicio de vigencia");
+        }
+
+        @Test
+        @DisplayName("el constructor rechaza una ventana que cierra el mismo dia que abre")
+        void el_constructor_rechaza_la_ventana_de_ancho_cero() {
+            assertThatThrownBy(() -> perfilConVentana(DESDE, DESDE))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("chk_company_tax_profiles_validity");
+        }
+
+        @Test
+        @DisplayName("el constructor rechaza una ventana que cierra antes de abrir")
+        void el_constructor_rechaza_la_ventana_invertida() {
+            assertThatThrownBy(() -> perfilConVentana(DESDE, DESDE.minusDays(1)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("validTo must be after validFrom");
+        }
+
+        @Test
+        @DisplayName("el constructor acepta la ventana minima: un solo dia de ancho")
+        void el_constructor_acepta_la_ventana_minima() {
+            CompanyTaxProfile cerrada = perfilConVentana(DESDE, DESDE.plusDays(1));
+
+            assertThat(cerrada.getValidFrom()).isEqualTo(DESDE);
+            assertThat(cerrada.getValidTo()).isEqualTo(DESDE.plusDays(1));
+            assertThat(cerrada.isCurrent()).as("una ficha con cierre ya no es la vigente")
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("una ficha cerrada sin fecha de inicio es un intervalo sin significado")
+        void una_ficha_cerrada_sin_fecha_de_inicio_no_se_construye() {
+            assertThatThrownBy(() -> perfilConVentana(null, DESDE))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("validTo requires validFrom");
+        }
+
+        @Test
+        @DisplayName("sin fecha de cierre la ficha es vigente aunque no tenga fecha de inicio")
+        void sin_fecha_de_cierre_es_vigente() {
+            // validFrom nulo se tolera y validTo sin el no: un perfil sin inicio no es
+            // persistible -la columna es NOT NULL- y el motor lo para; uno cerrado sin
+            // inicio, en cambio, no significa nada y se para aqui.
+            assertThat(perfilConVentana(null, null).isCurrent()).isTrue();
+        }
+
+        private CompanyTaxProfile perfilConVentana(LocalDate desde, LocalDate hasta) {
+            return new CompanyTaxProfile(CompanyTaxProfileMother.PROFILE_ID,
+                    CompanyTaxProfileMother.CLINICA, CompanyDocumentType.NIT, DOCUMENTO, DV, RAZON,
+                    TaxRegime.RESPONSABLE_IVA, EMAIL, null, null, List.of(), desde, hasta,
+                    CompanyTaxProfileMother.CREADO, null, true);
         }
     }
 

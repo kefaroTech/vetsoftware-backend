@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,7 +34,24 @@ import java.util.Set;
  * <li><strong>No existe el corte total.</strong> Ni el contrato cancelado ni la
  * mora bajan de {@code READ_ONLY}: {@link ContractStatus#maxAccessLevel()} es
  * el unico techo, y su minimo es {@code READ_ONLY}.
+ * <li><strong>Al vencer la prueba el acceso BAJA, no desaparece</strong>
+ * (R-ENT-01). Una linea en prueba emite <em>dos</em> filas de una sola vez: la
+ * de prueba, que se cierra en su fecha, y <strong>la que la sucede</strong>,
+ * escrita el mismo dia y esperando su turno. Emitir solo la primera --ponerle
+ * fecha de caducidad y no escribir nada detras-- deja a la clinica sin ninguna
+ * fila vigente el dia del vencimiento, que es exactamente "sin acceso". La
+ * sucesora arranca donde la otra acaba, y por eso
+ * {@code uq_company_entitlements} incluye {@code valid_from}: sin esa tercera
+ * columna solo cabria una de las dos.
  * </ol>
+ *
+ * <p>
+ * <strong>La prueba es de la linea, no del contrato.</strong> El modo de cobro
+ * y el fin de prueba viajan en cada {@link ModuleGrantLine}, asi que cada linea
+ * vence por su cuenta y el estado del contrato no decide nada de esto
+ * (R-TRIAL-13, R-TRIAL-15). Mirar {@code subscriptions.status} para saber si
+ * algo esta en prueba es la trampa que D-01 obliga a desactivar: hace que un
+ * solo dia de mora mate la prueba de los tres modulos a la vez y para siempre.
  */
 public final class EntitlementCalculator {
 
@@ -88,28 +104,37 @@ public final class EntitlementCalculator {
         LocalDate day = now.toLocalDate();
         SubscriptionRef subscription = contract.subscription();
         AccessLevel ceiling = subscription.status().maxAccessLevel();
-        LocalDateTime trialEnd = trialEndInstant(subscription);
 
         Set<Long> concedidosAMano = subModuleIdsOf(preserved);
-        Map<Long, CompanyEntitlement> bySubModule = new LinkedHashMap<>();
+        // Un submodulo produce UNA entrada, pero esa entrada puede llevar dos filas
+        // --la prueba y su sucesora--. Sigue ganando la primera linea que lo abre:
+        // computeIfAbsent no se dispara dos veces para el mismo submodulo.
+        Map<Long, List<CompanyEntitlement>> bySubModule = new LinkedHashMap<>();
         for (ModuleGrantLine line : currentLinesFirst(contract.moduleLines(), day)) {
             if (concedidosAMano.contains(line.subModule().id())) {
                 continue;
             }
             bySubModule.computeIfAbsent(line.subModule().id(),
-                    key -> grantFor(companyId, subscription, line, ceiling, trialEnd, now));
+                    key -> grantFor(companyId, subscription, line, ceiling, now));
         }
         for (ModuleGrantLine line : endedLinesMostRecentFirst(contract.moduleLines(), day)) {
             if (concedidosAMano.contains(line.subModule().id())) {
                 continue;
             }
             bySubModule.computeIfAbsent(line.subModule().id(),
-                    key -> downgradeFor(companyId, subscription, line, ceiling, now));
+                    key -> List.of(downgradeFor(companyId, subscription, line, ceiling, now)));
         }
 
-        List<CompanyEntitlement> entitlements = new ArrayList<>(bySubModule.values());
-        entitlements.sort(Comparator.comparing(e -> e.getSubModule().id()));
-        return new EntitlementRecalculation(entitlements,
+        List<CompanyEntitlement> entitlements = new ArrayList<>();
+        for (List<CompanyEntitlement> filas : bySubModule.values()) {
+            entitlements.addAll(filas);
+        }
+        // El desempate por valid_from no es cosmetico: con dos filas por submodulo,
+        // un orden inestable haria que dos recalculos identicos escribieran en
+        // distinto orden y que un diff de auditoria mintiera.
+        entitlements.sort(Comparator.<CompanyEntitlement, Long>comparing(e -> e.getSubModule().id())
+                .thenComparing(CompanyEntitlement::getValidFrom));
+        return new EntitlementRecalculation(List.copyOf(entitlements),
                 capacities(companyId, subscription, contract.capacityLines(), day, now));
     }
 
@@ -125,25 +150,43 @@ public final class EntitlementCalculator {
      */
     public static List<CompanyCapacity> reconcile(List<CompanyCapacity> existing,
             List<CompanyCapacity> computed, LocalDateTime now) {
-        Map<CapacityUnit, CompanyCapacity> previous = new EnumMap<>(CapacityUnit.class);
+        Map<CounterKey, CompanyCapacity> previous = new LinkedHashMap<>();
         if (existing != null) {
             for (CompanyCapacity capacity : existing) {
-                previous.put(capacity.getUnit(), capacity);
+                previous.put(CounterKey.of(capacity), capacity);
             }
         }
-        Map<CapacityUnit, CompanyCapacity> merged = new EnumMap<>(CapacityUnit.class);
+        Map<CounterKey, CompanyCapacity> merged = new LinkedHashMap<>();
         if (computed != null) {
             for (CompanyCapacity capacity : computed) {
-                merged.put(capacity.getUnit(),
-                        capacity.reconciledFrom(previous.get(capacity.getUnit())));
+                CounterKey key = CounterKey.of(capacity);
+                merged.put(key, capacity.reconciledFrom(previous.get(key)));
             }
         }
-        for (Map.Entry<CapacityUnit, CompanyCapacity> entry : previous.entrySet()) {
+        for (Map.Entry<CounterKey, CompanyCapacity> entry : previous.entrySet()) {
             if (!merged.containsKey(entry.getKey())) {
                 merged.put(entry.getKey(), entry.getValue().withoutContract(null, now));
             }
         }
         return List.copyOf(merged.values());
+    }
+
+    /**
+     * La identidad de un contador: el eje y el periodo, que es exactamente lo que
+     * declara {@code uq_company_capacities (company_id, limit_dimension_id,
+     * period_key)} --la empresa es la misma en todo el recalculo--.
+     *
+     * <p>
+     * Antes esto era un {@code EnumMap} sobre la lista cerrada de cuatro unidades.
+     * Al pasar el eje a ser una fila del catalogo, la clave deja de ser un
+     * enumerado; y tiene que incluir el periodo, porque un eje de flujo tiene un
+     * contador por periodo y cruzarlos por el eje solo los fundiria en uno.
+     */
+    private record CounterKey(Long dimensionId, String periodKey) {
+
+        static CounterKey of(CompanyCapacity capacity) {
+            return new CounterKey(capacity.getDimension().id(), capacity.getPeriodKey().value());
+        }
     }
 
     private static Set<Long> subModuleIdsOf(List<CompanyEntitlement> entitlements) {
@@ -155,14 +198,6 @@ public final class EntitlementCalculator {
             ids.add(entitlement.getSubModule().id());
         }
         return ids;
-    }
-
-    private static LocalDateTime trialEndInstant(SubscriptionRef subscription) {
-        if (subscription.status() != ContractStatus.TRIALING || subscription.trialEndDate() == null)
-            return null;
-        // trial_end_date es el ultimo dia de prueba, inclusive: la ventana se cierra
-        // al arrancar el dia siguiente. Sin esto la prueba moriria un dia antes.
-        return subscription.trialEndDate().plusDays(1).atStartOfDay();
     }
 
     private static List<ModuleGrantLine> currentLinesFirst(List<ModuleGrantLine> lines,
@@ -186,21 +221,83 @@ public final class EntitlementCalculator {
         return ended;
     }
 
-    private static CompanyEntitlement grantFor(Long companyId, SubscriptionRef subscription,
-            ModuleGrantLine line, AccessLevel ceiling, LocalDateTime trialEnd, LocalDateTime now) {
+    /**
+     * Las filas que abre una linea vigente. Son <strong>dos</strong> si la linea
+     * esta en prueba --la de prueba y la que la sucede-- y una en cualquier otro
+     * caso.
+     *
+     * <p>
+     * Las dos se escriben <strong>en el mismo recalculo</strong>, no el dia del
+     * vencimiento. Eso es lo que hace que el acceso baje solo, por dato, aunque el
+     * barrido nocturno no llegue a correr nunca: la de prueba se cierra sola a su
+     * fecha y la sucesora se abre sola en ese mismo instante, sin ningun proceso en
+     * medio que se pueda olvidar de correr. Dejar la fila de prueba caducando a
+     * solas deja a la clinica sin ninguna fila vigente ese dia, que es exactamente
+     * "sin acceso": el bloqueante que este metodo existe para cerrar.
+     */
+    private static List<CompanyEntitlement> grantFor(Long companyId, SubscriptionRef subscription,
+            ModuleGrantLine line, AccessLevel ceiling, LocalDateTime now) {
         LocalDateTime validFrom = line.effectiveFrom().atStartOfDay();
-        LocalDateTime validUntil = earliest(trialEnd,
-                line.effectiveTo() == null ? null : line.effectiveTo().atStartOfDay());
-        if (validUntil != null && !validUntil.isAfter(validFrom)) {
+        LocalDateTime lineEnds = line.effectiveTo() == null
+                ? null
+                : line.effectiveTo().atStartOfDay();
+        AccessLevel techo = ceilingFor(line, ceiling);
+
+        if (!line.chargeMode().isTrial()) {
+            if (lineEnds != null && !lineEnds.isAfter(validFrom)) {
+                return List.of(downgradeFor(companyId, subscription, line, ceiling, now));
+            }
+            AccessLevel level = levelFor(line, line.chargeMode().accessLevel(), techo);
+            return List.of(CompanyEntitlement.derived(companyId, line.subModule(), level,
+                    line.chargeMode().entitlementSource(line.core()), subscription.id(),
+                    line.subscriptionItemId(), validFrom, lineEnds, now));
+        }
+
+        LocalDateTime trialCloses = line.trialClosesAt();
+        LocalDateTime trialUntil = earliest(trialCloses, lineEnds);
+        if (trialUntil != null && !trialUntil.isAfter(validFrom)) {
             // Ventana degenerada (la prueba caduco antes de que la linea arrancara): no
             // se emite un permiso imposible, se emite el permiso degradado.
-            return downgradeFor(companyId, subscription, line, ceiling, now);
+            return List.of(downgradeFor(companyId, subscription, line, ceiling, now));
         }
-        AccessLevel level = AccessLevel.FULL.restrictedTo(ceiling)
-                .hiddenIfNotReadOnlyCapable(line.readOnlyCapable());
-        return CompanyEntitlement.derived(companyId, line.subModule(), level,
-                sourceFor(subscription, line), subscription.id(), line.subscriptionItemId(),
-                validFrom, validUntil, now);
+
+        List<CompanyEntitlement> filas = new ArrayList<>(2);
+        filas.add(CompanyEntitlement.derived(companyId, line.subModule(),
+                levelFor(line, AccessLevel.FULL, techo), EntitlementSource.TRIAL, subscription.id(),
+                line.subscriptionItemId(), validFrom, trialUntil, now));
+
+        // La sucesora solo tiene sitio si la linea sigue viva despues del
+        // vencimiento. Si la baja del modulo llega antes, no hay nada que suceder:
+        // manda la baja, y de eso ya se encarga la rama de lineas terminadas.
+        if (lineEnds == null || lineEnds.isAfter(trialCloses)) {
+            TrialOutcomePolicy desenlace = line.trialOutcome();
+            filas.add(CompanyEntitlement.derived(companyId, line.subModule(),
+                    levelFor(line, desenlace.accessLevel(), techo),
+                    desenlace.entitlementSource(line.core()), subscription.id(),
+                    line.subscriptionItemId(), trialCloses, lineEnds, now));
+        }
+        return List.copyOf(filas);
+    }
+
+    /**
+     * El techo que se le aplica a esta linea. Un submodulo
+     * {@code degradation_immune} <strong>no se degrada jamas</strong> --ni por
+     * mora, ni por cupo, ni por baja (R-ENT-05)--, asi que el techo del contrato no
+     * le llega: una cuenta en {@code READ_ONLY} por mora sigue pudiendo emitir sus
+     * facturas electronicas. Es la unica barandilla entre una discusion comercial y
+     * una clinica que no puede facturar.
+     */
+    private static AccessLevel ceilingFor(ModuleGrantLine line, AccessLevel ceiling) {
+        return line.degradationImmune() ? AccessLevel.FULL : ceiling;
+    }
+
+    /** Nivel propio, recortado por el techo y ocultado si no sabe solo lectura. */
+    private static AccessLevel levelFor(ModuleGrantLine line, AccessLevel propio,
+            AccessLevel techo) {
+        if (line.degradationImmune()) {
+            return AccessLevel.FULL;
+        }
+        return propio.restrictedTo(techo).hiddenIfNotReadOnlyCapable(line.readOnlyCapable());
     }
 
     /**
@@ -210,8 +307,7 @@ public final class EntitlementCalculator {
      */
     private static CompanyEntitlement downgradeFor(Long companyId, SubscriptionRef subscription,
             ModuleGrantLine line, AccessLevel ceiling, LocalDateTime now) {
-        AccessLevel level = AccessLevel.READ_ONLY.restrictedTo(ceiling)
-                .hiddenIfNotReadOnlyCapable(line.readOnlyCapable());
+        AccessLevel level = levelFor(line, AccessLevel.READ_ONLY, ceilingFor(line, ceiling));
         LocalDateTime validFrom = line.effectiveTo() == null
                 ? line.effectiveFrom().atStartOfDay()
                 : line.effectiveTo().atStartOfDay();
@@ -222,12 +318,6 @@ public final class EntitlementCalculator {
                 subscription.id(), line.subscriptionItemId(), validFrom, null, now);
     }
 
-    private static EntitlementSource sourceFor(SubscriptionRef subscription, ModuleGrantLine line) {
-        if (subscription.status() == ContractStatus.TRIALING)
-            return EntitlementSource.TRIAL;
-        return line.core() ? EntitlementSource.CORE : EntitlementSource.SUBSCRIPTION;
-    }
-
     private static List<CompanyCapacity> capacities(Long companyId, SubscriptionRef subscription,
             List<CapacityGrantLine> lines, LocalDate day, LocalDateTime now) {
         // Un contrato que ya no esta vigente no sostiene ningun techo: las unidades
@@ -235,18 +325,59 @@ public final class EntitlementCalculator {
         // consumo.
         if (!subscription.status().isCurrent())
             return List.of();
-        Map<CapacityUnit, Integer> ceilings = new EnumMap<>(CapacityUnit.class);
+        Map<Long, LimitDimensionRef> dimensions = new LinkedHashMap<>();
+        Map<Long, Integer> ceilings = new LinkedHashMap<>();
+        Map<Long, ResetPeriod> resets = new LinkedHashMap<>();
         for (CapacityGrantLine line : lines) {
             if (line.isCurrentOn(day)) {
-                ceilings.merge(line.unit(), line.ceiling(), Integer::sum);
+                Long dimensionId = line.dimension().id();
+                dimensions.putIfAbsent(dimensionId, line.dimension());
+                ceilings.merge(dimensionId, line.ceiling(), Integer::sum);
+                mergeReset(resets, line);
             }
         }
         List<CompanyCapacity> result = new ArrayList<>();
-        for (Map.Entry<CapacityUnit, Integer> entry : ceilings.entrySet()) {
-            result.add(CompanyCapacity.contracted(companyId, entry.getKey(), entry.getValue(),
-                    subscription.id(), now));
+        for (Map.Entry<Long, Integer> entry : ceilings.entrySet()) {
+            LimitDimensionRef dimension = dimensions.get(entry.getKey());
+            // El periodo lo decide el eje, no el llamador. Un eje de existencias
+            // lleva el centinela; uno de flujo, la clave del periodo en curso segun
+            // la granularidad que la venta congelo. Esta es la fila de la que nace
+            // toda la serie del contador de flujo: las de los periodos siguientes
+            // heredan de ella su techo ya resuelto (R-LIMIT-04), sin volver a cruzar
+            // el contrato.
+            result.add(CompanyCapacity.contracted(companyId, dimension,
+                    PeriodKey.forContract(dimension.measureKind(), resets.get(entry.getKey()), day),
+                    entry.getValue(), subscription.id(), now));
         }
         return List.copyOf(result);
+    }
+
+    /**
+     * Una serie de contador tiene <strong>una sola granularidad</strong>.
+     *
+     * <p>
+     * Dos lineas vigentes que vendan el mismo eje de flujo con periodos distintos
+     * --una mensual y otra trimestral-- no producen un techo mayor: producen dos
+     * series que se pisan, porque {@code 2026-03} y {@code 2026-Q1} son claves
+     * distintas para el mismo consumo. Sumar sus techos y quedarse con una de las
+     * dos claves repartiria el consumo entre dos filas segun quien lo escribiera, y
+     * el cliente veria su cupo entero o vacio segun la hora. Se rechaza en voz
+     * alta: R-LIMIT-37 exige cerrar la serie y abrir otra con el hecho que lo
+     * documenta, y eso es una operacion, no un efecto colateral de un recalculo.
+     */
+    private static void mergeReset(Map<Long, ResetPeriod> resets, CapacityGrantLine line) {
+        ResetPeriod incoming = line.resetPeriod();
+        ResetPeriod known = resets.get(line.dimension().id());
+        if (known == null) {
+            if (incoming != null)
+                resets.put(line.dimension().id(), incoming);
+            return;
+        }
+        if (incoming != null && incoming != known)
+            throw new IllegalStateException("Contract grants dimension " + line.dimension().code()
+                    + " with two different reset periods at once (" + known + " and " + incoming
+                    + "): a counter series has a single granularity, and changing it has to close"
+                    + " the current series and open another one (R-LIMIT-37)");
     }
 
     private static LocalDateTime earliest(LocalDateTime first, LocalDateTime second) {

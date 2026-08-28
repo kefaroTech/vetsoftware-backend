@@ -16,9 +16,25 @@ public final class PriceListMother {
     private PriceListMother() {
     }
 
-    /** Borrador recien creado, sin id. */
+    /**
+     * Borrador recien creado, sin id.
+     *
+     * <p>
+     * <b>Su codigo NO es {@code LISTA-2026-01}, y no puede serlo.</b> Ese lo
+     * siembra el changeset {@code 310_seed_price_list_2026} y
+     * {@code uq_price_lists_code} es un unico global sin empresa, asi que la unica
+     * rodaja que persiste este mother —{@code PriceListPersistenceIT}— moria con
+     * «Duplicate entry 'LISTA-2026-01' for key 'price_lists.uq_price_lists_code'»
+     * antes de llegar a su primera asercion. La semilla de produccion manda: lo que
+     * se mueve es la fila del test.
+     *
+     * <p>
+     * Las tres factorias de abajo si conservan el codigo comercial porque no tocan
+     * la base —llevan {@code id = 1L} puesto a mano y sirven a tests de dominio, de
+     * mapper y de controller—, y ahi el codigo real es parte de lo que describen.
+     */
     public static PriceList nuevoBorrador() {
-        return PriceList.create("LISTA-2026-01", "Tarifa 2026", "COP", DESDE, null, CREADA_EL);
+        return PriceList.create("LISTA-TEST-2026", "Tarifa 2026", "COP", DESDE, null, CREADA_EL);
     }
 
     /** Borrador ya persistido: tiene id y version. */

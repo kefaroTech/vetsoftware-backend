@@ -66,7 +66,8 @@ class JpaCompanyFiscalProfileQueryPortTest {
         @Test
         @DisplayName("sin CompanyTaxProfile configurado devuelve vacio")
         void sin_perfil_devuelve_vacio() {
-            when(companyTaxProfileRepository.findByCompany_Id(9L)).thenReturn(Optional.empty());
+            when(companyTaxProfileRepository.findCurrentByCompanyId(9L))
+                    .thenReturn(Optional.empty());
 
             assertThat(port.findByCompany(9L)).isEmpty();
         }
@@ -79,7 +80,7 @@ class JpaCompanyFiscalProfileQueryPortTest {
         @Test
         @DisplayName("congela el emisor con sus responsabilidades fiscales")
         void congela_el_emisor_con_sus_responsabilidades() throws Exception {
-            when(companyTaxProfileRepository.findByCompany_Id(9L))
+            when(companyTaxProfileRepository.findCurrentByCompanyId(9L))
                     .thenReturn(Optional.of(perfil()));
             when(withholdingConfigRepository.findByCompany_Id(9L)).thenReturn(Optional.empty());
 
@@ -97,7 +98,8 @@ class JpaCompanyFiscalProfileQueryPortTest {
             CompanyTaxProfileJpaEntity perfil = perfil();
             perfil.setCompanyDocumentType(null);
             perfil.setTaxRegime(null);
-            when(companyTaxProfileRepository.findByCompany_Id(9L)).thenReturn(Optional.of(perfil));
+            when(companyTaxProfileRepository.findCurrentByCompanyId(9L))
+                    .thenReturn(Optional.of(perfil));
             when(withholdingConfigRepository.findByCompany_Id(9L)).thenReturn(Optional.empty());
 
             Optional<CompanyFiscalProfile> result = port.findByCompany(9L);
@@ -109,7 +111,7 @@ class JpaCompanyFiscalProfileQueryPortTest {
         @Test
         @DisplayName("sin WithholdingConfig, las tres tarifas de retencion quedan null")
         void sin_withholding_config_tarifas_nulas() throws Exception {
-            when(companyTaxProfileRepository.findByCompany_Id(9L))
+            when(companyTaxProfileRepository.findCurrentByCompanyId(9L))
                     .thenReturn(Optional.of(perfil()));
             when(withholdingConfigRepository.findByCompany_Id(9L)).thenReturn(Optional.empty());
 
@@ -123,7 +125,7 @@ class JpaCompanyFiscalProfileQueryPortTest {
         @Test
         @DisplayName("con WithholdingConfig, trae las tres tarifas de retencion")
         void con_withholding_config_trae_las_tarifas() throws Exception {
-            when(companyTaxProfileRepository.findByCompany_Id(9L))
+            when(companyTaxProfileRepository.findCurrentByCompanyId(9L))
                     .thenReturn(Optional.of(perfil()));
             WithholdingConfigJpaEntity wc = ReflectionEntities
                     .newInstance(WithholdingConfigJpaEntity.class);

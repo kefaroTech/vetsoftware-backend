@@ -33,7 +33,9 @@ import com.vetsoftware.app.electronicdocument.domain.IssuerSnapshot;
 import com.vetsoftware.app.electronicdocument.domain.PaymentMeans;
 import com.vetsoftware.app.electronicdocument.domain.TaxCategory;
 import com.vetsoftware.app.electronicdocument.domain.TaxScheme;
+import com.vetsoftware.app.infrastructure.config.ClockConfig;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,7 +84,7 @@ class PosSaleDocumentBuilderTest {
         PosTicketLimitValidator limitValidator = new PosTicketLimitValidator(uvtQueryPort);
         builder = new PosSaleDocumentBuilder(fiscalProfileQueryPort, saleCustomerQueryPort,
                 catalogLineQueryPort, salePromotionQueryPort, repository, limitValidator,
-                uvtQueryPort, branchResolverPort);
+                uvtQueryPort, branchResolverPort, Clock.system(ClockConfig.BUSINESS_ZONE));
 
         lenient().when(fiscalProfileQueryPort.findByCompany(COMPANY))
                 .thenReturn(Optional.of(new CompanyFiscalProfile(issuer(), null, null, null)));

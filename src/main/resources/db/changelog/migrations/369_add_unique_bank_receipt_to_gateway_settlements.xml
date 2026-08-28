@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CORRIGE UN DEFECTO VIVO DE gateway_settlements (326), patron 086/087 -no se edita el
+         changeset ya aplicado, se corrige con uno nuevo-. ix_gateway_settlements_receipt (326) es
+         un indice CUALQUIERA sobre bank_receipt_id, no UNIQUE: hoy nada en el esquema impide que
+         dos liquidaciones distintas se aten al mismo apunte bancario. Solo lo frena
+         GatewaySettlement.linkBankReceipt (domain), y su propia comprobacion
+         -"if (this.bankReceiptId != null) throw BankReceiptAlreadyLinkedException"- solo mira SU
+         PROPIA fila: no consulta si OTRA liquidacion ya tiene ese bankReceiptId. Dos liquidaciones
+         concurrentes enlazando el mismo recibo pasan las dos.
+
+         SE CREA LA UNICA ANTES DE SOLTAR LA NO-UNICA para que la FK fk_gateway_settlements_receipt
+         (326) nunca se quede sin un indice que la respalde -mismo cuidado que documenta 364 para
+         el caso simetrico-. NULLs multiples siguen permitidos: MySQL no cuenta un NULL contra si
+         mismo en un indice UNIQUE, asi que las liquidaciones sin recibo bancario -la mayoria,
+         mientras no llega el extracto- no chocan entre ellas. -->
+    <changeSet id="369_add_unique_bank_receipt_to_gateway_settlements" author="orlando">
+        <createIndex tableName="gateway_settlements" indexName="ux_gateway_settlements_bank_receipt"
+                     unique="true">
+            <column name="bank_receipt_id"/>
+        </createIndex>
+
+        <dropIndex tableName="gateway_settlements" indexName="ix_gateway_settlements_receipt"/>
+
+        <rollback>
+            <createIndex tableName="gateway_settlements" indexName="ix_gateway_settlements_receipt">
+                <column name="bank_receipt_id"/>
+            </createIndex>
+            <dropIndex tableName="gateway_settlements"
+                       indexName="ux_gateway_settlements_bank_receipt"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

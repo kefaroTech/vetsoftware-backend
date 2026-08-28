@@ -1,5 +1,6 @@
 package com.vetsoftware.app.infrastructure.token;
 
+import com.vetsoftware.app.infrastructure.observability.ScheduledJobCatalog;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import com.vetsoftware.app.infrastructure.token.TokenCleanupMetrics.PurgedTokens;
 import java.time.LocalDateTime;
@@ -30,9 +31,9 @@ final class TokenCleanupJob {
         this.telemetry = telemetry;
     }
 
-    @Scheduled(fixedDelayString = "${vetsoftware.token-cleanup.interval:PT1H}", initialDelayString = "${vetsoftware.token-cleanup.initial-delay:PT5M}")
+    @Scheduled(cron = "${vetsoftware.token-cleanup.cron:0 20 * * * *}", zone = ScheduledJobCatalog.ZONE)
     void cleanup() {
-        telemetry.observe("security.tokens.cleanup", this::cleanupTokens);
+        telemetry.observe(ScheduledJobCatalog.SECURITY_TOKENS_CLEANUP, this::cleanupTokens);
     }
 
     ScheduledJobTelemetry.Outcome cleanupTokens() {

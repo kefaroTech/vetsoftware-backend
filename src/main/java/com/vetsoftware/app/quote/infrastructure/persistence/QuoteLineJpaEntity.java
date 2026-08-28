@@ -54,6 +54,23 @@ public class QuoteLineJpaEntity {
     @Column(name = "item_type", nullable = false, length = 20)
     private QuoteItemType itemType;
 
+    /**
+     * D-66 / R-QUOTE-09. El tramo que este renglon cubre, en unidades FACTURABLES.
+     * Existe porque los tramos son acumulativos y una cantidad escalonada produce
+     * varios renglones del mismo articulo a precios distintos: sin el tramo
+     * escrito, la oferta ensena dos lineas iguales con importes distintos y no hay
+     * forma de explicarlas. {@code tierMax} vacio es "de ahi en adelante".
+     *
+     * <p>
+     * Valor inicial {@code 1} y {@code null}: el tramo unico y abierto, que es lo
+     * que describe cualquier renglon de un articulo sin escalones.
+     */
+    @Column(name = "tier_min", nullable = false)
+    private int tierMin = 1;
+
+    @Column(name = "tier_max")
+    private Integer tierMax;
+
     // [ANADIDO respecto de la ficha] contracted_quantity e included_quantity.
     // Sin ellas la linea solo ensena el resultado de la resta de R15 y explicar
     // por que se cobra 1 y no 3 obliga a volver a catalog_prices -es decir, a
@@ -79,6 +96,46 @@ public class QuoteLineJpaEntity {
 
     @Column(name = "discount_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal discountAmount;
+
+    /**
+     * D-86: un descuento CONDICIONADO -el de permanencia, por ejemplo- no reduce la
+     * base del IVA, porque la norma solo excluye de la base los descuentos "no
+     * sujetos a ninguna condición". La marca nace aquí, en el renglón de la oferta;
+     * llevarla hasta la línea del contrato y el cargo es trabajo de las capas E y
+     * M.
+     *
+     * <p>
+     * <b>Ya no tiene valor inicial de hecho: lo escribe el dominio.</b> La marca
+     * llega desde {@code QuoteLineCommand} con el porcentaje negociado —es la misma
+     * negociacion— y {@code QuoteLine} bifurca con ella la base imponible. El
+     * {@code false} de aqui es solo el estado de un objeto recien construido antes
+     * de que el mapper lo rellene.
+     */
+    @Column(name = "discount_is_conditional", nullable = false)
+    private boolean discountIsConditional = false;
+
+    /**
+     * Copia congelada de la política de prueba del catálogo el día de la oferta
+     * (capa I). {@code maxTrialDays} es EL TOPE, y existe copiado porque una
+     * restricción no puede mirar otra tabla: sin él, una oferta de 3.650 días de
+     * prueba sería válida.
+     *
+     * <p>
+     * Valores iniciales en el lado seguro -sin prueba- por el mismo motivo que en
+     * {@code CatalogItemJpaEntity}: la cotización todavía no resuelve la política y
+     * regalar por defecto es el error caro.
+     */
+    @Column(name = "trial_eligibility", nullable = false, length = 20)
+    private String trialEligibility = "NEVER_FREE";
+
+    @Column(name = "trial_outcome", length = 20)
+    private String trialOutcome;
+
+    @Column(name = "trial_days", nullable = false)
+    private int trialDays = 0;
+
+    @Column(name = "max_trial_days", nullable = false)
+    private int maxTrialDays = 0;
 
     @Column(name = "tax_rate", nullable = false, precision = 5, scale = 2)
     private BigDecimal taxRate;
@@ -148,6 +205,22 @@ public class QuoteLineJpaEntity {
 
     public void setItemType(QuoteItemType itemType) {
         this.itemType = itemType;
+    }
+
+    public int getTierMin() {
+        return tierMin;
+    }
+
+    public void setTierMin(int tierMin) {
+        this.tierMin = tierMin;
+    }
+
+    public Integer getTierMax() {
+        return tierMax;
+    }
+
+    public void setTierMax(Integer tierMax) {
+        this.tierMax = tierMax;
     }
 
     public int getContractedQuantity() {
@@ -244,5 +317,45 @@ public class QuoteLineJpaEntity {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public boolean isDiscountIsConditional() {
+        return discountIsConditional;
+    }
+
+    public void setDiscountIsConditional(boolean discountIsConditional) {
+        this.discountIsConditional = discountIsConditional;
+    }
+
+    public String getTrialEligibility() {
+        return trialEligibility;
+    }
+
+    public void setTrialEligibility(String trialEligibility) {
+        this.trialEligibility = trialEligibility;
+    }
+
+    public String getTrialOutcome() {
+        return trialOutcome;
+    }
+
+    public void setTrialOutcome(String trialOutcome) {
+        this.trialOutcome = trialOutcome;
+    }
+
+    public int getTrialDays() {
+        return trialDays;
+    }
+
+    public void setTrialDays(int trialDays) {
+        this.trialDays = trialDays;
+    }
+
+    public int getMaxTrialDays() {
+        return maxTrialDays;
+    }
+
+    public void setMaxTrialDays(int maxTrialDays) {
+        this.maxTrialDays = maxTrialDays;
     }
 }

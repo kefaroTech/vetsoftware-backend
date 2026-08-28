@@ -7,6 +7,8 @@ import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocum
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentQueryPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentSettlementPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.DunningReevaluationPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentAuditPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentMetrics;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentRepository;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPayment;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentHasActiveApplicationsException;
@@ -41,17 +43,22 @@ public class ChangeSubscriptionPaymentStatusService
     private final BillingDocumentQueryPort billingDocumentQueryPort;
     private final BillingDocumentSettlementPort settlementPort;
     private final DunningReevaluationPort dunningReevaluationPort;
+    private final SubscriptionPaymentMetrics metrics;
+    private final SubscriptionPaymentAuditPort audit;
 
     public ChangeSubscriptionPaymentStatusService(SubscriptionPaymentRepository repository,
             BillingDocumentApplicationRepository applicationRepository,
             BillingDocumentQueryPort billingDocumentQueryPort,
             BillingDocumentSettlementPort settlementPort,
-            DunningReevaluationPort dunningReevaluationPort) {
+            DunningReevaluationPort dunningReevaluationPort, SubscriptionPaymentMetrics metrics,
+            SubscriptionPaymentAuditPort audit) {
         this.repository = repository;
         this.applicationRepository = applicationRepository;
         this.billingDocumentQueryPort = billingDocumentQueryPort;
         this.settlementPort = settlementPort;
         this.dunningReevaluationPort = dunningReevaluationPort;
+        this.metrics = metrics;
+        this.audit = audit;
     }
 
     @Override
@@ -67,8 +74,16 @@ public class ChangeSubscriptionPaymentStatusService
                 throw new SubscriptionPaymentHasActiveApplicationsException(command.id(),
                         netAppliedAmount);
         }
+        SubscriptionPaymentStatus previousStatus = payment.getStatus();
         payment.changeStatus(command.status());
         SubscriptionPaymentDto dto = SubscriptionPaymentDto.from(repository.save(payment));
+
+        // CONFIRMED -> REFUNDED es plata que sale y PENDING -> FAILED es plata que
+        // nunca
+        // entro y que alguien pudo dar por cobrada. Los dos eran hechos contables sin
+        // contador y sin mas rastro que un http_mutation que no decia de cuanto.
+        metrics.paymentStatusChanged(payment.getPaymentMethod(), payment.getStatus());
+        audit.paymentStatusChanged(payment.getId(), previousStatus, payment.getStatus());
         recalculateAffectedDocuments(command);
         return dto;
     }

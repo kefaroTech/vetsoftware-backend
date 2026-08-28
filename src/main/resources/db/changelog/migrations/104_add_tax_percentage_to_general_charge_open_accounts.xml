@@ -17,6 +17,12 @@
             SET c.tax_percentage = t.percentage
             WHERE c.has_tax = 1 AND c.tax_id IS NOT NULL
         </sql>
+    <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): el <sql> de backfill bloquea la auto-inversion. dropColumn restaura el
+             esquema. -->
+        <rollback>
+            <dropColumn tableName="general_charge_open_accounts" columnName="tax_percentage"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

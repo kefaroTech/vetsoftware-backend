@@ -24,7 +24,6 @@ import com.vetsoftware.app.employee.application.port.out.EmployeeRoleAssigner;
 import com.vetsoftware.app.employee.domain.CompanyRef;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.employee.domain.EmployeeStatus;
-import com.vetsoftware.app.entitlement.domain.CapacityUnit;
 import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -224,7 +223,7 @@ class InviteEmployeeServiceTest {
 
         @Test
         void el_limite_user_aborta_antes_de_persistir_roles_sedes_y_correo() {
-            doThrow(new CompanyCapacityLimitExceededException(COMPANY, CapacityUnit.USER, 5, 5, 1))
+            doThrow(new CompanyCapacityLimitExceededException(COMPANY, "USER", 5, 5, 1))
                     .when(employeeCapacityPort).reserve(COMPANY);
 
             assertThatThrownBy(() -> service.execute(command(List.of(3L), List.of(7L))))

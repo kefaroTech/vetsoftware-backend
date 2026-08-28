@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA M/N (ficha accounting_exports). EL ASIENTO RESUMEN MENSUAL, GLOBAL Y SIN EMPRESA.
+         Doce filas al ano. Sustituye al diario y a sus renglones.
+
+         chk_accounting_exports_balanced (total_debit = total_credit AND total_debit >= 0) es la
+         partida doble comprobada por el motor sobre dos numeros -el documento la daba por
+         imposible de imponer; al eliminar el diario pasa a ser trivial-.
+
+         chk_accounting_exports_lifecycle lleva las CUATRO ramas de status escritas, patron de 331.
+
+         uq_accounting_exports_attempt (period_key, export_kind, attempt_number) es la del
+         documento: el intento libera rehacer un fichero rechazado. uq_accounting_exports_current,
+         via current_export_marker, NO estaba en el documento y es la que hace que "rehacer"
+         signifique algo: un solo fichero vivo por mes y clase.
+
+         export_kind: decision propia (S8 de la especificacion), la ficha exigia la columna en la
+         unicidad y nunca dio sus valores. -->
+    <changeSet id="345_create_accounting_exports" author="orlando">
+        <createTable tableName="accounting_exports">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="period_key" type="CHAR(7)"><constraints nullable="false"/></column>
+            <column name="export_kind" type="VARCHAR(25)"><constraints nullable="false"/></column>
+            <column name="attempt_number" type="INT"><constraints nullable="false"/></column>
+            <column name="status" type="VARCHAR(20)" defaultValue="GENERATED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="generated_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="generated_by_system_user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_debit" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="total_credit" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="totals_hash" type="CHAR(64)"><constraints nullable="false"/></column>
+            <column name="file_ref" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="delivered_at" type="DATETIME(6)"/>
+            <column name="rejected_at" type="DATETIME(6)"/>
+            <column name="rejection_reason" type="VARCHAR(255)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE accounting_exports
+                MODIFY COLUMN period_key CHAR(7)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN totals_hash CHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                ADD COLUMN current_export_marker VARCHAR(40)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (
+                        CASE WHEN status IN ('GENERATED','DELIVERED')
+                             THEN CONCAT(period_key, '|', export_kind)
+                             ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_accounting_exports_attempt
+                    UNIQUE (period_key, export_kind, attempt_number),
+                ADD CONSTRAINT uq_accounting_exports_current
+                    UNIQUE (current_export_marker),
+                ADD CONSTRAINT chk_accounting_exports_kind
+                    CHECK (export_kind IN ('JOURNAL_SUMMARY','THIRD_PARTY_REPORT','VAT_SUPPORT')),
+                ADD CONSTRAINT chk_accounting_exports_attempt
+                    CHECK (attempt_number >= 1),
+                ADD CONSTRAINT chk_accounting_exports_status
+                    CHECK (status IN ('GENERATED','DELIVERED','REJECTED','SUPERSEDED')),
+                ADD CONSTRAINT chk_accounting_exports_balanced
+                    CHECK (total_debit = total_credit AND total_debit >= 0),
+                ADD CONSTRAINT chk_accounting_exports_hash
+                    CHECK (totals_hash REGEXP '^[0-9a-f]{64}$'),
+                ADD CONSTRAINT chk_accounting_exports_lifecycle
+                    CHECK (
+                         (status = 'GENERATED' AND delivered_at IS NULL AND rejected_at IS NULL
+                                               AND rejection_reason IS NULL)
+                      OR (status = 'DELIVERED' AND delivered_at IS NOT NULL
+                                               AND rejected_at IS NULL
+                                               AND rejection_reason IS NULL
+                                               AND delivered_at >= generated_at)
+                      OR (status = 'REJECTED'  AND rejected_at IS NOT NULL
+                                               AND rejection_reason IS NOT NULL
+                                               AND rejected_at >= generated_at)
+                      OR (status = 'SUPERSEDED'))
+        ]]></sql>
+
+        <createIndex tableName="accounting_exports" indexName="ix_accounting_exports_status">
+            <column name="period_key"/>
+            <column name="status"/>
+        </createIndex>
+        <!-- Barrido de plataforma: no lleva empresa porque la tabla no la tiene -global-. -->
+        <createIndex tableName="accounting_exports" indexName="ix_accounting_exports_generated">
+            <column name="generated_at"/>
+        </createIndex>
+        <createIndex tableName="accounting_exports" indexName="ix_accounting_exports_period_fk">
+            <column name="period_key"/>
+        </createIndex>
+        <createIndex tableName="accounting_exports"
+                     indexName="ix_accounting_exports_generated_by">
+            <column name="generated_by_system_user_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="accounting_exports"
+                                 baseColumnNames="period_key"
+                                 referencedTableName="accounting_periods"
+                                 referencedColumnNames="period_key"
+                                 constraintName="fk_accounting_exports_period"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="accounting_exports"
+                                 baseColumnNames="generated_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_accounting_exports_generated_by"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="accounting_exports"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

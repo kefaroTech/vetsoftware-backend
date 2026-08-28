@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.pricelist.application.command.PublishPriceListCommand;
 import com.vetsoftware.app.pricelist.application.dto.PriceListDto;
+import com.vetsoftware.app.pricelist.application.port.out.CatalogItemQueryPort;
 import com.vetsoftware.app.pricelist.application.port.out.CatalogPriceRepository;
 import com.vetsoftware.app.pricelist.application.port.out.PriceListRepository;
 import com.vetsoftware.app.pricelist.domain.InvalidPriceListTransitionException;
@@ -38,10 +39,17 @@ class PublishPriceListServiceTest {
     @Mock
     private CatalogPriceRepository catalogPriceRepository;
 
+    // R-PRICE-05: y que ningun articulo ACTIVO se quede sin precio. Sin articulos
+    // activos que contrastar no hay nada que exigir, que es el caso de casi todos
+    // los escenarios de aqui.
+    @Mock
+    private CatalogItemQueryPort catalogItemQueryPort;
+
     private final Clock clock = Clock.fixed(PUBLICADA_EL.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
 
     private PublishPriceListService service() {
-        return new PublishPriceListService(repository, catalogPriceRepository, clock);
+        return new PublishPriceListService(repository, catalogPriceRepository, catalogItemQueryPort,
+                clock);
     }
 
     @Test

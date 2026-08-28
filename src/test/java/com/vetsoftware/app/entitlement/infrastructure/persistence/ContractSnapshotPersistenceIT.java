@@ -50,9 +50,13 @@ class ContractSnapshotPersistenceIT extends AbstractDataJpaTest {
     @PersistenceContext
     private EntityManager entityManager;
 
+    /** Resuelto, no sembrado: el articulo CORE llega del changeset 308. */
+    private Long nucleo;
+
     @BeforeEach
     void seed() {
         SchemaSeed.seed(entityManager);
+        nucleo = SchemaSeed.catalogItemId(entityManager, "CORE");
     }
 
     @Nested
@@ -84,7 +88,7 @@ class ContractSnapshotPersistenceIT extends AbstractDataJpaTest {
                             "UPDATE sub_modules SET read_only_capable = 0 WHERE id = :id")
                     .setParameter("id", SchemaSeed.SUB_MODULE_ID).executeUpdate();
             entityManager.createNativeQuery("UPDATE catalog_items SET is_core = 0 WHERE id = :id")
-                    .setParameter("id", SchemaSeed.CATALOG_ITEM_CORE_ID).executeUpdate();
+                    .setParameter("id", nucleo).executeUpdate();
             entityManager.flush();
             entityManager.clear();
 

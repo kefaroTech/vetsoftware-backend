@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- LA IDENTIDAD FISCAL DE VETSOFTWARE, QUE NO EXISTIA EN NINGUNA TABLA. Auditoria de casos
+         de uso: 316_create_company_billing_profiles.xml (comentario), CompanyBillingProfile.java
+         (javadoc de la clase) y OpenCompanyBillingProfileCommand.java (javadoc de
+         withholdingAgent) afirman por escrito que "ser autorretenedor es dato propio de
+         VetSoftware y vive en platform_billing_config" (255). VERIFICADO EN ESTA SESION: FALSO.
+         platform_billing_config (255) tiene nueve columnas -id, singleton, default_price_list_id,
+         default_grace_days, default_trial_days, invoice_day_of_month, default_payment_term_days,
+         external_billing_provider, created_date, version- y NINGUNA es razon social,
+         identificador fiscal ni marca de autorretencion. Grep de is_self_withholder /
+         isSelfWithholder / autorreten* en todo el arbol Java: cero resultados fuera de esos tres
+         sitios que AFIRMAN que existe. Es una decision de modelado tomada apoyandose en una
+         columna que nadie creo.
+
+         POR QUE NO BASTA CON ANADIR COLUMNAS A platform_billing_config. Dos motivos, y los dos
+         vienen de la resolucion de facturacion electronica, no de gusto de diseno:
+           1. Ser autorretenedor COEXISTE con que los clientes retengan a VetSoftware -no se
+              deduce lo uno de lo otro-, y es un dato que alimenta el calculo de la retencion
+              esperada: tiene que poder LEERSE con la misma seriedad que cualquier otro insumo de
+              dinero.
+           2. La razon social y el NIT de VetSoftware van impresos en cada factura de cada
+              cliente, como fabricante del software. Si la razon social cambia, las facturas de
+              hace dos anos tienen que seguir diciendo lo que decian entonces. platform_billing_config
+              es una tabla que SE SOBRESCRIBE (singleton, sin historia); una identidad fiscal que
+              se sobrescribe rompe esa garantia el dia que cambien de razon social o de regimen.
+
+         EL MOLDE ES EL MISMO DOS VECES YA EN ESTE REPO: company_billing_profiles (316) y
+         company_tax_profiles con su vigencia anadida en 364. Copiado, no reinventado:
+           - Vigencia semiabierta [valid_from, valid_to). valid_to NULL = vigente.
+           - current_profile_marker: columna generada STORED, 1 mientras valid_to es NULL y NULL
+             en cuanto se cierra. Con UNIQUE encima, eso es lo que impide que existan DOS filas
+             vigentes a la vez -no hay company_id que scopee esta tabla: es global, una sola
+             identidad fiscal para todo VetSoftware, asi que el marcador es un discriminador fijo
+             (1), no company_id como en 316/364-. AVISO REPETIDO A PROPOSITO: esto NO es un indice
+             disperso -MySQL no tiene indices parciales, el indice contiene todas las filas-; lo
+             que se gana es unicidad condicional.
+           - uq_platform_tax_profiles_validity UNIQUE(valid_from): dos identidades no pueden abrir
+             el mismo dia -ambiguo cual seria "la" vigente ese dia-.
+           - is_self_withholder: EL DATO QUE FALTABA. BOOLEAN, no deducible de nada mas.
+
+         FORMA DE LA FICHA: copiada de company_tax_profiles (116), que es el perfil FISCAL (quien
+         emite), no de company_billing_profiles (316), que es el perfil de A QUIEN SE FACTURA.
+         document_type/document_id/verification_digit/legal_name/tax_regime/fiscal_email/
+         commercial_name/economic_activity_id son los mismos nombres y tipos que 116; sin CHECK
+         sobre document_type ni tax_regime porque 116 tampoco lo tiene -el dominio Java decide esos
+         valores, y esta migracion no inventa uno que el Java no comparta todavia (ver el aviso de
+         Java al final de este comentario).
+
+         SIN SEMBRAR, A PROPOSITO. No tengo la razon social ni el NIT reales de VetSoftware, y no
+         me los invento: una identidad fiscal inventada acaba impresa en la factura de cada
+         cliente, y ese error ya no es del software. Es preferible que el arranque falle
+         ruidosamente -igual que platform_billing_config (255) via
+         PlatformBillingConfigNotConfiguredException- a que se emita con datos falsos. La fila
+         inicial la siembra quien tenga la razon social y el NIT reales, en un changeset aparte.
+
+         SIN JAVA EN ESTE CHANGESET, A PROPOSITO (ver el informe de la sesion para la lista
+         completa entregada al agente que la implemente):
+           1. Corregir el javadoc de CompanyBillingProfile.java y de
+              OpenCompanyBillingProfileCommand.java: dejan de poder decir que el dato vive en
+              platform_billing_config.
+           2. Slice nuevo platformtaxprofile (domain/application/infrastructure), mismo patron que
+              companytaxprofile/companybillingprofile: entidad JPA con valid_from/valid_to y el
+              marcador generado de solo lectura, casos de uso Open/Succeed (abrir y
+              cerrar-y-abrir en la misma transaccion, nunca update en sitio).
+           3. subscription_billing_documents: resolver el platform_tax_profile_id VIGENTE al
+              emitir y guardarlo en la columna que crea 368 -mismo patron que
+              JpaCompanyFiscalProfileQueryPort.toIssuer() en 364-.
+           4. Ningun sitio del codigo consume hoy is_self_withholder para el calculo de retencion
+              esperada -grep sin resultados-: cablearlo es una funcionalidad aparte, no un efecto
+              secundario de esta migracion. -->
+    <changeSet id="367_create_platform_tax_profiles" author="orlando">
+        <createTable tableName="platform_tax_profiles">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="document_type" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="document_id" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="verification_digit" type="VARCHAR(1)"/>
+            <column name="legal_name" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="tax_regime" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="fiscal_email" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="commercial_name" type="VARCHAR(150)"/>
+            <column name="economic_activity_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_platform_tax_profiles_economic_activity"
+                             references="economic_activities(id)"/>
+            </column>
+            <column name="is_self_withholder" type="BOOLEAN"><constraints nullable="false"/></column>
+            <column name="valid_from" type="DATE"><constraints nullable="false"/></column>
+            <column name="valid_to" type="DATE"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="platform_tax_profiles" columnNames="valid_from"
+                             constraintName="uq_platform_tax_profiles_validity"/>
+
+        <sql><![CDATA[
+            ALTER TABLE platform_tax_profiles
+                ADD COLUMN current_profile_marker TINYINT
+                    GENERATED ALWAYS AS (
+                        CASE WHEN valid_to IS NULL THEN 1 ELSE NULL END
+                    ) STORED,
+                ADD CONSTRAINT uq_platform_tax_profiles_current
+                    UNIQUE (current_profile_marker),
+                ADD CONSTRAINT chk_platform_tax_profiles_validity
+                    CHECK (valid_to IS NULL OR valid_to > valid_from)
+        ]]></sql>
+
+        <createIndex tableName="platform_tax_profiles" indexName="ix_platform_tax_profiles_current">
+            <column name="valid_to"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="platform_tax_profiles"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

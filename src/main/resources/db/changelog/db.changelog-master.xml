@@ -398,4 +398,485 @@
     <include file="db/changelog/migrations/298_seed_spa_types_catalog.xml"/>
     <include file="db/changelog/migrations/299_seed_global_medicament_catalog.xml"/>
 
+    <!-- Capas I (prueba gratuita) y J (límites tras la prueba) del modelo de suscripciones
+         (models/modelo-datos-suscripciones.html). Ocho tablas nuevas; las seis existentes que
+         cambian se REESCRIBEN en su changeset original (D-53: se rehace la línea base, la base
+         arranca vacía y los entornos se recrean), así que aquí solo aparecen las nuevas.
+
+         El orden dentro del bloque NO es libre y no coincide con el orden temático del documento:
+           300 ejes de límite       antes que sus techos y que el contador
+           301 ventana de prueba    el reloj de la empresa; nadie cuelga de ella todavía
+           302 concesiones          cuelgan de 301 con clave triple, Y CIERRAN el lazo con la línea
+                                    del contrato: fk_subscription_items_trial_grant se declara aquí
+                                    porque la tabla apuntada nace aquí. El índice que la sostiene
+                                    (ix_subscription_items_trial) ya se creó en 244.
+           303 techos de fábrica    necesitan artículo (229) y eje (300)
+           304 techos congelados    necesitan la línea del contrato (244) y el eje
+           305 excepciones          necesitan el eje; 306 apunta a ellas
+           306 bitácora de cupo     necesita 300 y 305; añade además la clave auxiliar
+                                    (company_id, id) que a employees le faltaba
+           307 fotos del recálculo  van ANTES que los límites en valor, no en dependencia: cada día
+                                    sin ellas es evidencia que se pierde y no se reconstruye
+
+         Lo que el documento manda y este bloque NO trae, con su motivo escrito: la reescritura de
+         company_capacities (sustituir capacity_unit por una referencia al catálogo de ejes) no
+         cabe sin rehacer el slice de entitlement entero -89 ficheros Java, tres adaptadores de
+         orquestación y los dos fronts-, y dejarla a medias tumba el arranque. Va en su propio
+         issue. Ni 300 ni 303 llevan company_id ni pueden llevarlo: si una entidad de ese slice
+         alcanza la tabla de empresas, las cuatro reglas duras de la familia BE-COV se activan sobre
+         la feature entera. -->
+    <include file="db/changelog/migrations/300_create_limit_dimensions.xml"/>
+    <include file="db/changelog/migrations/301_create_company_trial_windows.xml"/>
+    <include file="db/changelog/migrations/302_create_company_trial_grants.xml"/>
+    <include file="db/changelog/migrations/303_create_catalog_item_limits.xml"/>
+    <include file="db/changelog/migrations/304_create_subscription_item_limits.xml"/>
+    <include file="db/changelog/migrations/305_create_company_limit_overrides.xml"/>
+    <include file="db/changelog/migrations/306_create_company_limit_events.xml"/>
+    <include file="db/changelog/migrations/307_create_company_entitlement_snapshots.xml"/>
+
+    <!-- ============================================================================================
+         308-313 · LA SIEMBRA DEL MODELO DE SUSCRIPCIONES (D-96). SIN `context`, Y ESA ES LA NOVEDAD.
+
+         Los tres changesets que hasta hoy sembraban catálogo comercial -263, 264 y 265- llevan
+         context="local,e2e" y por eso NUNCA se aplican en desarrollo ni en producción. Esa es la
+         causa medida de que los entornos diverjan y de que el catálogo real haya que teclearlo a
+         mano, artículo por artículo, en cada entorno: no hay exportación, no hay importación y no
+         hay sonda de servidor que avise -la lista de comprobación de la consola son siete consultas
+         desde el navegador del operador, así que un despliegue arranca sano con el catálogo vacío y
+         nadie se entera hasta que alguien abre esa pantalla-. Estos seis se aplican en TODOS los
+         entornos y reconcilian de paso las semillas de laboratorio, conservando sus `id` para no
+         romper ninguna clave foránea ya establecida.
+
+         El orden es de dependencia estricta, no de gusto:
+           308 los 26 artículos      nada depende de ellos todavía; 265 ya sembró dos de los tres
+                                     `is_core`, aquí se completan y se corrigen sus valores
+           309 las tres tablas puente necesitan artículo (308) y submódulo (258/272); retira además
+                                     el puente CORE -> AGENDA que 263 puso como apaño
+           310 la tarifa y 64 precios necesitan artículo (308). Nace en DRAFT: publicarla exige un
+                                     system_users, y en una base recién creada esa tabla está vacía
+           311 la publicación        firma con la cuenta de plataforma que exista, reapunta
+                                     platform_billing_config (255) y archiva la lista de laboratorio
+           312 el configurador       necesita artículo (308) y las tablas de 235/236/237/238; es lo
+                                     que estrena `configurator_effects.priority`
+           313 ejes y techos         necesitan submódulo (258/272), eje (300) y artículo (308)
+
+         LAS OCHO CONDICIONES DEL ALTA DE UNA EMPRESA quedan cubiertas por 308+310+311, y son las que
+         PlatformCatalogTemplateJpaRepository exige en sus dos consultas: fila singleton de
+         platform_billing_config apuntando a una lista PUBLISHED con published_at y enabled; el
+         artículo CORE ACTIVE, enabled e is_core; su precio en el ciclo pedido con tier_min = 1 y
+         enabled; al menos una fila de catalog_item_sub_modules para CORE con enabled; y ADEMÁS los
+         artículos CAPACITY is_core para USER y BRANCH con su propio tramo publicado. SON TRES
+         ARTÍCULOS DE NÚCLEO, NO UNO -CORE, CAPACITY_USER y CAPACITY_BRANCH-: `is_core` se usa en
+         findInitialCapacityTemplates como predicado de conjunto («forma parte del mínimo
+         estructural»), y confundir «el artículo CORE» con «el conjunto de artículos del núcleo» es
+         lo que hacía nacer empresas sin una sola capacidad (#490).
+
+         LO QUE ESTA TANDA NO SIEMBRA, con su motivo: los catálogos anuales (unidad tributaria,
+         salario mínimo, periodicidad de IVA y tarifas de retención) y los 36 festivos NO TIENEN
+         TABLA. `uvt_values`, `smmlv_values`, `vat_filing_periods`, `withholding_rate_rules` y
+         `public_holidays` no existen en ningún changeset del árbol -comprobado-, y tampoco
+         `data_processors`. Son capas posteriores a la J; sembrarlas exige crearlas primero, y eso
+         es un cambio de esquema con su propio alcance, no una semilla.
+         ============================================================================================ -->
+    <include file="db/changelog/migrations/308_seed_commercial_catalog_items.xml"/>
+    <include file="db/changelog/migrations/309_seed_commercial_catalog_relations.xml"/>
+    <include file="db/changelog/migrations/310_seed_price_list_2026.xml"/>
+    <include file="db/changelog/migrations/311_publish_price_list_2026.xml"/>
+    <include file="db/changelog/migrations/312_seed_configurator.xml"/>
+    <include file="db/changelog/migrations/313_seed_limit_dimensions_and_ceilings.xml"/>
+
+    <!-- 314 repunta el contador (#629): company_capacities deja la lista cerrada de cuatro
+         unidades y apunta al catálogo de ejes. VA DESPUÉS DEL 313 POR NECESIDAD, no por orden:
+         el relleno de limit_dimension_id cruza contra las ocho filas que el 313 siembra, y sin
+         ellas su precondición aborta la migración nombrando el código que falta. -->
+    <include file="db/changelog/migrations/314_repoint_company_capacities_to_limit_dimensions.xml"/>
+    <!-- ============================================================================================
+         CAPA K - COBRAR EN COLOMBIA (modelo-datos-suscripciones.html, ficha "K Cobrar en Colombia"
+         y anexo "Claves, unicidades e indices"). 315-330.
+
+         Las capas I y J deciden QUE se cobra. Esta decide que SE PUEDA COBRAR DE VERDAD, AQUI. El
+         caso que la motiva entera: Ana debe 213.010, su contadora le practica retencion y le gira
+         205.850. El sistema recibe la plata, la aplica y deja 7.160 vivos; empieza la mora, se
+         agotan los cinco dias de gracia y Spa Ana Pet cae a solo lectura POR UNA DEUDA QUE
+         FISCALMENTE NO EXISTE. La causa es de esquema, no de codigo: solo un pago o una nota
+         credito podian saldar una factura, y una retencion no es ninguna de las dos.
+
+         EL ORDEN ES DE DEPENDENCIA REAL DE CLAVES FORANEAS, y sigue los bloques 12, 14, 15 y 19 de
+         "El orden en que se crean, numerado". Dentro de cada bloque es libre; entre bloques, no:
+           315 ciudades         VA PRIMERO Y VA SOLO. Alinea cities.dane_code a ascii_bin y le pone
+                                unicidad. Sin este paso, 317 y 329 no pueden crear su clave foranea
+                                de municipio: MySQL rechaza una FK entre columnas de colacion
+                                distinta, y un JOIN entre ellas desactivaria el indice. Es el efecto
+                                colateral que el documento avisa y el que obliga a que las dos
+                                columnas cambien juntas.
+           316 perfil fiscal    EL PERFIL ANTES QUE EL DOCUMENTO, porque el documento congela a
+                                quien se facturo. Cierra hacia atras la FK de 249.
+           317 tarifas de       GLOBAL, SIN EMPRESA, y por eso va en changeset propio: si una
+               retencion        entidad de este bloque alcanzara `companies`, las cuatro reglas
+                                duras de aislamiento caerian sobre la funcionalidad entera.
+           318 canales          Por donde se le puede escribir. La cobranza solo puede usar estos.
+           319 medios de pago   Bloque 14: medios, pagos, aplicaciones y sus tres derivadas.
+           320 devoluciones     Cuelgan del pago.
+           321 intentos         Cuelgan del documento de cobro y del medio de pago (319).
+           322 reversiones      Cuelgan del pago y de la devolucion (320).
+           323 libro de saldo   Cierra hacia atras la FK de 253 (CUSTOMER_CREDIT).
+           324 saldo resumen    LA BARANDILLA del libro. Leer 323 sin 324 deja el defecto abierto:
+                                sumar filas no impide gastar credito que no existe.
+           325 extracto banco   Bloque 15: EL EXTRACTO PRIMERO, la liquidacion apunta a el.
+           326 liquidaciones    Cierra hacia atras la FK de 252 (gateway + settlement_reference).
+           327 historia estados Cuelga del documento de cobro.
+           328 certificados     Bloque 19, el fiscal propio. EL CERTIFICADO ANTES QUE LA RETENCION,
+                                porque la retencion apunta a el: un certificado cubre muchas.
+           329 retenciones      Cierra hacia atras la FK de 253 (WITHHOLDING). Necesita 315 y 328.
+           330 conciliacion     Tu documento de cobro contra la factura que emitio el tercero.
+
+         TRES CHANGESETS EXISTENTES SE REESCRIBEN, no se parchean, por D-53 (la base arranca vacia,
+         y es el mismo criterio con el que ya se reescribieron 229, 238, 240, 244, 246, 263 y 265):
+           249 + billing_profile_id -nulable, con su motivo escrito- y colacion exacta en los
+               identificadores externos.
+           252 + comision, neto y liquidacion; y ARREGLA UN DEFECTO YA CONSTRUIDO: gateway_reference
+               comparaba sin distinguir mayusculas, asi que un aviso legitimo de la pasarela con
+               referencia "ABC123" se descartaba como duplicado de "abc123" EN SILENCIO -plata que
+               entro y no quedo registrada, factura viva y el reloj de la mora corriendo-. Y
+               chk_..._currency comparaba el valor consigo mismo en mayusculas, condicion que bajo
+               esa colacion SIEMPRE se cumple: no comprobaba nada desde el dia que se escribio.
+           253 DE DOS ORIGENES A SEIS: pago, nota credito, retencion, saldo a favor, redondeo y
+               castigo. La comision de la pasarela NO esta en la lista y no debe estarlo: es gasto
+               propio, no menor pago del cliente, y la factura se salda por el BRUTO.
+
+         CUATRO CLAVES SE DECLARAN "HACIA ATRAS" -desde la tabla apuntada, no desde la que apunta-
+         porque las tablas de destino nacen despues y renumerar cincuenta y seis archivos no era una
+         opcion. Es la tecnica que el propio documento prescribe para el ciclo del configurador y la
+         que ya se uso para la ventana de prueba. En los cuatro casos LA COLUMNA Y SU INDICE se
+         crean en el changeset de origen y solo la clave se cierra despues: el indice antes que la
+         clave, para que el motor no genere uno redundante encima.
+
+         LOS BARRIDOS DE PLATAFORMA de esta tanda -cobros por reintentar (321), saldos que caducan
+         (324), certificados que faltan (328), documentos sin factura externa (330) y la bandeja de
+         extracto sin identificar (325)- llevan indices SIN LA EMPRESA DELANTE a proposito: recorren
+         todas las clinicas. Declararlo aqui NO EXIME de nada: la regla automatica que vigila los
+         listados sin empresa recorre casos de uso, no documentos, y cada barrido necesita puerto
+         declarado y autorizacion solo de plataforma.
+
+         LO QUE ESTA TANDA NO TRAE, con su motivo: `accounting_periods` es de la capa M y NO EXISTE
+         en ningun changeset del arbol -comprobado-, asi que 330.posting_period queda como clave de
+         periodo con formato comprobado y sin clave foranea. Y no hay siembra: las tarifas de
+         retencion, la unidad tributaria y los festivos son catalogos anuales de otra capa, y
+         sembrar 317 exige decisiones fiscales que no son de esquema.
+         ============================================================================================ -->
+    <include file="db/changelog/migrations/315_align_city_dane_code_for_withholdings.xml"/>
+    <include file="db/changelog/migrations/316_create_company_billing_profiles.xml"/>
+    <include file="db/changelog/migrations/317_create_withholding_rate_rules.xml"/>
+    <include file="db/changelog/migrations/318_create_company_contact_channels.xml"/>
+    <include file="db/changelog/migrations/319_create_subscription_payment_methods.xml"/>
+    <include file="db/changelog/migrations/320_create_payment_refunds.xml"/>
+    <include file="db/changelog/migrations/321_create_payment_attempts.xml"/>
+    <include file="db/changelog/migrations/322_create_payment_reversal_requests.xml"/>
+    <include file="db/changelog/migrations/323_create_customer_credit_entries.xml"/>
+    <include file="db/changelog/migrations/324_create_customer_credit_balances.xml"/>
+    <include file="db/changelog/migrations/325_create_bank_receipts.xml"/>
+    <include file="db/changelog/migrations/326_create_gateway_settlements.xml"/>
+    <include file="db/changelog/migrations/327_create_billing_document_status_history.xml"/>
+    <include file="db/changelog/migrations/328_create_withholding_certificates.xml"/>
+    <include file="db/changelog/migrations/329_create_document_withholdings.xml"/>
+    <include file="db/changelog/migrations/330_create_external_invoice_reconciliations.xml"/>
+
+    <!-- DOS CIERRES QUE LA CAPA K DEJABA ABIERTOS Y QUE SE RESUELVEN AQUI EN VEZ DE APLAZARSE:
+           331 el periodo contable  330.posting_period se describe como clave foranea contra
+                                    `accounting_periods` y esa tabla no existia en el arbol, asi que
+                                    la columna quedaba como texto validado solo por formato: se podia
+                                    imputar un ajuste a un mes inventado, o a uno ya declarado, sin
+                                    ningun error. Nace fuera de su bloque -es de la capa M- porque
+                                    es la unica forma de cerrar esa clave, y cierra ademas la
+                                    pregunta de que significa un periodo cerrado.
+           332 la colacion          La capa K declaro comparacion exacta en sus identificadores y eso
+                                    dejo el esquema con DOS colaciones conviviendo, que es peor que
+                                    no haber empezado: `cities.dane_code` paso a ascii_bin en el 315
+                                    y `states.dane_code` no, con lo que dos columnas del mismo dato
+                                    dejaron de comparar igual. Termina el trabajo sobre las seis
+                                    columnas que faltaban -los dos DIVIPOLA, las dos llaves de
+                                    idempotencia y los tres codigos de catalogo-.
+         Va DESPUES de 330 por dependencia: 331 cierra una clave contra una tabla que nace en 330, y
+         332 toca `limit_dimensions`, que nace en 300. -->
+    <include file="db/changelog/migrations/331_create_accounting_periods.xml"/>
+    <include file="db/changelog/migrations/332_align_identifier_collation.xml"/>
+
+    <!-- LA MITAD DE LA CAPA J QUE TOCA EL DINERO (#655). El 314 abrio el CONTADOR al catalogo de
+         ejes y dejo cerrado el camino por el que un eje SE VENDE: catalog_items.capacity_unit y
+         subscription_items.capacity_unit seguian atadas a la lista literal de cuatro valores, asi
+         que se podia CONTAR mascotas pero no VENDER un paquete de mascotas. El 333 convierte esas
+         dos columnas en lo que ya eran de hecho -el codigo del eje, que ContractItemJpaRepository
+         cruza contra limit_dimensions.code desde el 314- y cambia el CHECK con lista por una clave
+         foranea, conservando aparte la mitad estructural del CHECK, que la clave no cubre.
+         Va DESPUES de 332 por dependencia y no por orden: la clave foranea sobre texto exige la
+         misma colacion en los dos lados, y ascii_bin en limit_dimensions.code lo pone el 332. -->
+    <include file="db/changelog/migrations/333_open_capacity_unit_to_limit_dimensions.xml"/>
+
+    <!-- R-ENT-05: sub_modules.degradation_immune. Un submodulo con esta bandera en TRUE no se
+         degrada nunca -ni por mora, ni por cupo, ni por baja-; lo lee el mismo recalculo de
+         entitlements que decide READ_ONLY/deshabilitado. Sembrado solo en BILLING (Facturacion
+         electronica / DIAN, 258 + 278): es el unico sub_module real de facturacion electronica
+         en el catalogo, para que una clinica en solo lectura por mora siga pudiendo emitir. -->
+    <include file="db/changelog/migrations/335_add_degradation_immune_to_sub_modules.xml"/>
+
+    <!-- D-66/D-86 (R-PRICE-04, R-QUOTE-09, R-QUOTE-05, R-TAX-04) REESCRITOS PARA LA CAPA I (D-53):
+         los tramos de quote_lines (con uq_quote_lines_item_tier en vez de uq_quote_lines_item) y el
+         descuento condicionado de subscription_items nacen ya dentro de 240 y 244 -no existieron
+         nunca como ALTER separados-, así que no hay changesets propios que incluir aquí.
+
+         D-76 / R-CAT-03: la composicion de un articulo se congela al firmar. Tabla nueva, nace
+         vacia -D-53: la base arranca vacia y no hay lineas ya firmadas que rellenar-. -->
+    <include file="db/changelog/migrations/338_create_subscription_item_sub_modules.xml"/>
+
+    <!-- Las cinco rodajas de CAPA K (319-324) declaran @PreAuthorize contra siete autoridades
+         que no existen en base_permissions: paymentRefund.read, paymentAttempt.read,
+         paymentReversalRequest.read, customerCredit.read y subscriptionPaymentMethod.
+         {read,create,update}. Mismo caso que 257/259/260/279: sin la fila sembrada, el 403 no
+         se puede resolver desde la interfaz de tenant aunque el guard esté escrito para
+         admitirlo. Detalle completo (verificación código a código, criterio de reparto en
+         submódulos y alcance del backfill) en el propio 339. -->
+    <include file="db/changelog/migrations/339_seed_payment_lifecycle_permissions.xml"/>
+
+    <!-- Mismo defecto que 339, ahora en el bloque fiscal (317/328/329): documentWithholding.read,
+         withholdingCertificate.read y withholdingRateRule.read (NUEVE puertos, no ocho) declaran
+         @PreAuthorize con guard dual y no tenían fila en base_permissions, así que el tenant
+         nunca pasaba aunque el guard admitiera companyId. Reutiliza el submódulo BILLING (258),
+         el mismo donde 278 sembró electronicbilling.* -misma capacidad de cumplimiento DIAN-.
+         Las dos rodajas de conciliación (325/330) se verificaron aparte y quedan fuera a
+         propósito: sus CATORCE puertos son SYSTEM puro, sin una sola hasAuthority, tal como
+         exige modelo-datos-suscripciones.html («Quién puede tocar cada tabla» · Conciliación:
+         Lee = solo plataforma). Detalle completo en el propio 340. -->
+    <include file="db/changelog/migrations/340_seed_withholding_read_permissions.xml"/>
+
+    <!-- CONTABILIDAD, FISCAL PROPIO Y CUMPLIMIENTO (docs/db/contabilidad-fiscal-cumplimiento-tablas.md).
+         Diecisiete tablas nuevas, mas accounting_periods (331, ya existente, no se toca). Orden
+         fijado por la especificacion (S4) y no alterable entre bloques:
+           0 prerrequisito -> 1..5 contabilidad (con sus disparadores) -> 6..9 referencia con
+           vigencia -> 10..12 fiscal propio y legal -> 13..14 uso y actividad (dependen del
+           prerrequisito 0) -> 15..18 seguridad y continuidad -> 19 siembra minima.
+         El aviso de empaquetado del propio S4 aplica a backend-feature: las tablas sin
+         company_id (342,343,345,351,352,347,348,349,350,353,356,358) y las que si la llevan
+         (344,354,355,357,359) no pueden compartir slice, o las cuatro reglas duras de aislamiento
+         caen sobre toda la funcionalidad. -->
+    <include file="db/changelog/migrations/341_add_tenant_uniques_for_compliance_prerequisites.xml"/>
+    <include file="db/changelog/migrations/342_create_accounting_accounts.xml"/>
+    <include file="db/changelog/migrations/343_create_account_mappings.xml"/>
+    <include file="db/changelog/migrations/344_create_revenue_recognition_lines.xml"/>
+    <include file="db/changelog/migrations/345_create_accounting_exports.xml"/>
+    <include file="db/changelog/migrations/346_create_accounting_period_triggers.xml"/>
+    <include file="db/changelog/migrations/347_create_uvt_values.xml"/>
+    <include file="db/changelog/migrations/348_create_smmlv_values.xml"/>
+    <include file="db/changelog/migrations/349_create_vat_filing_periods.xml"/>
+    <include file="db/changelog/migrations/350_create_public_holidays.xml"/>
+    <include file="db/changelog/migrations/351_create_tax_returns.xml"/>
+    <include file="db/changelog/migrations/352_create_supplier_withholdings.xml"/>
+    <include file="db/changelog/migrations/353_create_legal_document_versions.xml"/>
+    <include file="db/changelog/migrations/354_create_company_usage_events.xml"/>
+    <include file="db/changelog/migrations/355_create_company_activity_months.xml"/>
+    <include file="db/changelog/migrations/356_create_security_incidents.xml"/>
+    <include file="db/changelog/migrations/357_create_security_incident_companies.xml"/>
+    <include file="db/changelog/migrations/358_create_external_invoicing_outages.xml"/>
+    <include file="db/changelog/migrations/359_create_external_invoicing_outage_companies.xml"/>
+    <include file="db/changelog/migrations/360_seed_accounting_fiscal_reference_data.xml"/>
+
+    <!-- 361: primera siembra real de withholding_rate_rules (317), que hasta hoy estaba vacia -no
+         una correccion de dato ya sembrado, ver el comentario del propio 361-. Cubre ICA Bogota
+         (11001) por actividad -consultoria informatica 6,9x1.000, desarrollo de sistemas
+         informaticos/hosting/portales web 9,66x1.000, edicion de software 11,04x1.000- y renta
+         sobre licenciamiento de software sin cuantia minima (3,5%, art. 1.2.4.3.1 DUR paragrafo). -->
+    <include file="db/changelog/migrations/361_seed_withholding_rate_rules.xml"/>
+
+    <!-- 362: primera fila de accounting_periods (331), vacia desde que se creo. Sin ella,
+         revenue_recognition_lines (344) y accounting_exports (345) -FK NOT NULL contra esta
+         tabla- no pueden insertar jamas. Siembra minima y no retroactiva: un unico periodo OPEN,
+         el mes calendario de este changeset (2026-08); abrir los siguientes es trabajo de
+         OpenAccountingPeriodUseCase, no de esta migracion. Decision de fecha de arranque tomada
+         sin el dueno de negocio -ver el comentario del propio 362-. -->
+    <include file="db/changelog/migrations/362_seed_first_open_accounting_period.xml"/>
+
+    <!-- 363: cierra el hueco que 361 dejo escrito a proposito -sin tarifa de renta para
+         TECHNICAL_SERVICE ni CONSULTING-. Confirmado con curl contra el texto oficial del DUR
+         1625/2016 art. 1.2.4.3.1 (compilacion DIAN, suin-juriscol.gov.co): el mismo parrafo que
+         ya sustentaba SOFTWARE_LICENSING al 3,5% cubre tambien "desarrollo... diseno de paginas
+         web" (TECHNICAL_SERVICE) y "consultoria en programas de informatica" (CONSULTING), sin
+         cuantia minima. -->
+    <include file="db/changelog/migrations/363_seed_income_tax_technical_service_consulting.xml"/>
+
+    <!-- 364: cierra el defecto vivo de company_tax_profiles (116) — PUT reescribia la fila en
+         sitio. Mismo molde que company_billing_profiles (316): vigencia semiabierta,
+         current_profile_marker generado y FK compuesta desde electronic_documents a la fila
+         exacta con la que se emitio. Sin cambios en Java (ver el comentario del propio 364). -->
+    <include file="db/changelog/migrations/364_open_close_company_tax_profiles.xml"/>
+
+    <!-- 365: corrige la contradiccion entre chk_accounting_periods_closure y
+         chk_accounting_periods_reopening (331) que hacia inexpresable persistir una reapertura.
+         Espejo literal de AccountingPeriod.validateClosure(...); no toca la regla de "un periodo
+         declarado no se reabre" (disparador de 346). -->
+    <include file="db/changelog/migrations/365_fix_accounting_periods_reopening_check.xml"/>
+
+    <!-- 366: cinco permisos de tenant sin sembrar (companyContactChannel.{create,read,update},
+         billingDocumentStatusHistory.read) mas cinco de solo lectura descubiertos en auditoria
+         paralela (subscriptionItemLimit/companyLimitOverride/companyTrialGrant/
+         companyLimitEvent/companyEntitlementSnapshot .read). billingDocumentStatusHistory.create
+         se descarta deliberadamente -ver el comentario del propio 366-. -->
+    <include file="db/changelog/migrations/366_seed_contact_channel_history_and_limit_read_permissions.xml"/>
+
+    <!-- 367-369: auditoria de casos de uso, "la identidad fiscal de VetSoftware no existe en
+         ninguna tabla". VERIFICADO: 316 (comentario), CompanyBillingProfile.java (javadoc de
+         clase) y OpenCompanyBillingProfileCommand.java (javadoc de withholdingAgent) afirman que
+         "ser autorretenedor es dato propio de VetSoftware y vive en platform_billing_config"
+         (255); esa tabla tiene nueve columnas y ninguna es razon social, NIT ni autorretencion.
+           367 platform_tax_profiles  la identidad fiscal propia, con vigencia semiabierta y
+                                      marcador generado de vigente -mismo molde que
+                                      company_billing_profiles (316) y company_tax_profiles
+                                      (364)-. SIN SEMBRAR: no hay razon social ni NIT reales que
+                                      sembrar, ver el comentario del propio 367 y el informe de la
+                                      sesion. Java pendiente, lista completa en el propio 367.
+           368 subscription_billing_documents + platform_tax_profile_id  la clave hacia la fila
+                                      exacta de 367 con la que se emitio cada cuenta de cobro a la
+                                      clinica -mismo patron que 364 con electronic_documents-.
+                                      NULABLE y sin backfill: 367 no siembra.
+           369 gateway_settlements    hallazgo menor de la misma auditoria: bank_receipt_id (326)
+                                      no tenia indice UNIQUE, asi que dos liquidaciones distintas
+                                      podian atarse al mismo apunte bancario -solo lo frenaba el
+                                      dominio, y su propio guard solo mira su propia fila-. -->
+    <include file="db/changelog/migrations/367_create_platform_tax_profiles.xml"/>
+    <include file="db/changelog/migrations/368_add_platform_tax_profile_to_subscription_billing_documents.xml"/>
+    <include file="db/changelog/migrations/369_add_unique_bank_receipt_to_gateway_settlements.xml"/>
+
+    <!-- 370: encargo del coordinador tras cerrar los diez puertos muertos de autorizacion. De
+         nueve puertos que ganaron `and hasAuthority(...)`, cinco codigos ya estaban sembrados en
+         366 (subscriptionItemLimit.read, companyTrialGrant.read, companyLimitOverride.read -dos
+         puertos, mismo codigo-, companyLimitEvent.read, companyEntitlementSnapshot.read); solo
+         companyTrialWindow.read era nuevo. companyLimitEvent.create y
+         companyEntitlementSnapshot.create QUEDAN SIN SEMBRAR A PROPOSITO: sus propios javadoc
+         piden el rol base de empleado, y ese rol no existe en este esquema -base_roles solo
+         tiene ADMIN, ver el comentario del propio 370-. Detalle completo en el informe de la
+         sesion. -->
+    <include file="db/changelog/migrations/370_seed_trial_window_read_permission.xml"/>
+
+    <!-- 371: encargo 1 de esta sesion. Cinco rodajas nuevas de la fila «Referencia fiscal y
+         textos» de modelo-datos-suscripciones.html (uvt_values 347, smmlv_values 348,
+         vat_filing_periods 349, public_holidays 350, legal_document_versions 353) declaran
+         @PreAuthorize contra uvt.read/smmlv.read/vatfiling.read/holiday.read/legaldocument.read,
+         verificados puerto a puerto contra el @PreAuthorize real, sin fila en base_permissions.
+         Mismo defecto que 339/340/366/370, mismo guard dual `hasRole('SYSTEM') or
+         (hasAuthority(...) and @authz.isMyCompany(#companyId))`. Las cinco tablas son catalogo
+         global sin company_id, pero sus diez puertos exigen empresa igual -"ese puerto tiene que
+         recibir la empresa aunque la tabla no la tenga", misma fila del documento maestro-.
+         legaldocument.read tiene ademas razon de negocio propia: el cliente tiene que poder
+         releer el texto que acepto, o su prueba de aceptacion no se puede exhibir. Submodulo
+         nuevo FISCAL_REFERENCE (module GENERAL, is_sellable=FALSE, read_only_capable=TRUE), sin
+         backfill -lo crea este mismo changeset, ninguna empresa existente puede tener ya
+         entitlement sobre el-. Detalle completo en el informe de la sesion.
+
+         Encargo 2 de esta sesion (companyLimitEvent.create, companyEntitlementSnapshot.create):
+         se revisaron y se confirma la decision ya documentada en 370 -NO se siembran, porque no
+         son una autoridad concedible sino el efecto interno de una operacion que el empleado ya
+         tenia permiso para hacer, y el rol base de empleado que pide su javadoc no existe
+         (base_roles solo tiene ADMIN). El arreglo correcto es en Java: volver esos dos puertos a
+         su forma sin `hasAuthority`, con el motivo en su javadoc. No es cambio de esquema. -->
+    <include file="db/changelog/migrations/371_seed_fiscal_reference_read_permissions.xml"/>
+
+    <!-- 372: respaldo de motor para RecurringChargeKey (RunSubscriptionBillingCycleService). El
+         barrido nocturno de facturación recurrente nace sin ninguna llave de idempotencia en el
+         esquema -solo un SELECT antes del INSERT, sin nada que serialice las dos operaciones-, y
+         un reinicio a mitad de las 500 clínicas duplica el devengo de las ya cobradas. Columna
+         generada STORED (mismo patrón que 106/133/144/151/152/153/154/226/354, porque MySQL no
+         tiene índices únicos parciales) que vale (subscription_id, subscription_item_id,
+         service_period_start, service_period_end) solo cuando charge_type = 'RECURRING', y NULL
+         para PRORATION/ONE_TIME/CREDIT/DISCOUNT -que quedan fuera de la restricción-. La llave
+         lleva la línea (subscription_item_id) y no el artículo, a propósito: con tramos
+         acumulativos un mismo catalog_item_id tiene dos líneas vivas en el mismo periodo, y
+         agruparlas por artículo dejaría de cobrar el segundo tramo -detalle completo en el
+         changeset y en el javadoc de RecurringChargeKey.java-. chk_subscription_charges_recurring_item
+         es un CHECK nuevo, no pedido por el encargo, que cierra un agujero de la propia llave:
+         CONCAT(...) da NULL si falta cualquier argumento, así que un RECURRING sin
+         subscription_item_id -hoy imposible solo en código, nunca en el esquema- se colaría por la
+         misma rendija de "MySQL permite varios NULL" que protege a los tipos sin llave. ADD COLUMN
+         GENERATED STORED reconstruye la tabla (INPLACE, Rebuilds Table: Yes); en entornos con datos
+         hay que medir antes de desplegar -conteo de filas y, sobre todo, un GROUP BY que detecte si
+         el propio bug que este changeset cierra ya dejó duplicados reales, porque en ese caso el
+         ADD CONSTRAINT UNIQUE falla y hay que anularlos primero-. Detalle completo en el propio
+         372. -->
+    <include file="db/changelog/migrations/372_add_unique_recurring_charge_to_subscription_charges.xml"/>
+
+    <!-- 373: respaldo de motor para el número fiscal (prefijo+consecutivo) de electronic_documents.
+         JpaNumberingAllocationPort.allocate() serializa la asignación con FOR UPDATE, pero eso solo
+         protege la carrera DENTRO de ese método -cualquier otra vía de escritura podía insertar dos
+         documentos con el mismo (empresa, tipo, prefijo, consecutivo) y nada lo detectaba: reemisión
+         del mismo número ante la DIAN. Llave real verificada contra el esquema: (company_id,
+         document_type, prefix, consecutive) -no resolution_number, que se deja fuera a propósito
+         porque incluirlo dejaría sin detectar el caso de dos resoluciones distintas con el mismo
+         prefijo mal configurado, que es la reemisión real-. Mismo patrón de columna generada STORED
+         que 372 (MySQL no tiene índices únicos parciales); consecutive NULL (documento PENDIENTE sin
+         numerar) deja la columna generada en NULL y fuera de la restricción. CHECK nuevo
+         chk_electronic_documents_numbered_has_prefix cierra la rendija CONCAT+NULL: prefix es
+         nullable en el esquema y un documento numerado con prefix NULL colapsaría la columna generada
+         a NULL y se colaría sin llave. Ningún estado (RECHAZADO, reversed, enabled) libera el número:
+         la tabla es fiscalmente inmutable (121) y el propio release() de JpaNumberingAllocationPort ya
+         documenta la norma MATIAS de no reutilizar números. Detalle completo, coste de reconstrucción
+         de la tabla y consulta de detección de duplicados preexistentes en el propio 373. Pendiente en
+         Java (no es cambio de esquema): mapear uq_electronic_documents_fiscal_number en
+         GlobalExceptionHandler.mapConstraint. -->
+    <include file="db/changelog/migrations/373_add_unique_fiscal_number_to_electronic_documents.xml"/>
+
+    <!-- 374: admite ChargeType.OVERAGE (el excedente facturable) en las dos restricciones de
+         subscription_charges que enumeran charge_type -bloqueante: sin esto, insertar un cargo
+         OVERAGE muere en el motor y AdjustCompanyCapacityUsageService no puede bifurcar hacia un
+         cargo en vez de seguir negando el consumo incondicionalmente-. SON DOS restricciones, no
+         una: chk_subscription_charges_type (251) enumera los tipos, pero chk_subscription_charges_sign
+         (251) enumera los tipos otra vez, literal por literal dentro de cada rama de signo -ampliar
+         solo la primera habría dejado el INSERT muriendo igual, contra la restricción equivocada-.
+         OVERAGE entra en la misma rama que RECURRING/ONE_TIME (subtotal_amount >= 0): es servicio
+         prestado de más, nunca una devolución, tal y como documenta el javadoc del propio literal
+         del enum. Las dos definiciones se releyeron literales contra 251 antes de escribir el DROP,
+         para no borrar una rama que la propuesta original hubiera dejado fuera; coinciden carácter a
+         carácter con lo que hay en producción. No hay más sitios que enumeren charge_type: la llave
+         de 372 (recurring_charge_key/chk_subscription_charges_recurring_item) solo mira
+         charge_type = 'RECURRING' y OVERAGE cae en su rama neutra por diseño -antiduplicados del
+         excedente es uq_cue_fact sobre company_usage_events-; account_mappings.charge_type (343) no
+         tiene CHECK que enumere sus valores. ADD/DROP CONSTRAINT CHECK es In Place, Rebuilds Table:
+         No (MySQL 8.0.16+): no reescribe filas, a diferencia de la columna GENERATED STORED de 372.
+         Verificado con datos reales sobre un contenedor MySQL 8.0.45 desechable: aplicar -> deshacer
+         -> reaplicar, los cinco tipos anteriores comportándose igual que antes, OVERAGE positivo
+         aceptado y OVERAGE negativo rechazado. Detalle completo en el propio 374 y en el informe de
+         la sesión. -->
+    <include file="db/changelog/migrations/374_add_overage_to_subscription_charges_checks.xml"/>
+
+    <!-- 375: cierra la grieta fiscal que destapó el arreglo del excedente sin IVA. subscription_items
+         (244) -la tabla desde la que el motor de facturación lee el impuesto de cada línea del
+         contrato- nunca llevó el CHECK de coherencia tax_treatment/tax_rate que sus dos hermanas del
+         mismo modelo fiscal sí tienen (chk_catalog_prices_tax_coherence en 234,
+         chk_sbdt_coherence en 250): hoy es legal aquí una fila (TAXED, 0.00) o (EXEMPT, 19.00), y
+         las dos producen una factura incorrecta ante la DIAN. Forma copiada literal de
+         catalog_prices (234:70-72) -no redactada de nuevo-, porque esa tabla tampoco tiene columna
+         de importe de impuesto, igual que subscription_items; la cláusula extra de 250
+         (AND tax_amount = 0) no aplica aquí a propósito, es de una columna que 244 no tiene.
+         Enum comprobado en código (com.vetsoftware.app.subscription.domain.TaxTreatment: TAXED,
+         EXEMPT, EXCLUDED, sin cuarto valor). tax_treatment y tax_rate son NOT NULL desde que la
+         tabla nace (244:124,129-131): ninguna rama del CHECK puede colapsar a NULL. Ninguna
+         semilla del changelog inserta filas en subscription_items -nace vacía, las llena el motor
+         de contratación en tiempo de ejecución-, así que la cadena completa aplica sin romperse.
+         ADD CONSTRAINT CHECK es In Place y no reconstruye (MySQL 8.0.16+, mismo patrón que 374).
+         Comprobación de pre-despliegue escrita en el propio changeset, patrón de 372/373/374.
+         Rollback SIN el problema de dependencia de datos de 374: solo hace DROP CHECK, nunca
+         reinstala una restricción más estricta, así que no puede fallar por datos existentes.
+         Verificado con datos reales sobre un contenedor MySQL desechable: aplicar -> deshacer ->
+         reaplicar. Detalle completo en el propio 375 y en el informe de la sesión. -->
+    <include file="db/changelog/migrations/375_add_tax_coherence_check_to_subscription_items.xml"/>
+
+    <!-- Cierra el hueco entre chk_cam_active_days (355, BETWEEN 0 AND 31) y
+         CompanyActivityMonth.validateActiveDays: una fila escrita fuera de Java con
+         active_days > dias reales del mes de period_key pasaba el CHECK del 355 y
+         reventaba toDomain() al leerla, para siempre. CHECK nuevo, no disparador: las dos
+         columnas son de la misma fila, que es justo lo que un CHECK de MySQL sí puede
+         mirar sin pagar el coste de log_bin_trust_function_creators de un trigger.
+         Comprobación de pre-despliegue y saneamiento (decisión de negocio) escritos en el
+         propio changeset, patrón de 372/373/374/375. Rollback sin dependencia de datos:
+         solo DROP CHECK. Verificado con datos reales sobre un contenedor MySQL 8.0.45
+         desechable: aplicar -> deshacer -> reaplicar. Detalle completo en el propio 376 y
+         en el informe de la sesión. -->
+    <include file="db/changelog/migrations/376_add_calendar_check_to_company_activity_months.xml"/>
+
 </databaseChangeLog>

@@ -9,6 +9,7 @@ import com.vetsoftware.app.subscriptionpayment.application.dto.BillingDocumentSu
 import com.vetsoftware.app.subscriptionpayment.application.port.in.ApplyBillingDocumentUseCase;
 import com.vetsoftware.app.subscriptionpayment.application.port.in.ListBillingDocumentApplicationsUseCase;
 import com.vetsoftware.app.subscriptionpayment.application.port.in.ReverseBillingDocumentApplicationUseCase;
+import com.vetsoftware.app.subscriptionpayment.domain.ApplicationSourceKind;
 import com.vetsoftware.app.subscriptionpayment.infrastructure.web.request.ApplyBillingDocumentRequest;
 import com.vetsoftware.app.subscriptionpayment.infrastructure.web.response.BillingDocumentApplicationResponse;
 import com.vetsoftware.app.subscriptionpayment.infrastructure.web.response.BillingDocumentSummary;
@@ -50,14 +51,44 @@ public class BillingDocumentApplicationController {
         this.authz = authz;
     }
 
+    /**
+     * Aplica cualquiera de los <b>seis</b> origenes contra una factura.
+     *
+     * <p>
+     * <b>La firma del castigo la pone el backend, nunca el cuerpo.</b> Mismo
+     * criterio que el registro de una factura externa: es el rastro del paso manual
+     * y lo que permite reclamarlo. Si el id llegara en el JSON, quien da una deuda
+     * por incobrable elegiria a quien atribuirsela.
+     *
+     * <p>
+     * <b>Y solo se pone en un {@code WRITE_OFF}.</b> Ponerlo en los otros cinco
+     * afirmaria que alguien autorizo algo que nadie tuvo que autorizar, y el
+     * dominio lo rechaza -{@code chk_bda_write_off_signature} exige los dos campos
+     * si y solo si el origen es el castigo-.
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public BillingDocumentApplicationResponse apply(
             @Valid @RequestBody ApplyBillingDocumentRequest request) {
         return toResponse(applyUseCase.execute(new ApplyBillingDocumentCommand(
                 authz.currentCompanyId(), request.targetDocumentId(), request.sourceKind(),
-                request.paymentId(), request.sourceDocumentId(), request.appliedAmount(),
-                request.clientRequestId())));
+                request.paymentId(), request.sourceDocumentId(), request.withholdingId(),
+                request.creditEntryId(), request.appliedAmount(), firmaDelCastigo(request),
+                request.writeOffReason(), request.valueDate(), request.clientRequestId())));
+    }
+
+    /**
+     * El usuario de plataforma que firma, solo cuando el origen es un castigo.
+     *
+     * <p>
+     * Se usa la variante que <b>no</b> lanza porque el rechazo tiene que venir del
+     * dominio con su mensaje escrito ({@code WriteOffSignatureRequiredException}),
+     * no de un {@code AccessDeniedException} generico que no dice que falta.
+     */
+    private Long firmaDelCastigo(ApplyBillingDocumentRequest request) {
+        return request.sourceKind() == ApplicationSourceKind.WRITE_OFF
+                ? authz.currentSystemUserIdOrNull()
+                : null;
     }
 
     @PostMapping("/{id}/reversal")
@@ -78,8 +109,9 @@ public class BillingDocumentApplicationController {
     private BillingDocumentApplicationResponse toResponse(BillingDocumentApplicationDto dto) {
         return new BillingDocumentApplicationResponse(dto.id(), dto.companyId(),
                 toSummary(dto.targetDocument()), dto.sourceKind(), dto.paymentId(),
-                toSummary(dto.sourceDocument()), dto.appliedAmount(), dto.reversalOfId(),
-                dto.appliedAt(), dto.createdDate());
+                toSummary(dto.sourceDocument()), dto.withholdingId(), dto.creditEntryId(),
+                dto.appliedAmount(), dto.reversalOfId(), dto.writeOffAuthorizedBySystemUserId(),
+                dto.writeOffReason(), dto.appliedAt(), dto.valueDate(), dto.createdDate());
     }
 
     private BillingDocumentSummary toSummary(BillingDocumentSummaryDto dto) {

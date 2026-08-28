@@ -15,7 +15,6 @@ import com.vetsoftware.app.employee.application.port.out.EmployeeCapacityPort;
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employee.testsupport.EmployeeMother;
-import com.vetsoftware.app.entitlement.domain.CapacityUnit;
 import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -125,7 +124,7 @@ class ReactivateEmployeeServiceTest {
         void el_limite_user_aborta_antes_del_update() {
             when(repository.findByIdIncludingDisabledAndCompanyId(ID, EMPRESA))
                     .thenReturn(Optional.of(EmployeeMother.deshabilitado()));
-            doThrow(new CompanyCapacityLimitExceededException(EMPRESA, CapacityUnit.USER, 3, 3, 1))
+            doThrow(new CompanyCapacityLimitExceededException(EMPRESA, "USER", 3, 3, 1))
                     .when(employeeCapacityPort).reserve(EMPRESA);
 
             assertThatThrownBy(() -> service.execute(ID, EMPRESA))

@@ -14,6 +14,9 @@ import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileResponsibil
 import com.vetsoftware.app.companytaxprofile.domain.EconomicActivityRef;
 import com.vetsoftware.app.companytaxprofile.domain.NitVerificationDigit;
 import io.micrometer.observation.annotation.Observed;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -23,20 +26,24 @@ public class CreateCompanyTaxProfileService implements CreateCompanyTaxProfileUs
     private final CompanyTaxProfileRepository repository;
     private final CompanyQueryPort companyQueryPort;
     private final EconomicActivityQueryPort economicActivityQueryPort;
+    private final Clock clock;
 
     public CreateCompanyTaxProfileService(CompanyTaxProfileRepository repository,
-            CompanyQueryPort companyQueryPort,
-            EconomicActivityQueryPort economicActivityQueryPort) {
+            CompanyQueryPort companyQueryPort, EconomicActivityQueryPort economicActivityQueryPort,
+            Clock clock) {
         this.repository = repository;
         this.companyQueryPort = companyQueryPort;
         this.economicActivityQueryPort = economicActivityQueryPort;
+        this.clock = clock;
     }
 
     @Override
     public CompanyTaxProfileDto execute(CreateCompanyTaxProfileCommand command) {
         CompanyRef company = companyQueryPort.findById(command.companyId()).orElseThrow(
                 () -> new IllegalArgumentException("Company not found: " + command.companyId()));
-        if (repository.existsByCompanyId(command.companyId())) {
+        // VIGENTE, no "alguno": desde el changeset 364 la tabla guarda historico, y
+        // una empresa con perfiles cerrados y ninguno abierto si puede volver a abrir.
+        if (repository.existsCurrentByCompanyId(command.companyId())) {
             throw new CompanyTaxProfileAlreadyExistsException(command.companyId());
         }
         EconomicActivityRef economicActivity = command.economicActivityId() == null
@@ -53,10 +60,12 @@ public class CreateCompanyTaxProfileService implements CreateCompanyTaxProfileUs
         String verificationDigit = command.companyDocumentType() == CompanyDocumentType.NIT
                 ? NitVerificationDigit.calculate(command.companyDocumentId())
                 : null;
-        CompanyTaxProfile profile = CompanyTaxProfile.create(company, command.companyDocumentType(),
+        // Reloj inyectado con zona: la vigencia del perfil es un dato fiscal y su
+        // primer dia no lo puede decidir la zona por defecto de la JVM.
+        CompanyTaxProfile profile = CompanyTaxProfile.open(company, command.companyDocumentType(),
                 command.companyDocumentId(), verificationDigit, command.legalName(),
                 command.taxRegime(), command.fiscalEmail(), command.commercialName(),
-                economicActivity, responsibilities);
+                economicActivity, responsibilities, LocalDate.now(clock), LocalDateTime.now(clock));
         return CompanyTaxProfileDto.from(repository.save(profile));
     }
 

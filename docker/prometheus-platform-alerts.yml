@@ -425,3 +425,130 @@ groups:
           summary: "Prometheus no puede enviar alertas a Alertmanager"
           description: "Prometheus registró errores al entregar alertas durante los últimos diez minutos."
           runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareprometheusnotificationfailures"
+
+  # ───────────────────────── Entitlements (#608) ─────────────────────────
+  #
+  # `vetsoftware.entitlement.resolution.empty` se registra de forma ANSIOSA Y EN CERO
+  # (JpaEntitlementEffectivePermissionResolver:96-99) precisamente para que un
+  # `increase(...) > 0` funcione desde el primer scrape, en vez de depender de que la serie
+  # nazca justo durante el incidente. Ese diseño existía desde hacía meses y la alerta que lo
+  # motivaba no se había escrito nunca: el contador contaba para nadie.
+  #
+  # SON DOS REGLAS Y NO UNA porque las dos causas tienen dueño y urgencia distintos, y
+  # agregarlas escondería la crítica detrás del ruido de la otra. Es el mismo criterio que
+  # separa un fallo aislado de un fallo sistémico en el resto de este fichero.
+  #
+  # POR QUÉ CONTEO ABSOLUTO Y NO UN SLO. El bloque de suscripciones mueve del orden de 500
+  # eventos AL MES. Un indicador basado en tasa sobre ese volumen es estadísticamente vacío —un
+  # solo fallo supera cualquier umbral porcentual razonable— así que aquí la afirmación es
+  # "esto debería ser cero" y el umbral es el cero. No hay error budget que gastar.
+  - name: vetsoftware-entitlements
+    interval: 30s
+    rules:
+      # Corte TOTAL de acceso para un tenant: sus empleados reciben 403 en TODOS los endpoints,
+      # sin ningún mensaje que lo explique — parece un problema de permisos del usuario y no lo
+      # es. Ya ocurrió dos veces (#410, #472). Sin esta regla la secuencia real era: el cliente
+      # llama a soporte, soporte escala, alguien mira el log y encuentra el WARN. La ventana
+      # entre "el login funcionó" y "hay rastro" es de UNA petición —la primera GET /auth/me—,
+      # y esa latencia de detección tan buena se desperdiciaba entera.
+      - alert: VetSoftwareEntitlementResolutionEmpty
+        expr: increase(vetsoftware_entitlement_resolution_empty_total{job="vetsoftware",cause="company_without_entitlements"}[15m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          domain: entitlements
+          service: vetsoftware
+        annotations:
+          summary: "Una empresa se quedó sin entitlements y sus empleados no pueden entrar"
+          description: "Al menos una resolución de permisos efectivos devolvió el conjunto vacío porque la empresa no tiene ni una fila en company_entitlements. Es un corte total de acceso para ese tenant. La empresa NO está en esta alerta a propósito (etiquetar por empresa multiplicaría las series por 500): sale del log, campo actor.companyId del WARN de JpaEntitlementEffectivePermissionResolver."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareentitlementresolutionempty"
+
+      # La otra causa. NO es "un caso legítimo de un cliente que bajó de plan": significa que
+      # TODOS los permisos base de ese empleado caen fuera del contrato, así que se queda sin
+      # una sola authority y ve el mismo 403 universal. Por eso su umbral también es cero y no
+      # una línea base medida: si esto resulta ser rutinario, el arreglo es el flujo de
+      # downgrade —que debe reasignar el rol— y no subir el umbral hasta que deje de sonar.
+      #
+      # Es además la ÚNICA señal en tiempo real de la carrera que abre la capa de límites del
+      # modelo: el recálculo borra y reinserta la tabla entera sin tomar el candado del
+      # contrato, así que un otrosí confirmado en medio reinserta sin la línea nueva.
+      # `company_without_entitlements` no subiría; este sí.
+      - alert: VetSoftwareEntitlementContractRestricted
+        expr: increase(vetsoftware_entitlement_resolution_empty_total{job="vetsoftware",cause="contract_restricted"}[1h]) > 0
+        for: 15m
+        labels:
+          severity: warning
+          domain: entitlements
+          service: vetsoftware
+        annotations:
+          summary: "Un empleado se quedó sin ningún permiso efectivo dentro de su contrato"
+          description: "Sus permisos base caen todos fuera de lo que el contrato de su empresa concede, así que recibe 403 en todo. O el contrato perdió una línea que sí paga, o un downgrade dejó roles asignados que ya no cubre. Empresa y empleado salen del log, no de esta alerta."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareentitlementcontractrestricted"
+
+  # ───────────────────── Barridos programados (#609) ─────────────────────
+  #
+  # LA PREGUNTA QUE NINGUNA ALERTA ANTERIOR RESPONDÍA. `VetSoftwareScheduledJobFailing` cuenta
+  # ejecuciones con job_outcome de fallo: detecta que un job FALLÓ, no que NO SE EJECUTÓ. Un
+  # barrido que dejó de programarse —excepción en el arranque del scheduler, contenedor
+  # reiniciado dentro de su ventana, un @Scheduled comentado— no incrementa ningún contador,
+  # no escribe ningún log y no cambia ninguna serie. Se descubre tres días después, cuando
+  # alguien pregunta por qué no se degradó a un moroso.
+  #
+  # ESTO NO SE PODÍA ESCRIBIR ANTES. Los ocho barridos usaban `fixedDelay`, así que la hora de
+  # cada uno era la del último despliegue más el retardo inicial. Con la hora moviéndose sola
+  # no hay umbral que fijar. El cambio a `cron` con zona explícita (ScheduledJobCatalog) es lo
+  # que convierte la cadencia en un contrato, y esta alerta es lo que ese contrato paga.
+  #
+  # EL UMBRAL ES UNA SERIE, NO UN NÚMERO. `vetsoftware_scheduled_job_expected_interval_seconds`
+  # lo publica el propio proceso derivándolo de la expresión cron (el MAYOR hueco entre las
+  # próximas ocurrencias, que es lo que importa en un cron de dos pasadas asimétricas). Así,
+  # cambiar la cadencia en el catálogo mueve la alerta con ella; con el umbral escrito aquí,
+  # cambiar la cadencia dejaría la alerta vigilando una hora que ya no existe y nadie se
+  # enteraría hasta el incidente. Mismo patrón que vetsoftware_security_tokens_growth_threshold.
+  - name: vetsoftware-scheduled-jobs
+    interval: 30s
+    rules:
+      # 1,25 y no 1,5: para un barrido diario de las 03:10 eso da 30 h, es decir aviso a las
+      # 09:10 del día siguiente. Con 1,5 serían 36 h y el aviso llegaría a las 15:00, media
+      # jornada perdida. El margen del 25 % cubre un despliegue que caiga justo encima de la
+      # ventana sin dar falsos positivos.
+      #
+      # El valor inicial del heartbeat es el ARRANQUE DEL PROCESO, no cero: con cero,
+      # `time() - 0` es la época Unix entera y las siete instancias dispararían en el primer
+      # scrape de cada despliegue. Con el arranque, la alerta calla exactamente un intervalo
+      # completo — y eso cubre también el caso "se desplegó y el job no llegó a programarse".
+      - alert: VetSoftwareScheduledJobOverdue
+        expr: |
+          time() - vetsoftware_scheduled_job_last_success_timestamp_seconds{job="vetsoftware"}
+          >
+          vetsoftware_scheduled_job_expected_interval_seconds{job="vetsoftware"} * 1.25
+        for: 10m
+        labels:
+          severity: critical
+          domain: scheduling
+          service: vetsoftware
+        annotations:
+          summary: "El barrido {{ $labels.job_name }} no ha terminado bien dentro de su ventana"
+          description: "Han pasado más de 1,25 intervalos desde su último final correcto. No es lo mismo que un fallo: VetSoftwareScheduledJobFailing vigila los que fallan, esta vigila los que NO CORREN, que no dejan ninguna otra señal. Un partial_failure SÍ sella el heartbeat a propósito —el job corrió—, así que si esta alerta suena, el barrido no llegó a ejecutarse. Horas acordadas en docs/ALERTAS_STACK_LOCAL.md."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarescheduledjoboverdue"
+
+      # LA PRECONDICIÓN VIGILADA. Cinco de los ocho barridos recorren su tabla con un cursor y
+      # no arbitran nada entre réplicas: hoy lo único que impide que dupliquen trabajo es que el
+      # servicio corre con UNA sola tarea de ECS, y eso es una propiedad del despliegue, no del
+      # código. Con `fixedDelay` dos réplicas se escalonaban por accidente; con `cron` arrancan a
+      # la vez. Esta regla convierte "alguien escaló a dos tareas" de fallo silencioso —cargos
+      # duplicados en el primer cierre de mes— en un aviso el mismo día del escalado.
+      #
+      # Los tres barridos DIAN quedan fuera por el label `single_writer`: reclaman su lote en
+      # exclusiva con DianJobLeasePort y toleran N réplicas.
+      - alert: VetSoftwareScheduledJobMultipleReplicas
+        expr: count by (job_name) (vetsoftware_scheduled_job_expected_interval_seconds{job="vetsoftware",single_writer="true"}) > 1
+        for: 5m
+        labels:
+          severity: critical
+          domain: scheduling
+          service: vetsoftware
+        annotations:
+          summary: "Más de una réplica está ejecutando el barrido {{ $labels.job_name }}"
+          description: "Ese barrido recorre su tabla con un cursor y no arbitra nada entre réplicas: dos procesos con el mismo cron procesan el mismo lote y duplican su efecto —cargos emitidos dos veces, degradaciones repetidas—. O se vuelve a una sola tarea, o hay que implementar el candado distribuido antes del siguiente cierre de mes."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarescheduledjobmultiplereplicas"

@@ -42,7 +42,7 @@ class PriceListTest {
         void conserva_los_datos_comerciales() {
             PriceList lista = PriceListMother.nuevoBorrador();
 
-            assertThat(lista.getCode()).isEqualTo("LISTA-2026-01");
+            assertThat(lista.getCode()).isEqualTo("LISTA-TEST-2026");
             assertThat(lista.getName()).isEqualTo("Tarifa 2026");
             assertThat(lista.getCurrency()).isEqualTo("COP");
             assertThat(lista.getValidFrom()).isEqualTo(DESDE);

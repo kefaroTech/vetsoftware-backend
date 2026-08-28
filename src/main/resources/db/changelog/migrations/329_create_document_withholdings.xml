@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha document_withholdings). LA RETENCION QUE TE PRACTICO EL CLIENTE.
+         253 abrio WITHHOLDING como origen que salda una factura; esto es lo que hay que guardar de
+         ella. No es un descuento ni un impago: es plata propia que fue directa a la DIAN, y el
+         asiento lo dice -una retencion NO REDUCE EL INGRESO, baja la cartera y sube un activo,
+         porque es un anticipo del impuesto de renta propio-.
+
+         LA GRANULARIDAD ANUAL ERA LA EQUIVOCADA PARA DOS TERCIOS DE LA TABLA. La ficha guardaba
+         solo el ano gravable, y de los tres tipos solo uno es anual:
+           INCOME_TAX  renta, anual.       fiscal_period_key = '2026-A'
+           VAT         se imputa POR BIMESTRE y con ventana de dos periodos.
+           ICA         es MUNICIPAL y bimestral.
+         Con la granularidad anual NO SE PUEDE ARMAR NINGUNA DE LAS DOS DECLARACIONES; hay que
+         reconstruir el bimestre a mano desde las fechas, y eso no cuadra con lo que se presento.
+         Por eso fiscal_period_key es obligatoria y su forma la impone el CHECK segun el tipo:
+         '2026-A' para la anual, '2026-B01'..'2026-B06' para las bimestrales, y el ano dentro de la
+         clave tiene que coincidir con fiscal_year. Se conserva fiscal_year porque es lo que decide
+         el derecho a descontar -si se pierde, se pierde el derecho y se paga dos veces el mismo
+         impuesto- y porque la consulta de vigilancia contra los certificados cruza por ano.
+         La clave NO MEZCLA GRANULARIDADES en orden alfabetico: '2026-A' y '2026-B03' se comparan
+         dentro de su tipo, que es como se declaran.
+
+         municipality_code OBLIGATORIO EN ICA y prohibido en las otras dos: la tarifa cambia de
+         municipio a municipio y sin saber cual no se puede verificar nada. Va con clave foranea
+         real contra cities.dane_code -por eso 315 tuvo que alinear esa columna primero: cruzar dos
+         colaciones distintas impide crear la clave, no solo desactiva el indice-. Y la unicidad se
+         construye sobre municipality_key, columna generada con centinela, porque en un indice unico
+         dos vacios no chocan y dos retenciones nacionales del mismo documento y tipo habrian
+         cabido.
+
+         certificate_id NULABLE: mientras no apunte a ninguno, la retencion esta SIN RESPALDO. La
+         consulta de vigilancia es una resta -lo retenido contra lo certificado, por ano y por
+         cliente- y la diferencia es exactamente lo que hay que reclamar. Esa es la segunda
+         escritura declarada que justifica version.
+
+         Documento de dinero: sin enabled. Una retencion no se desactiva, se corrige con otra fila. -->
+    <changeSet id="329_create_document_withholdings" author="orlando">
+        <createTable tableName="document_withholdings">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="billing_document_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="withholding_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="taxable_base" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="rate_percent" type="DECIMAL(9,6)"><constraints nullable="false"/></column>
+            <column name="amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="municipality_code" type="VARCHAR(5)"/>
+            <column name="fiscal_year" type="SMALLINT"><constraints nullable="false"/></column>
+            <column name="fiscal_period_key" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="practiced_on" type="DATE"><constraints nullable="false"/></column>
+            <column name="certificate_id" type="BIGINT"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="document_withholdings" columnNames="company_id, id"
+                             constraintName="uq_document_withholdings_company_id"/>
+
+        <sql><![CDATA[
+            ALTER TABLE document_withholdings
+                MODIFY COLUMN municipality_code VARCHAR(5)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN fiscal_period_key VARCHAR(10)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                ADD COLUMN municipality_key VARCHAR(5)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (COALESCE(municipality_code, '-')) STORED,
+                ADD CONSTRAINT uq_document_withholdings_case
+                    UNIQUE (company_id, billing_document_id, withholding_type, municipality_key),
+                ADD CONSTRAINT chk_document_withholdings_type
+                    CHECK (withholding_type IN ('INCOME_TAX','VAT','ICA')),
+                ADD CONSTRAINT chk_document_withholdings_municipality
+                    CHECK ((withholding_type = 'ICA' AND municipality_code IS NOT NULL)
+                           OR (withholding_type <> 'ICA' AND municipality_code IS NULL)),
+                ADD CONSTRAINT chk_document_withholdings_year
+                    CHECK (fiscal_year BETWEEN 2020 AND 2100),
+                ADD CONSTRAINT chk_document_withholdings_period
+                    CHECK ((withholding_type = 'INCOME_TAX'
+                            AND fiscal_period_key = CONCAT(fiscal_year, '-A'))
+                           OR (withholding_type IN ('VAT','ICA')
+                            AND fiscal_period_key REGEXP '^[0-9]{4}-B0[1-6]$'
+                            AND LEFT(fiscal_period_key, 4) = CAST(fiscal_year AS CHAR))),
+                ADD CONSTRAINT chk_document_withholdings_amounts
+                    CHECK (taxable_base > 0 AND amount > 0 AND amount <= taxable_base),
+                ADD CONSTRAINT chk_document_withholdings_rate
+                    CHECK (rate_percent > 0 AND rate_percent <= 100)
+        ]]></sql>
+
+        <createIndex tableName="document_withholdings" indexName="ix_document_withholdings_year">
+            <column name="company_id"/>
+            <column name="fiscal_year"/>
+            <column name="withholding_type"/>
+        </createIndex>
+        <createIndex tableName="document_withholdings" indexName="ix_document_withholdings_period">
+            <column name="company_id"/>
+            <column name="fiscal_period_key"/>
+            <column name="withholding_type"/>
+        </createIndex>
+        <createIndex tableName="document_withholdings"
+                     indexName="ix_document_withholdings_certificate">
+            <column name="company_id"/>
+            <column name="certificate_id"/>
+        </createIndex>
+        <createIndex tableName="document_withholdings"
+                     indexName="ix_document_withholdings_municipality">
+            <column name="municipality_code"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="document_withholdings"
+                                 baseColumnNames="company_id, billing_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_document_withholdings_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="document_withholdings"
+                                 baseColumnNames="company_id, certificate_id"
+                                 referencedTableName="withholding_certificates"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_document_withholdings_certificate"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="document_withholdings"
+                                 baseColumnNames="municipality_code"
+                                 referencedTableName="cities"
+                                 referencedColumnNames="dane_code"
+                                 constraintName="fk_document_withholdings_municipality"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <!-- La clave HACIA ATRAS: billing_document_applications (253) nace antes y lleva desde alli
+             la columna withholding_id y su indice. Es lo que convierte la retencion en un origen
+             que SALDA la factura, en vez de una deuda que no existe fiscalmente. -->
+        <addForeignKeyConstraint baseTableName="billing_document_applications"
+                                 baseColumnNames="company_id, withholding_id"
+                                 referencedTableName="document_withholdings"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_bda_withholding"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="billing_document_applications"
+                                      constraintName="fk_bda_withholding"/>
+            <dropTable tableName="document_withholdings"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

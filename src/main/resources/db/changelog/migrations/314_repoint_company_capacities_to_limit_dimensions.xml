@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Capa J, issue #629. El contador deja de estar atado a una lista cerrada de cuatro unidades
+         y pasa a apuntar al catálogo de ejes. Es lo que convierte "vender un límite nuevo" en
+         insertar una fila en vez de un despliegue: hoy `capacity_unit` está escrito a mano en un
+         CHECK del esquema Y en un enumerado de Java, así que añadir mascotas, propietarios, citas
+         o facturas exigía tocar las dos cosas.
+
+         EL ORDEN DE ESTE CHANGESET ES LA MITAD DE SU CORRECCIÓN, y responde a R-LIMIT-39: se
+         RELLENA `limit_dimension_id` ANTES de retirar `capacity_unit`. Al revés -soltar la columna
+         vieja primero- no rompe nada visible: deja todos los contadores apuntando a NULL con los
+         datos reales intactos, es decir, todas las empresas con techo cero y sin un solo error.
+
+         LA PRECONDICIÓN NO ES CEREMONIA. Si un valor de `capacity_unit` no tiene fila en
+         `limit_dimensions`, el relleno lo dejaría nulo y el addNotNullConstraint moriría más
+         adelante con un mensaje que no nombra la causa. La precondición falla antes, diciendo qué
+         código falta. Los cuatro que existen -USER, BRANCH, TERMINAL, STORAGE_GB- los siembra el
+         313, que corre antes que este.
+
+         period_key ES VARCHAR(7) Y NO CHAR(7) pese a lo que dice la ficha del modelo, y es una
+         desviación deliberada: MySQL recorta los espacios finales de un CHAR al leerlo, así que
+         dos claves que solo difieren en relleno se comparan iguales al leer y distintas al
+         indexar. En una columna que forma parte de la clave del contador eso es exactamente el
+         fallo que el centinela existe para impedir.
+
+         EL CENTINELA (R-LIMIT-05). `period_key` NUNCA es nulo. En un índice único dos NULL no
+         chocan entre sí, así que una columna nulable dejaría caber dos contadores para la misma
+         empresa y el mismo eje -uno actualizándose y otro leyéndose-. Los cupos que no son de
+         flujo llevan 'ALLTIME', que no puede colisionar con ningún periodo real porque todo
+         periodo real empieza por cuatro dígitos.
+
+         LA CLAVE FORÁNEA ES COMPUESTA (R-LIMIT-22): (limit_dimension_id, measure_kind) contra
+         uq_limit_dimensions_id_measure_kind. Por eso la fila copia `measure_kind` en vez de leerlo
+         de la otra tabla: cambiar un eje de CUMULATIVE a FLOW con contadores colgando pasa a ser
+         un error del motor en vez de un cupo mensual que no se reinicia nunca, en silencio.
+
+         DOS SELLOS, PORQUE SON DOS HECHOS (R-ENT-13, defecto construido #6). `recalculated_at` se
+         parte en dos. `limit_recalculated_at` dice cuándo se derivó el techo del contrato;
+         `usage_reconciled_at` dice cuándo se comprobó por última vez que el consumo cuadra con las
+         filas reales, y nace NULO porque hasta que alguien lo cuente la respuesta honesta es "no
+         se ha comprobado nunca". Con una sola columna, el recálculo la dejaba fresca justo después
+         de no haber mirado el consumo: un indicador de salud que miente es peor que ninguno.
+
+         SIGUE SIN CHECK (used_quantity <= limit_quantity), a propósito y por R-LIMIT-38: bajar de
+         plan deja legítimamente a un cliente por encima de su nuevo techo, y prohibirlo haría
+         fallar entero el recálculo que baja el techo, dejando al cliente atrapado en el estado
+         anterior para siempre. -->
+    <changeSet id="314_repoint_company_capacities_to_limit_dimensions" author="orlando">
+
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="0"><![CDATA[
+                SELECT COUNT(*)
+                  FROM company_capacities cc
+                 WHERE NOT EXISTS (SELECT 1 FROM limit_dimensions ld
+                                    WHERE ld.code = cc.capacity_unit)
+            ]]></sqlCheck>
+        </preConditions>
+
+        <!-- 1. Las columnas nuevas nacen nulables: todavía no hay con qué rellenarlas. -->
+        <addColumn tableName="company_capacities">
+            <column name="limit_dimension_id" type="BIGINT"/>
+            <column name="measure_kind" type="VARCHAR(20)"/>
+            <column name="period_key" type="VARCHAR(7)"/>
+            <column name="usage_reconciled_at" type="DATETIME(6)"/>
+        </addColumn>
+
+        <!-- 2. EL RELLENO, ANTES DE RETIRAR NADA (R-LIMIT-39). Los cuatro ejes que hoy existen son
+                todos STOCK, así que todos reciben el centinela; la expresión mira measure_kind de
+                todos modos para que siga siendo correcta el día que un eje de flujo se venda por
+                línea de contrato. -->
+        <sql><![CDATA[
+            UPDATE company_capacities cc
+              JOIN limit_dimensions ld ON ld.code = cc.capacity_unit
+               SET cc.limit_dimension_id = ld.id,
+                   cc.measure_kind = ld.measure_kind,
+                   cc.period_key = CASE WHEN ld.measure_kind = 'FLOW'
+                                        THEN DATE_FORMAT(cc.created_date, '%Y-%m')
+                                        ELSE 'ALLTIME' END
+        ]]></sql>
+
+        <addNotNullConstraint tableName="company_capacities" columnName="limit_dimension_id"
+                              columnDataType="BIGINT"/>
+        <addNotNullConstraint tableName="company_capacities" columnName="measure_kind"
+                              columnDataType="VARCHAR(20)"/>
+        <addNotNullConstraint tableName="company_capacities" columnName="period_key"
+                              columnDataType="VARCHAR(7)"/>
+
+        <!-- 3. La clave única nueva va ANTES de soltar la vieja. MySQL exige que las columnas de
+                una clave foránea estén indexadas y uq_company_capacities(company_id, ...) es quien
+                está sirviendo hoy a fk_company_capacities_company por prefijo izquierdo: soltarla
+                primero haría fallar el DROP. La nueva también lleva company_id a la izquierda, así
+                que toma el relevo antes de que la vieja se vaya. -->
+        <addUniqueConstraint tableName="company_capacities"
+                             columnNames="company_id, limit_dimension_id, period_key"
+                             constraintName="uq_company_capacities_dimension"/>
+
+        <sql><![CDATA[
+            ALTER TABLE company_capacities
+                DROP CONSTRAINT chk_company_capacities_unit
+        ]]></sql>
+
+        <dropUniqueConstraint tableName="company_capacities"
+                              constraintName="uq_company_capacities"
+                              uniqueColumns="company_id, capacity_unit"/>
+
+        <!-- Y recupera el nombre canónico, que es el que declara la entidad JPA. Va en tres pasos
+             -crear con nombre temporal, soltar la vieja, renombrar- porque dos restricciones no
+             pueden compartir nombre ni un instante. -->
+        <sql><![CDATA[
+            ALTER TABLE company_capacities
+                RENAME INDEX uq_company_capacities_dimension TO uq_company_capacities
+        ]]></sql>
+
+        <!-- 4. Y ahora sí, la columna vieja. -->
+        <dropColumn tableName="company_capacities" columnName="capacity_unit"/>
+
+        <!-- 5. La copia atada al eje (R-LIMIT-22) y el centinela obligatorio (R-LIMIT-05). -->
+        <addForeignKeyConstraint baseTableName="company_capacities"
+                                 baseColumnNames="limit_dimension_id, measure_kind"
+                                 referencedTableName="limit_dimensions"
+                                 referencedColumnNames="id, measure_kind"
+                                 constraintName="fk_company_capacities_dimension"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <sql><![CDATA[
+            ALTER TABLE company_capacities
+                ADD CONSTRAINT chk_company_capacities_period_key
+                    CHECK ((measure_kind = 'FLOW' AND period_key <> 'ALLTIME')
+                           OR (measure_kind <> 'FLOW' AND period_key = 'ALLTIME'))
+        ]]></sql>
+
+        <!-- 6. Los dos sellos (R-ENT-13). El índice de salud pasa al sello del techo y nace otro
+                para el barrido del recuento, que busca justo lo contrario: los contadores cuyo
+                consumo nadie ha comprobado nunca -usage_reconciled_at NULL- o hace demasiado. -->
+        <dropIndex tableName="company_capacities" indexName="ix_company_capacities_stale"/>
+
+        <renameColumn tableName="company_capacities" oldColumnName="recalculated_at"
+                      newColumnName="limit_recalculated_at" columnDataType="DATETIME(6)"/>
+
+        <createIndex tableName="company_capacities" indexName="ix_company_capacities_stale">
+            <column name="limit_recalculated_at"/>
+        </createIndex>
+
+        <createIndex tableName="company_capacities" indexName="ix_company_capacities_unreconciled">
+            <column name="usage_reconciled_at"/>
+        </createIndex>
+
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE company_capacities
+                    DROP CONSTRAINT chk_company_capacities_period_key
+            ]]></sql>
+            <dropForeignKeyConstraint baseTableName="company_capacities"
+                                      constraintName="fk_company_capacities_dimension"/>
+            <dropIndex tableName="company_capacities"
+                       indexName="ix_company_capacities_unreconciled"/>
+            <dropIndex tableName="company_capacities" indexName="ix_company_capacities_stale"/>
+            <renameColumn tableName="company_capacities" oldColumnName="limit_recalculated_at"
+                          newColumnName="recalculated_at" columnDataType="DATETIME(6)"/>
+            <createIndex tableName="company_capacities" indexName="ix_company_capacities_stale">
+                <column name="recalculated_at"/>
+            </createIndex>
+            <addColumn tableName="company_capacities">
+                <column name="capacity_unit" type="VARCHAR(30)"/>
+            </addColumn>
+            <sql><![CDATA[
+                UPDATE company_capacities cc
+                  JOIN limit_dimensions ld ON ld.id = cc.limit_dimension_id
+                   SET cc.capacity_unit = ld.code
+            ]]></sql>
+            <addNotNullConstraint tableName="company_capacities" columnName="capacity_unit"
+                                  columnDataType="VARCHAR(30)"/>
+            <dropUniqueConstraint tableName="company_capacities"
+                                  constraintName="uq_company_capacities"
+                                  uniqueColumns="company_id, limit_dimension_id, period_key"/>
+            <addUniqueConstraint tableName="company_capacities"
+                                 columnNames="company_id, capacity_unit"
+                                 constraintName="uq_company_capacities"/>
+            <sql><![CDATA[
+                ALTER TABLE company_capacities
+                    ADD CONSTRAINT chk_company_capacities_unit
+                        CHECK (capacity_unit IN ('USER','BRANCH','TERMINAL','STORAGE_GB'))
+            ]]></sql>
+            <dropColumn tableName="company_capacities" columnName="usage_reconciled_at"/>
+            <dropColumn tableName="company_capacities" columnName="period_key"/>
+            <dropColumn tableName="company_capacities" columnName="measure_kind"/>
+            <dropColumn tableName="company_capacities" columnName="limit_dimension_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

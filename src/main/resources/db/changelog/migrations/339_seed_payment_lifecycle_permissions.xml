@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Mismo caso que 257 (pagos/cobranza) y 279 (company): las CINCO rodajas de CAPA K
+         (319-324: subscriptionpaymentmethod, paymentrefund, paymentattempt, paymentreversal,
+         customercredit) declaran @PreAuthorize contra autoridades que no existen en
+         base_permissions, así que el 403 de esos endpoints no se puede resolver desde la
+         interfaz de ninguno de los dos actores que su propio guard admite.
+
+         Los SIETE códigos se verificaron uno a uno contra el @PreAuthorize real, no de segunda
+         mano. Todos comparten el mismo guard dual `hasRole('SYSTEM') or (hasAuthority('<code>')
+         and @authz.isMyCompany(#companyId))`, así que SYSTEM (plataforma) y el tenant dueño de
+         la fila leen/escriben por caminos distintos: sin la fila en base_permissions, SOLO
+         SYSTEM puede pasar, y el tenant nunca llega aunque el guard esté escrito para admitirlo:
+
+           - customerCredit.read              FindCustomerCreditBalanceUseCase.java:18,
+                                               FindCustomerCreditEntryUseCase.java:20,
+                                               ListCustomerCreditEntriesUseCase.java:16
+           - paymentAttempt.read               FindPaymentAttemptUseCase.java:19,
+                                               ListPaymentAttemptsByDocumentUseCase.java:19,
+                                               ListPaymentAttemptsUseCase.java:15
+           - paymentRefund.read                FindPaymentRefundUseCase.java:18,
+                                               ListPaymentRefundsByPaymentUseCase.java:20,
+                                               ListPaymentRefundsUseCase.java:15
+           - paymentReversalRequest.read        FindPaymentReversalRequestUseCase.java:18,
+                                               ListPaymentReversalRequestsUseCase.java:19
+           - subscriptionPaymentMethod.read     FindSubscriptionPaymentMethodUseCase.java:14,
+                                               ListSubscriptionPaymentMethodsUseCase.java:15
+           - subscriptionPaymentMethod.create   RegisterSubscriptionPaymentMethodUseCase.java:27
+           - subscriptionPaymentMethod.update   RevokeSubscriptionPaymentMethodUseCase.java:19,
+                                               SetDefaultPaymentMethodUseCase.java:15
+
+         NO se siembran (siguen exclusivamente SYSTEM, sin base_permissions ni permissions de
+         empresa, mismo criterio que 257): customerCredit.{consume,expire,grant,listAll,
+         listExpiring}, paymentAttempt.{listAll,listDue,record,reschedule}, paymentRefund.
+         {listAll,register}, paymentReversalRequest.{listAll,open},
+         subscriptionPaymentMethod.{expire,listAll,listExpiring} — las trece llevan
+         `hasRole('SYSTEM')` a secas: altas, reintentos, aperturas y barridos de plataforma, no
+         facultades de la clínica.
+
+         DOS SUB_MODULES NUEVOS Y UNO REUTILIZADO, con el mismo criterio de "Reparto en slices"
+         que ya trazó 257 (suscripciones-tablas.md #1):
+
+           + SUBSCRIPTION_PAYMENT (reutilizado, creado en 257/258): paymentRefund.read,
+             paymentAttempt.read, paymentReversalRequest.read. Las tres tablas FK directo o
+             transitivo contra subscription_payments/subscription_billing_documents (320-322) y
+             son la MISMA capacidad ya sembrada aquí -"el dinero que se cobró, se reintentó, se
+             devolvió y se disputó"-, exactamente el mismo razonamiento que folded
+             billingDocumentApplication.read en este submódulo en vez de darle uno propio.
+
+           + CUSTOMER_CREDIT (nuevo): customerCredit.read. Es una capacidad DISTINTA de cobrar
+             o devolver: el saldo a favor del cliente (customer_credit_entries/balances, 323/324)
+             es un libro propio con su propia barandilla de concurrencia, no un efecto colateral
+             de un pago. Mismo criterio que separó DUNNING de SUBSCRIPTION_PAYMENT en 257
+             ("cobranza, no pagos"): aquí es "saldo del cliente, no cobro".
+
+           + SUBSCRIPTION_PAYMENT_METHOD (nuevo): subscriptionPaymentMethod.{read,create,
+             update}. Gestionar CON QUÉ se cobra (tarjeta/PSE, mandato) es autoservicio de la
+             propia clínica -RegisterSubscriptionPaymentMethodUseCase y
+             RevokeSubscriptionPaymentMethodUseCase son isMyCompany, no SYSTEM-, así que
+             create/update SÍ van al rol tenant, mismo patrón que subscription.update/
+             subscription.cancel en 260 (autoservicio con consecuencia comercial, pero del
+             propio tenant). No es la misma capacidad que "ver mis pagos": es administrar el
+             instrumento de cobro, con su propio ciclo de vida (mandato, mockup PCI del token).
+
+         Los dos submódulos nuevos nacen is_sellable=FALSE, read_only_capable=TRUE, mismo patrón
+         que ENTITLEMENT/SUBSCRIPTION/SUBSCRIPTION_PAYMENT/DUNNING en 258: piezas técnicas de
+         autoservicio SaaS, no artículos comerciales independientes, y con superficie de lectura
+         utilizable cuando el entitlement baja a READ_ONLY.
+
+         ADMIN tenant recibe los SIETE. Ninguno de los tres pares create/update que quedan fuera
+         de ADMIN aquí es de este changeset -todas las mutaciones excluidas son SYSTEM puro,
+         ver arriba-: subscriptionPaymentMethod.{create,update} SÍ son autoservicio y van a
+         ADMIN.
+
+         BACKFILL SOLO PARA LOS TRES DE SUBSCRIPTION_PAYMENT (submódulo YA existente desde 257
+         y potencialmente ya entitled en empresas reales): acotado por company_entitlements.
+         access_level IN ('FULL','READ_ONLY'), mismo criterio de company.read en 279 -son
+         permisos de LECTURA, válidos también en solo lectura-. SIN backfill para
+         CUSTOMER_CREDIT y SUBSCRIPTION_PAYMENT_METHOD: son submódulos que ESTE changeset crea,
+         así que ninguna empresa existente puede tener ya una fila en company_entitlements que
+         los referencie -mismo argumento que 257 usó para no backfillear SUBSCRIPTION_PAYMENT
+         la primera vez-; las empresas nuevas los heredan del alta vía base_role_permissions y
+         las existentes los recibirán cuando su contrato los incluya y se recalculen sus
+         entitlements.
+
+         Todas las sentencias son idempotentes (guardas NOT EXISTS, nunca INSERT IGNORE). -->
+
+    <changeSet id="339_customer_credit_submodule" author="orlando">
+        <sql>
+            INSERT INTO sub_modules (name, code, module_id, enabled, is_sellable, read_only_capable)
+            SELECT 'Saldo a favor del cliente', 'CUSTOMER_CREDIT',
+                   (SELECT id FROM modules WHERE code = 'GENERAL'), 1, 0, 1
+            WHERE NOT EXISTS (SELECT 1 FROM sub_modules WHERE code = 'CUSTOMER_CREDIT');
+        </sql>
+        <rollback>
+            DELETE FROM sub_modules WHERE code = 'CUSTOMER_CREDIT';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="339_subscription_payment_method_submodule" author="orlando">
+        <sql>
+            INSERT INTO sub_modules (name, code, module_id, enabled, is_sellable, read_only_capable)
+            SELECT 'Medios de pago de suscripción', 'SUBSCRIPTION_PAYMENT_METHOD',
+                   (SELECT id FROM modules WHERE code = 'GENERAL'), 1, 0, 1
+            WHERE NOT EXISTS (
+                SELECT 1 FROM sub_modules WHERE code = 'SUBSCRIPTION_PAYMENT_METHOD');
+        </sql>
+        <rollback>
+            DELETE FROM sub_modules WHERE code = 'SUBSCRIPTION_PAYMENT_METHOD';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="339_payment_lifecycle_base_permissions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT seed.name, seed.code, sm.id, TRUE
+            FROM (
+                SELECT 'Ver devoluciones de pago' AS name, 'paymentRefund.read' AS code,
+                       'SUBSCRIPTION_PAYMENT' AS sub_module_code
+                UNION ALL SELECT 'Ver intentos de cobro', 'paymentAttempt.read',
+                       'SUBSCRIPTION_PAYMENT'
+                UNION ALL SELECT 'Ver solicitudes de reversión', 'paymentReversalRequest.read',
+                       'SUBSCRIPTION_PAYMENT'
+                UNION ALL SELECT 'Ver saldo a favor', 'customerCredit.read',
+                       'CUSTOMER_CREDIT'
+                UNION ALL SELECT 'Ver medios de pago', 'subscriptionPaymentMethod.read',
+                       'SUBSCRIPTION_PAYMENT_METHOD'
+                UNION ALL SELECT 'Registrar medio de pago', 'subscriptionPaymentMethod.create',
+                       'SUBSCRIPTION_PAYMENT_METHOD'
+                UNION ALL SELECT 'Revocar/actualizar medio de pago',
+                       'subscriptionPaymentMethod.update', 'SUBSCRIPTION_PAYMENT_METHOD'
+            ) seed
+            JOIN sub_modules sm ON sm.code = seed.sub_module_code
+            LEFT JOIN base_permissions existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                DELETE FROM base_permissions
+                WHERE code IN (
+                    'paymentRefund.read', 'paymentAttempt.read', 'paymentReversalRequest.read',
+                    'customerCredit.read', 'subscriptionPaymentMethod.read',
+                    'subscriptionPaymentMethod.create', 'subscriptionPaymentMethod.update');
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="339_payment_lifecycle_base_role_permissions_admin" author="orlando">
+        <!-- ADMIN tenant recibe los siete: son lo que su propio guard @authz.isMyCompany admite
+             para el actor de la clínica. -->
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN (
+                'paymentRefund.read', 'paymentAttempt.read', 'paymentReversalRequest.read',
+                'customerCredit.read', 'subscriptionPaymentMethod.read',
+                'subscriptionPaymentMethod.create', 'subscriptionPaymentMethod.update')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            DELETE FROM base_role_permissions
+            WHERE base_permission_id IN (
+                SELECT id FROM base_permissions WHERE code IN (
+                    'paymentRefund.read', 'paymentAttempt.read', 'paymentReversalRequest.read',
+                    'customerCredit.read', 'subscriptionPaymentMethod.read',
+                    'subscriptionPaymentMethod.create', 'subscriptionPaymentMethod.update'));
+        </rollback>
+    </changeSet>
+
+    <changeSet id="339_subscription_payment_permissions_backfill_companies" author="orlando">
+        <!-- Backfill acotado a SUBSCRIPTION_PAYMENT (submódulo ya existente): solo empresas con
+             company_entitlements.access_level IN ('FULL','READ_ONLY'), igual que company.read
+             en 279 -son permisos de lectura, válidos también en solo lectura-. -->
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'SUBSCRIPTION_PAYMENT'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code IN (
+                  'paymentRefund.read', 'paymentAttempt.read', 'paymentReversalRequest.read')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions
+            WHERE code IN (
+                'paymentRefund.read', 'paymentAttempt.read', 'paymentReversalRequest.read');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="339_subscription_payment_role_permissions_backfill_admin" author="orlando">
+        <!-- Asigna esos tres permisos al rol ADMIN (code = 'ADMIN') de cada empresa
+             backfillada. -->
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id
+                AND p.code IN (
+                    'paymentRefund.read', 'paymentAttempt.read', 'paymentReversalRequest.read')
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            DELETE FROM role_permissions
+            WHERE permission_id IN (
+                SELECT id FROM permissions WHERE code IN (
+                    'paymentRefund.read', 'paymentAttempt.read', 'paymentReversalRequest.read'));
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

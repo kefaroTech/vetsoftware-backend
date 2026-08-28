@@ -133,6 +133,7 @@ import com.vetsoftware.app.platformbillingconfig.domain.PlatformBillingConfigNot
 import com.vetsoftware.app.prescription.domain.PrescriptionHasActiveChildrenException;
 import com.vetsoftware.app.prescription.domain.PrescriptionNotFoundException;
 import com.vetsoftware.app.pricelist.domain.CatalogPriceNotFoundException;
+import com.vetsoftware.app.pricelist.domain.CatalogPriceMissingForActiveItemException;
 import com.vetsoftware.app.pricelist.domain.CatalogPriceTierGapException;
 import com.vetsoftware.app.pricelist.domain.CatalogPriceTierOverlapException;
 import com.vetsoftware.app.pricelist.domain.InvalidPriceListTransitionException;
@@ -153,6 +154,7 @@ import com.vetsoftware.app.promotion.domain.PromotionNotFoundException;
 import com.vetsoftware.app.purchaseorder.domain.InvalidPurchaseOrderStatusTransitionException;
 import com.vetsoftware.app.purchaseorder.domain.PurchaseOrderNotFoundException;
 import com.vetsoftware.app.quote.domain.InvalidQuoteStatusTransitionException;
+import com.vetsoftware.app.shared.pricing.PriceListNotEffectiveException;
 import com.vetsoftware.app.quote.domain.QuoteExpiredException;
 import com.vetsoftware.app.quote.domain.QuoteLineArithmeticException;
 import com.vetsoftware.app.quote.domain.QuoteNotFoundException;
@@ -198,6 +200,7 @@ import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentSequenceNot
 import com.vetsoftware.app.subscriptionbilling.domain.DuplicateBillingCycleException;
 import com.vetsoftware.app.subscriptionbilling.domain.EmptyBillingDocumentException;
 import com.vetsoftware.app.subscriptionbilling.domain.MixedSignChargesException;
+import com.vetsoftware.app.subscriptionbilling.domain.NonBillableSubscriptionItemException;
 import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionBillingDocumentNotFoundException;
 import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionChargeAlreadyInvoicedException;
 import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionChargeNotFoundException;
@@ -426,10 +429,126 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             BillingDocumentApplicationNotFoundException.class, DunningEventNotFoundException.class,
             SubscriptionChargeNotFoundException.class,
             SubscriptionBillingDocumentNotFoundException.class,
-            BillingDocumentSequenceNotFoundException.class})
+            BillingDocumentSequenceNotFoundException.class,
+            com.vetsoftware.app.limitdimension.domain.LimitDimensionNotFoundException.class,
+            com.vetsoftware.app.catalogitemlimit.domain.CatalogItemLimitNotFoundException.class,
+            com.vetsoftware.app.subscriptionitemlimit.domain.SubscriptionItemLimitNotFoundException.class,
+            com.vetsoftware.app.companytrialwindow.domain.CompanyTrialWindowNotFoundException.class,
+            com.vetsoftware.app.companytrialgrant.domain.CompanyTrialGrantNotFoundException.class,
+            com.vetsoftware.app.companylimitoverride.domain.CompanyLimitOverrideNotFoundException.class,
+            com.vetsoftware.app.companyentitlementsnapshot.domain.CompanyEntitlementSnapshotNotFoundException.class,
+            com.vetsoftware.app.paymentrefund.domain.PaymentRefundNotFoundException.class,
+            com.vetsoftware.app.paymentattempt.domain.PaymentAttemptNotFoundException.class,
+            com.vetsoftware.app.paymentreversal.domain.PaymentReversalRequestNotFoundException.class,
+            com.vetsoftware.app.subscriptionpaymentmethod.domain.SubscriptionPaymentMethodNotFoundException.class,
+            com.vetsoftware.app.customercredit.domain.CustomerCreditEntryNotFoundException.class,
+            com.vetsoftware.app.customercredit.domain.CustomerCreditBalanceNotFoundException.class,
+            com.vetsoftware.app.withholdingraterule.domain.WithholdingRateRuleNotFoundException.class,
+            com.vetsoftware.app.withholdingraterule.domain.NoEffectiveWithholdingRateRuleException.class,
+            com.vetsoftware.app.withholdingcertificate.domain.WithholdingCertificateNotFoundException.class,
+            com.vetsoftware.app.documentwithholding.domain.DocumentWithholdingNotFoundException.class,
+            com.vetsoftware.app.externalinvoicereconciliation.domain.ExternalInvoiceReconciliationNotFoundException.class,
+            com.vetsoftware.app.bankreceipt.domain.BankReceiptNotFoundException.class,
+            com.vetsoftware.app.gatewaysettlement.domain.GatewaySettlementNotFoundException.class,
+            com.vetsoftware.app.billingdocumentstatushistory.domain.BillingDocumentStatusHistoryNotFoundException.class,
+            com.vetsoftware.app.companycontactchannel.domain.CompanyContactChannelNotFoundException.class,
+            com.vetsoftware.app.companybillingprofile.domain.CompanyBillingProfileNotFoundException.class,
+            com.vetsoftware.app.accountingperiod.domain.AccountingPeriodNotFoundException.class,
+            com.vetsoftware.app.uvtvalue.domain.UvtValueNotFoundException.class,
+            com.vetsoftware.app.smmlvvalue.domain.SmmlvValueNotFoundException.class,
+            com.vetsoftware.app.vatfilingperiod.domain.VatFilingPeriodNotFoundException.class,
+            com.vetsoftware.app.publicholiday.domain.PublicHolidayNotFoundException.class,
+            com.vetsoftware.app.legaldocumentversion.domain.LegalDocumentVersionNotFoundException.class,
+            com.vetsoftware.app.securityincident.domain.SecurityIncidentNotFoundException.class,
+            com.vetsoftware.app.externalinvoicingoutage.domain.ExternalInvoicingOutageNotFoundException.class,
+            com.vetsoftware.app.companyusageevent.domain.CompanyUsageEventNotFoundException.class,
+            com.vetsoftware.app.companyactivitymonth.domain.CompanyActivityMonthNotFoundException.class,
+            com.vetsoftware.app.platformtaxprofile.domain.PlatformTaxProfileNotFoundException.class,
+            com.vetsoftware.app.accountingaccount.domain.AccountingAccountNotFoundException.class,
+            com.vetsoftware.app.accountmapping.domain.AccountMappingNotFoundException.class,
+            com.vetsoftware.app.accountmapping.domain.NoEffectiveAccountMappingException.class,
+            com.vetsoftware.app.revenuerecognitionline.domain.RevenueRecognitionLineNotFoundException.class,
+            com.vetsoftware.app.accountingexport.domain.AccountingExportNotFoundException.class,
+            com.vetsoftware.app.taxreturn.domain.TaxReturnNotFoundException.class,
+            com.vetsoftware.app.supplierwithholding.domain.SupplierWithholdingNotFoundException.class})
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.info("Resource not found: {}", ex.getMessage());
         return problem(HttpStatus.NOT_FOUND, errorCode(ex), ex.getMessage());
+    }
+
+    /**
+     * Los ocho conflictos del circuito de cobro (capa K). Van agrupados y con
+     * {@code errorCode(ex)} porque el codigo que el front necesita es el nombre de
+     * la excepcion, y derivarlo evita la lista de literales que se desincroniza al
+     * primer renombrado.
+     *
+     * <p>
+     * <b>Los ocho son 409 y no 400 por la misma razon</b>: ninguno es un cuerpo mal
+     * formado —eso lo rechaza {@code @Valid} antes de llegar aqui— sino una
+     * peticion bien escrita que choca con el estado del dinero. Devolver 400
+     * invitaria al cliente a corregir el JSON, cuando lo que tiene que hacer es
+     * mirar cuanto queda por devolver, pedir otra tarjeta o dejar de reintentar.
+     */
+    @ExceptionHandler({
+            com.vetsoftware.app.paymentrefund.domain.RefundExceedsPaymentAmountException.class,
+            com.vetsoftware.app.paymentattempt.domain.HardDeclineCannotBeRetriedException.class,
+            com.vetsoftware.app.paymentattempt.domain.RetryBudgetExhaustedException.class,
+            com.vetsoftware.app.paymentreversal.domain.ReversalRequestAlreadyResolvedException.class,
+            com.vetsoftware.app.paymentreversal.domain.ReversalRequestAlreadyExistsException.class,
+            com.vetsoftware.app.subscriptionpaymentmethod.domain.MandateAlreadyRevokedException.class,
+            com.vetsoftware.app.subscriptionpaymentmethod.domain.PaymentMethodTokenAlreadyRegisteredException.class,
+            com.vetsoftware.app.customercredit.domain.InsufficientCustomerCreditException.class,
+            com.vetsoftware.app.withholdingraterule.domain.WithholdingRateRuleAlreadyClosedException.class,
+            com.vetsoftware.app.withholdingcertificate.domain.WithholdingCertificateAlreadyReceivedException.class,
+            com.vetsoftware.app.documentwithholding.domain.WithholdingAlreadyCertifiedException.class,
+            com.vetsoftware.app.externalinvoicereconciliation.domain.ExternalInvoiceReconciliationAlreadyExistsException.class,
+            com.vetsoftware.app.externalinvoicereconciliation.domain.ExternalInvoiceAlreadyMatchedException.class,
+            com.vetsoftware.app.externalinvoicereconciliation.domain.ExternalInvoiceReconciliationAlreadyResolvedException.class,
+            com.vetsoftware.app.bankreceipt.domain.BankReceiptAlreadyRegisteredException.class,
+            com.vetsoftware.app.bankreceipt.domain.BankReceiptAlreadyResolvedException.class,
+            com.vetsoftware.app.gatewaysettlement.domain.GatewaySettlementAlreadyRegisteredException.class,
+            com.vetsoftware.app.gatewaysettlement.domain.ProviderInvoiceAlreadyAttachedException.class,
+            com.vetsoftware.app.gatewaysettlement.domain.BankReceiptAlreadyLinkedException.class,
+            com.vetsoftware.app.billingdocumentstatushistory.domain.SameStatusTransitionException.class,
+            com.vetsoftware.app.companycontactchannel.domain.CompanyContactChannelAlreadyRevokedException.class,
+            com.vetsoftware.app.companycontactchannel.domain.RevokedContactChannelCannotBePrimaryException.class,
+            com.vetsoftware.app.companybillingprofile.domain.CompanyBillingProfileAlreadyOpenException.class,
+            com.vetsoftware.app.companybillingprofile.domain.CompanyBillingProfileAlreadyClosedException.class,
+            com.vetsoftware.app.companybillingprofile.domain.BillingProfileSuccessionNotAfterCurrentException.class,
+            com.vetsoftware.app.accountingperiod.domain.AccountingPeriodAlreadyExistsException.class,
+            com.vetsoftware.app.accountingperiod.domain.AccountingPeriodAlreadyClosedException.class,
+            com.vetsoftware.app.accountingperiod.domain.AccountingPeriodNotClosedException.class,
+            com.vetsoftware.app.accountingperiod.domain.LockedAccountingPeriodCannotBeReopenedException.class,
+            com.vetsoftware.app.accountingperiod.domain.LastOpenAccountingPeriodException.class,
+            com.vetsoftware.app.accountingperiod.domain.NoOpenAccountingPeriodException.class,
+            com.vetsoftware.app.uvtvalue.domain.UvtValueAlreadyExistsException.class,
+            com.vetsoftware.app.smmlvvalue.domain.SmmlvValueAlreadyExistsException.class,
+            com.vetsoftware.app.smmlvvalue.domain.SmmlvStatusAlreadySetException.class,
+            com.vetsoftware.app.vatfilingperiod.domain.VatFilingPeriodAlreadyExistsException.class,
+            com.vetsoftware.app.publicholiday.domain.PublicHolidayAlreadyExistsException.class,
+            com.vetsoftware.app.publicholiday.domain.HolidayCalendarGapException.class,
+            com.vetsoftware.app.legaldocumentversion.domain.LegalDocumentContentAlreadyPublishedException.class,
+            com.vetsoftware.app.legaldocumentversion.domain.LegalDocumentVersionAlreadySupersededException.class,
+            com.vetsoftware.app.securityincident.domain.SecurityIncidentAlreadyReportedException.class,
+            com.vetsoftware.app.securityincident.domain.SecurityIncidentAlreadyClosedException.class,
+            com.vetsoftware.app.securityincident.domain.AffectedCompanyAlreadyRegisteredException.class,
+            com.vetsoftware.app.externalinvoicingoutage.domain.ExternalInvoicingOutageAlreadyEndedException.class,
+            com.vetsoftware.app.externalinvoicingoutage.domain.AffectedCompanyAlreadyRegisteredException.class,
+            com.vetsoftware.app.companyusageevent.domain.UsageEventAlreadyChargedException.class,
+            com.vetsoftware.app.companyactivitymonth.domain.CompanyActivityMonthAlreadyExistsException.class,
+            com.vetsoftware.app.platformtaxprofile.domain.PlatformTaxProfileAlreadyOpenException.class,
+            com.vetsoftware.app.platformtaxprofile.domain.PlatformTaxProfileAlreadyClosedException.class,
+            com.vetsoftware.app.platformtaxprofile.domain.PlatformTaxProfileSuccessionNotAfterCurrentException.class,
+            com.vetsoftware.app.accountingaccount.domain.AccountingAccountAlreadyClosedException.class,
+            com.vetsoftware.app.accountmapping.domain.AccountMappingAlreadyClosedException.class,
+            com.vetsoftware.app.revenuerecognitionline.domain.NoOpenPostingPeriodException.class,
+            com.vetsoftware.app.accountingexport.domain.AccountingExportAlreadyResolvedException.class,
+            com.vetsoftware.app.taxreturn.domain.TaxReturnNotEditableException.class,
+            com.vetsoftware.app.taxreturn.domain.TaxReturnCannotCorrectItselfException.class,
+            com.vetsoftware.app.supplierwithholding.domain.SupplierWithholdingCertificateAlreadyIssuedException.class})
+    public ProblemDetail handleCollectionConflict(RuntimeException ex) {
+        log.info("Collection conflict: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
     }
 
     @ExceptionHandler({ConsultationTypeHasActiveChildrenException.class,
@@ -457,6 +576,33 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleHasActiveChildren(RuntimeException ex) {
         log.info("Cannot delete entity with active children: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "ENTITY_HAS_ACTIVE_CHILDREN", ex.getMessage());
+    }
+
+    /**
+     * Capas I y J: los choques del modelo de prueba gratuita y de límites.
+     *
+     * <p>
+     * Todos son <b>409</b> y no 400 porque ninguno es un dato mal escrito: son
+     * estados del mundo que hacen imposible la operación pedida. Regalar dos veces
+     * el mismo artículo a la misma empresa, abrir una segunda ventana con la
+     * primera viva o negociar una segunda excepción sobre el mismo eje son las tres
+     * invariantes que sostienen la capa entera, y el motor las impone además con
+     * índices únicos: estas excepciones existen para que el operador lea qué pasó
+     * en vez de un choque de clave, nunca para abrir una vía alternativa.
+     */
+    @ExceptionHandler({
+            com.vetsoftware.app.companytrialgrant.domain.TrialAlreadyGrantedException.class,
+            com.vetsoftware.app.companytrialgrant.domain.TrialAlreadyConsumedException.class,
+            com.vetsoftware.app.companytrialgrant.domain.TrialWindowNotOpenException.class,
+            com.vetsoftware.app.companytrialwindow.domain.CompanyAlreadyHasOpenTrialWindowException.class,
+            com.vetsoftware.app.companytrialwindow.domain.TrialWindowAlreadyClosedException.class,
+            com.vetsoftware.app.companylimitoverride.domain.CompanyAlreadyHasLimitOverrideException.class,
+            com.vetsoftware.app.companylimitoverride.domain.OverrideAlreadyRevokedException.class,
+            com.vetsoftware.app.catalogitemlimit.domain.CatalogItemLimitAlreadyExistsException.class,
+            com.vetsoftware.app.limitdimension.domain.LimitDimensionCodeAlreadyExistsException.class})
+    public ProblemDetail handleTrialAndLimitConflict(RuntimeException ex) {
+        log.info("Trial or limit conflict: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
     }
 
     @ExceptionHandler(AdminEmployeeCannotBeDisabledException.class)
@@ -780,6 +926,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return pd;
     }
 
+    // R-PRICE-05, la tercera mitad de la misma comprobacion: los tramos no se
+    // pisan,
+    // no dejan huecos y NO SE OLVIDAN DE NINGUN ARTICULO ACTIVO. 409 por lo mismo
+    // que
+    // las otras dos —lo que no encaja es el estado de la tarifa, no el cuerpo—, y
+    // el
+    // articulo viaja como dato para que la consola diga cual falta.
+    @ExceptionHandler(CatalogPriceMissingForActiveItemException.class)
+    public ProblemDetail handleCatalogPriceMissingForActiveItem(
+            CatalogPriceMissingForActiveItemException ex) {
+        log.info("Catalog price missing for active item: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "CATALOG_PRICE_MISSING_FOR_ACTIVE_ITEM",
+                ex.getMessage());
+        pd.setProperty("priceListId", ex.getPriceListId());
+        pd.setProperty("catalogItemId", ex.getCatalogItemId());
+        return pd;
+    }
+
     @ExceptionHandler(ConfiguratorCodeAlreadyExistsException.class)
     public ProblemDetail handleConfiguratorCodeAlreadyExists(
             ConfiguratorCodeAlreadyExistsException ex) {
@@ -989,6 +1153,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.CONFLICT, "MIXED_SIGN_CHARGES", ex.getMessage());
     }
 
+    @ExceptionHandler(NonBillableSubscriptionItemException.class)
+    public ProblemDetail handleNonBillableSubscriptionItem(
+            NonBillableSubscriptionItemException ex) {
+        log.info("Charge attempted on a line that does not accrue: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "NON_BILLABLE_SUBSCRIPTION_ITEM", ex.getMessage());
+    }
+
     @ExceptionHandler(DuplicateBillingCycleException.class)
     public ProblemDetail handleDuplicateBillingCycle(DuplicateBillingCycleException ex) {
         log.info("Duplicate billing cycle: {}", ex.getMessage());
@@ -1020,6 +1191,36 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleQuoteExpired(QuoteExpiredException ex) {
         log.info("Quote expired: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "QUOTE_EXPIRED", ex.getMessage());
+    }
+
+    /**
+     * La tarifa esta publicada pero no rige el dia en que se cotiza (D-73). Es 409
+     * y no 400 porque el cuerpo de la peticion no tiene nada que corregir: el
+     * conflicto esta en el estado del catalogo, y se arregla publicando la tarifa
+     * del periodo nuevo o eligiendo la que si rige.
+     *
+     * <p>
+     * Codigo propio y no el {@code NOT_FOUND} de «tarifa publicada no encontrada»:
+     * una lista caducada y un id inexistente se arreglan de manera distinta, y esta
+     * es ademas la senal de que el catalogo se quedo sin tarifa vigente —el dia en
+     * que deja de entrar dinero—, que el operador tiene que poder contar aparte. El
+     * detalle lo compone el handler a partir de los campos y no del mensaje de la
+     * excepcion (#118).
+     */
+    @ExceptionHandler(PriceListNotEffectiveException.class)
+    public ProblemDetail handlePriceListNotEffective(PriceListNotEffectiveException ex) {
+        log.warn("Price list not effective: id={} code={} validFrom={} validTo={} quotedOn={}",
+                ex.getPriceListId(), ex.getCode(), ex.getValidFrom(), ex.getValidTo(),
+                ex.getQuotedOn());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "PRICE_LIST_NOT_EFFECTIVE",
+                "La tarifa no está vigente en la fecha de la cotización. Revisa sus fechas de"
+                        + " vigencia o publica la tarifa del periodo en curso.");
+        setIfPresent(pd, "priceListId", ex.getPriceListId());
+        setIfPresent(pd, "priceListCode", ex.getCode());
+        setIfPresent(pd, "validFrom", ex.getValidFrom());
+        setIfPresent(pd, "validTo", ex.getValidTo());
+        setIfPresent(pd, "quotedOn", ex.getQuotedOn());
+        return pd;
     }
 
     // Configurador: las dos son 400 y no 409 porque el conflicto está en el cuerpo
@@ -1969,6 +2170,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return problem(HttpStatus.CONFLICT, "NUMBERING_RESOLUTION_ALREADY_ACTIVE",
                     "La empresa ya tiene una resolución de numeración activa para ese tipo de documento.");
         }
+        // Reemision del MISMO numero fiscal: unicidad de (empresa, tipo, prefijo,
+        // consecutivo) via la columna generada de la migracion 373. Hasta esa migracion
+        // nada lo impedia, y dos documentos con el mismo numero ante la DIAN no son un
+        // reintento: son una reemision, y responde la clinica. Por eso el mensaje NO
+        // invita a reintentar -como si hicieran los DUPLICATE_*_REQUEST de arriba- sino
+        // que manda mirar la resolucion: si esto salta, el contador de
+        // numbering_resolutions esta desalineado con lo ya emitido, o dos resoluciones
+        // de la misma empresa comparten prefijo -que el esquema hoy no prohibe-.
+        if (cause != null && cause.contains("uq_electronic_documents_fiscal_number")) {
+            return problem(HttpStatus.CONFLICT, "FISCAL_NUMBER_ALREADY_ASSIGNED",
+                    "Ese numero fiscal ya fue emitido para la empresa. Revise la resolucion de"
+                            + " numeracion antes de volver a emitir.");
+        }
         // Carrera en la unicidad de employee_code (código de empleado / correo del
         // dueño en el
         // registro):
@@ -2148,6 +2362,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         markObservationError(request, ex);
         log.error("Platform commercial catalog is not seeded; registration cannot complete", ex);
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "PLATFORM_CATALOG_NOT_CONFIGURED",
+                ex.getMessage());
+    }
+
+    // La tercera de la misma familia, y la unica cuya fila NO esta sembrada a
+    // proposito: platform_tax_profiles (changeset 367) nace vacia porque nadie
+    // tenia la razon social ni el NIT reales de VetSoftware, y una identidad fiscal
+    // inventada acaba impresa en la factura de cada cliente -un error que ya no es
+    // del software-. 503 y no 404 por el mismo motivo que sus dos hermanas: no
+    // falta el recurso de negocio que se pidio, falta el suelo sobre el que la
+    // emision se apoya, y un 404 mandaria a buscar el registro equivocado.
+    @ExceptionHandler(com.vetsoftware.app.platformtaxprofile.domain.NoCurrentPlatformTaxProfileException.class)
+    public ProblemDetail handlePlatformTaxProfileNotConfigured(
+            com.vetsoftware.app.platformtaxprofile.domain.NoCurrentPlatformTaxProfileException ex,
+            HttpServletRequest request) {
+        markObservationError(request, ex);
+        log.error("Platform tax profile row is missing; VetSoftware has no fiscal identity to"
+                + " print on the invoices it issues", ex);
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "PLATFORM_TAX_PROFILE_NOT_CONFIGURED",
                 ex.getMessage());
     }
 

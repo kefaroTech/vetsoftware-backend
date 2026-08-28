@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ====================================================================================
+         LA TARIFA 2026 Y SUS 64 PRECIOS. Sin `context`: todos los entornos. Continúa 309.
+
+         >>> SUPUESTO S-01, ESCRITO AQUÍ COMO SUPUESTO Y NO COMO HECHO <<<
+         Las 64 filas van GRAVADAS AL 19 % (tax_rate = 19.00, tax_treatment = 'TAXED').
+         ESTO NO ES UNA DECISIÓN FISCAL TOMADA: es la recomendación del modelo, adoptada porque el
+         riesgo es ASIMÉTRICO. Excluir mal se paga tres veces -IVA de tu bolsillo, sanción por
+         inexactitud y pérdida de todo el impuesto descontable de esos años-; gravar mal se corrige
+         con notas crédito que el cliente casi siempre descuenta.
+         EL CONTADOR TIENE QUE ARGUMENTAR LA EXCLUSIÓN, SI PROCEDE, ANTES DE LA PRIMERA COTIZACIÓN:
+         el tratamiento se CONGELA ahí y viaja quote_lines.tax_treatment -> subscription_items ->
+         billing_document_tax_lines. Cambiarlo después no es editar 64 filas: es una migración de
+         tarifa contrato por contrato, y convierte todo el IVA soportado -servidores, pasarela,
+         licencias- en coste puro no descontable.
+
+         valid_from = 2026-08-27, FIJO -no CURRENT_DATE, no la fecha del despliegue (D-73). Una
+         lista que empieza a regir «hoy en tiempo de ejecucion» impide programar una subida y hace
+         que dos despliegues en dias distintos produzcan dos vigencias distintas. Con la fecha fija,
+         subir precios es escribir hoy una lista nueva con valid_from de julio.
+
+         AJUSTE (hallazgo de OwnerBranchAssignmentIT ejecutado aislado sobre una base recien
+         migrada: 409 PRICE_LIST_NOT_EFFECTIVE). La fecha nacio en 2026-09-01 -futura respecto del
+         dia en que se escribio esta migracion- confiando en que el despliegue llegaria antes. No
+         llego: entre el dia en que esto se aplica (2026-08-27) y el 2026-09-01 no habia NINGUNA
+         tarifa vigente en ningun entorno, y el alta publica de empresas devolvia 409 durante esos
+         cinco dias. Se adelanta a 2026-08-27 -hoy, en el sentido de "la fecha en que el defecto se
+         corrige", no en el sentido dinamico que este mismo comentario acaba de prohibir: sigue
+         siendo un literal fijo, simplemente el literal correcto- para que no exista ni un solo dia
+         sin tarifa vigente. La alternativa -retrasar el archivado de LISTA-LOCAL-LAB en vez de
+         adelantar esta fecha- no cierra el hueco en dev/produccion, donde esa lista puente ni
+         siquiera existe (264 es context=local,e2e): la decision que deja el sistema funcionando es
+         esta, adelantar la tarifa real, no la otra.
+
+         NACE EN 'DRAFT' Y SE PUBLICA EN 311, y la separación es deliberada, no un descuido:
+         chk_price_lists_published exige que una lista no-DRAFT lleve published_at Y
+         published_by_system_user_id, y ese segundo valor es una FK a system_users. En una base
+         recién creada system_users ESTÁ VACÍA -008 solo crea la tabla; la cuenta 'admin' de
+         desarrollo y producción no la sembró Liquibase, y 'local-admin' solo existe bajo el
+         contexto local,e2e-. Publicar aquí obligaría o a inventar un usuario técnico -que es
+         justamente lo que la columna existe para evitar- o a dejar el changeset sin efecto en
+         silencio. Los precios, en cambio, se pueden sembrar completos desde ya: una lista en
+         borrador con sus 64 tramos es un estado íntegro y auditable.
+
+         EL IMPORTE ANUAL ES UN DATO, NO UNA FÓRMULA. Vale diez mensualidades -dos meses gratis,
+         16,7 % de descuento por prepago- y va escrito a mano en las 32 filas para que el descuento
+         quede auditable, que es exactamente lo que el modelo persigue al no calcularlo. Y NO LLEVA
+         PERMANENCIA (S-05): es descuento por prepago puro, con lo que D-45 y D-47 -«siempre se
+         ofrece una alternativa sin permanencia junto a la que la lleva»- quedan satisfechos de
+         forma trivial, porque TODA la tarifa inicial es sin permanencia.
+
+         LOS TRAMOS SON ACUMULATIVOS (D-66) y encadenan SIN SALTO desde 1 hasta un último tramo
+         abierto (tier_max = NULL) en los siete artículos de capacidad:
+           CAPACITY_USER      1-∞
+           CAPACITY_BRANCH    1-∞
+           CAPACITY_TERMINAL  1-∞
+           EXTRA_USER         1-8, 9-∞
+           EXTRA_BRANCH       1-2, 3-9, 10-∞
+           EXTRA_TERMINAL     1-3, 4-∞
+           EXTRA_STORAGE      1-50, 51-200, 201-∞
+         La comprobación que valida la tabla entera: CAPACITY_USER con included_quantity = 1 y
+         quantity = 1 da techo 2 (ceiling() = included + quantity), así que el núcleo trae dos
+         usuarios y el tercero es el primero que se factura. Un cliente de quince usuarios contrata
+         trece unidades de EXTRA_USER: 8 x 12.000 = 96.000 más 5 x 9.000 = 45.000, TOTAL 141.000 —
+         al peso lo que D-66 decidió. La traducción es exacta: «usuarios 3 a 10» son las unidades
+         extra 1-8.
+         Esto resuelve D3: los usuarios incluidos NO viven en el precio de CORE -que va con
+         included_quantity = 0-, viven en el precio de CAPACITY_USER, que es la fila que el código
+         lee para calcular el techo.
+
+         >>> DIVERGENCIA CONOCIDA CON #511, QUE UN HUMANO TIENE QUE RESOLVER <<<
+         271_raise_local_e2e_core_user_capacity_minimum subió included_quantity de CAPACITY_USER a
+         2 en la lista de LABORATORIO -techo 3: dueño más dos-, por decisión explícita del usuario
+         («la segunda sede se vende; el segundo empleado no», tres personas desde el primer día).
+         Aquí va 1 -techo 2- porque es lo que exige la aritmética de D-66: con included = 2, quince
+         usuarios serían doce unidades extra y saldrían 132.000, no los 141.000 que D-66 fijó.
+         LOS DOS NÚMEROS NO PUEDEN SER CORRECTOS A LA VEZ. Se siembra el de D-66 porque es el que
+         valida la tabla de precios completa, y la contradicción queda abierta en un issue: subirlo
+         a 2 aquí es un UPDATE de una fila, pero mueve el ancla de precio.
+
+         LOS DOS SUELOS DE PRECIO, y son distintos. Suelo de CONTRATO: 69.000, el precio de CORE,
+         que es obligatorio, así que ningún contrato de pago baja de ahí y a ese importe la comisión
+         de pasarela pesa 4,7 %, absorbible. Suelo de ARTÍCULO recurrente vendido suelto: 25.000;
+         ningún MODULE baja de ahí, no por la comisión -se cobra el contrato entero, una sola vez
+         (D-09)- sino porque un módulo de 5.000 no cubre ni su soporte y tienta a venderlo aislado,
+         que es donde el 22,4 % aparece de verdad. Las unidades de capacidad (12.000, 9.000,
+         1.200/GB) SÍ pueden bajar del suelo de artículo: nunca se venden solas y viajan dentro de
+         la misma factura.
+
+         ONBOARDING A CERO ES D-52 ESCRITO EN DATOS: la implantación no se cobra. Se conserva como
+         artículo ACTIVE a propósito, para que la cotización imprima el renglón «Implantación y
+         capacitación — incluida» en vez de callarlo. DATA_MIGRATION lleva su importe en
+         `setup_amount` (450.000) y no en `unit_amount`, que es donde el modelo pone lo que se cobra
+         una sola vez al firmar. Los dos se siembran en LOS DOS CICLOS con el mismo setup para que
+         la búsqueda por billing_cycle no devuelva vacío cuando el cliente firme anual.
+         ==================================================================================== -->
+
+    <changeSet id="310_seed_price_list_2026" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO price_lists (code, name, currency, valid_from, valid_to, status)
+            SELECT 'LISTA-2026-01', 'Tarifa 2026', 'COP', '2026-08-27', NULL, 'DRAFT'
+             WHERE NOT EXISTS (SELECT 1 FROM price_lists WHERE code = 'LISTA-2026-01');
+        ]]></sql>
+        <rollback>
+            <sql>DELETE FROM price_lists WHERE code = 'LISTA-2026-01';</sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Las 64 filas se escriben como 32 tramos por dos ciclos: el cruce con `cyc` evita repetir
+         treinta y dos veces la misma línea cambiando solo el importe, que es la forma más fiable
+         de que un número se cuele mal. El importe anual sigue siendo un dato explícito por tramo
+         -columna annual_amount-, no un `monthly * 10` calculado, para que el descuento por prepago
+         quede auditable fila a fila. -->
+    <changeSet id="310_seed_catalog_prices_2026" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO catalog_prices
+                    (price_list_id, catalog_item_id, billing_cycle, tier_min, tier_max,
+                     included_quantity, unit_amount, setup_amount, tax_rate, tax_treatment)
+            SELECT pl.id, ci.id, cyc.billing_cycle, seed.tier_min, seed.tier_max,
+                   seed.included_quantity,
+                   CASE cyc.billing_cycle WHEN 'MONTHLY' THEN seed.monthly_amount
+                                          ELSE seed.annual_amount END,
+                   seed.setup_amount, 19.00, 'TAXED'
+              FROM price_lists pl
+              JOIN (SELECT 'MONTHLY' AS billing_cycle
+                    UNION ALL SELECT 'ANNUAL') cyc ON 1 = 1
+              JOIN (
+                SELECT 'CORE' AS code, 1 AS tier_min, CAST(NULL AS UNSIGNED) AS tier_max,
+                       0 AS included_quantity, 69000.00 AS monthly_amount,
+                       690000.00 AS annual_amount, 0.00 AS setup_amount
+                UNION ALL SELECT 'SCHEDULING',            1, NULL, 0,   35000.00,  350000.00, 0.00
+                UNION ALL SELECT 'CLINICAL_HISTORY',      1, NULL, 0,   49000.00,  490000.00, 0.00
+                UNION ALL SELECT 'VACCINATION_DEWORMING', 1, NULL, 0,   25000.00,  250000.00, 0.00
+                UNION ALL SELECT 'HOSPITALIZATION',       1, NULL, 0,   39000.00,  390000.00, 0.00
+                UNION ALL SELECT 'SURGERY',               1, NULL, 0,   29000.00,  290000.00, 0.00
+                UNION ALL SELECT 'LAB_IMAGING',           1, NULL, 0,   45000.00,  450000.00, 0.00
+                UNION ALL SELECT 'GROOMING',              1, NULL, 0,   29000.00,  290000.00, 0.00
+                UNION ALL SELECT 'SERVICES',              1, NULL, 0,   29000.00,  290000.00, 0.00
+                UNION ALL SELECT 'CASH_REGISTER',         1, NULL, 0,   46000.00,  460000.00, 0.00
+                UNION ALL SELECT 'INVENTORY',             1, NULL, 0,   39000.00,  390000.00, 0.00
+                UNION ALL SELECT 'PURCHASES',             1, NULL, 0,   29000.00,  290000.00, 0.00
+                UNION ALL SELECT 'OPEN_ACCOUNTS',         1, NULL, 0,   25000.00,  250000.00, 0.00
+                UNION ALL SELECT 'ELECTRONIC_INVOICING',  1, NULL, 0,   59000.00,  590000.00, 0.00
+                UNION ALL SELECT 'CAPACITY_USER',         1, NULL, 1,       0.00,       0.00, 0.00
+                UNION ALL SELECT 'CAPACITY_BRANCH',       1, NULL, 0,       0.00,       0.00, 0.00
+                UNION ALL SELECT 'CAPACITY_TERMINAL',     1, NULL, 0,       0.00,       0.00, 0.00
+                UNION ALL SELECT 'EXTRA_USER',            1,    8, 0,   12000.00,  120000.00, 0.00
+                UNION ALL SELECT 'EXTRA_USER',            9, NULL, 0,    9000.00,   90000.00, 0.00
+                UNION ALL SELECT 'EXTRA_BRANCH',          1,    2, 0,   35000.00,  350000.00, 0.00
+                UNION ALL SELECT 'EXTRA_BRANCH',          3,    9, 0,   28000.00,  280000.00, 0.00
+                UNION ALL SELECT 'EXTRA_BRANCH',         10, NULL, 0,   22000.00,  220000.00, 0.00
+                UNION ALL SELECT 'EXTRA_TERMINAL',        1,    3, 0,   18000.00,  180000.00, 0.00
+                UNION ALL SELECT 'EXTRA_TERMINAL',        4, NULL, 0,   14000.00,  140000.00, 0.00
+                UNION ALL SELECT 'EXTRA_STORAGE',         1,   50, 0,    1200.00,   12000.00, 0.00
+                UNION ALL SELECT 'EXTRA_STORAGE',        51,  200, 0,     900.00,    9000.00, 0.00
+                UNION ALL SELECT 'EXTRA_STORAGE',       201, NULL, 0,     700.00,    7000.00, 0.00
+                UNION ALL SELECT 'ONBOARDING',            1, NULL, 0,       0.00,       0.00, 0.00
+                UNION ALL SELECT 'DATA_MIGRATION',        1, NULL, 0,       0.00,       0.00, 450000.00
+                UNION ALL SELECT 'PACK_SPA',              1, NULL, 0,  179000.00, 1790000.00, 0.00
+                UNION ALL SELECT 'PACK_CLINIC',           1, NULL, 0,  189000.00, 1890000.00, 0.00
+                UNION ALL SELECT 'PACK_FULL',             1, NULL, 0,  449000.00, 4490000.00, 0.00
+              ) seed ON 1 = 1
+              JOIN catalog_items ci ON ci.code = seed.code
+             WHERE pl.code = 'LISTA-2026-01'
+               AND NOT EXISTS (
+                   SELECT 1 FROM catalog_prices x
+                    WHERE x.price_list_id   = pl.id
+                      AND x.catalog_item_id = ci.id
+                      AND x.billing_cycle   = cyc.billing_cycle
+                      AND x.tier_min        = seed.tier_min);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM catalog_prices
+                 WHERE price_list_id IN (SELECT id FROM price_lists WHERE code = 'LISTA-2026-01');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

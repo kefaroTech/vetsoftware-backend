@@ -3,7 +3,6 @@ package com.vetsoftware.app.subscription.infrastructure.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.EffectivePeriod;
 import com.vetsoftware.app.subscription.domain.ItemOrigin;
 import com.vetsoftware.app.subscription.domain.SubscriptionItem;
@@ -71,7 +70,7 @@ class SubscriptionItemJpaMapperTest {
             assertThat(entity.getCatalogItemId()).isEqualTo(SubscriptionMother.ARTICULO);
             assertThat(entity.getItemCode()).isEqualTo("EXTRA_USER");
             assertThat(entity.getItemType()).isEqualTo(SubscriptionItemType.CAPACITY);
-            assertThat(entity.getCapacityUnit()).isEqualTo(CapacityUnit.USER);
+            assertThat(entity.getCapacityUnit()).isEqualTo("USER");
             assertThat(entity.getIncludedQuantity()).isEqualTo(2);
             assertThat(entity.getTaxTreatment()).isEqualTo(TaxTreatment.TAXED);
             assertThat(entity.getQuantity()).isEqualTo(5);
@@ -150,7 +149,7 @@ class SubscriptionItemJpaMapperTest {
             assertThat(linea.getIncludedQuantity()).isEqualTo(2);
             assertThat(linea.getQuantity()).isEqualTo(5);
             assertThat(linea.billableQuantity()).isEqualTo(3);
-            assertThat(linea.getCapacityUnit()).isEqualTo(CapacityUnit.USER);
+            assertThat(linea.getCapacityUnit()).isEqualTo("USER");
             assertThat(linea.getCreatedDate()).isEqualTo(AHORA);
         }
 

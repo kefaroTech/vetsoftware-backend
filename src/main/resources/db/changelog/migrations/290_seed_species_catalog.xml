@@ -35,6 +35,7 @@
             <columnExists tableName="species" columnName="general"/>
         </preConditions>
         <sql>DO 0;</sql>
+        <rollback/>
     </changeSet>
 
     <changeSet id="290_seed_species_catalog" author="orlando">
@@ -87,6 +88,7 @@
             <sqlCheck expectedResult="18">SELECT COUNT(*) FROM species WHERE general = TRUE AND enabled = 1</sqlCheck>
         </preConditions>
         <sql>DO 0;</sql>
+        <rollback/>
     </changeSet>
 
 </databaseChangeLog>

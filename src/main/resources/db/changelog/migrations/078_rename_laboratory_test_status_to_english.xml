@@ -35,6 +35,37 @@
         <!-- Reemplaza el default legacy 'PENDIENTE' por el inicial en inglés -->
         <addDefaultValue tableName="laboratory_tests" columnName="status"
                          defaultValue="PENDING_COLLECTION"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): los <update> bloquean la auto-inversion del changeset entero. Se revierte a
+             mano: mapeo inverso de cada estado y el default legacy 'PENDIENTE' de 060. -->
+        <rollback>
+            <update tableName="laboratory_tests">
+                <column name="status" value="PENDIENTE"/>
+                <where>status = 'PENDING_COLLECTION'</where>
+            </update>
+            <update tableName="laboratory_tests">
+                <column name="status" value="PENDIENTE_POR_PROCESAR"/>
+                <where>status = 'PENDING_PROCESSING'</where>
+            </update>
+            <update tableName="laboratory_tests">
+                <column name="status" value="EN_PROCESO"/>
+                <where>status = 'IN_PROGRESS'</where>
+            </update>
+            <update tableName="laboratory_tests">
+                <column name="status" value="PENDIENTE_POR_LECTURA"/>
+                <where>status = 'PENDING_VALIDATION'</where>
+            </update>
+            <update tableName="laboratory_tests">
+                <column name="status" value="COMPLETADO"/>
+                <where>status = 'COMPLETED'</where>
+            </update>
+            <update tableName="laboratory_tests">
+                <column name="status" value="CANCELADO"/>
+                <where>status = 'CANCELLED'</where>
+            </update>
+            <addDefaultValue tableName="laboratory_tests" columnName="status"
+                             defaultValue="PENDIENTE"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

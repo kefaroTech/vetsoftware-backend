@@ -32,7 +32,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "company_entitlements", uniqueConstraints = {
         @UniqueConstraint(name = "uq_company_entitlements", columnNames = {"company_id",
-                "sub_module_id"})})
+                "sub_module_id", "valid_from"})})
 public class CompanyEntitlementJpaEntity {
 
     @Id

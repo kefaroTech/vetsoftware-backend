@@ -14,8 +14,15 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JpaConfiguratorEffectRepository implements ConfiguratorEffectRepository {
 
-    /** El id ya es total por sí solo: es la clave primaria. */
-    private static final Sort ORDEN = Sort.by(Sort.Direction.ASC, "id");
+    /**
+     * El mismo orden que aplica el resolvedor: {@code priority} ascendente y, a
+     * igualdad, {@code id}. La prioridad <strong>no</strong> es única —dos efectos
+     * de la misma pregunta comparten decena a propósito—, así que sin el desempate
+     * por la clave primaria el orden no sería total y dos páginas consecutivas
+     * repetirían u omitirían efectos.
+     */
+    private static final Sort ORDEN = Sort.by(Sort.Direction.ASC, "priority")
+            .and(Sort.by(Sort.Direction.ASC, "id"));
 
     private final ConfiguratorEffectJpaRepository jpaRepository;
     private final ConfiguratorEffectJpaMapper mapper;
@@ -38,7 +45,18 @@ public class JpaConfiguratorEffectRepository implements ConfiguratorEffectReposi
 
     @Override
     public List<ConfiguratorEffect> findAllOrdered() {
-        return jpaRepository.findAllByOrderByIdAsc().stream().map(mapper::toDomain).toList();
+        return jpaRepository.findAllByOrderByPriorityAscIdAsc().stream().map(mapper::toDomain)
+                .toList();
+    }
+
+    /**
+     * {@code findAllById} de Spring Data respeta el {@code @SQLRestriction} de la
+     * entidad, así que un efecto dado de baja no vuelve — que es justo lo que hace
+     * falta: reordenar un efecto inactivo no significa nada.
+     */
+    @Override
+    public List<ConfiguratorEffect> findAllByIds(List<Long> ids) {
+        return jpaRepository.findAllById(ids).stream().map(mapper::toDomain).toList();
     }
 
     @Override

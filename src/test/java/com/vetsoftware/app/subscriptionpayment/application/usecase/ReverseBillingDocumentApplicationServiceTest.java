@@ -17,6 +17,8 @@ import com.vetsoftware.app.subscriptionpayment.application.dto.BillingDocumentAp
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentApplicationRepository;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentQueryPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentSettlementPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentAuditPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentMetrics;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.DunningReevaluationPort;
 import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentApplication;
 import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentApplicationNotFoundException;
@@ -49,12 +51,17 @@ class ReverseBillingDocumentApplicationServiceTest {
     @Mock
     private DunningReevaluationPort dunningReevaluationPort;
 
+    @Mock
+    private SubscriptionPaymentMetrics metrics;
+    @Mock
+    private SubscriptionPaymentAuditPort audit;
+
     private ReverseBillingDocumentApplicationService service;
 
     @BeforeEach
     void setUp() {
         service = new ReverseBillingDocumentApplicationService(repository, billingDocumentQueryPort,
-                settlementPort, dunningReevaluationPort, RELOJ);
+                settlementPort, dunningReevaluationPort, metrics, audit, RELOJ);
     }
 
     @Nested

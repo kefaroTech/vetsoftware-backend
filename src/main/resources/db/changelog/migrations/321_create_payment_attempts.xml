@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha payment_attempts). LOS COBROS QUE NO SALIERON.
+         subscription_payments guarda pagos que OCURRIERON. Con la pasarela como unica via, cada
+         renovacion es un cobro automatico que puede rebotar, y hoy un rechazo no tiene donde vivir:
+         sin codigo, sin numero de intento y sin nada que programe el siguiente. Meterlo en la tabla
+         de pagos es lo que ya se descarto una vez, cuando se saco de alli la devolucion por la
+         misma razon: esa tabla no se reescribe.
+
+         TRES FAMILIAS DE RECHAZO, NO DOS. Es la columna sobre la que se ramifica todo:
+           SOFT           fondos insuficientes, limite temporal. Se reintenta.
+           HARD           tarjeta perdida, robada, autorizacion revocada, operacion no permitida.
+                          NO SE REINTENTA JAMAS: se pide medio de pago nuevo.
+           CONFIGURATION  moneda no soportada, credencial mal puesta. Son errores PROPIOS, no del
+                          cliente, y sin distinguirlos se queman los intentos que la red permite
+                          contra un fallo que no es del cliente -y las redes multan eso-.
+         VARCHAR(15) y no VARCHAR(10): la ficha original se quedo corta y el tercer valor no cabia,
+         que es literalmente por lo que las tres familias eran dos.
+
+         Y EL VACIO ES LA REGLA. En un rechazo duro, next_attempt_at va VACIO -no lejano, no nulo
+         por descuido-: no hay siguiente hasta que aparezca otra tarjeta. chk_payment_attempts_hard
+         lo convierte en fisica del motor en vez de una promesa del proceso de cobranza.
+
+         gateway_decline_code se guarda CRUDO, tal cual lo devolvio la pasarela y con comparacion
+         exacta: las pasarelas cambian su catalogo y una traduccion hecha hoy envejece. La clase la
+         pone el codigo al recibirlo; el crudo queda para poder revisar la traduccion despues.
+         Y no se le ensena al cliente: solo su clase.
+
+         El indice de la cola de reintentos va SOBRE next_attempt_at Y SIN LA EMPRESA DELANTE. Es
+         uno de los nueve barridos de plataforma: recorre todas las clinicas a propósito y ponerle
+         la empresa delante lo haria inutil. Declararlo aqui NO exime al caso de uso de la regla de
+         aislamiento -esa regla recorre codigo, no documentos-, y el barrido necesita puerto
+         declarado y autorizacion solo de plataforma.
+
+         Con version: un intento se REPROGRAMA -segunda escritura declarada- y eximirlo seria una
+         exencion que miente. Sin enabled: bitacora probatoria, y una prueba que se puede desactivar
+         no prueba nada. Es lo que sostiene "se intento cuatro veces" antes de degradar a nadie. -->
+    <changeSet id="321_create_payment_attempts" author="orlando">
+        <createTable tableName="payment_attempts">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="billing_document_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payment_method_id" type="BIGINT"/>
+            <column name="attempt_number" type="INT"><constraints nullable="false"/></column>
+            <column name="gateway" type="VARCHAR(40)"><constraints nullable="false"/></column>
+            <column name="requested_amount" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gateway_decline_code" type="VARCHAR(50)"/>
+            <column name="decline_kind" type="VARCHAR(15)"><constraints nullable="false"/></column>
+            <column name="attempted_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="next_attempt_at" type="DATETIME(6)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="payment_attempts"
+                             columnNames="company_id, billing_document_id, attempt_number"
+                             constraintName="uq_payment_attempts_number"/>
+
+        <sql><![CDATA[
+            ALTER TABLE payment_attempts
+                MODIFY COLUMN gateway VARCHAR(40)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN gateway_decline_code VARCHAR(50)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD CONSTRAINT chk_payment_attempts_number CHECK (attempt_number > 0),
+                ADD CONSTRAINT chk_payment_attempts_amount CHECK (requested_amount > 0),
+                ADD CONSTRAINT chk_payment_attempts_decline_kind
+                    CHECK (decline_kind IN ('SOFT','HARD','CONFIGURATION')),
+                ADD CONSTRAINT chk_payment_attempts_hard_has_no_retry
+                    CHECK (decline_kind <> 'HARD' OR next_attempt_at IS NULL),
+                ADD CONSTRAINT chk_payment_attempts_retry_is_later
+                    CHECK (next_attempt_at IS NULL OR next_attempt_at > attempted_at),
+                ADD CONSTRAINT chk_payment_attempts_declined_by_gateway
+                    CHECK (decline_kind = 'CONFIGURATION' OR gateway_decline_code IS NOT NULL)
+        ]]></sql>
+
+        <createIndex tableName="payment_attempts" indexName="ix_payment_attempts_retry_queue">
+            <column name="next_attempt_at"/>
+        </createIndex>
+        <createIndex tableName="payment_attempts" indexName="ix_payment_attempts_method">
+            <column name="company_id"/>
+            <column name="payment_method_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="payment_attempts"
+                                 baseColumnNames="company_id, billing_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_payment_attempts_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="payment_attempts"
+                                 baseColumnNames="company_id, payment_method_id"
+                                 referencedTableName="subscription_payment_methods"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_payment_attempts_method"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="payment_attempts"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

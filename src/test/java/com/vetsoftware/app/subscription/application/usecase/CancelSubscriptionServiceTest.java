@@ -13,6 +13,7 @@ import com.vetsoftware.app.subscription.application.dto.SubscriptionChangedEvent
 import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
 import com.vetsoftware.app.subscription.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionAmendmentRepository;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
@@ -65,6 +66,8 @@ class CancelSubscriptionServiceTest {
     private SubscriptionNumberPort subscriptionNumberPort;
     @Mock
     private SubscriptionChangedPort subscriptionChangedPort;
+    @Mock
+    private SubscriptionAuditPort audit;
 
     @InjectMocks
     private CancelSubscriptionService service;
@@ -165,6 +168,25 @@ class CancelSubscriptionServiceTest {
             // consumir: el 30 y el 31 de enero, 2 de 31 dias sobre 179.000.
             assertThat(otrosi.getMonthlyDeltaAmount()).isEqualByComparingTo("-179000.00");
             assertThat(otrosi.getProrationAmount()).isEqualByComparingTo("-11548.39");
+        }
+
+        @Test
+        @DisplayName("deja rastro de auditoria de la baja pedida, con la fecha en que se va")
+        void dejaRastroDeAuditoria() {
+            when(amendmentRepository.findByClientRequestIdAndCompanyId(LLAVE, EMPRESA))
+                    .thenReturn(Optional.empty());
+            when(repository.findByIdAndCompanyId(CONTRATO, EMPRESA))
+                    .thenReturn(Optional.of(contratoActivo()));
+            when(employeeQueryPort.findByIdAndCompanyId(55L, EMPRESA))
+                    .thenReturn(Optional.of(new EmployeeRef(55L, "Ana")));
+            when(amendmentRepository.save(any())).thenReturn(otrosiGuardado());
+            when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+            service.execute(comando());
+
+            // La fecha que se audita es la efectiva, no la de la peticion: es la que
+            // decide hasta cuando el cliente conserva el acceso que ya pago.
+            verify(audit).cancellationRequested(CONTRATO, DIA_30);
         }
 
         @Test

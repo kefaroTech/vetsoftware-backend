@@ -721,6 +721,7 @@
             <sqlCheck expectedResult="1">SELECT COUNT(*) FROM breeds b JOIN species s ON s.id = b.specie_id WHERE s.name = 'Reptil' AND b.enabled = 1</sqlCheck>
         </preConditions>
         <sql>DO 0;</sql>
+        <rollback/>
     </changeSet>
 
 </databaseChangeLog>

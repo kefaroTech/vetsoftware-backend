@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- LA COLACION EXACTA, TERMINADA. Este changeset existe porque dejarla a medias es peor que no
+         empezarla: la capa K la declaro en sus identificadores ajenos y eso dejo el esquema con dos
+         colaciones conviviendo, que es exactamente el escenario que el propio modelo advierte
+         -"cuidado con mezclarlos: cruzar dos columnas de comparacion distinta desactiva el
+         indice"-.
+
+         EL CASO MAS INMEDIATO Y EL MAS FACIL DE NO VER: cities.dane_code paso a ascii_bin en el
+         changeset 315 -hacia falta para poder crear la clave foranea del municipio- y
+         states.dane_code se quedo con la heredada. Dos columnas que se llaman igual, guardan la
+         misma clase de dato -DIVIPOLA- y desde entonces NO COMPARAN IGUAL. El dia que alguien las
+         cruce en un JOIN para armar el reporte de terceros, el indice deja de usarse y la consulta
+         recorre la tabla entera sin que nada avise.
+
+         LAS DOS LLAVES DE IDEMPOTENCIA que faltaban son el caso donde una colacion insensible falla
+         peor: quotes.client_request_id y subscription_amendments.client_request_id. Bajo la
+         comparacion heredada "REQ-1" y "req-1" son la misma llave, asi que dos peticiones distintas
+         de un cliente chocan contra una fila que la segunda no puede ver -y sus hermanas de
+         subscription_payments y billing_document_applications ya la declaran, con lo que tres
+         columnas del mismo concepto se comportaban de dos formas-.
+
+         LOS CODIGOS DE CATALOGO -catalog_items.code, price_lists.code, limit_dimensions.code- son
+         identificadores internos inmutables con los que el codigo reconoce una fila (CORE,
+         CAPACITY_USER, PETS). Su unicidad depende de distinguir mayusculas y hoy no lo hace: 'core'
+         y 'CORE' serian el mismo articulo. Y catalog_items.code se cruza por igualdad con las
+         semillas y con la plantilla de alta de una empresa.
+
+         subscriptions.subscription_number y subscription_charges no entran: son consecutivos
+         propios que el sistema genera con un patron fijo, no identificadores ajenos ni claves de
+         busqueda por texto libre. La convencion es para lo que se compara contra algo de fuera.
+
+         ascii y no utf8mb4_bin: las seis columnas son ASCII por definicion -codigos DIVIPOLA,
+         llaves de idempotencia generadas por un cliente, codigos de catalogo en mayusculas-. Para
+         una columna que pudiera llevar acentos habria que usar utf8mb4_bin, y mezclarlas tampoco
+         valdria.
+
+         SOBRE BLOQUEO EN PRODUCCION: states tiene 33 filas y los tres catalogos, decenas. Las dos
+         tablas de llaves de idempotencia pueden crecer, pero la premisa vigente (D-53) es que la
+         base arranca vacia; en un entorno con datos, un MODIFY sobre estas seis columnas reconstruye
+         la tabla y bloquea escrituras mientras dura -segundos con estos volumenes-. Si alguna
+         columna tuviera hoy un valor no ASCII, el MODIFY falla RUIDOSAMENTE, que es el
+         comportamiento correcto. -->
+    <changeSet id="332_align_identifier_collation" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE states
+                MODIFY COLUMN dane_code VARCHAR(2)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL
+        ]]></sql>
+        <sql><![CDATA[
+            ALTER TABLE quotes
+                MODIFY COLUMN client_request_id VARCHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL
+        ]]></sql>
+        <sql><![CDATA[
+            ALTER TABLE subscription_amendments
+                MODIFY COLUMN client_request_id VARCHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL
+        ]]></sql>
+        <sql><![CDATA[
+            ALTER TABLE catalog_items
+                MODIFY COLUMN code VARCHAR(50)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL
+        ]]></sql>
+        <sql><![CDATA[
+            ALTER TABLE price_lists
+                MODIFY COLUMN code VARCHAR(50)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL
+        ]]></sql>
+        <sql><![CDATA[
+            ALTER TABLE limit_dimensions
+                MODIFY COLUMN code VARCHAR(50)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[ALTER TABLE states MODIFY COLUMN dane_code VARCHAR(2) NULL]]></sql>
+            <sql><![CDATA[ALTER TABLE quotes
+                              MODIFY COLUMN client_request_id VARCHAR(64) NOT NULL]]></sql>
+            <sql><![CDATA[ALTER TABLE subscription_amendments
+                              MODIFY COLUMN client_request_id VARCHAR(64) NOT NULL]]></sql>
+            <sql><![CDATA[ALTER TABLE catalog_items MODIFY COLUMN code VARCHAR(50) NOT NULL]]></sql>
+            <sql><![CDATA[ALTER TABLE price_lists MODIFY COLUMN code VARCHAR(50) NOT NULL]]></sql>
+            <sql><![CDATA[ALTER TABLE limit_dimensions
+                              MODIFY COLUMN code VARCHAR(50) NOT NULL]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

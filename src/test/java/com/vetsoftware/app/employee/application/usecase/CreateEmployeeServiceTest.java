@@ -17,7 +17,6 @@ import com.vetsoftware.app.employee.application.port.out.EmployeePasswordHasherP
 import com.vetsoftware.app.employee.application.port.out.EmployeeRepository;
 import com.vetsoftware.app.employee.domain.Employee;
 import com.vetsoftware.app.employee.testsupport.EmployeeMother;
-import com.vetsoftware.app.entitlement.domain.CapacityUnit;
 import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -123,9 +122,8 @@ class CreateEmployeeServiceTest {
             when(companyQueryPort.findById(command.companyId()))
                     .thenReturn(Optional.of(EmployeeMother.VETRINA));
             when(passwordHasher.hash(command.password())).thenReturn("$2a$10$hashed");
-            doThrow(new CompanyCapacityLimitExceededException(command.companyId(),
-                    CapacityUnit.USER, 3, 3, 1)).when(employeeCapacityPort)
-                    .reserve(command.companyId());
+            doThrow(new CompanyCapacityLimitExceededException(command.companyId(), "USER", 3, 3, 1))
+                    .when(employeeCapacityPort).reserve(command.companyId());
 
             assertThatThrownBy(() -> service.execute(command))
                     .isInstanceOf(CompanyCapacityLimitExceededException.class)

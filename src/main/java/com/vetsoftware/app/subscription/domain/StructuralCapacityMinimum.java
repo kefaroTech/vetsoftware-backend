@@ -1,6 +1,7 @@
 package com.vetsoftware.app.subscription.domain;
 
-import java.util.EnumSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -18,10 +19,23 @@ import java.util.Set;
  * existente.
  *
  * <p>
- * <strong>Por que no estan las otras dos.</strong> {@code TERMINAL} y
- * {@code STORAGE_GB} no las consume el alta, y exigirlas aqui le negaria el
- * registro a una plataforma que no venda terminales de caja. Lo que se compra
- * despues se contrata despues.
+ * <strong>Por que aqui SI hay una lista escrita a mano, y en el resto del slice
+ * ya no.</strong> El changeset 333 saco la lista cerrada de unidades del
+ * catalogo comercial: {@code capacity_unit} es hoy el codigo del eje y admite
+ * los ocho que {@code limit_dimensions} tenga sembrados, porque vender un eje
+ * nuevo tiene que ser insertar una fila (#655). Esta lista es otra cosa y por
+ * eso no se movio: no dice <em>que se puede vender</em> —eso lo decide el
+ * catalogo— sino <em>que consume el propio alta de una empresa</em>, que es un
+ * hecho del codigo de {@code company} y no un dato de configuracion. El dia que
+ * el alta cree algo mas, la linea que hay que cambiar es la de aqui, y tiene
+ * que ser visible en el diff.
+ *
+ * <p>
+ * <strong>Por que no estan los demas ejes.</strong> {@code TERMINAL},
+ * {@code STORAGE_GB}, {@code ANIMAL}, {@code OWNER}, {@code APPOINTMENT} e
+ * {@code INVOICE} no los consume el alta, y exigirlos aqui le negaria el
+ * registro a una plataforma que no venda terminales de caja —o que no quiera
+ * regalar mascotas—. Lo que se compra despues se contrata despues.
  *
  * <p>
  * Este es el sitio donde vive la regla de producto «no puede existir jamas un
@@ -44,8 +58,12 @@ import java.util.Set;
  */
 public final class StructuralCapacityMinimum {
 
-    private static final Set<CapacityUnit> UNITS = EnumSet.of(CapacityUnit.BRANCH,
-            CapacityUnit.USER);
+    /**
+     * Los codigos de eje del minimo, en el orden en que se enumeran al fallar.
+     * Lista y no conjunto: el orden es parte del mensaje de error y un
+     * {@code Set.of} no lo garantiza.
+     */
+    private static final List<String> UNITS = List.of("BRANCH", "USER");
 
     private StructuralCapacityMinimum() {
     }
@@ -54,9 +72,15 @@ public final class StructuralCapacityMinimum {
      * Las unidades del minimo que <strong>no</strong> cubre el conjunto recibido.
      * Vacio significa que el catalogo alcanza para firmar un contrato inicial
      * operable.
+     *
+     * <p>
+     * La comparacion es exacta y no ignora mayusculas, igual que la colacion
+     * {@code ascii_bin} de {@code limit_dimensions.code} que el 332 dejo puesta: un
+     * catalogo sembrado con {@code 'user'} en minusculas no cubre el minimo, y
+     * decir lo contrario aqui solo aplazaria el fallo hasta la clave foranea.
      */
-    public static Set<CapacityUnit> missingFrom(Set<CapacityUnit> granted) {
-        EnumSet<CapacityUnit> missing = EnumSet.copyOf(UNITS);
+    public static Set<String> missingFrom(Set<String> granted) {
+        Set<String> missing = new LinkedHashSet<>(UNITS);
         if (granted != null) {
             missing.removeAll(granted);
         }

@@ -52,4 +52,41 @@ public interface ContractModuleLineView {
 
     /** {@code catalog_items.is_core} en crudo: 0 o 1, nunca un booleano. */
     Byte getCore();
+
+    /**
+     * {@code subscription_items.charge_mode}: {@code TRIAL}, {@code PAID},
+     * {@code FREE_LIMITED} o {@code EXPIRED_READ_ONLY}.
+     *
+     * <p>
+     * <strong>Es la columna que decide si esta linea cobra y si caduca</strong>, y
+     * viaja por linea a proposito: el estado del contrato dejo de significar "a
+     * este cliente no se le cobra", porque un mismo contrato lleva a la vez lineas
+     * en prueba y lineas de pago obligatorio (R-TRIAL-13).
+     */
+    String getChargeMode();
+
+    /**
+     * {@code subscription_items.trial_end_date}: el ultimo dia de prueba de
+     * <strong>esta</strong> linea, inclusive. Vacio si la linea no esta en prueba.
+     *
+     * <p>
+     * Cada linea vence por su cuenta (R-TRIAL-15). Barrer por el estado del
+     * contrato en vez de por esta fecha es lo que hace que un solo dia de mora mate
+     * la prueba de los tres modulos a la vez y para siempre.
+     */
+    LocalDate getTrialEndDate();
+
+    /**
+     * {@code company_trial_grants.policy_trial_outcome}: el desenlace
+     * <strong>congelado el dia que se concedio</strong> la prueba, no la politica
+     * viva del catalogo (R-TRIAL-28). Es lo que decide si la fila sucesora nace
+     * gratuita con techo, de pago o en solo lectura.
+     */
+    String getTrialOutcome();
+
+    /**
+     * {@code sub_modules.degradation_immune} en crudo: 0 o 1, nunca un booleano. Un
+     * submodulo inmune no se degrada jamas (R-ENT-05).
+     */
+    Byte getDegradationImmune();
 }

@@ -49,6 +49,28 @@ public class ConfiguratorEffectJpaEntity {
     @Column(name = "quantity")
     private Integer quantity;
 
+    /**
+     * Orden de aplicación. {@code INT NOT NULL DEFAULT 0} en el esquema, con
+     * {@code chk_configurator_effects_priority} acotándolo a 0..9999 y el índice
+     * {@code ix_configurator_effects_priority (priority, id)} sirviendo la única
+     * lectura caliente de la tabla.
+     *
+     * <p>
+     * <strong>Estuvo sin mapear desde que nació la tabla</strong>, y ese es el
+     * defecto que este campo cierra: {@code ddl-auto: validate} comprueba que lo
+     * mapeado exista en el esquema, no al revés, así que una columna que Java
+     * ignora no rompe nada al arrancar — simplemente no ordena nada, y el
+     * configurador aplicaba los efectos por {@code id}.
+     *
+     * <p>
+     * {@code int} y no {@code Integer}: la columna es {@code NOT NULL} y un
+     * envoltorio invitaría a mandar {@code null} desde el mapper, que Hibernate
+     * traduciría a un {@code INSERT} rechazado por la base en vez de a un error del
+     * dominio.
+     */
+    @Column(name = "priority", nullable = false)
+    private int priority;
+
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
@@ -108,6 +130,14 @@ public class ConfiguratorEffectJpaEntity {
 
     public void setQuantity(Integer quantity) {
         this.quantity = quantity;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
 
     public LocalDateTime getCreatedDate() {

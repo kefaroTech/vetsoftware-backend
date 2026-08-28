@@ -11,8 +11,21 @@
       Hibernate @SoftDelete). El login filtra automáticamente WHERE enabled=true.
     -->
 
+    <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta hoy):
+         dropColumn no tiene inversa automatica. Se restaura tal como la declaro 015
+         (VARCHAR(20) NOT NULL, sin default) -aqui con defaultValue="ACTIVE" solo para que el
+         ADD COLUMN no falle si ya hay filas; es un valor de relleno de reversion, no un dato
+         real, y de todas formas 178_add_status_to_employees ya lo reintroduce mas adelante en
+         la cadena con su propio significado. -->
     <changeSet id="069-employees-drop-status" author="claude">
         <dropColumn tableName="employees" columnName="status"/>
+        <rollback>
+            <addColumn tableName="employees">
+                <column name="status" type="VARCHAR(20)" defaultValue="ACTIVE">
+                    <constraints nullable="false"/>
+                </column>
+            </addColumn>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

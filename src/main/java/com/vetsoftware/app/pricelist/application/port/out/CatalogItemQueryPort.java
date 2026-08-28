@@ -2,6 +2,7 @@ package com.vetsoftware.app.pricelist.application.port.out;
 
 import com.vetsoftware.app.pricelist.domain.CatalogItemRef;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -36,4 +37,18 @@ public interface CatalogItemQueryPort {
      * seria peor que servirla sin nombre.
      */
     Map<Long, CatalogItemRef> findAllByIds(Collection<Long> catalogItemIds);
+
+    /**
+     * Los ids de los articulos en estado {@code ACTIVE}.
+     *
+     * <p>
+     * Es el conjunto contra el que R-PRICE-05 mide la cobertura de una tarifa al
+     * publicarla. <b>Filtra por {@code status} a diferencia de
+     * {@link #findAllByIds}</b>, y la diferencia es deliberada: alli se esta
+     * pintando el nombre de una fila historica y esconder un DEPRECATED dejaria la
+     * tarifa ilegible; aqui se esta decidiendo que articulos EXIGEN precio, y
+     * exigir precio de un articulo retirado impediria publicar cualquier tarifa
+     * nueva.
+     */
+    List<Long> findAllActiveIds();
 }

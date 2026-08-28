@@ -33,6 +33,15 @@
         </createTable>
         <addUniqueConstraint tableName="company_settings" columnNames="company_id, property_name"
                              constraintName="uq_company_settings_company_property"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback> explicito, Liquibase auto-invierte dropUniqueConstraint antes
+             que dropTable y revienta con "Cannot drop index ... needed in a foreign key
+             constraint" -uq_company_settings_company_property sostiene
+             fk_company_settings_company-. dropTable se lleva la FK y el indice de un solo
+             golpe. -->
+        <rollback>
+            <dropTable tableName="company_settings"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

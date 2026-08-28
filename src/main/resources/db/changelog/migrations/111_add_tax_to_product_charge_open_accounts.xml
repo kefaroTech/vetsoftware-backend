@@ -37,6 +37,20 @@
                               columnName="tax_amount" columnDataType="DECIMAL(12,2)"/>
         <addNotNullConstraint tableName="product_charge_open_accounts"
                               columnName="total_amount" columnDataType="DECIMAL(12,2)"/>
+    <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): el <sql> de backfill bloquea la auto-inversion del changeset entero. Se
+             declara a mano: suelta primero la FK sobre tax_id (fk_{t}_tax) y
+             despues las siete columnas -esquema, no dato-. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="product_charge_open_accounts" constraintName="fk_product_charge_open_accounts_tax"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="total_amount"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="tax_amount"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="base_amount"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="tax_name"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="tax_percentage"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="tax_id"/>
+            <dropColumn tableName="product_charge_open_accounts" columnName="has_tax"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

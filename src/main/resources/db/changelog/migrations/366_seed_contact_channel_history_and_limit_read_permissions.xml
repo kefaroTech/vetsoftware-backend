@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Mismo caso que 339/340: puertos con @PreAuthorize contra autoridades que no existen en
+         base_permissions, verificados uno a uno contra el @PreAuthorize REAL (no de segunda
+         mano) antes de escribir un solo INSERT. La lista de encargo traia CINCO codigos; se
+         siembran CUATRO -uno se descarta con evidencia de codigo, ver mas abajo- y se suma un
+         QUINTO grupo (cinco codigos de solo lectura) que aparecio en una auditoria de
+         autorizacion paralela.
+
+         companyContactChannel.{create,read,update} (318) — LOS TRES, tal como venian. Guard real:
+         `hasAuthority('admin.all') or (hasAuthority('companyContactChannel.<verbo>') and
+         @authz.isMyCompany(#companyId))` en los seis puertos de
+         companycontactchannel/application/port/in. Reutiliza el sub_module COMPANY (258): son
+         datos de la propia clinica, mismo criterio que company.read/update (279).
+
+         billingDocumentStatusHistory.read (327) — SI, para tenant. Guard identico en
+         Find/List.../ListBillingDocumentStatusChangesByStatusUseCase. Reutiliza SUBSCRIPTION_PAYMENT
+         (257): la bitacora cuelga por FK de subscription_billing_documents, mismo slice de dinero
+         que ya justifico 339 para paymentRefund/paymentAttempt/paymentReversalRequest.
+
+         billingDocumentStatusHistory.create (327) — DESCARTADO, a pesar de venir en el encargo
+         original. RecordBillingDocumentStatusChangeUseCase es el UNICO escritor de una de las seis
+         tablas que el modelo declara irreemplazables (solo-agrega, sin version ni enabled,
+         "el que escribe la prueba decide que se puede probar" si el propio admin de la clinica
+         pudiera anotar la transicion que le conviene sobre su propia factura). Sembrar la
+         autoridad de create para el rol tenant ADMIN abriria esa escritura; se deja
+         deliberadamente sin permiso tenant, exclusiva de plataforma.
+
+         LA CAUSA DE FONDO DE LOS DIEZ PUERTOS DE companyContactChannel/billingDocumentStatusHistory
+         (verificado en 216_remove_admin_all.xml, YA APLICADO): ese changeset borra 'admin.all' de
+         system_permissions/permissions/base_permissions Y de las tres tablas puente, sin dejar
+         rastro salvo en su <rollback>. Hoy 'admin.all' no es TRUE para NADIE, ni siquiera para el
+         superadmin de plataforma -que en estos diez puertos no tiene rama hasRole('SYSTEM')
+         alternativa, a diferencia de 339/340-. Sembrar aqui NO cierra esa mitad: el 403 de
+         plataforma sigue vivo hasta que el @PreAuthorize de esos diez puertos cambie
+         'admin.all' por 'hasRole(''SYSTEM'')' o equivalente. Eso es Java y no es de este
+         changeset -lo tiene encaminado quien pidio esta correccion-.
+
+         subscriptionItemLimit.read, companyLimitOverride.read, companyTrialGrant.read,
+         companyLimitEvent.read, companyEntitlementSnapshot.read — hallazgo DISTINTO, verificado
+         puerto a puerto en List*/Find*UseCase de subscriptionitemlimit, companylimitoverride,
+         companytrialgrant, companylimitevent y companyentitlementsnapshot: los cinco guards son
+         `hasRole('SYSTEM') or @authz.isMyCompany(#companyId)`, SIN ningun hasAuthority. No es un
+         permiso sin sembrar: es un permiso QUE EL CODIGO NO PIDE TODAVIA, asi que cualquier
+         empleado autenticado de la empresa -recepcion, peluqueria- ve hoy las excepciones de techo
+         negociadas, el techo del contrato, las concesiones de prueba, la bitacora de cupo y las
+         fotos de permisos de su clinica, sin que ningun rol se lo autorice especificamente. Sembrar
+         estos cinco codigos aqui es preparar el terreno -mismo NOT EXISTS idempotente que el resto
+         de este changeset-, NO es el arreglo: mientras el @PreAuthorize de esos cinco puertos no
+         incorpore `and hasAuthority('<code>')`, el permiso sembrado no se consulta y la
+         sobreexposicion sigue viva. Reutilizan el sub_module ENTITLEMENT (256): las cinco tablas
+         son insumo o salida del calculo de derechos de suscripcion.
+
+         ADMIN tenant recibe los NUEVE (3 + 1 + 5): son lo que sus propios guards @authz.isMyCompany
+         admiten para el actor de la clinica, mismo criterio que 339/340. Backfill acotado por
+         company_entitlements.access_level IN ('FULL','READ_ONLY') sobre los tres sub_modules ya
+         existentes (COMPANY, SUBSCRIPTION_PAYMENT, ENTITLEMENT); companyContactChannel.create/update
+         solo a FULL, mismo criterio que company.update en 279. Todas las sentencias son
+         idempotentes (guardas NOT EXISTS, nunca INSERT IGNORE). -->
+
+    <changeSet id="366_contact_channel_history_limit_base_permissions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT seed.name, seed.code, sm.id, TRUE
+            FROM (
+                SELECT 'Ver canales de contacto' AS name, 'companyContactChannel.read' AS code,
+                       'COMPANY' AS sub_module_code
+                UNION ALL SELECT 'Autorizar canal de contacto', 'companyContactChannel.create',
+                       'COMPANY'
+                UNION ALL SELECT 'Revocar/designar canal de contacto',
+                       'companyContactChannel.update', 'COMPANY'
+                UNION ALL SELECT 'Ver historial de estados del documento de cobro',
+                       'billingDocumentStatusHistory.read', 'SUBSCRIPTION_PAYMENT'
+                UNION ALL SELECT 'Ver limites de items de suscripcion',
+                       'subscriptionItemLimit.read', 'ENTITLEMENT'
+                UNION ALL SELECT 'Ver excepciones de techo negociadas',
+                       'companyLimitOverride.read', 'ENTITLEMENT'
+                UNION ALL SELECT 'Ver concesiones de prueba', 'companyTrialGrant.read',
+                       'ENTITLEMENT'
+                UNION ALL SELECT 'Ver bitacora de cupo', 'companyLimitEvent.read', 'ENTITLEMENT'
+                UNION ALL SELECT 'Ver fotos de derechos de suscripcion',
+                       'companyEntitlementSnapshot.read', 'ENTITLEMENT'
+            ) seed
+            JOIN sub_modules sm ON sm.code = seed.sub_module_code
+            LEFT JOIN base_permissions existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                DELETE FROM base_permissions
+                WHERE code IN (
+                    'companyContactChannel.read', 'companyContactChannel.create',
+                    'companyContactChannel.update', 'billingDocumentStatusHistory.read',
+                    'subscriptionItemLimit.read', 'companyLimitOverride.read',
+                    'companyTrialGrant.read', 'companyLimitEvent.read',
+                    'companyEntitlementSnapshot.read');
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="366_contact_channel_history_limit_base_role_permissions_admin" author="orlando">
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN (
+                'companyContactChannel.read', 'companyContactChannel.create',
+                'companyContactChannel.update', 'billingDocumentStatusHistory.read',
+                'subscriptionItemLimit.read', 'companyLimitOverride.read',
+                'companyTrialGrant.read', 'companyLimitEvent.read',
+                'companyEntitlementSnapshot.read')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id FROM base_permissions WHERE code IN (
+                        'companyContactChannel.read', 'companyContactChannel.create',
+                        'companyContactChannel.update', 'billingDocumentStatusHistory.read',
+                        'subscriptionItemLimit.read', 'companyLimitOverride.read',
+                        'companyTrialGrant.read', 'companyLimitEvent.read',
+                        'companyEntitlementSnapshot.read'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="366_contact_channel_permissions_backfill_companies" author="orlando">
+        <!-- COMPANY: read con FULL/READ_ONLY, create/update solo FULL -mismo criterio que
+             company.read/company.update en 279-. -->
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'COMPANY'
+            CROSS JOIN base_permissions bp
+            WHERE bp.code IN (
+                  'companyContactChannel.read', 'companyContactChannel.create',
+                  'companyContactChannel.update')
+              AND (
+                  (bp.code = 'companyContactChannel.read'
+                   AND ce.access_level IN ('FULL', 'READ_ONLY'))
+                  OR (bp.code IN ('companyContactChannel.create', 'companyContactChannel.update')
+                   AND ce.access_level = 'FULL'))
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions
+            WHERE code IN ('companyContactChannel.read', 'companyContactChannel.create',
+                            'companyContactChannel.update');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="366_billing_document_status_history_permissions_backfill_companies"
+              author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'SUBSCRIPTION_PAYMENT'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code = 'billingDocumentStatusHistory.read'
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE code = 'billingDocumentStatusHistory.read';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="366_entitlement_limit_permissions_backfill_companies" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'ENTITLEMENT'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code IN ('subscriptionItemLimit.read', 'companyLimitOverride.read',
+                               'companyTrialGrant.read', 'companyLimitEvent.read',
+                               'companyEntitlementSnapshot.read')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions
+            WHERE code IN ('subscriptionItemLimit.read', 'companyLimitOverride.read',
+                            'companyTrialGrant.read', 'companyLimitEvent.read',
+                            'companyEntitlementSnapshot.read');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="366_contact_channel_history_limit_role_permissions_backfill_admin"
+              author="orlando">
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id
+                AND p.code IN (
+                    'companyContactChannel.read', 'companyContactChannel.create',
+                    'companyContactChannel.update', 'billingDocumentStatusHistory.read',
+                    'subscriptionItemLimit.read', 'companyLimitOverride.read',
+                    'companyTrialGrant.read', 'companyLimitEvent.read',
+                    'companyEntitlementSnapshot.read')
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            DELETE FROM role_permissions
+            WHERE permission_id IN (
+                SELECT id FROM permissions WHERE code IN (
+                    'companyContactChannel.read', 'companyContactChannel.create',
+                    'companyContactChannel.update', 'billingDocumentStatusHistory.read',
+                    'subscriptionItemLimit.read', 'companyLimitOverride.read',
+                    'companyTrialGrant.read', 'companyLimitEvent.read',
+                    'companyEntitlementSnapshot.read'));
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

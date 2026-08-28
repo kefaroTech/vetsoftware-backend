@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Capa J (modelo-datos-suscripciones.html, ficha subscription_item_limits). EL TECHO
+         CONGELADO EL DÍA QUE EL CLIENTE FIRMÓ. Existe por la misma razón por la que se congela el
+         precio: si mañana se baja el modo limitado de 100 a 80 mascotas para los clientes nuevos,
+         Ana debe seguir en 100. Sin esta tabla, el próximo recálculo le bajaría el techo en
+         silencio y nadie lo vería.
+
+         D-75 acota lo que sí se mueve: las MEJORAS del cupo de fábrica se propagan a los contratos
+         vivos; los RECORTES no. Por eso la fila se actualiza después de nacer y por eso lleva
+         version -no es un documento inmutable-. Y esa propagación necesita su propia operación: usar
+         company_limit_overrides para documentar una mejora que no negoció nadie vaciaría de
+         significado el informe de a quién se le han hecho excepciones.
+
+         Claves foráneas COMPUESTAS con company_id (regla 2 del anexo de claves): el techo de una
+         clínica no puede colgar de la línea de contrato de otra. La copia de measure_kind va atada
+         por clave a limit_dimensions(id, measure_kind), igual que en el techo de fábrica.
+
+         D-14, que la base no puede imponer y va escrita aquí para que se convierta en prueba
+         automática: si un cliente tiene techo contratado y techo gratuito, MANDA EL CONTRATADO. El
+         escalón gratuito es un suelo, no un sumando; si se sumaran, activarse varios módulos
+         gratuitos inflaría el mismo cupo sin pagar. -->
+    <changeSet id="304_create_subscription_item_limits" author="orlando">
+        <createTable tableName="subscription_item_limits">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="subscription_item_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limit_dimension_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="measure_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="mode" type="VARCHAR(15)"><constraints nullable="false"/></column>
+            <column name="limit_quantity" type="INT UNSIGNED"/>
+            <column name="reset_period" type="VARCHAR(10)"/>
+            <column name="enforcement" type="VARCHAR(15)"><constraints nullable="false"/></column>
+            <column name="overage_unit_amount" type="DECIMAL(19,2)"/>
+            <column name="warn_threshold" type="TINYINT UNSIGNED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="subscription_item_limits"
+                             columnNames="company_id, subscription_item_id, limit_dimension_id"
+                             constraintName="uq_subscription_item_limits"/>
+
+        <sql><![CDATA[
+            ALTER TABLE subscription_item_limits
+                ADD CONSTRAINT chk_subscription_item_limits_measure_kind
+                    CHECK (measure_kind IN ('STOCK','CUMULATIVE','FLOW')),
+                ADD CONSTRAINT chk_subscription_item_limits_mode
+                    CHECK ((mode = 'LIMITED' AND limit_quantity IS NOT NULL)
+                           OR (mode = 'FULL' AND limit_quantity IS NULL)),
+                ADD CONSTRAINT chk_subscription_item_limits_reset_period
+                    CHECK ((measure_kind = 'FLOW'
+                            AND reset_period IN ('MONTH','QUARTER','SEMESTER'))
+                           OR (measure_kind <> 'FLOW' AND reset_period IS NULL)),
+                ADD CONSTRAINT chk_subscription_item_limits_enforcement
+                    CHECK (enforcement IN ('WARN','BLOCK','READ_ONLY','OVERAGE')),
+                ADD CONSTRAINT chk_subscription_item_limits_overage
+                    CHECK ((enforcement = 'OVERAGE'
+                            AND overage_unit_amount IS NOT NULL AND overage_unit_amount > 0
+                            AND measure_kind <> 'CUMULATIVE')
+                           OR (enforcement <> 'OVERAGE' AND overage_unit_amount IS NULL)),
+                ADD CONSTRAINT chk_subscription_item_limits_warn_threshold
+                    CHECK (warn_threshold BETWEEN 1 AND 100)
+        ]]></sql>
+
+        <createIndex tableName="subscription_item_limits"
+                     indexName="ix_subscription_item_limits_dimension">
+            <column name="limit_dimension_id"/>
+            <column name="measure_kind"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="subscription_item_limits"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_subscription_item_limits_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_item_limits"
+                                 baseColumnNames="company_id, subscription_item_id"
+                                 referencedTableName="subscription_items"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_subscription_item_limits_item"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_item_limits"
+                                 baseColumnNames="limit_dimension_id, measure_kind"
+                                 referencedTableName="limit_dimensions"
+                                 referencedColumnNames="id, measure_kind"
+                                 constraintName="fk_subscription_item_limits_dimension"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="subscription_item_limits"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CIERRA LA GRIETA FISCAL QUE DESTAPO EL ARREGLO DEL EXCEDENTE SIN IVA: subscription_items
+         (244) es LA TABLA DESDE LA QUE EL MOTOR DE FACTURACION LEE EL IMPUESTO DE CADA LINEA DEL
+         CONTRATO, y a diferencia de sus dos hermanas del mismo modelo fiscal -catalog_prices (234,
+         chk_catalog_prices_tax_coherence) y subscription_billing_document_taxes (250,
+         chk_sbdt_coherence)- nunca llevo el CHECK que ata tax_treatment con tax_rate. 244 solo
+         valida el rango (chk_subscription_items_tax_rate, tax_rate entre 0 y 100) y el IN de
+         tax_treatment (chk_subscription_items_tax_treatment); nada impide hoy una fila
+         (TAXED, 0.00) -linea que dice estar gravada y no cobra IVA- ni una (EXEMPT, 19.00) -linea
+         exenta que si lo cobra-. Las dos producen una factura incorrecta ante la DIAN.
+
+         FORMA COPIADA LITERAL DE catalog_prices (234:70-72), NO REDACTADA DE NUEVO: se releyeron
+         los dos CHECK hermanos antes de escribir este para no declarar la misma regla fiscal de
+         dos formas distintas -eso es peor que no tener regla, porque la discrepancia no la ve
+         nadie hasta que una tabla acepta lo que la otra rechaza-.
+           - catalog_prices (234:70-72): CHECK ((tax_treatment = 'TAXED' AND tax_rate > 0) OR
+             (tax_treatment <> 'TAXED' AND tax_rate = 0)). Misma forma exacta que aqui: esa tabla
+             tampoco tiene una columna de importe de impuesto, igual que subscription_items.
+           - subscription_billing_document_taxes (250:44-46): CHECK ((tax_treatment = 'TAXED' AND
+             tax_rate > 0) OR (tax_treatment <> 'TAXED' AND tax_rate = 0 AND tax_amount = 0)). La
+             tercera clausula (AND tax_amount = 0) no se copia aqui a proposito: esa tabla tiene
+             columna tax_amount (el IVA ya calculado en pesos) y subscription_items NO -aqui el
+             impuesto se calcula en el motor de facturacion a partir de tax_rate, nunca se
+             congela en la linea-, asi que exigir una columna que no existe seria un error de
+             copia, no de coherencia. Las dos hermanas dicen la MISMA regla sobre tax_treatment/
+             tax_rate; la clausula extra de 250 es de UNA columna que 244 no tiene, no una
+             discrepancia de criterio.
+
+         EL ENUM SE COMPROBO EN CODIGO, NO SE ASUMIO: com.vetsoftware.app.subscription.domain.
+         TaxTreatment tiene EXACTAMENTE tres valores -TAXED, EXEMPT, EXCLUDED-, los mismos que ya
+         enumera chk_subscription_items_tax_treatment (244:208-209). No hay un cuarto valor que la
+         rama "<> 'TAXED'" pueda estar metiendo de mas en el mismo saco: EXCLUDED (no sujeto a IVA)
+         y EXEMPT (exento) son fiscalmente distintos pero los dos exigen tax_rate = 0, que es
+         justo lo que dice esa rama. (Ojo, no confundir con otros TaxTreatment del arbol -product,
+         service, quote, pricelist, subscriptionbilling tienen el suyo propio, vertical slicing- :
+         este changeset toca solo subscription_items y su enum es el de la feature subscription).
+
+         NULL Y LA TRAMPA DEL CHECK: tax_treatment y tax_rate son NOT NULL desde que la tabla nace
+         (244:124 y 244:129-131, esta ultima con defaultValueNumeric 0.00), asi que ninguna rama
+         puede colapsar a NULL por una columna ausente -a diferencia de otros CHECK de este mismo
+         arbol que si tuvieron que decidirlo explicito (373, 374)-. No hace falta IS NULL en
+         ninguna rama.
+
+         COMPROBACION DE PRE-DESPLIEGUE (patron de 372/373/374: la consulta va escrita AQUI, no en
+         la cabeza de quien despliega). Si devuelve filas, el ADD CONSTRAINT de abajo falla y el
+         despliegue se cae -ejecutar ANTES de aplicar este changeset en cualquier entorno con datos-:
+           SELECT id, company_id, subscription_id, tax_treatment, tax_rate
+           FROM subscription_items
+           WHERE NOT ((tax_treatment = 'TAXED' AND tax_rate > 0)
+                   OR (tax_treatment <> 'TAXED' AND tax_rate = 0));
+
+         SEMILLAS DEL CHANGELOG REVISADAS: ninguna siembra filas de subscription_items. 310
+         (seed_price_list_2026) siembra las 64 filas de catalog_prices -su propia tabla, con su
+         propio CHECK ya vigente desde 234- gravadas al 19%, pero subscription_items nace vacia:
+         sus filas las crea el motor de contratacion en tiempo de ejecucion (CreateInitialSubscri
+         ptionService y quienes abren lineas via otrosi), nunca Liquibase. 260 y 308 solo mencionan
+         "subscription_items" en comentarios explicativos, no insertan en ella. La cadena completa
+         del changelog -incluida la propia 310- se verifico aplicando sobre un contenedor MySQL
+         desechable sin que este changeset la rompa (ver informe de la sesion).
+
+         ADD CONSTRAINT CHECK ES IN PLACE Y NO RECONSTRUYE (MySQL 8.0.16+, mismo patron que 374):
+         no reescribe una sola fila existente, asi que el tiempo de bloqueo no depende del volumen
+         de la tabla -solo el ALTER en si, que es de metadatos-. Con datos: subscription_items es
+         la tabla mas importante del modelo de suscripciones (244:7-8) y crece con cada alta/otrosi,
+         asi que en un entorno con filas hay que correr la comprobacion de pre-despliegue de arriba
+         primero; si vuelve vacia, el ALTER es rapido e independiente del volumen igual que 373/374.
+
+         ROLLBACK SIN EL PROBLEMA DE 374: el rollback de aqui SOLO hace DROP CHECK -no reinstala
+         una version mas estricta de nada-, asi que a diferencia del rollback de 374 -que
+         reintroduce chk_subscription_charges_type/sign mas estrictos y podria fallar si ya hay
+         filas OVERAGE- este rollback NUNCA puede fallar por datos: quitar una restriccion siempre
+         tiene exito, sea cual sea el contenido de la tabla. -->
+    <changeSet id="375_add_tax_coherence_check_to_subscription_items" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE subscription_items
+                ADD CONSTRAINT chk_subscription_items_tax_coherence
+                    CHECK ((tax_treatment = 'TAXED' AND tax_rate > 0)
+                           OR (tax_treatment <> 'TAXED' AND tax_rate = 0))
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE subscription_items
+                    DROP CHECK chk_subscription_items_tax_coherence
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

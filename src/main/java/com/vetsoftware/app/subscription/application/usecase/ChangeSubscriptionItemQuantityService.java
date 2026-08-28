@@ -6,6 +6,7 @@ import com.vetsoftware.app.subscription.application.dto.SubscriptionItemDto;
 import com.vetsoftware.app.subscription.application.port.in.ChangeSubscriptionItemQuantityUseCase;
 import com.vetsoftware.app.subscription.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionAmendmentRepository;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
@@ -61,13 +62,14 @@ public class ChangeSubscriptionItemQuantityService
     private final SystemUserValidationPort systemUserValidationPort;
     private final SubscriptionNumberPort subscriptionNumberPort;
     private final SubscriptionChangedPort subscriptionChangedPort;
+    private final SubscriptionAuditPort audit;
 
     public ChangeSubscriptionItemQuantityService(SubscriptionRepository subscriptionRepository,
             SubscriptionItemRepository itemRepository,
             SubscriptionAmendmentRepository amendmentRepository,
             EmployeeQueryPort employeeQueryPort, SystemUserValidationPort systemUserValidationPort,
             SubscriptionNumberPort subscriptionNumberPort,
-            SubscriptionChangedPort subscriptionChangedPort) {
+            SubscriptionChangedPort subscriptionChangedPort, SubscriptionAuditPort audit) {
         this.subscriptionRepository = subscriptionRepository;
         this.itemRepository = itemRepository;
         this.amendmentRepository = amendmentRepository;
@@ -75,6 +77,7 @@ public class ChangeSubscriptionItemQuantityService
         this.systemUserValidationPort = systemUserValidationPort;
         this.subscriptionNumberPort = subscriptionNumberPort;
         this.subscriptionChangedPort = subscriptionChangedPort;
+        this.audit = audit;
     }
 
     @Override
@@ -143,12 +146,17 @@ public class ChangeSubscriptionItemQuantityService
         // pisarse con la sucesora: hay que preguntarlo. Se excluye la original porque
         // ya no puede solaparse consigo misma.
         SubscriptionItemOverlapGuard.ensureNoOverlap(original.getCatalogItemId(),
-                successor.getPeriod(),
+                successor.getTierMin(), successor.getPeriod(),
                 itemRepository.findOverlapping(command.companyId(), subscription.getId(),
                         original.getCatalogItemId(), successor.getPeriod().from(),
                         successor.getPeriod().to(), original.getId()));
 
         SubscriptionItem saved = itemRepository.save(successor);
+
+        // Los dos valores juntos a proposito: «paso a 12» no es auditable sin saber de
+        // cuanto venia, y el delta mensual es lo que el cliente vio antes de aceptar.
+        audit.itemQuantityChanged(subscription.getId(), saved.getId(), original.getQuantity(),
+                saved.getQuantity(), proration.cycleDeltaAmount(), amendment.getId());
 
         subscriptionChangedPort.subscriptionChanged(
                 new SubscriptionChangedEvent(command.companyId(), subscription.getId(),

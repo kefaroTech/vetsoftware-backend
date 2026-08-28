@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- SIEMBRA MINIMA (ficha S9). Sin ella tres procesos arrancan calculando con constantes
+         inventadas. NO se siembra accounting_periods (quien abre el primer periodo y con que mes
+         es una decision de negocio que sigue sin tomarse), ni accounting_accounts /
+         account_mappings (el PUC dejo de ser obligatorio con NIIF; lo decide el contador
+         externo) ni legal_document_versions (no existe texto legal todavia). Las tres quedan
+         fuera a proposito, tal como marca la especificacion en S9 y S13.
+
+         uvt_values 2026: valor y resolucion confirmados en fuente especializada (INCP,
+         Actualicese). uvt_values 2025: valor confirmado, PERO el numero de la resolucion que lo
+         fijo NO se pudo verificar en esta sesion -queda escrito asi en legal_reference, a
+         completar por el contador antes de depender de esta fila en produccion-.
+
+         smmlv_values 2026: decreto, cifra, fecha del auto de suspension y existencia del decreto
+         transitorio confirmados (Holland & Knight, INCP, Ambito Juridico); el NUMERO del decreto
+         transitorio no se encontro y queda igual de explicito en status_reference.
+
+         vat_filing_periods 2026: art. 600 num. 1 ET, bimestral para responsable nuevo -no hay
+         ingresos del ano anterior con los que decidir cuatrimestral o bimestral, asi que la ley
+         fija bimestral el primer ano-. -->
+    <changeSet id="360_seed_uvt_smmlv_vat_reference_data" author="orlando">
+        <insert tableName="uvt_values">
+            <column name="fiscal_year" valueNumeric="2026"/>
+            <column name="value_amount" valueNumeric="52374.00"/>
+            <column name="legal_reference" value="Resolucion DIAN 000238 del 15-12-2025"/>
+        </insert>
+        <insert tableName="uvt_values">
+            <column name="fiscal_year" valueNumeric="2025"/>
+            <column name="value_amount" valueNumeric="49799.00"/>
+            <column name="legal_reference"
+                    value="Resolucion DIAN de fijacion de la UVT 2025 (numero pendiente de confirmar por el contador; valor 49799 verificado en fuente especializada)"/>
+        </insert>
+
+        <insert tableName="smmlv_values">
+            <column name="fiscal_year" valueNumeric="2026"/>
+            <column name="value_amount" valueNumeric="1750905.00"/>
+            <column name="legal_reference" value="Decreto 1469 de 2025"/>
+            <column name="status" value="SUSPENDED"/>
+            <column name="status_reference"
+                    value="Consejo de Estado, Seccion Segunda, auto del 12-02-2026 (suspension provisional); el Gobierno expidio decreto transitorio manteniendo el incremento (numero del decreto transitorio pendiente de confirmar por el contador)"/>
+            <column name="status_changed_on" valueDate="2026-02-12"/>
+        </insert>
+
+        <insert tableName="vat_filing_periods">
+            <column name="fiscal_year" valueNumeric="2026"/>
+            <column name="frequency" value="BIMONTHLY"/>
+            <column name="legal_reference"
+                    value="Art. 600 num. 1 ET - responsable nuevo: el primer ano es bimestral"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="vat_filing_periods">
+                <where>fiscal_year = 2026 AND frequency = 'BIMONTHLY'</where>
+            </delete>
+            <delete tableName="smmlv_values">
+                <where>fiscal_year = 2026</where>
+            </delete>
+            <delete tableName="uvt_values">
+                <where>fiscal_year IN (2025, 2026)</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- LOS FESTIVOS DE 2026 - COTEJADOS CONTRA FUENTE, NO SOLO CALCULADOS.
+         Version anterior de este changeset (misma sesion): las 18 fechas nacieron de un calculo
+         propio -algoritmo de Gauss para el Domingo de Pascua 2026 (5 de abril) mas la Ley 51 de
+         1983- y quedaron sin cotejar. El coordinador senalo el riesgo y esta version lo cierra
+         con tres fuentes independientes, consultadas por HTTP en esta misma sesion:
+           1. en.wikipedia.org/wiki/Public_holidays_in_Colombia - tabla con columna "Date in
+              2026" y notas [n 1] que citan la Ley 51 de 1983 articulo por articulo; es la fuente
+              que aporto la referencia de la ley nueva (nota 2).
+           2. officeholidays.com/countries/colombia/2026 - calendario independiente, coincide
+              fecha a fecha.
+           3. alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=193309 - TEXTO OFICIAL de la Ley
+              2578 de 2026 (dada el 01-06-2026), articulo 6, consultado directamente.
+         Las tres coincidieron en las 18 fechas que ya se habian calculado -confirma que el
+         algoritmo era correcto- Y DESTAPARON UNA DECIMONOVENA QUE EL CALCULO NO PODIA VER: una
+         ley no puede deducirse de Pascua ni de la 51/1983. Sin este cotejo esa fila habria
+         faltado en silencio y el sistema habria tratado el 9 de julio como un dia habil
+         cualquiera -exactamente el fallo que el coordinador senalo: un festivo que falta
+         desplaza en la direccion de incumplir, no en la de sobrar-.
+
+         LA LEY 2578 DE 2026 (texto oficial, articulo 6): "Declarase el Dia de Nuestra Senora del
+         Rosario de Chiquinquira, que se conmemora el 9 de julio de cada ano, como dia festivo de
+         caracter nacional... Se aplicaran las disposiciones de la ley 51 de 1983 para efectos de
+         determinar el dia en el cual se disfrute del descanso remunerado." Articulo 7: vigente
+         desde su promulgacion (01-06-2026) - por eso ya rige en 2026: el 9 de julio de este ano
+         es POSTERIOR a la promulgacion. Nominal 9 de julio (jueves en 2026) trasladado al lunes
+         siguiente, 13 de julio, con el mismo mecanismo de las otras diez trasladables.
+
+         SEGUNDO AJUSTE, mismo cotejo: "Dia de la Raza" fue renombrado por ley a "Dia de la
+         Diversidad Etnica y Cultural de la Nacion Colombiana" (nota [3] de Wikipedia, con cita a
+         mincultura.gov.co); la fecha no cambia (12 de octubre), solo el nombre. Se actualiza para
+         no sembrar un nombre derogado.
+
+         SON 19 FESTIVOS, NO 18, DESDE 2026. DOS DE LOS DIECINUEVE CAEN EN LUNES POR SI SOLOS ESTE
+         ANO -San Pedro y San Pablo (29-jun) y el 12 de octubre- y por eso van con moved=FALSE: el
+         CHECK chk_public_holidays_move exige nominal_date = holiday_date exactamente cuando no
+         hubo traslado real, no cuando la fecha pertenece a la lista trasladable.
+
+         precondition: solo se siembra 2026, y solo si el ano no tiene ya filas -evita duplicar la
+         siembra en un reintento del changelog-. -->
+    <changeSet id="360_seed_public_holidays_2026" author="orlando">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM public_holidays WHERE YEAR(holiday_date) = 2026
+            </sqlCheck>
+        </preConditions>
+
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-01-01"/>
+            <column name="name" value="Ano Nuevo"/>
+            <column name="nominal_date" valueDate="2026-01-01"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-01-12"/>
+            <column name="name" value="Reyes Magos (Epifania)"/>
+            <column name="nominal_date" valueDate="2026-01-06"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-03-23"/>
+            <column name="name" value="San Jose"/>
+            <column name="nominal_date" valueDate="2026-03-19"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-04-02"/>
+            <column name="name" value="Jueves Santo"/>
+            <column name="nominal_date" valueDate="2026-04-02"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-04-03"/>
+            <column name="name" value="Viernes Santo"/>
+            <column name="nominal_date" valueDate="2026-04-03"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-05-01"/>
+            <column name="name" value="Dia del Trabajo"/>
+            <column name="nominal_date" valueDate="2026-05-01"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-05-18"/>
+            <column name="name" value="Ascension del Senor"/>
+            <column name="nominal_date" valueDate="2026-05-14"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-06-08"/>
+            <column name="name" value="Corpus Christi"/>
+            <column name="nominal_date" valueDate="2026-06-04"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-06-15"/>
+            <column name="name" value="Sagrado Corazon de Jesus"/>
+            <column name="nominal_date" valueDate="2026-06-12"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-06-29"/>
+            <column name="name" value="San Pedro y San Pablo"/>
+            <column name="nominal_date" valueDate="2026-06-29"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Ley 51 de 1983 (cae en lunes por si solo en 2026)"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-07-13"/>
+            <column name="name" value="Nuestra Senora del Rosario de Chiquinquira"/>
+            <column name="nominal_date" valueDate="2026-07-09"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference"
+                    value="Ley 2578 de 2026, art. 6 (traslado por la Ley 51 de 1983); vigente desde su promulgacion el 01-06-2026"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-07-20"/>
+            <column name="name" value="Dia de la Independencia"/>
+            <column name="nominal_date" valueDate="2026-07-20"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-08-07"/>
+            <column name="name" value="Batalla de Boyaca"/>
+            <column name="nominal_date" valueDate="2026-08-07"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-08-17"/>
+            <column name="name" value="Asuncion de la Virgen"/>
+            <column name="nominal_date" valueDate="2026-08-15"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-10-12"/>
+            <column name="name" value="Dia de la Diversidad Etnica y Cultural de la Nacion Colombiana"/>
+            <column name="nominal_date" valueDate="2026-10-12"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference"
+                    value="Ley 51 de 1983 (cae en lunes por si solo en 2026); renombrado por ley, antes Dia de la Raza"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-11-02"/>
+            <column name="name" value="Todos los Santos"/>
+            <column name="nominal_date" valueDate="2026-11-01"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-11-16"/>
+            <column name="name" value="Independencia de Cartagena"/>
+            <column name="nominal_date" valueDate="2026-11-11"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-12-08"/>
+            <column name="name" value="Inmaculada Concepcion"/>
+            <column name="nominal_date" valueDate="2026-12-08"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2026-12-25"/>
+            <column name="name" value="Navidad"/>
+            <column name="nominal_date" valueDate="2026-12-25"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="public_holidays">
+                <where>YEAR(holiday_date) = 2026</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- LOS FESTIVOS DE 2027 - sembrados para que el sistema no entre a ese ano con la tabla
+         vacia: una sonda de dias habiles que falle el 1 de enero de 2027 es peor que un hueco
+         conocido hoy. Mismas tres fuentes que 2026, mismo cotejo, ahora con diecinueve fechas
+         porque la Ley 2578 de 2026 (art. 6) es permanente y no un evento de un solo ano. Domingo
+         de Pascua 2027 = 28 de marzo (Gauss), 1 de enero de 2027 = viernes (2026 no es bisiesto,
+         365 dias despues del jueves 1 de enero de 2026). officeholidays.com/countries/colombia/
+         2027 confirma las diecinueve fechas letra por letra, incluida Jul12 para Chiquinquira.
+
+         Un festivo trasladable que cae en lunes por si solo, este ano: Todos los Santos
+         (1 de noviembre de 2027 es lunes) - va con moved=FALSE por el mismo motivo que San Pedro
+         y San Pablo en 2026: el CHECK exige nominal_date = holiday_date cuando no hubo traslado
+         real. -->
+    <changeSet id="360_seed_public_holidays_2027" author="orlando">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM public_holidays WHERE YEAR(holiday_date) = 2027
+            </sqlCheck>
+        </preConditions>
+
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-01-01"/>
+            <column name="name" value="Ano Nuevo"/>
+            <column name="nominal_date" valueDate="2027-01-01"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-01-11"/>
+            <column name="name" value="Reyes Magos (Epifania)"/>
+            <column name="nominal_date" valueDate="2027-01-06"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-03-22"/>
+            <column name="name" value="San Jose"/>
+            <column name="nominal_date" valueDate="2027-03-19"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-03-25"/>
+            <column name="name" value="Jueves Santo"/>
+            <column name="nominal_date" valueDate="2027-03-25"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-03-26"/>
+            <column name="name" value="Viernes Santo"/>
+            <column name="nominal_date" valueDate="2027-03-26"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-05-01"/>
+            <column name="name" value="Dia del Trabajo"/>
+            <column name="nominal_date" valueDate="2027-05-01"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-05-10"/>
+            <column name="name" value="Ascension del Senor"/>
+            <column name="nominal_date" valueDate="2027-05-06"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-05-31"/>
+            <column name="name" value="Corpus Christi"/>
+            <column name="nominal_date" valueDate="2027-05-27"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-06-07"/>
+            <column name="name" value="Sagrado Corazon de Jesus"/>
+            <column name="nominal_date" valueDate="2027-06-04"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-07-05"/>
+            <column name="name" value="San Pedro y San Pablo"/>
+            <column name="nominal_date" valueDate="2027-06-29"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-07-12"/>
+            <column name="name" value="Nuestra Senora del Rosario de Chiquinquira"/>
+            <column name="nominal_date" valueDate="2027-07-09"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 2578 de 2026, art. 6 (traslado por la Ley 51 de 1983)"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-07-20"/>
+            <column name="name" value="Dia de la Independencia"/>
+            <column name="nominal_date" valueDate="2027-07-20"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-08-07"/>
+            <column name="name" value="Batalla de Boyaca"/>
+            <column name="nominal_date" valueDate="2027-08-07"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-08-16"/>
+            <column name="name" value="Asuncion de la Virgen"/>
+            <column name="nominal_date" valueDate="2027-08-15"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-10-18"/>
+            <column name="name" value="Dia de la Diversidad Etnica y Cultural de la Nacion Colombiana"/>
+            <column name="nominal_date" valueDate="2027-10-12"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983; renombrado por ley, antes Dia de la Raza"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-11-01"/>
+            <column name="name" value="Todos los Santos"/>
+            <column name="nominal_date" valueDate="2027-11-01"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Ley 51 de 1983 (cae en lunes por si solo en 2027)"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-11-15"/>
+            <column name="name" value="Independencia de Cartagena"/>
+            <column name="nominal_date" valueDate="2027-11-11"/>
+            <column name="moved" valueBoolean="true"/>
+            <column name="legal_reference" value="Ley 51 de 1983"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-12-08"/>
+            <column name="name" value="Inmaculada Concepcion"/>
+            <column name="nominal_date" valueDate="2027-12-08"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+        <insert tableName="public_holidays">
+            <column name="holiday_date" valueDate="2027-12-25"/>
+            <column name="name" value="Navidad"/>
+            <column name="nominal_date" valueDate="2027-12-25"/>
+            <column name="moved" valueBoolean="false"/>
+            <column name="legal_reference" value="Art. 177 CST"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="public_holidays">
+                <where>YEAR(holiday_date) = 2027</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

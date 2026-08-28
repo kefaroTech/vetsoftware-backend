@@ -1,13 +1,12 @@
 package com.vetsoftware.app.catalogitem.application.dto;
 
-import com.vetsoftware.app.catalogitem.domain.CapacityUnit;
 import com.vetsoftware.app.catalogitem.domain.CatalogItem;
 import com.vetsoftware.app.catalogitem.domain.CatalogItemStatus;
 import com.vetsoftware.app.catalogitem.domain.ItemType;
 import java.time.LocalDateTime;
 
 public record CatalogItemDto(Long id, String code, String name, String shortDescription,
-        String longDescription, ItemType itemType, CapacityUnit capacityUnit, boolean core,
+        String longDescription, ItemType itemType, String capacityUnit, boolean core,
         int minQuantity, Integer maxQuantity, int sortOrder, CatalogItemStatus status,
         LocalDateTime createdDate, boolean enabled) {
 

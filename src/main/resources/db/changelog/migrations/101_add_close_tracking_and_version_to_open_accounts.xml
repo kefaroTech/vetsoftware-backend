@@ -16,6 +16,16 @@
                 <constraints nullable="false"/>
             </column>
         </addColumn>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback>, el dropColumn batched auto-generado no suelta la FK primero. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="open_accounts"
+                                      constraintName="fk_open_accounts_closed_by"/>
+            <dropColumn tableName="open_accounts" columnName="version"/>
+            <dropColumn tableName="open_accounts" columnName="close_reason"/>
+            <dropColumn tableName="open_accounts" columnName="closed_at"/>
+            <dropColumn tableName="open_accounts" columnName="closed_by_id"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

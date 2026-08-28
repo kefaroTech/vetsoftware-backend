@@ -9,19 +9,19 @@ import com.vetsoftware.app.quote.domain.ConfiguratorQuestionRef;
 import com.vetsoftware.app.quote.domain.PriceListRef;
 import com.vetsoftware.app.quote.domain.QuoteItemType;
 import com.vetsoftware.app.quote.domain.TaxTreatment;
+import com.vetsoftware.app.quote.domain.TieredPrice;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
 import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
-import java.util.Optional;
+import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.context.annotation.Import;
 
 /**
@@ -83,9 +83,13 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
     private JpaCatalogQueryPorts.JpaCatalogPriceQueryPort pricePort;
     private JpaCatalogQueryPorts.JpaConfiguratorQuestionQueryPort questionPort;
 
+    /** Resuelto, no sembrado: el articulo CORE llega del changeset 308. */
+    private Long nucleo;
+
     @BeforeEach
     void sembrarElCatalogo() {
         SchemaSeed.seed(entityManager);
+        nucleo = SchemaSeed.catalogItemId(entityManager, "CORE");
         itemPort = new JpaCatalogQueryPorts.JpaCatalogItemQueryPort(entityManager);
         priceListPort = new JpaCatalogQueryPorts.JpaPriceListQueryPort(entityManager);
         pricePort = new JpaCatalogQueryPorts.JpaCatalogPriceQueryPort(entityManager);
@@ -94,8 +98,14 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
         articulo(ITEM_DEPRECATED, "RETIRADO", "Modulo retirado", "MODULE", null, "DEPRECATED",
                 true);
         articulo(ITEM_DRAFT, "BORRADOR", "Modulo en redaccion", "MODULE", null, "DRAFT", true);
-        articulo(ITEM_CAPACIDAD, "EXTRA_USER", "Usuario adicional", "CAPACITY", "USER", "ACTIVE",
-                true);
+        // TEST_EXTRA_USER y no EXTRA_USER: ese codigo lo ocupa el changeset 308 desde
+        // que el catalogo comercial se siembra en todos los entornos. Al chocar contra
+        // uq_catalog_items_code el ON DUPLICATE KEY de articulo() lo convertia en un
+        // no-op, ITEM_CAPACIDAD no llegaba a existir y los precios de abajo morian con
+        // una violacion de fk_catalog_prices_item que no mencionaba el catalogo por
+        // ninguna parte. Es #647 otra vez, en otro fichero.
+        articulo(ITEM_CAPACIDAD, "TEST_EXTRA_USER", "Usuario adicional", "CAPACITY", "USER",
+                "ACTIVE", true);
         articulo(ITEM_DESHABILITADO, "DE_BAJA", "Modulo de baja", "MODULE", null, "ACTIVE", false);
 
         listaEnBorrador();
@@ -112,7 +122,9 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
         precio(PRECIO_DESHABILITADO, SchemaSeed.PRICE_LIST_ID, ITEM_DEPRECATED, "MONTHLY", 1, null,
                 0, "5000.00", "0.00", "EXEMPT", false);
 
-        pregunta(PREGUNTA, "SELLS_PRODUCTS", true);
+        // TEST_SELLS_PRODUCTS: el changeset 312 ya siembra SELLS_PRODUCTS, y el
+        // ON DUPLICATE KEY de pregunta() convertia la colision en un no-op.
+        pregunta(PREGUNTA, "TEST_SELLS_PRODUCTS", true);
         pregunta(PREGUNTA_DESHABILITADA, "PREGUNTA_VIEJA", false);
         entityManager.flush();
     }
@@ -122,8 +134,10 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
         entityManager.createNativeQuery("""
                 INSERT INTO catalog_items (id, code, name, item_type, capacity_unit, is_core,
                                            min_quantity, max_quantity, sort_order, status,
-                                           created_date, enabled, version)
+                                           trial_eligibility, default_trial_days, trial_outcome,
+                                           service_nature, created_date, enabled, version)
                 VALUES (:id, :code, :name, :itemType, :capacityUnit, false, 1, NULL, 0, :status,
+                        'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
                         '2026-01-01 00:00:00', :enabled, 0)
                 ON DUPLICATE KEY UPDATE id = id
                 """).setParameter("id", id).setParameter("code", code).setParameter("name", name)
@@ -185,9 +199,8 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
             // La comprobacion de fondo de esta rodaja: el mapeo es POSICIONAL. Si alguien
             // reordena el SELECT, el codigo acaba en el nombre y nadie se entera hasta
             // que un cliente ve "CORE" como nombre de producto en su cotizacion.
-            assertThat(itemPort.findActiveById(SchemaSeed.CATALOG_ITEM_CORE_ID))
-                    .contains(new CatalogItemRef(SchemaSeed.CATALOG_ITEM_CORE_ID, "CORE",
-                            "Nucleo de prueba", QuoteItemType.MODULE));
+            assertThat(itemPort.findActiveById(nucleo)).contains(new CatalogItemRef(nucleo, "CORE",
+                    "Núcleo: clientes y mascotas", QuoteItemType.MODULE));
         }
 
         @Test
@@ -237,10 +250,59 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
     class Tarifas {
 
         @Test
-        @DisplayName("cada alias del SELECT cae en su campo: id, código y moneda")
+        @DisplayName("cada alias del SELECT cae en su campo: id, código, moneda y la ventana de"
+                + " vigencia (COT-020)")
         void cada_alias_cae_en_su_campo() {
+            // La ventana es la que siembra SchemaSeed: valid_from el 2026-01-01 y
+            // valid_to SIN valor. Ese null no es un hueco del fixture, es el caso real
+            // -la lista viva del catálogo se publica sin fecha de fin- y aquí se
+            // comprueba que el mapeo lo conserva en vez de convertirlo en una fecha.
             assertThat(priceListPort.findPublishedById(SchemaSeed.PRICE_LIST_ID))
-                    .contains(new PriceListRef(SchemaSeed.PRICE_LIST_ID, "LISTA-TEST", "COP"));
+                    .contains(new PriceListRef(SchemaSeed.PRICE_LIST_ID, "LISTA-TEST", "COP",
+                            LocalDate.of(2026, 1, 1), null));
+        }
+
+        /**
+         * <b>El otro extremo de la ventana, que hasta hoy no ejercitaba nadie.</b> El
+         * andamio publica la lista SIN fecha de fin, asi que {@code date(row[4])} solo
+         * se habia ejecutado sobre un nulo: la rama que convierte una columna
+         * {@code DATE} con valor viajaba sin red desde que se escribio. Y no la ve el
+         * compilador, porque una consulta nativa entrega {@code Object} y el reparto de
+         * tipos ocurre en ejecucion.
+         */
+        @Test
+        @DisplayName("una lista con cierre trae las DOS fechas de la ventana, no solo el inicio")
+        void una_lista_con_cierre_trae_las_dos_fechas() {
+            entityManager
+                    .createNativeQuery(
+                            "UPDATE price_lists SET valid_to = '2026-12-31' WHERE id = :id")
+                    .setParameter("id", SchemaSeed.PRICE_LIST_ID).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(priceListPort.findPublishedById(SchemaSeed.PRICE_LIST_ID))
+                    .contains(new PriceListRef(SchemaSeed.PRICE_LIST_ID, "LISTA-TEST", "COP",
+                            LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)));
+        }
+
+        /**
+         * <b>Que entrega el driver para una columna {@code DATE}.</b> El helper
+         * {@code JpaCatalogQueryPorts.date(Object)} lleva cuatro caminos —
+         * {@code LocalDate}, {@code java.sql.Date}, {@code Timestamp} y un
+         * {@code parse} del texto— escritos «por si acaso»: compilan todos, pero contra
+         * MySQL de verdad solo se recorre UNO, y hasta ahora nadie sabia cual. Este
+         * caso lo nombra, de modo que si un cambio de driver mueve el tipo el fallo
+         * salga aqui —con el nombre de la clase que llego— y no disfrazado de tarifa
+         * que de pronto no se resuelve.
+         */
+        @Test
+        @DisplayName("el driver entrega la columna DATE como LocalDate: es la rama viva del mapeo")
+        void el_driver_entrega_la_columna_date_como_local_date() {
+            Object crudo = entityManager
+                    .createNativeQuery("SELECT valid_from FROM price_lists WHERE id = :id")
+                    .setParameter("id", SchemaSeed.PRICE_LIST_ID).getSingleResult();
+
+            assertThat(crudo).isInstanceOf(LocalDate.class).isEqualTo(LocalDate.of(2026, 1, 1));
         }
 
         @Test
@@ -267,69 +329,100 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
     }
 
     @Nested
-    @DisplayName("JpaCatalogPriceQueryPort — precio por tramos")
+    @DisplayName("JpaCatalogPriceQueryPort — los tramos, TODOS (D-66)")
     class Precios {
 
         @Test
-        @DisplayName("cada alias cae en su campo: importe, tasa, tratamiento e incluidas")
+        @DisplayName("cada alias cae en su campo: importe, tasa, tratamiento, incluidas y tramo")
         void cada_alias_cae_en_su_campo() {
-            assertThat(pricePort.findApplicable(SchemaSeed.PRICE_LIST_ID,
-                    SchemaSeed.CATALOG_ITEM_CORE_ID, BillingCycle.MONTHLY, 1))
-                    .contains(new CatalogPriceRef(new BigDecimal("100000.00"),
-                            new BigDecimal("19.00"), TaxTreatment.TAXED, 2));
-        }
-
-        @ParameterizedTest(name = "para {0} unidades el precio unitario es {1}")
-        @CsvSource({"1, 12000.00", "9, 12000.00", "10, 12000.00", "11, 9000.00", "15, 9000.00",
-                "500, 9000.00"})
-        @DisplayName("toma el tramo cuyo tier_min es el más alto de los que no superan la cantidad")
-        void toma_el_tramo_mas_alto_que_no_supera_la_cantidad(int cantidad, String esperado) {
-            // Sin el ORDER BY tier_min DESC el resultado depende del orden fisico de las
-            // filas: para 15 usuarios podria devolver 12.000 en vez de 9.000 y la oferta
-            // saldria un 33 % mas cara de lo pactado.
-            assertThat(pricePort.findApplicable(SchemaSeed.PRICE_LIST_ID, ITEM_CAPACIDAD,
-                    BillingCycle.MONTHLY, cantidad)).get().extracting(CatalogPriceRef::unitAmount)
-                    .isEqualTo(new BigDecimal(esperado));
+            assertThat(
+                    pricePort.findAllTiers(SchemaSeed.PRICE_LIST_ID, nucleo, BillingCycle.MONTHLY))
+                    .containsExactly(new CatalogPriceRef(new BigDecimal("100000.00"),
+                            new BigDecimal("19.00"), TaxTreatment.TAXED, 2, 1, null));
         }
 
         @Test
-        @DisplayName("el tramo abierto por arriba (tier_max nulo) cubre cualquier cantidad")
-        void el_tramo_abierto_por_arriba_cubre_cualquier_cantidad() {
-            assertThat(pricePort.findApplicable(SchemaSeed.PRICE_LIST_ID, ITEM_CAPACIDAD,
-                    BillingCycle.MONTHLY, 100_000)).isPresent();
+        @DisplayName("quince usuarios se cobran por tramos ACUMULATIVOS: diez a 12.000 mas tres a "
+                + "9.000 dan 147.000, no trece a 9.000")
+        void quince_usuarios_se_cobran_por_tramos_acumulativos() {
+            // ESTE TEST SUSTITUYE al que afirmaba «para 15 unidades el precio unitario es
+            // 9.000», que no era un falso verde sino la prueba que DEFENDIA el defecto:
+            // daba por correcta la aritmetica plana que D-66 declara incorrecta. La
+            // consulta ya no elige tramo —devuelve los dos— y el reparto lo hace el
+            // dominio, que es donde se puede comprobar.
+            List<CatalogPriceRef> tramos = pricePort.findAllTiers(SchemaSeed.PRICE_LIST_ID,
+                    ITEM_CAPACIDAD, BillingCycle.MONTHLY);
+
+            TieredPrice repartido = TieredPrice.of(QuoteItemType.CAPACITY, 15, tramos);
+
+            assertThat(repartido.includedQuantity()).isEqualTo(2);
+            assertThat(repartido.tiers()).hasSize(2);
+
+            BigDecimal total = BigDecimal.ZERO;
+            for (CatalogPriceRef tramo : repartido.tiers()) {
+                int unidades = tramo.unitsWithin(15 - repartido.includedQuantity());
+                total = total.add(tramo.unitAmount().multiply(BigDecimal.valueOf(unidades)));
+            }
+
+            assertThat(total).isEqualByComparingTo("147000.00");
+            // Lo que devolvia la consulta vieja: trece unidades al precio del tramo alto.
+            assertThat(total).isNotEqualByComparingTo("117000.00");
+        }
+
+        @Test
+        @DisplayName("devuelve los tramos ordenados por tier_min, sin recortar por cantidad")
+        void devuelve_los_tramos_ordenados_sin_recortar() {
+            List<CatalogPriceRef> tramos = pricePort.findAllTiers(SchemaSeed.PRICE_LIST_ID,
+                    ITEM_CAPACIDAD, BillingCycle.MONTHLY);
+
+            assertThat(tramos).extracting(CatalogPriceRef::tierMin).containsExactly(1, 11);
+            assertThat(tramos).extracting(CatalogPriceRef::tierMax).containsExactly(10, null);
+            assertThat(tramos).extracting(CatalogPriceRef::unitAmount)
+                    .containsExactly(new BigDecimal("12000.00"), new BigDecimal("9000.00"));
+        }
+
+        @Test
+        @DisplayName("una cantidad que cabe entera en el primer tramo no arrastra el segundo")
+        void una_cantidad_que_cabe_en_el_primer_tramo() {
+            TieredPrice repartido = TieredPrice.of(QuoteItemType.CAPACITY, 5, pricePort
+                    .findAllTiers(SchemaSeed.PRICE_LIST_ID, ITEM_CAPACIDAD, BillingCycle.MONTHLY));
+
+            assertThat(repartido.tiers()).hasSize(1);
+            assertThat(repartido.tiers().get(0).unitAmount())
+                    .isEqualByComparingTo(new BigDecimal("12000.00"));
         }
 
         @Test
         @DisplayName("el ciclo de facturación acota: un precio anual no vale para una oferta mensual")
         void el_ciclo_de_facturacion_acota() {
-            Optional<CatalogPriceRef> anual = pricePort.findApplicable(SchemaSeed.PRICE_LIST_ID,
-                    ITEM_CAPACIDAD, BillingCycle.ANNUAL, 1);
+            List<CatalogPriceRef> anual = pricePort.findAllTiers(SchemaSeed.PRICE_LIST_ID,
+                    ITEM_CAPACIDAD, BillingCycle.ANNUAL);
 
-            assertThat(anual).get().extracting(CatalogPriceRef::unitAmount)
-                    .isEqualTo(new BigDecimal("100000.00"));
-            assertThat(anual).get().extracting(CatalogPriceRef::taxTreatment)
-                    .isEqualTo(TaxTreatment.EXCLUDED);
+            assertThat(anual).singleElement().satisfies(tramo -> {
+                assertThat(tramo.unitAmount()).isEqualTo(new BigDecimal("100000.00"));
+                assertThat(tramo.taxTreatment()).isEqualTo(TaxTreatment.EXCLUDED);
+            });
         }
 
         @Test
         @DisplayName("un precio dado de baja no se cotiza")
         void un_precio_dado_de_baja_no_se_cotiza() {
-            assertThat(pricePort.findApplicable(SchemaSeed.PRICE_LIST_ID, ITEM_DEPRECATED,
-                    BillingCycle.MONTHLY, 1)).isEmpty();
+            assertThat(pricePort.findAllTiers(SchemaSeed.PRICE_LIST_ID, ITEM_DEPRECATED,
+                    BillingCycle.MONTHLY)).isEmpty();
         }
 
         @Test
         @DisplayName("un artículo sin precio en esa tarifa devuelve vacío")
         void un_articulo_sin_precio_en_esa_tarifa_devuelve_vacio() {
-            assertThat(pricePort.findApplicable(LISTA_BORRADOR, ITEM_CAPACIDAD,
-                    BillingCycle.MONTHLY, 1)).isEmpty();
+            assertThat(pricePort.findAllTiers(LISTA_BORRADOR, ITEM_CAPACIDAD, BillingCycle.MONTHLY))
+                    .isEmpty();
         }
 
         @Test
         @DisplayName("transporta included_quantity, que es lo que R15 necesita para restar")
         void transporta_included_quantity() {
-            assertThat(pricePort.findApplicable(SchemaSeed.PRICE_LIST_ID, ITEM_CAPACIDAD,
-                    BillingCycle.MONTHLY, 5)).get().extracting(CatalogPriceRef::includedQuantity)
+            assertThat(pricePort.findAllTiers(SchemaSeed.PRICE_LIST_ID, ITEM_CAPACIDAD,
+                    BillingCycle.MONTHLY)).first().extracting(CatalogPriceRef::includedQuantity)
                     .isEqualTo(2);
         }
     }
@@ -342,7 +435,7 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
         @DisplayName("lee el id y el código, que es lo único que se copia a la respuesta")
         void lee_el_id_y_el_codigo() {
             assertThat(questionPort.findById(PREGUNTA))
-                    .contains(new ConfiguratorQuestionRef(PREGUNTA, "SELLS_PRODUCTS"));
+                    .contains(new ConfiguratorQuestionRef(PREGUNTA, "TEST_SELLS_PRODUCTS"));
         }
 
         @Test

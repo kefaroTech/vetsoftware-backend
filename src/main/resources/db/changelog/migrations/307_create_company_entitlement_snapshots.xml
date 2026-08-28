@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Capa J (modelo-datos-suscripciones.html, ficha company_entitlement_snapshots). LA FOTO DE
+         CADA RECÁLCULO. Aquí hay un choque real entre dos virtudes del modelo: los permisos son
+         derivados y por eso se borran y se reescriben enteros en cada recálculo -eso es lo que los
+         hace reparables-, pero borrar y reescribir DESTRUYE LA EVIDENCIA: pasado un año nadie puede
+         demostrar qué veía Ana el 3 de marzo. Se resuelve con una foto POR RECÁLCULO y no por
+         permiso: crece con los cambios de contrato, que son lentos, no con el número de pantallas.
+
+         Va ANTES que los límites y no después: cada día sin ella es evidencia que se pierde y no se
+         reconstruye.
+
+         payload como documento JSON a propósito, para que la bitácora no se rompa cada vez que
+         evolucione la tabla de permisos. payload_format_version va como COLUMNA y no dentro del
+         documento: sin ella, el día que alguien renombre una clave, las consultas sobre fotos
+         viejas devolverían vacío en silencio -que es justo el fallo que esta tabla existe para
+         evitar-, y dentro del JSON no es indexable ni verificable por el motor.
+
+         El trío del actor, según la convención: proceso automático, persona de plataforma o
+         empleado, con la base comprobando que solo uno esté relleno. El diseño escribía "actor" como
+         texto libre, que es una referencia que nadie puede cruzar.
+
+         BITÁCORA PROBATORIA: sin enabled y sin version, solo se agrega.
+
+         ix_company_entitlement_snapshots_company: un salto y una fila para "qué veía el día X". -->
+    <changeSet id="307_create_company_entitlement_snapshots" author="orlando">
+        <createTable tableName="company_entitlement_snapshots">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="recalculated_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="actor_employee_id" type="BIGINT"/>
+            <column name="actor_system_user_id" type="BIGINT"/>
+            <column name="actor_is_process" type="BOOLEAN"><constraints nullable="false"/></column>
+            <column name="trigger_reason" type="VARCHAR(40)"><constraints nullable="false"/></column>
+            <column name="amendment_id" type="BIGINT"/>
+            <column name="payload" type="JSON"><constraints nullable="false"/></column>
+            <column name="payload_format_version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE company_entitlement_snapshots
+                ADD CONSTRAINT chk_company_entitlement_snapshots_trigger
+                    CHECK (trigger_reason IN ('CONTRACT_AMENDMENT','TRIAL_EXPIRED','DUNNING',
+                                              'MANUAL','REPAIR')),
+                ADD CONSTRAINT chk_company_entitlement_snapshots_amendment
+                    CHECK ((trigger_reason = 'CONTRACT_AMENDMENT' AND amendment_id IS NOT NULL)
+                           OR trigger_reason <> 'CONTRACT_AMENDMENT'),
+                ADD CONSTRAINT chk_company_entitlement_snapshots_actor
+                    CHECK (((actor_employee_id IS NOT NULL)
+                            + (actor_system_user_id IS NOT NULL)
+                            + (actor_is_process = TRUE)) = 1),
+                ADD CONSTRAINT chk_company_entitlement_snapshots_payload_version
+                    CHECK (payload_format_version >= 1)
+        ]]></sql>
+
+        <createIndex tableName="company_entitlement_snapshots"
+                     indexName="ix_company_entitlement_snapshots_company">
+            <column name="company_id"/>
+            <column name="recalculated_at"/>
+        </createIndex>
+        <createIndex tableName="company_entitlement_snapshots"
+                     indexName="ix_company_entitlement_snapshots_amendment">
+            <column name="company_id"/>
+            <column name="amendment_id"/>
+        </createIndex>
+        <createIndex tableName="company_entitlement_snapshots"
+                     indexName="ix_company_entitlement_snapshots_employee">
+            <column name="company_id"/>
+            <column name="actor_employee_id"/>
+        </createIndex>
+        <createIndex tableName="company_entitlement_snapshots"
+                     indexName="ix_company_entitlement_snapshots_system_user">
+            <column name="actor_system_user_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="company_entitlement_snapshots"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_entitlement_snapshots_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_entitlement_snapshots"
+                                 baseColumnNames="company_id, amendment_id"
+                                 referencedTableName="subscription_amendments"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_company_entitlement_snapshots_amendment"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_entitlement_snapshots"
+                                 baseColumnNames="company_id, actor_employee_id"
+                                 referencedTableName="employees"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_company_entitlement_snapshots_employee"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_entitlement_snapshots"
+                                 baseColumnNames="actor_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_entitlement_snapshots_system_user"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="company_entitlement_snapshots"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

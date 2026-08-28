@@ -5,6 +5,7 @@ import com.vetsoftware.app.electronicdocument.application.port.out.ElectronicDoc
 import com.vetsoftware.app.electronicdocument.application.usecase.DocumentTransmitter;
 import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocument;
+import com.vetsoftware.app.infrastructure.observability.ScheduledJobCatalog;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry.Outcome;
 import java.time.Duration;
@@ -29,9 +30,13 @@ import org.springframework.stereotype.Component;
  * proveedor sin polling devolvería vacío y sería no-op).
  *
  * <p>
- * <b>El ciclo es de 12h</b> ({@code dian.reconciliation.poll-delay-ms}),
- * contadas desde que TERMINA la pasada anterior. Es el techo de cuanto puede
- * quedarse un documento en PENDIENTE cuando su webhook se perdio.
+ * <b>Dos pasadas diarias a hora fija</b> ({@code dian.reconciliation.cron}, por
+ * defecto {@code 0 30 2,14 * * *} en {@code America/Bogota}), declaradas en
+ * {@link com.vetsoftware.app.infrastructure.observability.ScheduledJobCatalog}.
+ * El hueco mayor entre pasadas —12 h— sigue siendo el techo de cuanto puede
+ * quedarse un documento en PENDIENTE cuando su webhook se perdio; lo que cambia
+ * es que ahora ese techo es <b>conocido y constante</b> en vez de depender de
+ * la hora del ultimo despliegue (#609).
  *
  * <p>
  * El lote se reclama con {@link DianJobLeasePort}: este job corre en todas las
@@ -41,7 +46,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class PendingReconciliationJob {
     private static final Logger log = LoggerFactory.getLogger(PendingReconciliationJob.class);
-    private static final String JOB_NAME = "dian.pending.reconciliation";
+    private static final ScheduledJobCatalog JOB = ScheduledJobCatalog.DIAN_PENDING_RECONCILIATION;
 
     private final ElectronicDocumentRepository repository;
     private final DianJobLeasePort leasePort;
@@ -63,9 +68,9 @@ public class PendingReconciliationJob {
         this.lease = lease;
     }
 
-    @Scheduled(initialDelayString = "${dian.reconciliation.initial-delay-ms:120000}", fixedDelayString = "${dian.reconciliation.poll-delay-ms:43200000}")
+    @Scheduled(cron = "${dian.reconciliation.cron:0 30 2,14 * * *}", zone = ScheduledJobCatalog.ZONE)
     public void reconcilePending() {
-        telemetry.observe(JOB_NAME, this::executeReconciliation);
+        telemetry.observe(JOB, this::executeReconciliation);
     }
 
     private Outcome executeReconciliation() {

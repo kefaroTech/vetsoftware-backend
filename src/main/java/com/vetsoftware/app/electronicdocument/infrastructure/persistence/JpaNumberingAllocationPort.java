@@ -6,6 +6,7 @@ import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionNotEffec
 import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionRangeExhaustedException;
 import com.vetsoftware.app.numberingresolution.infrastructure.persistence.NumberingResolutionJpaEntity;
 import com.vetsoftware.app.numberingresolution.infrastructure.persistence.NumberingResolutionJpaRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
@@ -36,8 +37,19 @@ import org.springframework.stereotype.Component;
 public class JpaNumberingAllocationPort implements NumberingAllocationPort {
     private final NumberingResolutionJpaRepository repository;
 
-    public JpaNumberingAllocationPort(NumberingResolutionJpaRepository repository) {
+    /**
+     * Reloj del negocio, con zona (D-81). La vigencia de una resolucion de la DIAN
+     * se compara contra <b>hoy en Bogota</b>: con el reloj sin zona, una emision de
+     * las 19:30 del ultimo dia de vigencia se rechazaba con
+     * {@link NumberingResolutionNotEffectiveException} —y la del dia anterior al
+     * {@code validFrom} se aceptaba—. Las dos son incorrectas frente a la
+     * resolucion, que esta fechada en hora local.
+     */
+    private final Clock clock;
+
+    public JpaNumberingAllocationPort(NumberingResolutionJpaRepository repository, Clock clock) {
         this.repository = repository;
+        this.clock = clock;
     }
 
     @Override
@@ -48,7 +60,7 @@ public class JpaNumberingAllocationPort implements NumberingAllocationPort {
         if (r == null)
             return Optional.empty();
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         if (today.isBefore(r.getValidFrom()) || today.isAfter(r.getValidTo())) {
             throw new NumberingResolutionNotEffectiveException(r.getResolutionNumber(),
                     r.getValidFrom(), r.getValidTo());
@@ -73,7 +85,7 @@ public class JpaNumberingAllocationPort implements NumberingAllocationPort {
         if (r == null)
             return Optional.empty();
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         if (today.isBefore(r.getValidFrom()) || today.isAfter(r.getValidTo())) {
             throw new NumberingResolutionNotEffectiveException(r.getResolutionNumber(),
                     r.getValidFrom(), r.getValidTo());

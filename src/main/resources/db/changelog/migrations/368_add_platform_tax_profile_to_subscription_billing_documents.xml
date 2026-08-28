@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- LA CLAVE HACIA LA IDENTIDAD CON LA QUE SE EMITIO. subscription_billing_documents (249) es
+         la cuenta de cobro que VetSoftware le emite a la clinica -no la factura DIAN de la
+         clinica a sus clientes, esa vive en electronic_documents-. Ya congela A QUIEN se emitio
+         (billing_profile_id, 316) pero no DESDE QUE IDENTIDAD FISCAL PROPIA se emitio, porque esa
+         identidad (367) no existia hasta este mismo PR. Mismo patron que
+         364_add_tax_profile_to_electronic_documents: FK simple hacia la FILA exacta de
+         platform_tax_profiles, no hacia "la vigente hoy" -si la razon social de VetSoftware
+         cambia, esta columna sigue apuntando a la que regia cuando se emitio ese documento-.
+
+         NULABLE, y otra vez a proposito, mismo motivo que billing_profile_id en 249: 367 no siembra
+         ninguna fila -no hay razon social ni NIT reales que sembrar todavia-, asi que hoy no hay
+         ninguna platform_tax_profiles a la que apuntar. Sin backfill: no existe fila vigente
+         contra la que resolverlo. NOT NULL es trabajo de aplicacion (resolver la vigente al
+         emitir, ver el aviso de Java en 367) mas la semilla real, no un cambio de esquema. -->
+    <changeSet id="368_add_platform_tax_profile_to_subscription_billing_documents" author="orlando">
+        <addColumn tableName="subscription_billing_documents">
+            <column name="platform_tax_profile_id" type="BIGINT"/>
+        </addColumn>
+
+        <createIndex tableName="subscription_billing_documents"
+                     indexName="ix_sbd_platform_tax_profile">
+            <column name="platform_tax_profile_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="subscription_billing_documents"
+                                 baseColumnNames="platform_tax_profile_id"
+                                 referencedTableName="platform_tax_profiles"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_sbd_platform_tax_profile"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="subscription_billing_documents"
+                                      constraintName="fk_sbd_platform_tax_profile"/>
+            <dropIndex tableName="subscription_billing_documents"
+                       indexName="ix_sbd_platform_tax_profile"/>
+            <dropColumn tableName="subscription_billing_documents"
+                       columnName="platform_tax_profile_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

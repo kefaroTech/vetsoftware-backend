@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.subscriptionbilling.application.command.VoidSubscriptionChargeCommand;
 import com.vetsoftware.app.subscriptionbilling.application.dto.SubscriptionChargeDto;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingAuditPort;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingMetrics;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.domain.ChargeStatus;
 import com.vetsoftware.app.subscriptionbilling.domain.ChargeType;
@@ -47,11 +49,16 @@ class VoidSubscriptionChargeServiceTest {
     @Mock
     private SubscriptionChargeRepository repository;
 
+    @Mock
+    private SubscriptionBillingMetrics metrics;
+    @Mock
+    private SubscriptionBillingAuditPort audit;
+
     private VoidSubscriptionChargeService service;
 
     @BeforeEach
     void setUp() {
-        service = new VoidSubscriptionChargeService(repository, RELOJ);
+        service = new VoidSubscriptionChargeService(repository, metrics, audit, RELOJ);
     }
 
     private static SubscriptionCharge original() {
