@@ -1,5 +1,7 @@
 package com.vetsoftware.app.infrastructure.config;
 
+import com.vetsoftware.app.infrastructure.observability.ReadObservationMeterFilter;
+import com.vetsoftware.app.infrastructure.observability.ReadObservationMeterFilterAnnouncer;
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.aop.ObservedAspect;
 import org.springframework.context.annotation.Bean;
@@ -43,5 +45,29 @@ public class ObservabilityConfig {
     @Bean
     public ObservedAspect observedAspect(ObservationRegistry registry) {
         return new ObservedAspect(registry);
+    }
+
+    /**
+     * Retira 152 series de latencia de lectura que duplican
+     * {@code http_server_requests_seconds} y que ningún panel consulta. El motivo
+     * completo, con la medición y con el riesgo asumido, está en
+     * {@link ReadObservationMeterFilter}; el aviso de arranque lo emite
+     * {@link ReadObservationMeterFilterAnnouncer}, que no puede vivir dentro del
+     * filtro porque un {@code MeterFilter} se aplica mientras Spring construye el
+     * registro.
+     *
+     * <p>
+     * Va aquí y no en {@code BusinessMetricsConfiguration} porque no filtra
+     * métricas de negocio: filtra observaciones técnicas, que es asunto de esta
+     * configuración.
+     */
+    @Bean
+    public ReadObservationMeterFilter readObservationMeterFilter() {
+        return new ReadObservationMeterFilter();
+    }
+
+    @Bean
+    public ReadObservationMeterFilterAnnouncer readObservationMeterFilterAnnouncer() {
+        return new ReadObservationMeterFilterAnnouncer();
     }
 }

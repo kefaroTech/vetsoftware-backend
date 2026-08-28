@@ -58,12 +58,15 @@ public class QuoteJpaMapper {
             entity.setItemCode(line.getItemCode());
             entity.setItemName(line.getItemName());
             entity.setItemType(line.getItemType());
+            entity.setTierMin(line.getTierMin());
+            entity.setTierMax(line.getTierMax());
             entity.setContractedQuantity(line.getContractedQuantity());
             entity.setIncludedQuantity(line.getIncludedQuantity());
             entity.setQuantity(line.getQuantity());
             entity.setUnitAmount(line.getUnitAmount());
             entity.setDiscountPercent(line.getDiscountPercent());
             entity.setDiscountAmount(line.getDiscountAmount());
+            entity.setDiscountIsConditional(line.isDiscountConditional());
             entity.setTaxRate(line.getTaxRate());
             entity.setTaxTreatment(line.getTaxTreatment());
             entity.setTaxAmount(line.getTaxAmount());
@@ -145,13 +148,12 @@ public class QuoteJpaMapper {
      * es determinista y no es un contrato.
      */
     private static List<QuoteLine> toDomainLines(Set<QuoteLineJpaEntity> lines) {
-        return lines.stream()
-                .map(e -> new QuoteLine(e.getId(), e.getLineNumber(), e.getCatalogItemId(),
-                        e.getItemCode(), e.getItemName(), e.getItemType(),
-                        e.getContractedQuantity(), e.getIncludedQuantity(), e.getQuantity(),
-                        e.getUnitAmount(), e.getDiscountPercent(), e.getDiscountAmount(),
-                        e.getTaxRate(), e.getTaxTreatment(), e.getTaxAmount(), e.getLineTotal(),
-                        e.getCreatedDate(), e.isEnabled()))
+        return lines.stream().map(e -> new QuoteLine(e.getId(), e.getLineNumber(),
+                e.getCatalogItemId(), e.getItemCode(), e.getItemName(), e.getItemType(),
+                e.getTierMin(), e.getTierMax(), e.getContractedQuantity(), e.getIncludedQuantity(),
+                e.getQuantity(), e.getUnitAmount(), e.getDiscountPercent(), e.getDiscountAmount(),
+                e.isDiscountIsConditional(), e.getTaxRate(), e.getTaxTreatment(), e.getTaxAmount(),
+                e.getLineTotal(), e.getCreatedDate(), e.isEnabled()))
                 .sorted(Comparator.comparingInt(QuoteLine::getLineNumber)).toList();
     }
 

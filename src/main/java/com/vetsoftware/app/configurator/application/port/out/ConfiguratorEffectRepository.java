@@ -14,11 +14,24 @@ public interface ConfiguratorEffectRepository {
     Optional<ConfiguratorEffect> findById(Long id);
 
     /**
-     * Todos los efectos activos, ordenados por {@code id} ascendente — que es el
-     * orden en que los aplica {@code ConfiguratorResolver} y por tanto parte del
-     * contrato de la resolución, no una preferencia del adaptador.
+     * Todos los efectos activos, ordenados por {@code priority} ascendente y, a
+     * igualdad, por {@code id} — que es el orden en que los aplica
+     * {@code ConfiguratorResolver} y por tanto parte del contrato de la resolución,
+     * no una preferencia del adaptador.
      */
     List<ConfiguratorEffect> findAllOrdered();
+
+    /**
+     * Los efectos activos de esa lista de ids, en una sola consulta.
+     *
+     * <p>
+     * Existe para el reordenado, que toca varios efectos a la vez: cargarlos uno a
+     * uno sería una consulta por efecto y, peor, dejaría el conjunto sin una foto
+     * coherente. <strong>Puede devolver menos elementos que ids pedidos</strong>
+     * —un id inexistente o dado de baja no aparece—, y decidir qué hacer con esa
+     * diferencia es del caso de uso, nunca del adaptador.
+     */
+    List<ConfiguratorEffect> findAllByIds(List<Long> ids);
 
     PageResult<ConfiguratorEffect> findAll(int page, int pageSize);
 

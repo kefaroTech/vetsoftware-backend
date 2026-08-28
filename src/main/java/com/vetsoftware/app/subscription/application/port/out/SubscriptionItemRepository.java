@@ -60,6 +60,19 @@ public interface SubscriptionItemRepository {
             Long companyId);
 
     /**
+     * TODAS las lineas que abrio ese otrosi, en orden de tramo.
+     *
+     * <p>
+     * Convive con la variante {@code Optional} porque desde D-66 un alta escalonada
+     * abre <b>varias</b> lineas con el mismo otrosi —una por tramo— y devolverlas
+     * en un {@code Optional} revienta con un resultado no unico justo en el camino
+     * idempotente, es decir en el segundo clic del cliente. El cambio de cantidad
+     * sigue abriendo una sola y usa la otra.
+     */
+    List<SubscriptionItem> findAllByCreatedAmendmentIdAndCompanyId(Long amendmentId,
+            Long companyId);
+
+    /**
      * El expediente completo de un contrato: tambien las lineas ya cerradas, que
      * siguen ahi.
      */

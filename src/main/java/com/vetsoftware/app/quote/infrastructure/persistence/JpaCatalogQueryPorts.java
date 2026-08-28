@@ -14,6 +14,8 @@ import com.vetsoftware.app.quote.domain.TaxTreatment;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
@@ -73,6 +75,24 @@ public final class JpaCatalogQueryPorts {
         return value == null ? 0 : ((Number) value).intValue();
     }
 
+    /**
+     * Una columna {@code DATE} de una consulta nativa. El driver puede entregarla
+     * como {@link LocalDate} o como {@link java.sql.Date} segun la version, y el
+     * nulo se conserva: {@code price_lists.valid_to} es nulable y ese nulo
+     * significa «sin fecha de fin», no «sin dato».
+     */
+    private static LocalDate date(Object value) {
+        if (value == null)
+            return null;
+        if (value instanceof LocalDate localDate)
+            return localDate;
+        if (value instanceof java.sql.Date sqlDate)
+            return sqlDate.toLocalDate();
+        if (value instanceof java.sql.Timestamp timestamp)
+            return timestamp.toLocalDateTime().toLocalDate();
+        return LocalDate.parse(String.valueOf(value));
+    }
+
     /** Lee el articulo del catalogo, solo si esta ACTIVE y habilitado. */
     @Component
     public static class JpaCatalogItemQueryPort implements CatalogItemQueryPort {
@@ -117,22 +137,41 @@ public final class JpaCatalogQueryPorts {
          * Cotizar contra una lista en DRAFT congelaria en un documento con valor legal
          * unos precios que todavia se estaban editando -y que la regla R9 permite
          * cambiar mientras siga en borrador-.
+         *
+         * <p>
+         * <b>El SELECT trae {@code valid_from} y {@code valid_to}, y es el arreglo de
+         * D-73.</b> Con el filtro por estado a secas, esta consulta devolvia igual de
+         * contenta la tarifa del ano pasado si nadie se acordo de archivarla: <i>hoy se
+         * cotizaba con precios de 2025</i>, sin error, sin alarma y sin nada que mirar
+         * en el documento firmado que dijera que la tarifa ya no regia. El camino del
+         * contrato -{@code JpaSubscriptionCommercialSnapshotPort}- si comprobaba la
+         * vigencia; este, que es por donde entra el dinero nuevo, no.
+         *
+         * <p>
+         * <b>La ventana viaja, no se filtra.</b> Meter
+         * {@code valid_from <= :hoy AND (valid_to IS NULL OR :hoy <= valid_to)} en el
+         * WHERE seria una linea mas corta y perderia la unica informacion que importa
+         * cuando falla: una lista caducada volveria como {@code Optional.empty()},
+         * indistinguible de un id que no existe. Ademas obligaria a bajar el reloj
+         * hasta el adaptador, donde la decision solo se puede probar levantando la base
+         * de datos entera. Se devuelven las dos fechas y decide el caso de uso, que ya
+         * tiene el {@code Clock} zonado.
          */
         @Override
         public Optional<PriceListRef> findPublishedById(Long priceListId) {
             Query query = entityManager.createNativeQuery("""
-                    SELECT id, code, currency
+                    SELECT id, code, currency, valid_from, valid_to
                       FROM price_lists
                      WHERE id = :id
                        AND status = 'PUBLISHED'
                        AND enabled = TRUE
                     """).setParameter("id", priceListId);
-            return singleRow(query)
-                    .map(row -> new PriceListRef(id(row[0]), text(row[1]), text(row[2])));
+            return singleRow(query).map(row -> new PriceListRef(id(row[0]), text(row[1]),
+                    text(row[2]), date(row[3]), date(row[4])));
         }
     }
 
-    /** Resuelve el tramo de precio aplicable a la cantidad pedida. */
+    /** Devuelve TODOS los tramos de precio del articulo en esa tarifa y ciclo. */
     @Component
     public static class JpaCatalogPriceQueryPort implements CatalogPriceQueryPort {
 
@@ -143,34 +182,48 @@ public final class JpaCatalogQueryPorts {
         }
 
         /**
-         * Precio por tramos: se toma el tramo cuyo {@code tier_min} es el mas alto de
-         * los que no superan la cantidad, con {@code tier_max} nulo -"de ahi en
-         * adelante"- o mayor o igual que ella.
+         * <b>Sin recorte por cantidad, y es el arreglo entero de D-66.</b> Esta
+         * consulta tenia un {@code tier_min <= :quantity ... ORDER BY tier_min DESC}
+         * con {@code LIMIT 1} y devolvia UN tramo -el mas alto que cubriera la
+         * cantidad-, que el servicio multiplicaba por todas las unidades. Con "las
+         * unidades extra 1 a 8 a 12.000 y de la 9 en adelante a 9.000", trece unidades
+         * salian a 117.000 en vez de a 141.000: veinticuatro mil por cliente y mes, y
+         * ni un error ni una alarma en ningun sitio.
          *
          * <p>
-         * El {@code ORDER BY tier_min DESC} es lo que hace que "los usuarios 3 a 10 a
-         * 12.000 y del 11 en adelante a 9.000" devuelva 9.000 para 15 usuarios y no
-         * 12.000. Sin el, el resultado depende del orden fisico de las filas.
+         * Los tramos son un punado de filas por articulo y ciclo -siete articulos
+         * escalonados en todo el catalogo-, asi que traerlos todos y repartir en el
+         * dominio no cuesta nada y deja la cuenta donde se puede comprobar en cada
+         * lectura.
+         *
+         * <p>
+         * El {@code ORDER BY tier_min} deja de ser el que decide el precio y pasa a ser
+         * solo orden estable de salida: quien decide es {@code TieredPrice}, que ademas
+         * exige que el primer tramo arranque en uno.
          */
         @Override
-        public Optional<CatalogPriceRef> findApplicable(Long priceListId, Long catalogItemId,
-                BillingCycle billingCycle, int quantity) {
+        public List<CatalogPriceRef> findAllTiers(Long priceListId, Long catalogItemId,
+                BillingCycle billingCycle) {
             Query query = entityManager.createNativeQuery("""
-                    SELECT unit_amount, tax_rate, tax_treatment, included_quantity
+                    SELECT unit_amount, tax_rate, tax_treatment, included_quantity,
+                           tier_min, tier_max
                       FROM catalog_prices
-                     WHERE price_list_id  = :priceListId
+                     WHERE price_list_id   = :priceListId
                        AND catalog_item_id = :catalogItemId
                        AND billing_cycle   = :billingCycle
-                       AND tier_min       <= :quantity
-                       AND (tier_max IS NULL OR tier_max >= :quantity)
                        AND enabled = TRUE
-                     ORDER BY tier_min DESC
+                     ORDER BY tier_min
                     """).setParameter("priceListId", priceListId)
                     .setParameter("catalogItemId", catalogItemId)
-                    .setParameter("billingCycle", billingCycle.name())
-                    .setParameter("quantity", quantity);
-            return singleRow(query).map(row -> new CatalogPriceRef(amount(row[0]), amount(row[1]),
-                    TaxTreatment.valueOf(text(row[2])), count(row[3])));
+                    .setParameter("billingCycle", billingCycle.name());
+            List<CatalogPriceRef> tiers = new ArrayList<>();
+            for (Object row : query.getResultList()) {
+                Object[] columns = (Object[]) row;
+                tiers.add(new CatalogPriceRef(amount(columns[0]), amount(columns[1]),
+                        TaxTreatment.valueOf(text(columns[2])), count(columns[3]),
+                        count(columns[4]), columns[5] == null ? null : count(columns[5])));
+            }
+            return List.copyOf(tiers);
         }
     }
 

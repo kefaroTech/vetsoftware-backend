@@ -1,6 +1,5 @@
 package com.vetsoftware.app.subscription.application.dto;
 
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.TaxTreatment;
 import java.math.BigDecimal;
 
@@ -24,6 +23,6 @@ import java.math.BigDecimal;
  * catalogo.
  */
 public record InitialCapacityTemplate(Long catalogItemId, String itemCode, String itemName,
-        CapacityUnit capacityUnit, int includedQuantity, int minQuantity, BigDecimal unitAmount,
+        String capacityUnit, int includedQuantity, int minQuantity, BigDecimal unitAmount,
         BigDecimal taxRate, TaxTreatment taxTreatment) {
 }

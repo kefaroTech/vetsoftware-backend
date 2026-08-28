@@ -201,8 +201,11 @@ public class QuoteController {
     private static List<QuoteLineCommand> toLineCommands(List<QuoteLineRequest> lines) {
         return lines == null
                 ? List.of()
-                : lines.stream().map(l -> new QuoteLineCommand(l.catalogItemId(), l.quantity(),
-                        l.discountPercent())).toList();
+                : lines.stream()
+                        .map(l -> new QuoteLineCommand(l.catalogItemId(), l.quantity(),
+                                l.discountPercent(),
+                                Boolean.TRUE.equals(l.discountIsConditional())))
+                        .toList();
     }
 
     private static List<QuoteAnswerCommand> toAnswerCommands(List<QuoteAnswerRequest> answers) {
@@ -239,9 +242,10 @@ public class QuoteController {
 
     private static QuoteLineResponse toLineResponse(QuoteLineDto dto) {
         return new QuoteLineResponse(dto.id(), dto.lineNumber(), dto.catalogItemId(),
-                dto.itemCode(), dto.itemName(), dto.itemType(), dto.contractedQuantity(),
-                dto.includedQuantity(), dto.quantity(), dto.unitAmount(), dto.grossAmount(),
-                dto.discountPercent(), dto.discountAmount(), dto.taxRate(), dto.taxTreatment(),
+                dto.itemCode(), dto.itemName(), dto.itemType(), dto.tierMin(), dto.tierMax(),
+                dto.contractedQuantity(), dto.includedQuantity(), dto.quantity(), dto.unitAmount(),
+                dto.grossAmount(), dto.discountPercent(), dto.discountAmount(),
+                dto.discountIsConditional(), dto.taxRate(), dto.taxTreatment(), dto.taxableBase(),
                 dto.taxAmount(), dto.lineTotal(), dto.enabled());
     }
 

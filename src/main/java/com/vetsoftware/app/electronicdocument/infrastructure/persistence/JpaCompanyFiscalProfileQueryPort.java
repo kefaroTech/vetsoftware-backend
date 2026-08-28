@@ -29,7 +29,7 @@ public class JpaCompanyFiscalProfileQueryPort implements CompanyFiscalProfileQue
 
     @Override
     public Optional<CompanyFiscalProfile> findByCompany(Long companyId) {
-        return companyTaxProfileRepository.findByCompany_Id(companyId).map(profile -> {
+        return companyTaxProfileRepository.findCurrentByCompanyId(companyId).map(profile -> {
             IssuerSnapshot issuer = toIssuer(profile);
             WithholdingConfigJpaEntity wc = withholdingConfigRepository.findByCompany_Id(companyId)
                     .orElse(null);
@@ -39,6 +39,15 @@ public class JpaCompanyFiscalProfileQueryPort implements CompanyFiscalProfileQue
         });
     }
 
+    /**
+     * <b>El {@code profile.getId()} del final es lo que ata el documento a la fila
+     * con la que se emitio.</b> Los seis campos copiados cubren la identidad DIAN;
+     * el nombre comercial, la actividad economica y la ficha completa no, y desde
+     * que {@code company_tax_profiles} guarda historico (changeset 364) el unico
+     * modo de recuperarlos tal y como estaban es enlazar la fila. La consulta de
+     * arriba resuelve el perfil <b>vigente</b>, asi que el id que se congela aqui
+     * es el que regia en el instante de emitir.
+     */
     private static IssuerSnapshot toIssuer(CompanyTaxProfileJpaEntity profile) {
         // Congela los códigos de responsabilidad fiscal del RUT (ya filtrados por
         // enabled vía
@@ -59,6 +68,6 @@ public class JpaCompanyFiscalProfileQueryPort implements CompanyFiscalProfileQue
                 profile.getCompanyDocumentId(), profile.getCompanyDocumentVerificationDigit(),
                 profile.getLegalName(),
                 profile.getTaxRegime() == null ? null : profile.getTaxRegime().name(),
-                profile.getFiscalEmail(), responsibilities);
+                profile.getFiscalEmail(), responsibilities, profile.getId());
     }
 }

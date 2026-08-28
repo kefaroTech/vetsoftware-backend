@@ -238,20 +238,32 @@ public class Quote {
     }
 
     /**
-     * uq_quote_lines_item y uq_quote_lines_number, traidas al dominio: cotizar el
-     * mismo articulo dos veces es la via rapida a un total que no cuadra con lo que
-     * el cliente cree que compro, y dos lineas con el mismo numero hacen que el
+     * uq_quote_lines_item_tier y uq_quote_lines_number, traidas al dominio.
+     *
+     * <p>
+     * <b>La unicidad es por ARTICULO Y TRAMO, no por articulo</b> (D-66). Desde que
+     * los tramos son acumulativos, un articulo escalonado produce <em>varios</em>
+     * renglones -ocho unidades a 12.000 y cinco a 9.000-, y eso no es cotizar dos
+     * veces lo mismo: es el desglose con el que se le va a facturar (R-QUOTE-09).
+     * Medirlo solo por articulo rechazaba la particion legitima y dejaba la
+     * aritmetica acumulativa sin poder emitirse — el mismo error que
+     * {@code uq_quote_lines_item} cometia en el esquema, y que el changeset 336
+     * retiro por identico motivo.
+     *
+     * <p>
+     * Lo que si sigue prohibido es repetir el MISMO tramo del mismo articulo, que
+     * si seria un cobro doble; y dos lineas con el mismo numero, que hacen que el
      * orden impreso deje de ser un contrato.
      */
     private static void validateLines(List<QuoteLine> lines) {
         if (lines.isEmpty())
             throw new IllegalArgumentException("quote requires at least one line");
-        Set<Long> items = new HashSet<>();
+        Set<String> items = new HashSet<>();
         Set<Integer> numbers = new HashSet<>();
         for (QuoteLine line : lines) {
-            if (!items.add(line.getCatalogItemId()))
-                throw new IllegalArgumentException(
-                        "duplicate catalog item in quote: " + line.getCatalogItemId());
+            if (!items.add(line.getCatalogItemId() + "#" + line.getTierMin()))
+                throw new IllegalArgumentException("duplicate catalog item tier in quote: "
+                        + line.getCatalogItemId() + " tier " + line.getTierMin());
             if (!numbers.add(line.getLineNumber()))
                 throw new IllegalArgumentException(
                         "duplicate line number in quote: " + line.getLineNumber());

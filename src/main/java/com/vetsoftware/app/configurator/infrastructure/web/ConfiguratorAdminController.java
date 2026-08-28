@@ -3,6 +3,7 @@ package com.vetsoftware.app.configurator.infrastructure.web;
 import com.vetsoftware.app.configurator.application.command.CreateConfiguratorEffectCommand;
 import com.vetsoftware.app.configurator.application.command.CreateConfiguratorOptionCommand;
 import com.vetsoftware.app.configurator.application.command.CreateConfiguratorQuestionCommand;
+import com.vetsoftware.app.configurator.application.command.ReorderConfiguratorEffectsCommand;
 import com.vetsoftware.app.configurator.application.command.UpdateConfiguratorEffectCommand;
 import com.vetsoftware.app.configurator.application.command.UpdateConfiguratorOptionCommand;
 import com.vetsoftware.app.configurator.application.command.UpdateConfiguratorQuestionCommand;
@@ -17,6 +18,7 @@ import com.vetsoftware.app.configurator.application.port.in.DeleteConfiguratorOp
 import com.vetsoftware.app.configurator.application.port.in.DeleteConfiguratorQuestionUseCase;
 import com.vetsoftware.app.configurator.application.port.in.FindConfiguratorQuestionUseCase;
 import com.vetsoftware.app.configurator.application.port.in.ListConfiguratorEffectsUseCase;
+import com.vetsoftware.app.configurator.application.port.in.ReorderConfiguratorEffectsUseCase;
 import com.vetsoftware.app.configurator.application.port.in.ListConfiguratorOptionsByQuestionUseCase;
 import com.vetsoftware.app.configurator.application.port.in.ListConfiguratorQuestionsUseCase;
 import com.vetsoftware.app.configurator.application.port.in.UpdateConfiguratorEffectUseCase;
@@ -25,6 +27,7 @@ import com.vetsoftware.app.configurator.application.port.in.UpdateConfiguratorQu
 import com.vetsoftware.app.configurator.infrastructure.web.request.CreateConfiguratorEffectRequest;
 import com.vetsoftware.app.configurator.infrastructure.web.request.CreateConfiguratorOptionRequest;
 import com.vetsoftware.app.configurator.infrastructure.web.request.CreateConfiguratorQuestionRequest;
+import com.vetsoftware.app.configurator.infrastructure.web.request.ReorderConfiguratorEffectsRequest;
 import com.vetsoftware.app.configurator.infrastructure.web.request.UpdateConfiguratorEffectRequest;
 import com.vetsoftware.app.configurator.infrastructure.web.request.UpdateConfiguratorOptionRequest;
 import com.vetsoftware.app.configurator.infrastructure.web.request.UpdateConfiguratorQuestionRequest;
@@ -74,6 +77,7 @@ public class ConfiguratorAdminController {
     private final UpdateConfiguratorEffectUseCase updateEffectUseCase;
     private final DeleteConfiguratorEffectUseCase deleteEffectUseCase;
     private final ListConfiguratorEffectsUseCase listEffectsUseCase;
+    private final ReorderConfiguratorEffectsUseCase reorderEffectsUseCase;
 
     public ConfiguratorAdminController(CreateConfiguratorQuestionUseCase createQuestionUseCase,
             UpdateConfiguratorQuestionUseCase updateQuestionUseCase,
@@ -87,7 +91,8 @@ public class ConfiguratorAdminController {
             CreateConfiguratorEffectUseCase createEffectUseCase,
             UpdateConfiguratorEffectUseCase updateEffectUseCase,
             DeleteConfiguratorEffectUseCase deleteEffectUseCase,
-            ListConfiguratorEffectsUseCase listEffectsUseCase) {
+            ListConfiguratorEffectsUseCase listEffectsUseCase,
+            ReorderConfiguratorEffectsUseCase reorderEffectsUseCase) {
         this.createQuestionUseCase = createQuestionUseCase;
         this.updateQuestionUseCase = updateQuestionUseCase;
         this.deleteQuestionUseCase = deleteQuestionUseCase;
@@ -101,6 +106,7 @@ public class ConfiguratorAdminController {
         this.updateEffectUseCase = updateEffectUseCase;
         this.deleteEffectUseCase = deleteEffectUseCase;
         this.listEffectsUseCase = listEffectsUseCase;
+        this.reorderEffectsUseCase = reorderEffectsUseCase;
     }
 
     @PostMapping("/questions")
@@ -191,6 +197,39 @@ public class ConfiguratorAdminController {
                 request.catalogItemId(), request.effect(), request.quantity())));
     }
 
+    /**
+     * Reordena los efectos. <strong>Es la única forma de cambiar el orden de
+     * aplicación</strong>: hasta hoy la columna {@code priority} existía en el
+     * esquema y no había endpoint que la escribiera, así que corregir el orden
+     * obligaba a borrar el efecto y volver a crearlo — lo que le cambia el
+     * {@code id}, y con él el desempate, y reordena de paso todo lo demás.
+     *
+     * <p>
+     * <strong>Va escrito antes que el mapeo por {@code {id}} y el literal
+     * gana.</strong> {@code PathPatternParser} da preferencia al segmento literal
+     * frente a la variable, así que {@code /effects/priorities} no cae en
+     * {@code PUT /effects/{id}}; si algún día esa preferencia cambiara, la llamada
+     * contestaría un 400 de conversión de tipo intentando leer {@code "priorities"}
+     * como {@code Long}. Dejarlo escrito arriba evita que alguien tenga que
+     * comprobarlo, y la rodaja web lo congela.
+     *
+     * <p>
+     * <strong>{@code PUT} y no {@code PATCH}</strong>: el cuerpo es el reparto
+     * completo que se quiere dejar aplicado sobre los efectos que nombra, y
+     * mandarlo dos veces deja el mismo resultado.
+     */
+    @PutMapping("/effects/priorities")
+    public List<ConfiguratorEffectResponse> reorderEffects(
+            @Valid @RequestBody ReorderConfiguratorEffectsRequest request) {
+        List<ReorderConfiguratorEffectsCommand.EffectPriority> reparto = request.priorities()
+                .stream()
+                .map(par -> new ReorderConfiguratorEffectsCommand.EffectPriority(par.effectId(),
+                        par.priority()))
+                .toList();
+        return reorderEffectsUseCase.execute(new ReorderConfiguratorEffectsCommand(reparto))
+                .stream().map(ConfiguratorAdminController::toResponse).toList();
+    }
+
     @DeleteMapping("/effects/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteEffect(@PathVariable Long id) {
@@ -211,7 +250,7 @@ public class ConfiguratorAdminController {
 
     private static ConfiguratorEffectResponse toResponse(ConfiguratorEffectDto dto) {
         return new ConfiguratorEffectResponse(dto.id(), dto.optionId(), dto.questionId(),
-                dto.catalogItemId(), dto.effect().name(), dto.quantity(), dto.createdDate(),
-                dto.enabled());
+                dto.catalogItemId(), dto.effect().name(), dto.quantity(), dto.priority(),
+                dto.createdDate(), dto.enabled());
     }
 }

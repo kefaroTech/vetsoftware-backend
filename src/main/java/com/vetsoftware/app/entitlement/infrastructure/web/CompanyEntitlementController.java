@@ -99,9 +99,10 @@ public class CompanyEntitlementController {
     }
 
     private static CompanyCapacityResponse toCapacityResponse(CompanyCapacityDto dto) {
-        return new CompanyCapacityResponse(dto.id(), dto.companyId(), dto.capacityUnit(),
-                dto.limitQuantity(), dto.usedQuantity(), dto.exhausted(), dto.subscriptionId(),
-                dto.recalculatedAt());
+        return new CompanyCapacityResponse(dto.id(), dto.companyId(), dto.limitDimensionId(),
+                dto.dimensionCode(), dto.measureKind(), dto.periodKey(), dto.limitQuantity(),
+                dto.usedQuantity(), dto.exhausted(), dto.subscriptionId(),
+                dto.limitRecalculatedAt(), dto.usageReconciledAt());
     }
 
     private static EntitlementRecalculationResponse toRecalculationResponse(

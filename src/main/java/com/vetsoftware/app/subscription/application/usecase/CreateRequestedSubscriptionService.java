@@ -4,6 +4,7 @@ import com.vetsoftware.app.subscription.application.command.CreateRequestedSubsc
 import com.vetsoftware.app.subscription.application.command.CreateSubscriptionCommand;
 import com.vetsoftware.app.subscription.application.command.RequestedSubscriptionItemCommand;
 import com.vetsoftware.app.subscription.application.command.SubscriptionItemLineCommand;
+import com.vetsoftware.app.subscription.application.dto.PublishedCatalogItem;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionItemSnapshot;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionQuoteSnapshot;
@@ -11,6 +12,8 @@ import com.vetsoftware.app.subscription.application.port.in.CreateRequestedSubsc
 import com.vetsoftware.app.subscription.application.port.out.ResolvedSubscriptionCreationPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionCommercialSnapshotPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionQuoteSnapshotPort;
+import com.vetsoftware.app.subscription.domain.ContractPriceTiers;
+import com.vetsoftware.app.subscription.domain.ContractTierLine;
 import io.micrometer.observation.annotation.Observed;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -51,6 +54,13 @@ public class CreateRequestedSubscriptionService implements CreateRequestedSubscr
                 command.graceDays(), command.autoRenew(), resolved.actor(), resolved.items()));
     }
 
+    /**
+     * De la cotizacion aceptada NO hay que repartir nada: los renglones ya vienen
+     * partidos por tramo desde que se emitio la oferta (D-66), y cada uno trae su
+     * tramo, su precio y su descuento congelados. Copiarlos uno a uno es
+     * precisamente lo que hace que el contrato diga lo mismo que el papel que firmo
+     * el cliente.
+     */
     private ResolvedRequest resolveFromAcceptedQuote(CreateRequestedSubscriptionCommand command) {
         if (command.items() != null && !command.items().isEmpty())
             throw new IllegalArgumentException("items must be omitted when quoteId is provided");
@@ -73,6 +83,13 @@ public class CreateRequestedSubscriptionService implements CreateRequestedSubscr
                 quote.items().stream().map(item -> toLine(item, null, null)).toList());
     }
 
+    /**
+     * Del catalogo publicado si hay que repartir: la seleccion trae una cantidad y
+     * los tramos son acumulativos, asi que un articulo escalonado produce
+     * <b>varias</b> lineas de contrato -una por tramo, cada una a su precio-. Trece
+     * unidades extra son ocho a 12.000 y cinco a 9.000, no trece al precio del
+     * tramo alto.
+     */
     private ResolvedRequest resolveFromPublishedCatalog(
             CreateRequestedSubscriptionCommand command) {
         if (command.items() == null || command.items().isEmpty())
@@ -87,13 +104,17 @@ public class CreateRequestedSubscriptionService implements CreateRequestedSubscr
             LocalDate validOn = requested.effectiveFrom() == null
                     ? command.startDate()
                     : requested.effectiveFrom();
-            SubscriptionItemSnapshot snapshot = commercialSnapshotPort
+            PublishedCatalogItem published = commercialSnapshotPort
                     .findPublishedItem(command.priceListId(), command.billingCycle(),
                             requested.catalogItemId(), quantity, validOn)
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Published catalog price not found for item: "
                                     + requested.catalogItemId()));
-            lines.add(toLine(snapshot, requested.effectiveFrom(), requested.effectiveTo()));
+            for (ContractTierLine tierLine : ContractPriceTiers.allocate(quantity,
+                    published.tiers())) {
+                lines.add(toLine(published, tierLine, requested.effectiveFrom(),
+                        requested.effectiveTo()));
+            }
         }
         return new ResolvedRequest(SYSTEM_ACTOR, List.copyOf(lines));
     }
@@ -102,8 +123,19 @@ public class CreateRequestedSubscriptionService implements CreateRequestedSubscr
             LocalDate effectiveFrom, LocalDate effectiveTo) {
         return new SubscriptionItemLineCommand(snapshot.catalogItemId(), snapshot.itemCode(),
                 snapshot.itemName(), snapshot.itemType(), snapshot.capacityUnit(),
-                snapshot.includedQuantity(), snapshot.taxTreatment(), snapshot.quantity(),
-                snapshot.unitAmount(), snapshot.taxRate(), effectiveFrom, effectiveTo);
+                snapshot.tierMin(), snapshot.tierMax(), snapshot.includedQuantity(),
+                snapshot.taxTreatment(), snapshot.quantity(), snapshot.unitAmount(),
+                snapshot.discountPercent(), snapshot.discountAmount(),
+                snapshot.discountIsConditional(), snapshot.taxRate(), effectiveFrom, effectiveTo);
+    }
+
+    private static SubscriptionItemLineCommand toLine(PublishedCatalogItem item,
+            ContractTierLine tierLine, LocalDate effectiveFrom, LocalDate effectiveTo) {
+        return new SubscriptionItemLineCommand(item.catalogItemId(), item.itemCode(),
+                item.itemName(), item.itemType(), item.capacityUnit(), tierLine.tier().tierMin(),
+                tierLine.tier().tierMax(), tierLine.includedQuantity(),
+                tierLine.tier().taxTreatment(), tierLine.quantity(), tierLine.tier().unitAmount(),
+                null, null, false, tierLine.tier().taxRate(), effectiveFrom, effectiveTo);
     }
 
     private record ResolvedRequest(String actor, List<SubscriptionItemLineCommand> items) {

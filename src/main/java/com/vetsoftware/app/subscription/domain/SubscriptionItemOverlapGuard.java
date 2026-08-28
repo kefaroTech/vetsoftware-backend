@@ -37,18 +37,28 @@ public final class SubscriptionItemOverlapGuard {
      * criterio de solape es el de {@link EffectivePeriod#overlaps}, intervalo
      * semiabierto, el mismo de la consulta de vigilancia.
      *
+     * <p>
+     * <strong>El solape se mide DENTRO del mismo tramo</strong> (D-66). Desde que
+     * los tramos son acumulativos, un articulo escalonado se firma como varias
+     * lineas del mismo articulo y el mismo periodo —ocho unidades a 12.000 y cinco
+     * a 9.000—, que no son un cobro doble sino la particion correcta de una sola
+     * cantidad. Medir el solape solo por articulo las rechazaria y dejaria la
+     * aritmetica acumulativa sin poder escribirse. Es exactamente el criterio de
+     * {@code uq_subscription_items_current}, que desde el 244 lleva el tramo en su
+     * marcador.
+     *
      * @param existing
      *            las lineas del mismo articulo, mismo contrato y misma empresa, ya
      *            excluida la que se este editando
      */
-    public static void ensureNoOverlap(Long catalogItemId, EffectivePeriod candidate,
+    public static void ensureNoOverlap(Long catalogItemId, int tierMin, EffectivePeriod candidate,
             List<SubscriptionItem> existing) {
         if (candidate == null)
             throw new IllegalArgumentException("candidate period is required");
         if (existing == null || existing.isEmpty())
             return;
         for (SubscriptionItem item : existing) {
-            if (item.overlaps(candidate)) {
+            if (item.getTierMin() == tierMin && item.overlaps(candidate)) {
                 throw new SubscriptionItemOverlapException(catalogItemId, candidate.from(),
                         candidate.to());
             }

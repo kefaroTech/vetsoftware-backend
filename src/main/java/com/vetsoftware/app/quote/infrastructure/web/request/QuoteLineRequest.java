@@ -16,8 +16,22 @@ import java.math.BigDecimal;
  *
  * @param quantity
  *            unidades CONTRATADAS. Las que se cobran salen de restarle las que
- *            la tarifa ya incluye, y esa resta la hace el dominio.
+ *            la tarifa ya incluye, y esa resta la hace el dominio. Si la tarifa
+ *            del articulo tiene escalones, esa cantidad se reparte
+ *            acumulativamente entre ellos y produce VARIOS renglones (D-66).
+ * @param discountIsConditional
+ *            D-86. Marca el descuento como sujeto a condicion -permanencia-, y
+ *            entonces el IVA se liquida sobre el precio de lista y no sobre el
+ *            rebajado. Ausente es {@code false}: lo caro es marcar de mas, no
+ *            de menos.
+ *            <p>
+ *            Es {@code Boolean} y no {@code boolean} a proposito: un primitivo
+ *            ausente del cuerpo no se deja en su valor por defecto, se rechaza
+ *            con un error de campo -«el valor enviado no es valido»- sobre un
+ *            campo que el cliente ni menciono. Con el envoltorio, omitirlo es
+ *            legal y significa lo que tiene que significar.
  */
 public record QuoteLineRequest(@NotNull Long catalogItemId, @Positive int quantity,
-        @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal discountPercent) {
+        @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal discountPercent,
+        Boolean discountIsConditional) {
 }

@@ -1,10 +1,13 @@
 package com.vetsoftware.app.pricelist.domain;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Comprueba que los tramos de precio de una lista cubren TODAS las cantidades.
@@ -41,19 +44,71 @@ public final class PriceListTierCoverage {
      * <p>
      * Un grupo esta cubierto si sus tramos ordenados por {@code tierMin} arrancan
      * en 1, encadenan sin salto -{@code siguiente.tierMin == anterior.tierMax + 1}-
-     * y el ultimo es abierto ({@code tierMax == null}). Una lista sin ningun precio
-     * no tiene grupos y por tanto pasa: publicar una tarifa vacia es raro, pero no
-     * es un hueco, y convertirlo en uno seria inventarse una regla que la ficha 6
-     * no pide.
+     * y el ultimo es abierto ({@code tierMax == null}).
+     *
+     * <p>
+     * <b>La ausencia total la caza {@link #requireEveryActiveItemPriced} y no
+     * esto.</b> Esta mitad agrupa sobre los precios escritos, asi que un articulo
+     * sin ninguna fila no produce grupo y pasaba limpio: publicar una tarifa a la
+     * que le falta el nucleo entero era legal, y despues ninguna empresa podia
+     * registrarse. Contrastar contra los articulos activos es lo que cierra ese
+     * agujero (R-PRICE-05, defecto construido #16).
      *
      * @param prices
      *            TODOS los tramos activos de la lista. Si llega paginado, la
      *            comprobacion es mentira.
+     * @param activeCatalogItemIds
+     *            los articulos {@code ACTIVE} del catalogo, que es el conjunto
+     *            contra el que se mide la cobertura.
      */
-    public static void requireFullCoverage(Long priceListId, List<CatalogPrice> prices) {
-        for (Map.Entry<Scope, List<CatalogPrice>> group : groupByScope(prices).entrySet()) {
+    public static void requireFullCoverage(Long priceListId, List<CatalogPrice> prices,
+            Collection<Long> activeCatalogItemIds) {
+        Map<Scope, List<CatalogPrice>> groups = groupByScope(prices);
+        requireEveryActiveItemPriced(priceListId, groups.keySet(), activeCatalogItemIds);
+        for (Map.Entry<Scope, List<CatalogPrice>> group : groups.entrySet()) {
             requireGroupIsContinuous(priceListId, group.getKey(), group.getValue());
         }
+    }
+
+    /**
+     * R-PRICE-05: <b>contra los articulos ACTIVOS, no contra la continuidad de lo
+     * escrito</b>.
+     *
+     * <p>
+     * Se recorren los articulos y no los grupos, y ese es todo el arreglo. La
+     * continuidad solo sabe mirar lo que existe: un articulo sin ninguna fila no
+     * produce grupo, no produce hueco, y la lista se publica limpia con un articulo
+     * entero sin tarifar. Si el olvidado es el nucleo, ninguna empresa puede
+     * registrarse y nada relaciona el registro roto de manana con la publicacion de
+     * hoy.
+     *
+     * <p>
+     * Se exige <b>al menos un precio</b>, no uno por ciclo: pedir los dos ciclos
+     * seria una regla que ninguna ficha declara y rechazaria tarifas legitimas de
+     * un solo ciclo. Lo que se persigue aqui es la ausencia TOTAL, que es la que no
+     * deja rastro; una ausencia parcial de ciclo la caza el alta al no encontrar
+     * precio, con el nombre del articulo delante.
+     *
+     * <p>
+     * Los articulos se recorren en orden ascendente para que dos ejecuciones sobre
+     * los mismos datos senalen siempre el mismo, por el mismo motivo que los
+     * grupos.
+     *
+     * @param activeCatalogItemIds
+     *            los articulos en estado {@code ACTIVE}. Vacio o nulo desactiva la
+     *            comprobacion: no hay contra que contrastar, y inventarse que
+     *            "ninguno activo" significa "todo bien" es preferible a rechazar
+     *            toda publicacion si el puerto falla en devolverlos.
+     */
+    private static void requireEveryActiveItemPriced(Long priceListId, Collection<Scope> scopes,
+            Collection<Long> activeCatalogItemIds) {
+        if (activeCatalogItemIds == null || activeCatalogItemIds.isEmpty())
+            return;
+        Set<Long> priced = scopes.stream().map(Scope::catalogItemId).collect(Collectors.toSet());
+        activeCatalogItemIds.stream().filter(java.util.Objects::nonNull).distinct().sorted()
+                .filter(itemId -> !priced.contains(itemId)).findFirst().ifPresent(itemId -> {
+                    throw new CatalogPriceMissingForActiveItemException(priceListId, itemId);
+                });
     }
 
     private static Map<Scope, List<CatalogPrice>> groupByScope(List<CatalogPrice> prices) {

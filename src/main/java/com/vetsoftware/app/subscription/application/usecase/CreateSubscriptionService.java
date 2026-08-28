@@ -7,9 +7,11 @@ import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
 import com.vetsoftware.app.subscription.application.port.in.CreateSubscriptionUseCase;
 import com.vetsoftware.app.subscription.application.port.out.CatalogItemValidationPort;
 import com.vetsoftware.app.subscription.application.port.out.CompanyValidationPort;
+import com.vetsoftware.app.subscription.application.port.out.LimitDimensionQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.PlatformCatalogPort;
-import com.vetsoftware.app.subscription.application.port.out.PriceListValidationPort;
+import com.vetsoftware.app.subscription.application.port.out.PriceListQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemCompositionPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
@@ -24,6 +26,7 @@ import com.vetsoftware.app.subscription.domain.SubscriptionItemOverlapGuard;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatusChange;
 import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,9 +56,11 @@ public class CreateSubscriptionService implements CreateSubscriptionUseCase {
     private final SubscriptionItemRepository itemRepository;
     private final SubscriptionStatusHistoryRepository historyRepository;
     private final CompanyValidationPort companyValidationPort;
-    private final PriceListValidationPort priceListValidationPort;
+    private final PriceListQueryPort priceListQueryPort;
     private final CatalogItemValidationPort catalogItemValidationPort;
+    private final LimitDimensionQueryPort limitDimensionQueryPort;
     private final PlatformCatalogPort platformCatalogPort;
+    private final SubscriptionItemCompositionPort compositionPort;
     private final SubscriptionNumberPort subscriptionNumberPort;
     private final SubscriptionChangedPort subscriptionChangedPort;
     private final Clock clock;
@@ -63,18 +68,22 @@ public class CreateSubscriptionService implements CreateSubscriptionUseCase {
     public CreateSubscriptionService(SubscriptionRepository repository,
             SubscriptionItemRepository itemRepository,
             SubscriptionStatusHistoryRepository historyRepository,
-            CompanyValidationPort companyValidationPort,
-            PriceListValidationPort priceListValidationPort,
+            CompanyValidationPort companyValidationPort, PriceListQueryPort priceListQueryPort,
             CatalogItemValidationPort catalogItemValidationPort,
-            PlatformCatalogPort platformCatalogPort, SubscriptionNumberPort subscriptionNumberPort,
+            LimitDimensionQueryPort limitDimensionQueryPort,
+            PlatformCatalogPort platformCatalogPort,
+            SubscriptionItemCompositionPort compositionPort,
+            SubscriptionNumberPort subscriptionNumberPort,
             SubscriptionChangedPort subscriptionChangedPort, Clock clock) {
         this.repository = repository;
         this.itemRepository = itemRepository;
         this.historyRepository = historyRepository;
         this.companyValidationPort = companyValidationPort;
-        this.priceListValidationPort = priceListValidationPort;
+        this.priceListQueryPort = priceListQueryPort;
         this.catalogItemValidationPort = catalogItemValidationPort;
+        this.limitDimensionQueryPort = limitDimensionQueryPort;
         this.platformCatalogPort = platformCatalogPort;
+        this.compositionPort = compositionPort;
         this.subscriptionNumberPort = subscriptionNumberPort;
         this.subscriptionChangedPort = subscriptionChangedPort;
         this.clock = clock;
@@ -84,7 +93,26 @@ public class CreateSubscriptionService implements CreateSubscriptionUseCase {
     @Transactional
     public SubscriptionDto execute(CreateSubscriptionCommand command) {
         companyValidationPort.validateExists(command.companyId());
-        priceListValidationPort.validateExists(command.priceListId());
+        // D-73 por el lado del contrato. Antes aqui habia un existsById pelado, asi
+        // que se podia firmar una cabecera que apuntara a una lista EN BORRADOR o
+        // CADUCADA. No se colaba del todo -las lineas fallaban despues contra el
+        // catalogo publicado- pero fallaba con el mensaje equivocado: «Published
+        // catalog price not found for item» acusa al articulo cuando la culpable es
+        // la tarifa, y quien lo leyera se ponia a revisar el catalogo. La cabecera
+        // exige ahora lo mismo que las lineas -publicada y vigente por fecha- y con
+        // el MISMO predicado del kernel -PriceListValidity, que solo sabe de dos
+        // fechas-: dos comparaciones que nada obliga a mover juntas es el defecto de
+        // manana. Quien pone el id y el codigo en el fallo es el companion VO de esta
+        // rodaja, porque el kernel no puede saber que existen las tarifas.
+        //
+        // La fecha es hoy EN BOGOTA: sale del reloj inyectado, que es el unico que
+        // lleva la zona del negocio (D-81). Un LocalDate.now() pelado ya contesta
+        // manana entre las 19:00 y la medianoche y rechazaria un alta legitima el
+        // ultimo dia de la tarifa.
+        priceListQueryPort.findPublishedById(command.priceListId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Published price list not found: " + command.priceListId()))
+                .requireEffectiveOn(LocalDate.now(clock));
 
         // Los dias de gracia por defecto se resuelven AQUI y en ningun otro sitio.
         // Habia dos caminos de alta y solo uno leia la configuracion de plataforma:
@@ -110,7 +138,13 @@ public class CreateSubscriptionService implements CreateSubscriptionUseCase {
                 command.nextBillingDate(), command.commitmentEndDate(), graceDays,
                 command.autoRenew() == null || command.autoRenew()));
 
-        itemRepository.saveAll(buildInitialItems(command, subscription));
+        // D-76: la composicion se congela AL FIRMAR, en la misma transaccion que la
+        // linea. Si esto fallara, el contrato no nace: una linea sin foto es una linea
+        // sin permisos, y prefiero que no exista a que exista muda.
+        for (SubscriptionItem saved : itemRepository
+                .saveAll(buildInitialItems(command, subscription))) {
+            compositionPort.freeze(saved.getCompanyId(), saved.getId(), saved.getCatalogItemId());
+        }
 
         // La primera fila de la bitacora lleva fromStatus nulo: el contrato no venia
         // de ningun estado.
@@ -143,17 +177,56 @@ public class CreateSubscriptionService implements CreateSubscriptionUseCase {
             EffectivePeriod period = new EffectivePeriod(line.effectiveFrom() == null
                     ? subscription.getStartDate()
                     : line.effectiveFrom(), line.effectiveTo());
-            SubscriptionItemOverlapGuard.ensureNoOverlap(line.catalogItemId(), period,
+            SubscriptionItemOverlapGuard.ensureNoOverlap(line.catalogItemId(),
+                    line.tierMinOrDefault(), period,
                     items.stream().filter(i -> i.getCatalogItemId().equals(line.catalogItemId()))
                             .toList());
-            items.add(SubscriptionItem.open(subscription.getCompanyId(), subscription.getId(),
-                    line.catalogItemId(), line.itemCode(), line.itemName(), line.itemType(),
-                    line.capacityUnit(),
+            SubscriptionItem item = SubscriptionItem.open(subscription.getCompanyId(),
+                    subscription.getId(), line.catalogItemId(), line.itemCode(), line.itemName(),
+                    line.itemType(), line.capacityUnit(), line.tierMinOrDefault(), line.tierMax(),
                     line.includedQuantity() == null ? 0 : line.includedQuantity(),
                     line.taxTreatment(), line.quantity() == null ? 1 : line.quantity(),
-                    line.unitAmount(), line.taxRate(), period, ItemOrigin.INITIAL, null));
+                    line.unitAmount(), line.discountPercentOrZero(), line.discountAmountOrZero(),
+                    line.discountIsConditional(), line.taxRate(), period, ItemOrigin.INITIAL, null);
+            // Despues de construir la linea: el dominio decide primero si esa linea
+            // puede llevar unidad -una unidad colgada de un MODULE se rechaza por lo
+            // que es- y solo entonces se le pregunta al catalogo si el eje existe.
+            requireKnownAxis(item.getCapacityUnit());
+            items.add(item);
         }
         return items;
+    }
+
+    /**
+     * El eje que se firma tiene que existir en el catalogo.
+     *
+     * <p>
+     * <strong>Es la unica puerta de entrada por la que un codigo de eje llega sin
+     * pasar por el catalogo</strong>, y por eso la comprobacion vive aqui y no en
+     * los otros tres caminos de alta: el contrato inicial y la aceptacion de
+     * cotizacion resuelven la unidad leyendo {@code catalog_items}, cuya columna ya
+     * va atada por clave foranea desde el changeset 333. Estas lineas, en cambio,
+     * llegan escritas en el cuerpo de la peticion.
+     *
+     * <p>
+     * <strong>Antes de ese changeset no hacia falta y ahora si.</strong> Mientras
+     * el campo era un enumerado de cuatro valores, Jackson rechazaba cualquier otra
+     * cosa al deserializar; ahora es una cadena, asi que sin esta consulta un
+     * {@code "ANIMALES"} mal escrito llegaria al {@code INSERT} y saldria como un
+     * {@code 500} con una violacion de clave foranea que no le dice a nadie que el
+     * problema es una letra de mas.
+     *
+     * <p>
+     * Cuesta una consulta por linea de capacidad —el catalogo de ejes son ocho
+     * filas— y solo en el alta, no en la lectura.
+     */
+    private void requireKnownAxis(String capacityUnit) {
+        if (capacityUnit == null)
+            return;
+        if (limitDimensionQueryPort.findByCode(capacityUnit).isEmpty())
+            throw new IllegalArgumentException("capacityUnit '" + capacityUnit
+                    + "' is not a known limit dimension: seed a limit_dimensions row with that"
+                    + " code before contracting capacity of that axis. Codes are case sensitive.");
     }
 
     private static String actorOf(CreateSubscriptionCommand command) {

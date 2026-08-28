@@ -18,6 +18,36 @@ import java.util.Optional;
 public interface SubscriptionQueryPort {
 
     /**
+     * El dia en que la empresa firmo su contrato
+     * ({@code subscriptions.start_date}), sin traer nada mas.
+     *
+     * <p>
+     * Existe aparte del par de arriba porque su unico consumidor es la decision de
+     * D-74 en el camino de consumo, y ese camino no puede permitirse las tres
+     * consultas que arma un {@code ContractSnapshot} completo --cabecera, lineas de
+     * modulo y lineas de capacidad-- para leer una fecha. Se invoca ademas solo en
+     * la rama en la que el contador ya iba a fallar, asi que ni siquiera esa
+     * consulta esta en el camino feliz.
+     *
+     * @return vacio si la empresa no tiene ningun contrato. Sin firma no hay nada
+     *         anterior a lo que ampararse, y la regla vieja --sin fila, techo
+     *         cero-- sigue siendo la respuesta correcta
+     */
+    Optional<LocalDate> findContractSignedOnByCompanyId(Long companyId);
+
+    /**
+     * Toma el candado del contrato de una empresa antes de tocar nada suyo.
+     *
+     * <p>
+     * <strong>El contrato primero, siempre</strong> (R-ENT-08). Es el orden de
+     * bloqueo que hace que dos recalculos simultaneos de la misma empresa se pongan
+     * en fila en vez de chocar contra {@code uq_company_entitlements}, y que un
+     * otrosi confirmado en mitad de un recalculo no acabe en un reinsert sin la
+     * linea nueva.
+     */
+    void lockContractByCompanyId(Long companyId);
+
+    /**
      * El contrato vigente ese dia: <strong>ya empezo y todavia no ha
      * terminado</strong>. Incluye {@code PAST_DUE} y {@code READ_ONLY}, que siguen
      * siendo contratos vigentes; deja fuera {@code CANCELLED} y {@code EXPIRED}.

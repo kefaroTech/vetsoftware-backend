@@ -1,6 +1,7 @@
 package com.vetsoftware.app.quote.infrastructure.scheduling;
 
 import com.vetsoftware.app.auth.infrastructure.security.SystemAuthRunner;
+import com.vetsoftware.app.infrastructure.observability.ScheduledJobCatalog;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry.Outcome;
 import com.vetsoftware.app.quote.application.port.in.ExpireOverdueQuotesUseCase;
@@ -47,7 +48,7 @@ import org.springframework.stereotype.Component;
 public class QuoteExpirationJob {
 
     private static final Logger log = LoggerFactory.getLogger(QuoteExpirationJob.class);
-    private static final String JOB_NAME = "quote.expiration";
+    private static final ScheduledJobCatalog JOB = ScheduledJobCatalog.QUOTE_EXPIRATION;
 
     private final ExpireOverdueQuotesUseCase expireOverdueUseCase;
     private final SystemAuthRunner systemAuthRunner;
@@ -65,9 +66,9 @@ public class QuoteExpirationJob {
         this.batchSize = batchSize;
     }
 
-    @Scheduled(initialDelayString = "${quote.expiration.initial-delay-ms:300000}", fixedDelayString = "${quote.expiration.poll-delay-ms:86400000}")
+    @Scheduled(cron = "${quote.expiration.cron:0 25 3 * * *}", zone = ScheduledJobCatalog.ZONE)
     public void runExpiration() {
-        telemetry.observe(JOB_NAME, this::expireOverdue);
+        telemetry.observe(JOB, this::expireOverdue);
     }
 
     /**

@@ -7,6 +7,7 @@ public record ConfiguratorEffectResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id, Long optionId,
         Long questionId, @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long catalogItemId,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String effect, Integer quantity,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Orden de aplicacion, ascendente. A igualdad, desempata el id.") int priority,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
 }

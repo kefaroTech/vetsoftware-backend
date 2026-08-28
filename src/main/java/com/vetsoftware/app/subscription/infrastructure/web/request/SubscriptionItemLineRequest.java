@@ -1,6 +1,5 @@
 package com.vetsoftware.app.subscription.infrastructure.web.request;
 
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemType;
 import com.vetsoftware.app.subscription.domain.TaxTreatment;
 import jakarta.validation.constraints.Min;
@@ -23,7 +22,7 @@ import java.time.LocalDate;
  */
 public record SubscriptionItemLineRequest(@NotNull Long catalogItemId,
         @NotBlank @Size(max = 50) String itemCode, @NotBlank @Size(max = 120) String itemName,
-        @NotNull SubscriptionItemType itemType, CapacityUnit capacityUnit,
+        @NotNull SubscriptionItemType itemType, @Size(max = 50) String capacityUnit,
         @NotNull @PositiveOrZero Integer includedQuantity, @NotNull TaxTreatment taxTreatment,
         @NotNull @Min(1) Integer quantity, @NotNull @PositiveOrZero BigDecimal unitAmount,
         @NotNull @PositiveOrZero BigDecimal taxRate, LocalDate effectiveFrom,

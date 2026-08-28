@@ -1,6 +1,5 @@
 package com.vetsoftware.app.subscription.application.command;
 
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemType;
 import com.vetsoftware.app.subscription.domain.TaxTreatment;
 import java.math.BigDecimal;
@@ -15,7 +14,32 @@ import java.time.LocalDate;
  * retroactivamente lo que le sobra.
  */
 public record SubscriptionItemLineCommand(Long catalogItemId, String itemCode, String itemName,
-        SubscriptionItemType itemType, CapacityUnit capacityUnit, Integer includedQuantity,
-        TaxTreatment taxTreatment, Integer quantity, BigDecimal unitAmount, BigDecimal taxRate,
-        LocalDate effectiveFrom, LocalDate effectiveTo) {
+        SubscriptionItemType itemType, String capacityUnit, Integer tierMin, Integer tierMax,
+        Integer includedQuantity, TaxTreatment taxTreatment, Integer quantity,
+        BigDecimal unitAmount, BigDecimal discountPercent, BigDecimal discountAmount,
+        boolean discountIsConditional, BigDecimal taxRate, LocalDate effectiveFrom,
+        LocalDate effectiveTo) {
+
+    /** La linea de tramo unico y abierto, sin descuento negociado. */
+    public SubscriptionItemLineCommand(Long catalogItemId, String itemCode, String itemName,
+            SubscriptionItemType itemType, String capacityUnit, Integer includedQuantity,
+            TaxTreatment taxTreatment, Integer quantity, BigDecimal unitAmount, BigDecimal taxRate,
+            LocalDate effectiveFrom, LocalDate effectiveTo) {
+        this(catalogItemId, itemCode, itemName, itemType, capacityUnit, 1, null, includedQuantity,
+                taxTreatment, quantity, unitAmount, null, null, false, taxRate, effectiveFrom,
+                effectiveTo);
+    }
+
+    /** El tramo unico y abierto de un articulo sin escalones. */
+    public int tierMinOrDefault() {
+        return tierMin == null ? 1 : tierMin;
+    }
+
+    public BigDecimal discountPercentOrZero() {
+        return discountPercent == null ? BigDecimal.ZERO : discountPercent;
+    }
+
+    public BigDecimal discountAmountOrZero() {
+        return discountAmount == null ? BigDecimal.ZERO : discountAmount;
+    }
 }

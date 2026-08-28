@@ -46,6 +46,7 @@ public class ElectronicDocumentJpaMapper {
         entity.setIssuerLegalName(i.legalName());
         entity.setIssuerTaxRegime(i.taxRegime());
         entity.setIssuerEmail(i.email());
+        entity.setCompanyTaxProfileId(i.companyTaxProfileId());
         entity.setIssuerResponsibilities(
                 i.responsibilities().isEmpty() ? null : String.join(";", i.responsibilities()));
 
@@ -130,7 +131,7 @@ public class ElectronicDocumentJpaMapper {
         IssuerSnapshot issuer = new IssuerSnapshot(entity.getIssuerDocumentType(),
                 entity.getIssuerDocumentId(), entity.getIssuerVerificationDigit(),
                 entity.getIssuerLegalName(), entity.getIssuerTaxRegime(), entity.getIssuerEmail(),
-                splitCodes(entity.getIssuerResponsibilities()));
+                splitCodes(entity.getIssuerResponsibilities()), entity.getCompanyTaxProfileId());
         CustomerSnapshot customer = new CustomerSnapshot(entity.getCustomerDocumentType(),
                 entity.getCustomerDocumentId(), entity.getCustomerVerificationDigit(),
                 entity.getCustomerPersonType(), entity.getCustomerLegalName(),

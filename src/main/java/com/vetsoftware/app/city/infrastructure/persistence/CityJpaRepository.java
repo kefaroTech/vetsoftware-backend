@@ -28,4 +28,17 @@ public interface CityJpaRepository extends JpaRepository<CityJpaEntity, Long> {
     int reactivate(@org.springframework.data.repository.query.Param("id") Long id);
 
     boolean existsByState_Id(Long stateId);
+
+    /**
+     * Existencia del municipio por su codigo DIVIPOLA, que es a lo que apuntan las
+     * claves foraneas del bloque fiscal ({@code withholding_rate_rules} y
+     * {@code document_withholdings} referencian {@code cities.dane_code}, no
+     * {@code cities.id}).
+     *
+     * <p>
+     * Vive aqui y no en cada feature porque el {@code XxxJpaRepository} de una
+     * feature solo se declara una vez: dos slices anadiendo el mismo metodo
+     * derivado es un conflicto de escritura sobre este archivo, no dos metodos.
+     */
+    boolean existsByDaneCode(String daneCode);
 }

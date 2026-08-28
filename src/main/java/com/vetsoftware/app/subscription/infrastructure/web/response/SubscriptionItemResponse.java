@@ -1,6 +1,5 @@
 package com.vetsoftware.app.subscription.infrastructure.web.response;
 
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.ItemOrigin;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemType;
 import com.vetsoftware.app.subscription.domain.TaxTreatment;
@@ -15,8 +14,10 @@ import java.time.LocalDateTime;
  */
 public record SubscriptionItemResponse(Long id, Long companyId, Long subscriptionId,
         Long catalogItemId, String itemCode, String itemName, SubscriptionItemType itemType,
-        CapacityUnit capacityUnit, int includedQuantity, TaxTreatment taxTreatment, int quantity,
-        int billableQuantity, BigDecimal unitAmount, BigDecimal taxRate, LocalDate effectiveFrom,
-        LocalDate effectiveTo, ItemOrigin origin, Long createdAmendmentId, Long endedAmendmentId,
+        String capacityUnit, int tierMin, Integer tierMax, int includedQuantity,
+        TaxTreatment taxTreatment, int quantity, int billableQuantity, BigDecimal unitAmount,
+        BigDecimal discountPercent, BigDecimal discountAmount, boolean discountIsConditional,
+        BigDecimal taxRate, BigDecimal taxableBase, LocalDate effectiveFrom, LocalDate effectiveTo,
+        ItemOrigin origin, Long createdAmendmentId, Long endedAmendmentId,
         LocalDateTime createdDate, boolean enabled) {
 }

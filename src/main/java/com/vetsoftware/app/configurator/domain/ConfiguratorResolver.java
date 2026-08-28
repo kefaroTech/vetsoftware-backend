@@ -11,13 +11,25 @@ import java.util.Map;
  * excepción: da una cotización equivocada, firmada por el cliente.
  *
  * <p>
- * <strong>El orden de aplicación es el del id del efecto, ascendente, y eso es
- * parte del contrato.</strong> Los efectos no conmutan: un {@code ADD} y un
- * {@code REMOVE} sobre el mismo artículo dan un resultado distinto según cuál
- * corra último, y {@code SET_QUANTITY} pisa lo que hubiera. Sin un orden
- * declarado, la selección dependería del orden de recuperación de la base, que
- * no es determinista — el mismo cuestionario y las mismas respuestas darían dos
- * carritos distintos y nadie sabría cuál es el bueno.
+ * <strong>El orden de aplicación es el de {@code priority} ascendente, con
+ * desempate por {@code id}, y eso es parte del contrato.</strong> Los efectos
+ * no conmutan: un {@code ADD} y un {@code REMOVE} sobre el mismo artículo dan
+ * un resultado distinto según cuál corra último, y {@code SET_QUANTITY} pisa lo
+ * que hubiera. Sin un orden declarado, la selección dependería del orden de
+ * recuperación de la base, que no es determinista — el mismo cuestionario y las
+ * mismas respuestas darían dos carritos distintos y nadie sabría cuál es el
+ * bueno.
+ *
+ * <p>
+ * <strong>Y ordenar por {@code id} tampoco bastaba, que es lo que hacía hasta
+ * hoy.</strong> El {@code id} es el orden en que alguien insertó las filas, no
+ * una decisión de nadie: con él, un {@code REMOVE} sembrado antes deshace un
+ * {@code ADD} de una pregunta <em>posterior</em>. El caso concreto es el que
+ * describe el changeset 238 — un efecto añade Inventario por «vendo productos»
+ * y otro lo quita por «soy solo estética»— y quien marca las dos cosas se queda
+ * sin Inventario: <em>marcar más servicios produce un carrito más pequeño</em>.
+ * La columna existía en el esquema desde 238 y no estaba mapeada, así que la
+ * regla que ese changeset declara no la ejecutaba nadie.
  *
  * <p>
  * Lo que este resolvedor <strong>no</strong> hace, a propósito: restar
@@ -32,6 +44,22 @@ import java.util.Map;
  */
 public final class ConfiguratorResolver {
 
+    /**
+     * Ascendente por {@code priority}; a igualdad, por {@code id}. El desempate por
+     * {@code id} es lo que hace el orden <em>total</em>: la prioridad no es única
+     * —dos efectos de la misma pregunta comparten decena a propósito— y sin
+     * desempate dos ejecuciones con los mismos datos podrían aplicar el mismo par
+     * en orden distinto.
+     *
+     * <p>
+     * {@code nullsLast} sobre el {@code id} cubre al efecto todavía sin persistir,
+     * que no tiene clave: va al final de su decena, que es donde tiene que ir un
+     * efecto que aún no existía cuando se repartieron las prioridades.
+     */
+    private static final Comparator<ConfiguratorEffect> EN_ORDEN_DE_APLICACION = Comparator
+            .comparingInt(ConfiguratorEffect::getPriority).thenComparing(ConfiguratorEffect::getId,
+                    Comparator.nullsLast(Comparator.naturalOrder()));
+
     private ConfiguratorResolver() {
     }
 
@@ -39,8 +67,8 @@ public final class ConfiguratorResolver {
      * La selección que producen esas respuestas sobre esos efectos.
      *
      * @param effects
-     *            los efectos activos del cuestionario; se ordenan por id dentro
-     *            para no depender del orden en que lleguen
+     *            los efectos activos del cuestionario; se ordenan aquí dentro por
+     *            {@code (priority, id)} para no depender del orden en que lleguen
      * @param answers
      *            lo que respondió el prospecto
      * @return los artículos con cantidad mayor que cero, ordenados por id de
@@ -55,8 +83,7 @@ public final class ConfiguratorResolver {
         Map<Long, Integer> carrito = new LinkedHashMap<>();
 
         List<ConfiguratorEffect> enOrden = new ArrayList<>(effects);
-        enOrden.sort(Comparator.comparing(ConfiguratorEffect::getId,
-                Comparator.nullsLast(Comparator.naturalOrder())));
+        enOrden.sort(EN_ORDEN_DE_APLICACION);
 
         for (ConfiguratorEffect effect : enOrden) {
             if (!effect.isEnabled() || !seDispara(effect, respuestas)) {

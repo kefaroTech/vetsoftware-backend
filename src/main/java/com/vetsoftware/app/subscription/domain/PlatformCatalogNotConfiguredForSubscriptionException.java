@@ -42,11 +42,11 @@ public class PlatformCatalogNotConfiguredForSubscriptionException extends Runtim
      * empresa que ya no existia por el rollback, y no señalaba al catalogo (#490).
      */
     public PlatformCatalogNotConfiguredForSubscriptionException(Long companyId,
-            Set<CapacityUnit> missingUnits) {
+            Set<String> missingUnits) {
         super("The platform catalog grants no core capacity for " + missingUnits
                 + ", so the initial contract of company " + companyId
                 + " would not let it create its own first branch or user: seed one ACTIVE"
-                + " catalog_items with item_type = 'CAPACITY', is_core = TRUE and the matching"
-                + " capacity_unit, plus its published catalog_prices tier");
+                + " catalog_items with item_type = 'CAPACITY', is_core = TRUE and capacity_unit set"
+                + " to that limit_dimensions.code, plus its published catalog_prices tier");
     }
 }

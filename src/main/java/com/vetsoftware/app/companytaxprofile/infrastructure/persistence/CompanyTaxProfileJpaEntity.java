@@ -5,6 +5,7 @@ import com.vetsoftware.app.companytaxprofile.domain.CompanyDocumentType;
 import com.vetsoftware.app.companytaxprofile.domain.TaxRegime;
 import com.vetsoftware.app.economicactivity.infrastructure.persistence.EconomicActivityJpaEntity;
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +23,25 @@ import org.hibernate.annotations.SQLRestriction;
  * camino de edición (quitar una responsabilidad debe borrar su fila) y por sí
  * solo ya propaga el borrado al eliminar el padre, así que llamar a
  * {@code deleteById()} sobre esta entidad destruiría el detalle fiscal.
+ *
+ * <h2>{@code current_profile_marker} NO se mapea</h2>
+ *
+ * <p>
+ * La columna existe en la tabla desde el changeset 364 y es
+ * {@code BIGINT GENERATED ALWAYS AS (CASE WHEN valid_to IS NULL THEN company_id
+ * ELSE NULL END) STORED}: vale la empresa mientras la ficha no tenga fecha de
+ * cierre y queda vacía cuando la tiene. Como dos vacíos no chocan entre sí,
+ * {@code uq_company_tax_profiles_current} deja caber el histórico entero y a la
+ * vez impone <strong>un solo perfil vigente por empresa</strong>.
+ *
+ * <p>
+ * <strong>Mapearla aquí rompería todos los {@code INSERT}.</strong> Hibernate
+ * la incluiría en la sentencia y MySQL rechaza cualquier escritura sobre una
+ * columna {@code GENERATED ALWAYS} —error 3105— <em>aunque el valor que se le
+ * mande sea {@code NULL}</em>. Es la misma trampa que documentan
+ * {@code CompanyBillingProfileJpaEntity} con su marcador y
+ * {@code DocumentWithholdingJpaEntity} con {@code municipality_key}: la columna
+ * la calcula el motor y Java no la ve.
  */
 @Entity
 @Table(name = "company_tax_profiles")
@@ -32,8 +52,18 @@ public class CompanyTaxProfileJpaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * <strong>Sin {@code unique = true} desde el changeset 364.</strong> La tabla
+     * guarda el historico entero de fichas de una empresa, asi que
+     * {@code company_id} se repite; la unicidad que si existe es
+     * {@code uq_company_tax_profiles_current}, sobre la columna generada. Dejar el
+     * {@code unique} aqui mentiria sobre la validacion —Hibernate en modo
+     * {@code validate} no comprueba indices unicos, asi que el arranque no
+     * protestaria— y el siguiente que leyera la clase entenderia lo contrario de lo
+     * que la base impone.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id", nullable = false, unique = true)
+    @JoinColumn(name = "company_id", nullable = false)
     private CompanyJpaEntity company;
 
     @Enumerated(EnumType.STRING)
@@ -66,6 +96,16 @@ public class CompanyTaxProfileJpaEntity {
     @OneToMany(mappedBy = "companyTaxProfile", cascade = {CascadeType.PERSIST,
             CascadeType.MERGE}, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<CompanyTaxProfileResponsibilityJpaEntity> responsibilities = new ArrayList<>();
+
+    @Column(name = "valid_from", nullable = false)
+    private LocalDate validFrom;
+
+    /**
+     * Fin exclusivo de la vigencia. Nulo = vigente, y es lo que alimenta la columna
+     * generada.
+     */
+    @Column(name = "valid_to")
+    private LocalDate validTo;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
@@ -167,6 +207,22 @@ public class CompanyTaxProfileJpaEntity {
     public void setResponsibilities(
             List<CompanyTaxProfileResponsibilityJpaEntity> responsibilities) {
         this.responsibilities = responsibilities;
+    }
+
+    public LocalDate getValidFrom() {
+        return validFrom;
+    }
+
+    public void setValidFrom(LocalDate validFrom) {
+        this.validFrom = validFrom;
+    }
+
+    public LocalDate getValidTo() {
+        return validTo;
+    }
+
+    public void setValidTo(LocalDate validTo) {
+        this.validTo = validTo;
     }
 
     public LocalDateTime getCreatedDate() {

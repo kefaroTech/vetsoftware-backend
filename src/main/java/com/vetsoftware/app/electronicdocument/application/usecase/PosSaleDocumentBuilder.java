@@ -22,6 +22,7 @@ import com.vetsoftware.app.electronicdocument.domain.TaxCategory;
 import com.vetsoftware.app.electronicdocument.domain.TaxScheme;
 import com.vetsoftware.app.shared.domain.Money;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,11 +55,20 @@ public class PosSaleDocumentBuilder {
     private final UvtQueryPort uvtQueryPort;
     private final BranchResolverPort branchResolverPort;
 
+    /**
+     * Reloj del negocio, con zona (D-81). La vigencia de una promocion se decide
+     * contra <b>hoy en Bogota</b>: con el reloj sin zona, una venta de las 19:30
+     * preguntaba por el dia siguiente y perdia la promocion que vencia hoy o
+     * aplicaba la que empieza manana. Y la fecha de emision que el dominio sella es
+     * la que decide el periodo contable del documento.
+     */
+    private final Clock clock;
+
     public PosSaleDocumentBuilder(CompanyFiscalProfileQueryPort fiscalProfileQueryPort,
             SaleCustomerQueryPort saleCustomerQueryPort, CatalogLineQueryPort catalogLineQueryPort,
             SalePromotionQueryPort salePromotionQueryPort, ElectronicDocumentRepository repository,
             PosTicketLimitValidator posTicketLimitValidator, UvtQueryPort uvtQueryPort,
-            BranchResolverPort branchResolverPort) {
+            BranchResolverPort branchResolverPort, Clock clock) {
         this.fiscalProfileQueryPort = fiscalProfileQueryPort;
         this.saleCustomerQueryPort = saleCustomerQueryPort;
         this.catalogLineQueryPort = catalogLineQueryPort;
@@ -67,6 +77,7 @@ public class PosSaleDocumentBuilder {
         this.posTicketLimitValidator = posTicketLimitValidator;
         this.uvtQueryPort = uvtQueryPort;
         this.branchResolverPort = branchResolverPort;
+        this.clock = clock;
     }
 
     public ElectronicDocument build(RegisterPosSaleCommand command) {
@@ -91,7 +102,7 @@ public class PosSaleDocumentBuilder {
         }
 
         List<SalePromotion> activePromos = salePromotionQueryPort.findActive(companyId,
-                LocalDate.now());
+                LocalDate.now(clock));
         List<ElectronicDocumentLine> lines = new ArrayList<>();
         int n = 0;
         for (SaleLine l : command.lines()) {

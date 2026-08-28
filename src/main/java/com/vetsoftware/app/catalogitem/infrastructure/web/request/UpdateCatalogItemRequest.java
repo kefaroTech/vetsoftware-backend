@@ -2,7 +2,6 @@ package com.vetsoftware.app.catalogitem.infrastructure.web.request;
 
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
-import com.vetsoftware.app.catalogitem.domain.CapacityUnit;
 import com.vetsoftware.app.catalogitem.domain.CatalogItemStatus;
 import com.vetsoftware.app.catalogitem.domain.ItemType;
 import jakarta.validation.constraints.NotBlank;
@@ -16,7 +15,7 @@ public record UpdateCatalogItemRequest(
         @Size(max = 255, message = "La descripción corta no puede superar los 255 caracteres.") String shortDescription,
         String longDescription,
         @NotNull(message = "Debes indicar el tipo de artículo.") ItemType itemType,
-        CapacityUnit capacityUnit,
+        @Size(max = 50, message = "El código de la unidad de capacidad no puede superar los 50 caracteres.") String capacityUnit,
         // Jackson 3 trae FAIL_ON_NULL_FOR_PRIMITIVES ACTIVADO (al reves que Jackson 2):
         // sin @JsonSetter, omitir la bandera responde 400 «Cannot map `null` into type
         // `boolean`» en vez de caer al default. Mismo patron que

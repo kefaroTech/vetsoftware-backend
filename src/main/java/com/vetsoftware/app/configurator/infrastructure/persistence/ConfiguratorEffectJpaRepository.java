@@ -14,11 +14,22 @@ public interface ConfiguratorEffectJpaRepository
             JpaRepository<ConfiguratorEffectJpaEntity, Long> {
 
     /**
-     * Por {@code id} ascendente, que es el orden de aplicación del resolvedor. No
-     * es una preferencia del adaptador: los efectos no conmutan, así que este orden
-     * es parte del contrato de la resolución.
+     * Por {@code priority} ascendente y, a igualdad, por {@code id}: es el orden de
+     * aplicación del resolvedor. No es una preferencia del adaptador — los efectos
+     * no conmutan, así que este orden es parte del contrato de la resolución.
+     *
+     * <p>
+     * El par {@code (priority, id)} es exactamente
+     * {@code ix_configurator_effects_priority}, en ese orden, así que la única
+     * lectura caliente de la tabla la sirve el índice y no ordena en memoria.
+     *
+     * <p>
+     * <strong>Sustituye a {@code findAllByOrderByIdAsc}</strong>, que ordenaba por
+     * el orden en que alguien insertó las filas: con él, un {@code REMOVE} sembrado
+     * antes deshacía un {@code ADD} de una pregunta posterior y marcar más
+     * servicios producía un carrito más pequeño.
      */
-    List<ConfiguratorEffectJpaEntity> findAllByOrderByIdAsc();
+    List<ConfiguratorEffectJpaEntity> findAllByOrderByPriorityAscIdAsc();
 
     boolean existsByOptionId(Long optionId);
 

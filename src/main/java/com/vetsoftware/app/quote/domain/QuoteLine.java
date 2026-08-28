@@ -33,12 +33,15 @@ public class QuoteLine {
     private final String itemCode;
     private final String itemName;
     private final QuoteItemType itemType;
+    private final int tierMin;
+    private final Integer tierMax;
     private final int contractedQuantity;
     private final int includedQuantity;
     private final int quantity;
     private final BigDecimal unitAmount;
     private final BigDecimal discountPercent;
     private final BigDecimal discountAmount;
+    private final boolean discountIsConditional;
     private final BigDecimal taxRate;
     private final TaxTreatment taxTreatment;
     private final BigDecimal taxAmount;
@@ -47,12 +50,15 @@ public class QuoteLine {
     private final boolean enabled;
 
     public QuoteLine(Long id, int lineNumber, Long catalogItemId, String itemCode, String itemName,
-            QuoteItemType itemType, int contractedQuantity, int includedQuantity, int quantity,
-            BigDecimal unitAmount, BigDecimal discountPercent, BigDecimal discountAmount,
-            BigDecimal taxRate, TaxTreatment taxTreatment, BigDecimal taxAmount,
-            BigDecimal lineTotal, LocalDateTime createdDate, boolean enabled) {
+            QuoteItemType itemType, int tierMin, Integer tierMax, int contractedQuantity,
+            int includedQuantity, int quantity, BigDecimal unitAmount, BigDecimal discountPercent,
+            BigDecimal discountAmount, boolean discountIsConditional, BigDecimal taxRate,
+            TaxTreatment taxTreatment, BigDecimal taxAmount, BigDecimal lineTotal,
+            LocalDateTime createdDate, boolean enabled) {
         validateIdentity(lineNumber, catalogItemId, itemCode, itemName, itemType, quantity);
-        validateQuantities(itemType, contractedQuantity, includedQuantity, quantity);
+        validateTier(tierMin, tierMax);
+        validateQuantities(itemType, tierMin, tierMax, contractedQuantity, includedQuantity,
+                quantity);
         validateAmounts(unitAmount, discountPercent, discountAmount, taxRate, taxTreatment,
                 taxAmount, lineTotal);
         this.id = id;
@@ -61,12 +67,15 @@ public class QuoteLine {
         this.itemCode = itemCode;
         this.itemName = itemName;
         this.itemType = itemType;
+        this.tierMin = tierMin;
+        this.tierMax = tierMax;
         this.contractedQuantity = contractedQuantity;
         this.includedQuantity = includedQuantity;
         this.quantity = quantity;
         this.unitAmount = Money.scaled(unitAmount);
         this.discountPercent = discountPercent.setScale(2, Money.ROUND);
         this.discountAmount = Money.scaled(discountAmount);
+        this.discountIsConditional = discountIsConditional;
         this.taxRate = taxRate.setScale(2, Money.ROUND);
         this.taxTreatment = taxTreatment;
         this.taxAmount = Money.scaled(taxAmount);
@@ -87,24 +96,82 @@ public class QuoteLine {
      *            cuanto costo, sin que puedan contradecirse.
      */
     public static QuoteLine freeze(int lineNumber, CatalogItemRef item, CatalogPriceRef price,
-            int contractedQuantity, BigDecimal discountPercent, LocalDateTime createdDate) {
+            int contractedQuantity, int includedQuantity, BigDecimal discountPercent,
+            boolean discountIsConditional, LocalDateTime createdDate) {
         if (item == null)
             throw new IllegalArgumentException("catalog item is required");
         if (price == null)
             throw new IllegalArgumentException("catalog price is required");
-        int included = price.includedQuantity();
-        int quantity = billableQuantity(item.itemType(), contractedQuantity, included);
+        int quantity = tierQuantity(item.itemType(), price.tierMin(), price.tierMax(),
+                contractedQuantity, includedQuantity);
         BigDecimal percent = discountPercent == null ? BigDecimal.ZERO : discountPercent;
         BigDecimal gross = grossOf(price.unitAmount(), quantity);
         BigDecimal discount = Money.percentOf(gross, percent);
-        BigDecimal taxableBase = gross.subtract(discount);
+        BigDecimal net = gross.subtract(discount);
         BigDecimal tax = price.taxTreatment() == TaxTreatment.TAXED
-                ? Money.percentOf(taxableBase, price.taxRate())
+                ? Money.percentOf(taxableBaseOf(gross, net, discountIsConditional), price.taxRate())
                 : Money.zero();
-        BigDecimal total = taxableBase.add(tax);
         return new QuoteLine(null, lineNumber, item.id(), item.code(), item.name(), item.itemType(),
-                contractedQuantity, included, quantity, price.unitAmount(), percent, discount,
-                price.taxRate(), price.taxTreatment(), tax, total, createdDate, true);
+                price.tierMin(), price.tierMax(), contractedQuantity, includedQuantity, quantity,
+                price.unitAmount(), percent, discount, discountIsConditional, price.taxRate(),
+                price.taxTreatment(), tax, net.add(tax), createdDate, true);
+    }
+
+    /**
+     * El renglon de <b>tramo unico y abierto</b> {@code [1, infinito)} y sin
+     * descuento condicionado, que es lo que describe cualquier articulo del
+     * catalogo sin escalones y todo descuento que hoy se vende.
+     *
+     * <p>
+     * No es un atajo para saltarse nada: el tramo y la marca son datos de la linea,
+     * y esta sobrecarga solo nombra el caso en el que valen lo que valen por
+     * defecto. Los caminos que resuelven precio -{@code CreateQuoteService}- usan
+     * la completa, porque son los unicos que pueden saber que tramo aplica.
+     */
+    public QuoteLine(Long id, int lineNumber, Long catalogItemId, String itemCode, String itemName,
+            QuoteItemType itemType, int contractedQuantity, int includedQuantity, int quantity,
+            BigDecimal unitAmount, BigDecimal discountPercent, BigDecimal discountAmount,
+            BigDecimal taxRate, TaxTreatment taxTreatment, BigDecimal taxAmount,
+            BigDecimal lineTotal, LocalDateTime createdDate, boolean enabled) {
+        this(id, lineNumber, catalogItemId, itemCode, itemName, itemType, 1, null,
+                contractedQuantity, includedQuantity, quantity, unitAmount, discountPercent,
+                discountAmount, false, taxRate, taxTreatment, taxAmount, lineTotal, createdDate,
+                enabled);
+    }
+
+    /**
+     * D-86 / R-TAX-04. <b>Un descuento CONDICIONADO no reduce la base del IVA.</b>
+     *
+     * <p>
+     * La norma es literal: no forman parte de la base los descuentos "siempre y
+     * cuando no esten sujetos a ninguna condicion". Un veinte por ciento a cambio
+     * de quedarse doce meses esta condicionado por definicion, asi que el impuesto
+     * se liquida sobre el precio de lista y no sobre el rebajado. Sobre 179.000 con
+     * un 20 % de permanencia son 34.010 de IVA y no 27.208: <b>6.802 por cliente y
+     * mes, 816.240 en un semestre con veinte clientes rebajados</b>, que es lo que
+     * este metodo existe para no dejar de liquidar.
+     *
+     * <p>
+     * Lo que el cliente PAGA sigue siendo el neto mas el impuesto; lo que cambia es
+     * sobre que se calcula el impuesto. Por eso el total de la linea se arma con
+     * {@code net + tax} y no con {@code base + tax}: con descuento incondicionado
+     * -que hoy es todo el catalogo- las dos formulas dan el mismo numero.
+     */
+    private static BigDecimal taxableBaseOf(BigDecimal gross, BigDecimal net,
+            boolean discountIsConditional) {
+        return discountIsConditional ? gross : net;
+    }
+
+    /**
+     * Congela un renglon de <b>tramo unico</b> tomando lo incluido del propio
+     * precio y sin descuento condicionado. Es el caso del catalogo sin escalones.
+     */
+    public static QuoteLine freeze(int lineNumber, CatalogItemRef item, CatalogPriceRef price,
+            int contractedQuantity, BigDecimal discountPercent, LocalDateTime createdDate) {
+        if (price == null)
+            throw new IllegalArgumentException("catalog price is required");
+        return freeze(lineNumber, item, price, contractedQuantity, price.includedQuantity(),
+                discountPercent, false, createdDate);
     }
 
     /**
@@ -139,6 +206,31 @@ public class QuoteLine {
             return contractedQuantity;
         }
         return Math.max(contractedQuantity - includedQuantity, 0);
+    }
+
+    /**
+     * D-66 / R-PRICE-04: las unidades de ESTE TRAMO. Es {@link #billableQuantity}
+     * recortado a la ventana {@code [tierMin, tierMax]}, y es lo que convierte
+     * trece unidades facturables en ocho renglon uno y cinco renglon dos en vez de
+     * trece al precio del tramo alto.
+     *
+     * <p>
+     * <b>Se comprueba tambien AL LEER</b>, igual que el resto de la aritmetica de
+     * la linea: una fila editada por SQL para cobrar el tramo entero al precio
+     * barato se delata sola en vez de esperar a la reclamacion.
+     *
+     * <p>
+     * Con el tramo unico y abierto -{@code [1, infinito)}, que es como esta todo el
+     * catalogo sin escalones- devuelve exactamente lo facturable, asi que la regla
+     * vieja sigue siendo cierta como caso particular de esta.
+     */
+    public static int tierQuantity(QuoteItemType itemType, int tierMin, Integer tierMax,
+            int contractedQuantity, int includedQuantity) {
+        int billable = billableQuantity(itemType, contractedQuantity, includedQuantity);
+        if (billable < tierMin)
+            return 0;
+        int upper = tierMax == null ? billable : Math.min(billable, tierMax);
+        return upper - tierMin + 1;
     }
 
     /** Importe bruto del renglon: precio unitario congelado por la cantidad. */
@@ -176,16 +268,24 @@ public class QuoteLine {
      * fila editada por SQL para cobrar de mas se delata sola en vez de esperar a
      * que el cliente reclame.
      */
-    private static void validateQuantities(QuoteItemType itemType, int contractedQuantity,
-            int includedQuantity, int quantity) {
+    private static void validateQuantities(QuoteItemType itemType, int tierMin, Integer tierMax,
+            int contractedQuantity, int includedQuantity, int quantity) {
         if (contractedQuantity <= 0)
             throw new IllegalArgumentException("contractedQuantity must be positive");
         if (includedQuantity < 0)
             throw new IllegalArgumentException("includedQuantity cannot be negative");
-        int expected = billableQuantity(itemType, contractedQuantity, includedQuantity);
+        int expected = tierQuantity(itemType, tierMin, tierMax, contractedQuantity,
+                includedQuantity);
         if (quantity != expected)
             throw new QuoteLineArithmeticException("quantity", BigDecimal.valueOf(quantity),
                     BigDecimal.valueOf(expected));
+    }
+
+    private static void validateTier(int tierMin, Integer tierMax) {
+        if (tierMin < 1)
+            throw new IllegalArgumentException("tierMin must be 1 or greater");
+        if (tierMax != null && tierMax < tierMin)
+            throw new IllegalArgumentException("tierMax must not be lower than tierMin");
     }
 
     private static void validateAmounts(BigDecimal unitAmount, BigDecimal discountPercent,
@@ -233,13 +333,13 @@ public class QuoteLine {
             if (discountAmount.compareTo(expected) != 0)
                 throw new QuoteLineArithmeticException("discountAmount", discountAmount, expected);
         }
-        BigDecimal taxableBase = gross.subtract(discountAmount);
+        BigDecimal net = gross.subtract(discountAmount);
         BigDecimal expectedTax = taxTreatment == TaxTreatment.TAXED
-                ? Money.percentOf(taxableBase, taxRate)
+                ? Money.percentOf(taxableBaseOf(gross, net, discountIsConditional), taxRate)
                 : Money.zero();
         if (taxAmount.compareTo(expectedTax) != 0)
             throw new QuoteLineArithmeticException("taxAmount", taxAmount, expectedTax);
-        BigDecimal expectedTotal = taxableBase.add(taxAmount);
+        BigDecimal expectedTotal = net.add(taxAmount);
         if (lineTotal.compareTo(expectedTotal) != 0)
             throw new QuoteLineArithmeticException("lineTotal", lineTotal, expectedTotal);
     }
@@ -266,6 +366,16 @@ public class QuoteLine {
 
     public QuoteItemType getItemType() {
         return itemType;
+    }
+
+    /** Primera unidad facturable que cubre este renglon. Arranca en 1. */
+    public int getTierMin() {
+        return tierMin;
+    }
+
+    /** Ultima unidad cubierta, o vacio para "de ahi en adelante". */
+    public Integer getTierMax() {
+        return tierMax;
     }
 
     /** Unidades que el cliente pidio, antes de restar lo incluido. */
@@ -300,6 +410,25 @@ public class QuoteLine {
 
     public BigDecimal getDiscountAmount() {
         return discountAmount;
+    }
+
+    /**
+     * D-86: si el descuento esta sujeto a una condicion -permanencia, tipicamente-,
+     * el impuesto se liquido sobre el precio de lista y no sobre el rebajado. Viaja
+     * congelado a la linea del contrato: no muere aqui.
+     */
+    public boolean isDiscountConditional() {
+        return discountIsConditional;
+    }
+
+    /**
+     * La base sobre la que se liquido el impuesto de este renglon. Es el bruto
+     * menos el descuento salvo cuando el descuento esta condicionado, y entonces es
+     * el bruto entero.
+     */
+    public BigDecimal taxableBase() {
+        BigDecimal gross = grossAmount();
+        return taxableBaseOf(gross, gross.subtract(discountAmount), discountIsConditional);
     }
 
     public BigDecimal getTaxRate() {

@@ -5,6 +5,8 @@ import com.vetsoftware.app.subscriptionbilling.application.dto.BillingDocumentDt
 import com.vetsoftware.app.subscriptionbilling.application.port.in.GenerateBillingDocumentUseCase;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentSequenceRepository;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingAuditPort;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingMetrics;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionQueryPort;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingReason;
@@ -53,16 +55,21 @@ public class GenerateBillingDocumentService implements GenerateBillingDocumentUs
     private final SubscriptionChargeRepository chargeRepository;
     private final BillingDocumentSequenceRepository sequenceRepository;
     private final SubscriptionQueryPort subscriptionQueryPort;
+    private final SubscriptionBillingMetrics metrics;
+    private final SubscriptionBillingAuditPort audit;
     private final Clock clock;
 
     public GenerateBillingDocumentService(BillingDocumentRepository documentRepository,
             SubscriptionChargeRepository chargeRepository,
             BillingDocumentSequenceRepository sequenceRepository,
-            SubscriptionQueryPort subscriptionQueryPort, Clock clock) {
+            SubscriptionQueryPort subscriptionQueryPort, SubscriptionBillingMetrics metrics,
+            SubscriptionBillingAuditPort audit, Clock clock) {
         this.documentRepository = documentRepository;
         this.chargeRepository = chargeRepository;
         this.sequenceRepository = sequenceRepository;
         this.subscriptionQueryPort = subscriptionQueryPort;
+        this.metrics = metrics;
+        this.audit = audit;
         this.clock = clock;
     }
 
@@ -83,14 +90,23 @@ public class GenerateBillingDocumentService implements GenerateBillingDocumentUs
         // del dia 1 conviven, y el cambio a plan anual deja de ser irregistrable.
         if (reason == BillingReason.RECURRING_CYCLE && documentRepository.existsRecurringCycle(
                 command.companyId(), subscription.id(), period.start(), period.end())) {
+            // recordNow y no recordAfterCommit: esto revierte la transaccion, asi que
+            // diferirlo al commit descartaria el contador y la barandilla antiduplicados
+            // pareceria no haberse disparado nunca.
+            metrics.documentRejected(SubscriptionBillingMetrics.Rejection.DUPLICATE_CYCLE);
             throw new DuplicateBillingCycleException(subscription.id(), period.start(),
                     period.end());
         }
 
         List<SubscriptionCharge> charges = chargeRepository.findPendingByCompanyIdAndSubscription(
                 command.companyId(), subscription.id(), period.start(), period.end());
-        if (charges.isEmpty())
+        if (charges.isEmpty()) {
+            // Un periodo sin ni un cargo pendiente no es un caso raro: significa que el
+            // devengo no corrio. Sin este contador el cierre de mes se salta una empresa
+            // en silencio y se descubre cuando el cliente pregunta por su factura.
+            metrics.documentRejected(SubscriptionBillingMetrics.Rejection.NO_CHARGES);
             throw new EmptyBillingDocumentException(subscription.id());
+        }
 
         LocalDateTime ahora = LocalDateTime.now(clock);
         TaxBreakdown breakdown = TaxBreakdown.of(charges, KIND, command.companyId(), ahora);
@@ -100,6 +116,10 @@ public class GenerateBillingDocumentService implements GenerateBillingDocumentUs
                         subscription.id(), KIND, reason, period, breakdown, null, clock));
 
         sellarCargos(charges, command.companyId(), saved.getId());
+
+        metrics.documentIssued(saved.getIssueStatus());
+        audit.documentIssued(saved.getId(), saved.getDocumentNumber(), saved.getSubscriptionId(),
+                saved.getIssueStatus(), saved.getTotalAmount(), charges.size());
         return BillingDocumentDto.from(saved);
     }
 

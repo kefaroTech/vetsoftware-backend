@@ -36,6 +36,16 @@ public class SubModuleJpaEntity {
     @Column(name = "read_only_capable", nullable = false)
     private boolean readOnlyCapable = false;
 
+    /**
+     * R-ENT-05: un submódulo con esta bandera en {@code true} no se degrada jamás
+     * -ni por mora, ni por cupo, ni por baja-. Lo lee el mismo recálculo de
+     * entitlements que decide READ_ONLY/deshabilitado, no el dominio
+     * {@code SubModule} (la bandera se siembra por migración y se consulta por SQL
+     * nativo; no forma parte del contrato de API).
+     */
+    @Column(name = "degradation_immune", nullable = false)
+    private boolean degradationImmune = false;
+
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
@@ -95,6 +105,14 @@ public class SubModuleJpaEntity {
 
     public void setReadOnlyCapable(boolean readOnlyCapable) {
         this.readOnlyCapable = readOnlyCapable;
+    }
+
+    public boolean isDegradationImmune() {
+        return degradationImmune;
+    }
+
+    public void setDegradationImmune(boolean degradationImmune) {
+        this.degradationImmune = degradationImmune;
     }
 
     public LocalDateTime getCreatedDate() {

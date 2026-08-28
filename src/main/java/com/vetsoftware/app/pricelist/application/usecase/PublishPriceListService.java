@@ -3,6 +3,7 @@ package com.vetsoftware.app.pricelist.application.usecase;
 import com.vetsoftware.app.pricelist.application.command.PublishPriceListCommand;
 import com.vetsoftware.app.pricelist.application.dto.PriceListDto;
 import com.vetsoftware.app.pricelist.application.port.in.PublishPriceListUseCase;
+import com.vetsoftware.app.pricelist.application.port.out.CatalogItemQueryPort;
 import com.vetsoftware.app.pricelist.application.port.out.CatalogPriceRepository;
 import com.vetsoftware.app.pricelist.application.port.out.PriceListRepository;
 import com.vetsoftware.app.pricelist.domain.PriceList;
@@ -24,6 +25,14 @@ import org.springframework.transaction.annotation.Transactional;
  * cada precio (incidencia #378): en el alta seria imposible de satisfacer -el
  * primer tramo de una lista vacia ya seria un hueco- y despues de publicar
  * llegaria tarde.
+ *
+ * <p>
+ * <b>Y la cobertura se mide contra los articulos ACTIVOS</b> (R-PRICE-05). La
+ * continuidad sola agrupaba los precios escritos, asi que una tarifa a la que
+ * le faltara un articulo entero no producia grupo, no producia hueco y se
+ * publicaba limpia. Si el olvidado es el nucleo, ninguna empresa puede
+ * registrarse desde ese momento, y nada relaciona el alta rota con la
+ * publicacion que la causo.
  */
 @Observed(name = "pricelist.publish")
 @Service
@@ -31,12 +40,15 @@ public class PublishPriceListService implements PublishPriceListUseCase {
 
     private final PriceListRepository repository;
     private final CatalogPriceRepository catalogPriceRepository;
+    private final CatalogItemQueryPort catalogItemQueryPort;
     private final Clock clock;
 
     public PublishPriceListService(PriceListRepository repository,
-            CatalogPriceRepository catalogPriceRepository, Clock clock) {
+            CatalogPriceRepository catalogPriceRepository,
+            CatalogItemQueryPort catalogItemQueryPort, Clock clock) {
         this.repository = repository;
         this.catalogPriceRepository = catalogPriceRepository;
+        this.catalogItemQueryPort = catalogItemQueryPort;
         this.clock = clock;
     }
 
@@ -53,7 +65,8 @@ public class PublishPriceListService implements PublishPriceListUseCase {
         PriceList priceList = repository.findById(command.id())
                 .orElseThrow(() -> new PriceListNotFoundException(command.id()));
         PriceListTierCoverage.requireFullCoverage(command.id(),
-                catalogPriceRepository.findAllTiers(command.id()));
+                catalogPriceRepository.findAllTiers(command.id()),
+                catalogItemQueryPort.findAllActiveIds());
         priceList.publish(command.publishedBySystemUserId(), LocalDateTime.now(clock));
         return PriceListDto.from(repository.save(priceList));
     }

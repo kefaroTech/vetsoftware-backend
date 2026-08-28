@@ -75,4 +75,24 @@ public class JpaCatalogItemQueryPort implements CatalogItemQueryPort {
         }
         return Map.copyOf(resolved);
     }
+
+    /**
+     * {@code status = 'ACTIVE'} y no solo {@code enabled}: un articulo en
+     * {@code DRAFT} todavia se esta redactando y uno {@code DEPRECATED} se retiro
+     * de la venta. Exigirle precio a cualquiera de los dos bloquearia toda
+     * publicacion por un articulo que nadie puede comprar.
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<Long> findAllActiveIds() {
+        Query query = entityManager.createNativeQuery("""
+                SELECT id
+                  FROM catalog_items
+                 WHERE status = 'ACTIVE'
+                   AND enabled = TRUE
+                 ORDER BY id
+                """);
+        List<Object> rows = query.getResultList();
+        return rows.stream().map(value -> ((Number) value).longValue()).toList();
+    }
 }

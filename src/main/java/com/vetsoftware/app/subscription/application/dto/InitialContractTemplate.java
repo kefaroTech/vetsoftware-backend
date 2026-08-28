@@ -1,6 +1,5 @@
 package com.vetsoftware.app.subscription.application.dto;
 
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemType;
 import com.vetsoftware.app.subscription.domain.TaxTreatment;
 import java.math.BigDecimal;
@@ -17,7 +16,7 @@ import java.math.BigDecimal;
  * que este cliente ya no la mira.
  */
 public record InitialContractTemplate(Long priceListId, Long catalogItemId, String itemCode,
-        String itemName, SubscriptionItemType itemType, CapacityUnit capacityUnit,
-        int includedQuantity, int minQuantity, BigDecimal unitAmount, BigDecimal taxRate,
-        TaxTreatment taxTreatment, int defaultGraceDays, int defaultTrialDays) {
+        String itemName, SubscriptionItemType itemType, String capacityUnit, int includedQuantity,
+        int minQuantity, BigDecimal unitAmount, BigDecimal taxRate, TaxTreatment taxTreatment,
+        int defaultGraceDays, int defaultTrialDays) {
 }

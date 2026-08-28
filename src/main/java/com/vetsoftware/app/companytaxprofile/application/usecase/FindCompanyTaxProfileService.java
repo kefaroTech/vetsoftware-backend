@@ -18,7 +18,7 @@ public class FindCompanyTaxProfileService implements FindCompanyTaxProfileUseCas
 
     @Override
     public CompanyTaxProfileDto findByCompanyId(Long companyId) {
-        return CompanyTaxProfileDto.from(repository.findByCompanyId(companyId)
+        return CompanyTaxProfileDto.from(repository.findCurrentByCompanyId(companyId)
                 .orElseThrow(() -> new CompanyTaxProfileNotFoundException(companyId)));
     }
 }

@@ -88,10 +88,16 @@ public final class ProrationCalculator {
         BigDecimal delta = Money.scaled(cycleDelta);
         int periodDays = period.days();
         int prorationDays = period.daysCoveredBy(affected);
-        BigDecimal amount = prorationDays == 0
-                ? Money.zero()
-                : delta.multiply(BigDecimal.valueOf(prorationDays))
-                        .divide(BigDecimal.valueOf(periodDays), Money.SCALE, Money.ROUND);
+        // Cero dias NO es un importe de cero: es que el tramo del cambio no toca el
+        // periodo en curso, y eso solo pasa cuando algo esta mal -una fecha efectiva
+        // fuera del periodo, o un periodo del contrato que se quedo congelado en el
+        // pasado porque nadie lo hacia avanzar-. Devolver Money.zero() aqui, como se
+        // hacia antes, guardaba ese fallo como un otrosi firmado, inmutable y de cero
+        // pesos, indistinguible de un cambio que legitimamente no movia dinero.
+        if (prorationDays == 0)
+            throw new ZeroDayProrationException(period.start(), period.end());
+        BigDecimal amount = delta.multiply(BigDecimal.valueOf(prorationDays))
+                .divide(BigDecimal.valueOf(periodDays), Money.SCALE, Money.ROUND);
         return new Proration(amount, delta, prorationDays, periodDays);
     }
 }

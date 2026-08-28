@@ -1,6 +1,5 @@
 package com.vetsoftware.app.subscription.application.dto;
 
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.ItemOrigin;
 import com.vetsoftware.app.subscription.domain.SubscriptionItem;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemType;
@@ -15,19 +14,23 @@ import java.time.LocalDateTime;
  * arriba tenga que volver a restarlo y equivocarse.
  */
 public record SubscriptionItemDto(Long id, Long companyId, Long subscriptionId, Long catalogItemId,
-        String itemCode, String itemName, SubscriptionItemType itemType, CapacityUnit capacityUnit,
-        int includedQuantity, TaxTreatment taxTreatment, int quantity, int billableQuantity,
-        BigDecimal unitAmount, BigDecimal taxRate, LocalDate effectiveFrom, LocalDate effectiveTo,
-        ItemOrigin origin, Long createdAmendmentId, Long endedAmendmentId,
-        LocalDateTime createdDate, boolean enabled) {
+        String itemCode, String itemName, SubscriptionItemType itemType, String capacityUnit,
+        int tierMin, Integer tierMax, int includedQuantity, TaxTreatment taxTreatment, int quantity,
+        int billableQuantity, BigDecimal unitAmount, BigDecimal discountPercent,
+        BigDecimal discountAmount, boolean discountIsConditional, BigDecimal taxRate,
+        BigDecimal taxableBase, LocalDate effectiveFrom, LocalDate effectiveTo, ItemOrigin origin,
+        Long createdAmendmentId, Long endedAmendmentId, LocalDateTime createdDate,
+        boolean enabled) {
 
     public static SubscriptionItemDto from(SubscriptionItem item) {
         return new SubscriptionItemDto(item.getId(), item.getCompanyId(), item.getSubscriptionId(),
                 item.getCatalogItemId(), item.getItemCode(), item.getItemName(), item.getItemType(),
-                item.getCapacityUnit(), item.getIncludedQuantity(), item.getTaxTreatment(),
-                item.getQuantity(), item.billableQuantity(), item.getUnitAmount(),
-                item.getTaxRate(), item.getPeriod().from(), item.getPeriod().to(), item.getOrigin(),
-                item.getCreatedAmendmentId(), item.getEndedAmendmentId(), item.getCreatedDate(),
-                item.isEnabled());
+                item.getCapacityUnit(), item.getTierMin(), item.getTierMax(),
+                item.getIncludedQuantity(), item.getTaxTreatment(), item.getQuantity(),
+                item.billableQuantity(), item.getUnitAmount(), item.getDiscountPercent(),
+                item.getDiscountAmount(), item.isDiscountConditional(), item.getTaxRate(),
+                item.taxableBase(), item.getPeriod().from(), item.getPeriod().to(),
+                item.getOrigin(), item.getCreatedAmendmentId(), item.getEndedAmendmentId(),
+                item.getCreatedDate(), item.isEnabled());
     }
 }
