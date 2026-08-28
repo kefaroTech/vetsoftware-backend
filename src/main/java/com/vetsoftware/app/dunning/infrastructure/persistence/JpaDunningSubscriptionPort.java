@@ -7,6 +7,8 @@ import com.vetsoftware.app.dunning.domain.DunningSubscriptionStatus;
 import com.vetsoftware.app.dunning.domain.SubscriptionRef;
 import com.vetsoftware.app.subscription.application.command.ChangeSubscriptionStatusCommand;
 import com.vetsoftware.app.subscription.application.port.in.ChangeSubscriptionStatusUseCase;
+import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
+import com.vetsoftware.app.subscription.domain.SubscriptionStatusChangeReason;
 import com.vetsoftware.app.subscription.infrastructure.persistence.SubscriptionJpaEntity;
 import com.vetsoftware.app.subscription.infrastructure.persistence.SubscriptionJpaRepository;
 import java.util.Optional;
@@ -77,11 +79,25 @@ public class JpaDunningSubscriptionPort implements DunningSubscriptionPort {
      */
     @Override
     public void changeStatus(Long subscriptionId, Long companyId, DunningSubscriptionStatus status,
-            String reason, String actor) {
+            String actor) {
+        SubscriptionStatus target = SubscriptionStatus.valueOf(status.name());
         systemAuthRunner.run(() -> changeStatusUseCase.execute(new ChangeSubscriptionStatusCommand(
-                subscriptionId, companyId,
-                com.vetsoftware.app.subscription.domain.SubscriptionStatus.valueOf(status.name()),
-                reason, actor)));
+                subscriptionId, companyId, target, reasonFor(target), actor)));
+    }
+
+    /**
+     * El motivo del vocabulario cerrado que corresponde a la transicion que la
+     * cobranza acaba de decidir. Se deriva del destino y no se parsea de la frase
+     * narrativa: los tres unicos destinos que produce
+     * {@code DunningEvaluationService} son estos, y adivinar leyendo texto seria
+     * reintroducir por detras justo lo que el vocabulario cerrado viene a impedir.
+     */
+    private static SubscriptionStatusChangeReason reasonFor(SubscriptionStatus target) {
+        return switch (target) {
+            case ACTIVE -> SubscriptionStatusChangeReason.PAYMENT_RECEIVED;
+            case PAST_DUE, READ_ONLY -> SubscriptionStatusChangeReason.OVERDUE_BALANCE;
+            default -> SubscriptionStatusChangeReason.MANUAL;
+        };
     }
 
     private DunningSubscriptionSnapshot toSnapshot(SubscriptionJpaEntity entity) {

@@ -107,8 +107,10 @@ public class DunningEvaluationService implements EvaluateDunningUseCase {
     private void transition(DunningSubscriptionSnapshot subscription,
             DunningSubscriptionStatus target, String reason, DunningEventType eventType,
             DunningBillingDocumentSnapshot document, Integer daysOverdue) {
+        // reason NO viaja al contrato: se queda en el DunningEvent de mas abajo, que
+        // es donde el detalle narrativo es prueba y no ruido.
         subscriptionPort.changeStatus(subscription.subscription().id(),
-                subscription.subscription().companyId(), target, reason, ACTOR);
+                subscription.subscription().companyId(), target, ACTOR);
 
         LocalDateTime occurredAt = LocalDateTime.now(clock);
         eventRepository.save(DunningEvent.record(subscription.subscription().companyId(),
