@@ -15,6 +15,7 @@ import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -103,6 +104,23 @@ public class BillingDocumentApplicationJpaEntity {
             @JoinColumn(name = "source_document_id", referencedColumnName = "id", insertable = false, updatable = false)})
     private SubscriptionBillingDocumentJpaEntity sourceDocument;
 
+    /**
+     * El origen si es una retencion. <strong>Escalar pelado y sin
+     * {@code @ManyToOne}</strong>, al contrario que las cuatro asociaciones de
+     * arriba: {@code document_withholdings} es de otro slice y esta rodaja no
+     * navega a ella nunca -lo que necesita saber lo resuelve
+     * {@code WithholdingQueryPort}-. Ademas, una asociacion compuesta mas sobre
+     * {@code company_id} volveria a chocar con la regla de que solo un mapeo puede
+     * escribir esa columna. La FK {@code fk_bda_withholding} sigue existiendo en la
+     * base y sigue rechazando la fila mal formada.
+     */
+    @Column(name = "withholding_id")
+    private Long withholdingId;
+
+    /** El origen si es saldo a favor: el lote. Mismo criterio de escalar pelado. */
+    @Column(name = "credit_entry_id")
+    private Long creditEntryId;
+
     @Column(name = "applied_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal appliedAmount;
 
@@ -125,8 +143,36 @@ public class BillingDocumentApplicationJpaEntity {
     @Column(name = "client_request_id", length = 64)
     private String clientRequestId;
 
+    /**
+     * Quien autorizo el castigo, y el motivo. Los dos <strong>si y solo si</strong>
+     * el origen es {@code WRITE_OFF} ({@code chk_bda_write_off_signature}): es lo
+     * unico que hace auditable la unica operacion de esta tabla que hace
+     * desaparecer dinero sin que entre nada a cambio.
+     */
+    @Column(name = "write_off_authorized_by_system_user_id")
+    private Long writeOffAuthorizedBySystemUserId;
+
+    @Column(name = "write_off_reason", length = 255)
+    private String writeOffReason;
+
     @Column(name = "applied_at", nullable = false)
     private LocalDateTime appliedAt;
+
+    /**
+     * La fecha valor: cuando el asiento CUENTA, que no es lo mismo que cuando se
+     * registro. Una retencion practicada el 30 de octubre y registrada el 3 de
+     * noviembre pertenece a octubre, y esa diferencia es la que decide en que
+     * periodo cae el hecho.
+     *
+     * <p>
+     * <strong>Ya no se deriva de {@code appliedAt}: el dominio la modela.</strong>
+     * La derivacion era correcta mientras los unicos origenes escribibles eran el
+     * pago y la nota credito -que se aplican el dia que ocurren- y dejo de serlo en
+     * cuanto se abrio la retencion, que es justamente el caso en el que las dos
+     * fechas caen en periodos distintos.
+     */
+    @Column(name = "value_date", nullable = false)
+    private LocalDate valueDate;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
@@ -157,6 +203,38 @@ public class BillingDocumentApplicationJpaEntity {
     public void setTargetDocument(SubscriptionBillingDocumentJpaEntity targetDocument) {
         this.targetDocument = targetDocument;
         this.targetDocumentId = targetDocument == null ? null : targetDocument.getId();
+    }
+
+    public Long getWithholdingId() {
+        return withholdingId;
+    }
+
+    public void setWithholdingId(Long withholdingId) {
+        this.withholdingId = withholdingId;
+    }
+
+    public Long getCreditEntryId() {
+        return creditEntryId;
+    }
+
+    public void setCreditEntryId(Long creditEntryId) {
+        this.creditEntryId = creditEntryId;
+    }
+
+    public Long getWriteOffAuthorizedBySystemUserId() {
+        return writeOffAuthorizedBySystemUserId;
+    }
+
+    public void setWriteOffAuthorizedBySystemUserId(Long writeOffAuthorizedBySystemUserId) {
+        this.writeOffAuthorizedBySystemUserId = writeOffAuthorizedBySystemUserId;
+    }
+
+    public String getWriteOffReason() {
+        return writeOffReason;
+    }
+
+    public void setWriteOffReason(String writeOffReason) {
+        this.writeOffReason = writeOffReason;
     }
 
     public ApplicationSourceKind getSourceKind() {
@@ -216,6 +294,14 @@ public class BillingDocumentApplicationJpaEntity {
 
     public void setAppliedAt(LocalDateTime appliedAt) {
         this.appliedAt = appliedAt;
+    }
+
+    public LocalDate getValueDate() {
+        return valueDate;
+    }
+
+    public void setValueDate(LocalDate valueDate) {
+        this.valueDate = valueDate;
     }
 
     public LocalDateTime getCreatedDate() {

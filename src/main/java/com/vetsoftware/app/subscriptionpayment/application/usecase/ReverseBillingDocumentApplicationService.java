@@ -7,6 +7,8 @@ import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocum
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentQueryPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentSettlementPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.DunningReevaluationPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentAuditPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentMetrics;
 import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentApplication;
 import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentApplicationNotFoundException;
 import io.micrometer.observation.annotation.Observed;
@@ -42,16 +44,21 @@ public class ReverseBillingDocumentApplicationService
     private final BillingDocumentQueryPort billingDocumentQueryPort;
     private final BillingDocumentSettlementPort settlementPort;
     private final DunningReevaluationPort dunningReevaluationPort;
+    private final SubscriptionPaymentMetrics metrics;
+    private final SubscriptionPaymentAuditPort audit;
     private final Clock clock;
 
     public ReverseBillingDocumentApplicationService(BillingDocumentApplicationRepository repository,
             BillingDocumentQueryPort billingDocumentQueryPort,
             BillingDocumentSettlementPort settlementPort,
-            DunningReevaluationPort dunningReevaluationPort, Clock clock) {
+            DunningReevaluationPort dunningReevaluationPort, SubscriptionPaymentMetrics metrics,
+            SubscriptionPaymentAuditPort audit, Clock clock) {
         this.repository = repository;
         this.billingDocumentQueryPort = billingDocumentQueryPort;
         this.settlementPort = settlementPort;
         this.dunningReevaluationPort = dunningReevaluationPort;
+        this.metrics = metrics;
+        this.audit = audit;
         this.clock = clock;
     }
 
@@ -76,8 +83,14 @@ public class ReverseBillingDocumentApplicationService
 
         BillingDocumentApplication reversal = BillingDocumentApplication.reversalOf(original,
                 LocalDateTime.now(clock));
-        BillingDocumentApplicationDto dto = BillingDocumentApplicationDto
-                .from(repository.save(reversal));
+        BillingDocumentApplication persisted = repository.save(reversal);
+        BillingDocumentApplicationDto dto = BillingDocumentApplicationDto.from(persisted);
+
+        // Un reverso devuelve saldo a una cuenta de cobro que el cliente creia saldada.
+        // Con solo http_mutation no decia de cuanto, que es la unica cifra que importa.
+        metrics.applicationReversed(persisted.getSourceKind());
+        audit.applicationReversed(persisted.getId(), persisted.getTargetDocument().id(),
+                persisted.getAppliedAmount());
         settlementPort.recalculateSettledAmount(original.getTargetDocument().id(),
                 command.companyId());
         dunningReevaluationPort.reevaluate(original.getTargetDocument().id(), command.companyId());
