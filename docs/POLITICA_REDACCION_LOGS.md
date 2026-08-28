@@ -125,6 +125,42 @@ vaya a la base de datos.
 
 Si el campo es sensible, la respuesta correcta **no** es añadirlo a la allowlist: es no registrarlo.
 
+### Y una quinta regla que el bloque de dinero de suscripciones hizo obligatoria
+
+5. **Si el valor puede tener diez dígitos o más, no lo interpoles en el texto del mensaje.**
+
+El redactor escanea el mensaje ya formateado, y su regla `LONG_DIGIT_RUN` suprime toda corrida de
+diez dígitos o más por parecerse a una cédula. Una factura anual de 500 clínicas pasa de diez
+dígitos con facilidad, así que un `log("… amount={}", amount)` sale como `***` **en el mensaje**
+mientras el campo estructurado `amount`, declarado `VERBATIM`, sale entero: **dos verdades distintas
+en el mismo evento**, y la que primero ve un humano es la mutilada.
+
+Los catorce eventos de dinero de `AuditLogger` dejan por eso los importes fuera del texto y solo en
+campos. Además de correcto, es la práctica que este documento ya predicaba por otro motivo: el
+mensaje es una constante y lo variable va en campos, que es lo que permite agrupar por plantilla en
+Loki.
+
+### Los campos del dinero de suscripciones (#607)
+
+Veinticuatro claves nuevas, todas `VERBATIM` salvo una. Son ids numéricos, enums de dominio en
+mayúsculas, importes decimales y cantidades enteras: su **forma** la garantiza el sistema, que es lo
+que `VERBATIM` significa aquí —no «no es confidencial»—. Someterlos al enmascarado no sería neutro
+sino destructivo, por lo que acaba de decirse sobre `LONG_DIGIT_RUN`.
+
+La excepción es **`change.reason`**, y merece la pena entender por qué no se llama `reason`.
+`reason` es `VERBATIM` porque en todo el resto del canal `AUDIT` es vocabulario cerrado en
+`snake_case` —`token_expired`, `form_closed`, `email_not_verified`—. El motivo de un cambio de
+contrato lo **teclea una persona**: puede traer el correo del cliente, una cédula, o un CRLF que
+fabrique una segunda línea de auditoría falsa (ASVS V7.3.1). Metido en `reason` habría publicado
+texto de usuario sin tocar **y** habría vuelto inagrupable un tag que hoy se filtra en Grafana.
+Escaneado, un motivo normal —«downgrade solicitado por el cliente»— sale entero y un dato personal
+sale enmascarado.
+
+**Lo que no está declarado y no debe estarlo**: la descripción libre de un cargo, el motivo tecleado
+al anular una cuenta de cobro y la referencia de la factura externa. Los dos primeros son texto que
+elige un humano y el tercero lo elige un tercero; esta lista no es el sitio para decidir qué se puede
+leer de ellos. El sitio es no emitirlos.
+
 ## 4. La única excepción, acotada por construcción
 
 `DevEmailPreview` imprime el enlace o los códigos que un correo habría llevado cuando el envío está

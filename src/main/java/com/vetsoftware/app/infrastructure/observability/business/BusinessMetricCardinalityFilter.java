@@ -109,7 +109,57 @@ public final class BusinessMetricCardinalityFilter implements MeterFilter, Meter
                     Set.of("purchase", "sale", "clinical_use", "adjustment_in", "adjustment_out",
                             "transfer_in", "transfer_out", "void_in", "void_out")),
             Map.entry("event", Set.of("opened", "closed")),
-            Map.entry("direction", Set.of("shortage", "surplus", "balanced")));
+            Map.entry("direction", Set.of("shortage", "surplus", "balanced")),
+            // ── Dinero de suscripciones (#606) ──────────────────────────────────
+            //
+            // Seis claves nuevas, todas derivadas de un enum de dominio con
+            // lower(...). La paridad enum ↔ lista blanca la sostiene
+            // BusinessMetricEnumAllowlistParityTest: anadir una constante a
+            // cualquiera de esos enums sin tocar este Map rompe el build, que es
+            // preferible a descubrirlo cuando el panel del cierre de mes lleve
+            // semanas con un hueco que parece calma.
+            //
+            // NO HAY NI UNA CLAVE DE IDENTIFICADOR, y no la puede haber: el
+            // subscriptionId, el companyId y el numero de factura pertenecen a un
+            // atributo de span o a un campo de log, nunca a una etiqueta de
+            // metrica. Si alguna vez aparece una aqui, la correccion es quitarla
+            // del emisor -no anadirla a esta lista-, y el ERROR que emite
+            // recordDenial lo dice con esas palabras.
+            //
+            // Cardinalidad que anaden, contada: charge.type 5 x result 6 = 30 en
+            // el peor caso teorico de subscription.charges, pero los desenlaces
+            // realmente emitidos por clase son 2, asi que el techo practico es 10.
+            // Las siete metricas juntas no llegan a 60 series aun emitiendo todas
+            // las combinaciones.
+            Map.entry("charge.type",
+                    Set.of("recurring", "proration", "one_time", "credit", "discount", "overage")),
+            // El signo del importe, y no es decoracion. DistributionSummary de
+            // Micrometer DESCARTA EN SILENCIO los valores negativos, y en este
+            // dominio los negativos son operaciones normales: un credito, un
+            // descuento y una proracion de reduccion restan. Sin este tag habria
+            // que registrar el valor absoluto y el histograma diria que se
+            // devengaron 500.000 pesos cuando en realidad se devolvieron. Con el,
+            // el neto es una resta de dos series y cada lado significa algo por si
+            // solo. Un importe cero se cuenta como «debit»: no suma en ninguno de
+            // los dos lados, y una tercera serie que solo contiene ceros es coste
+            // sin informacion.
+            Map.entry("charge.sign", Set.of("debit", "credit")),
+            Map.entry("issue.status",
+                    Set.of("draft", "awaiting_external", "external_registered", "voided")),
+            Map.entry("payment.method", Set.of("transfer", "card", "pse", "cash", "other")),
+            Map.entry("source.kind",
+                    Set.of("payment", "credit_note", "withholding", "customer_credit", "rounding",
+                            "write_off")),
+            Map.entry("to.status",
+                    Set.of("trialing", "active", "past_due", "read_only", "cancelled", "expired")),
+            // Disparador del recalculo de entitlements. Vocabulario cerrado
+            // definido en SubscriptionEntitlementMetrics.Trigger, no un enum de
+            // dominio: describe POR QUE se recalculo, y eso es una decision de
+            // este slice de telemetria. Dos valores porque son dos poblaciones
+            // con dueno distinto -un pico a las 3 de la manana es el barrido; un
+            // pico al mediodia es un incidente que estan viendo clientes- y
+            // meterlas en la misma serie esconde la segunda detras de la primera.
+            Map.entry("trigger.reason", Set.of("subscription_changed", "scheduled_sweep")));
 
     /**
      * Acumuladores de descarte por nombre de medidor. El conjunto de claves es fijo

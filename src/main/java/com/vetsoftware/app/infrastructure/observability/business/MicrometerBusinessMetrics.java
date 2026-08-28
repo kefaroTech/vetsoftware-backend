@@ -11,6 +11,16 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.inventory.application.port.out.InventoryMetrics;
 import com.vetsoftware.app.inventory.domain.StockMovementType;
 import com.vetsoftware.app.platformaccess.application.port.out.PlatformAccessMetrics;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionEntitlementMetrics;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionLifecycleMetrics;
+import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingMetrics;
+import com.vetsoftware.app.subscriptionbilling.domain.ChargeType;
+import com.vetsoftware.app.subscriptionbilling.domain.IssueStatus;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentMetrics;
+import com.vetsoftware.app.subscriptionpayment.domain.ApplicationSourceKind;
+import com.vetsoftware.app.subscriptionpayment.domain.PaymentMethod;
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentStatus;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Meter;
@@ -36,7 +46,11 @@ public class MicrometerBusinessMetrics
             InventoryMetrics,
             AppointmentMetrics,
             CashMetrics,
-            PlatformAccessMetrics {
+            PlatformAccessMetrics,
+            SubscriptionBillingMetrics,
+            SubscriptionPaymentMetrics,
+            SubscriptionLifecycleMetrics,
+            SubscriptionEntitlementMetrics {
 
     private final AfterCommitMetricRecorder recorder;
 
@@ -63,6 +77,15 @@ public class MicrometerBusinessMetrics
      * contadores de descarte.
      */
     private final Counter systemUserProvisioned;
+
+    // Dinero de suscripciones (#606). Siete medidores, ninguno con companyId.
+    private final Meter.MeterProvider<Counter> subscriptionCharges;
+    private final Meter.MeterProvider<DistributionSummary> subscriptionChargedAmount;
+    private final Meter.MeterProvider<Counter> subscriptionDocuments;
+    private final Meter.MeterProvider<Counter> subscriptionPayments;
+    private final Meter.MeterProvider<Counter> subscriptionApplications;
+    private final Meter.MeterProvider<Counter> subscriptionStatusTransitions;
+    private final Meter.MeterProvider<Counter> subscriptionEntitlementRecalculations;
 
     public MicrometerBusinessMetrics(MeterRegistry registry, AfterCommitMetricRecorder recorder) {
         this.recorder = recorder;
@@ -135,6 +158,38 @@ public class MicrometerBusinessMetrics
         systemUserProvisioned = Counter.builder(BusinessMetricNames.SYSTEM_USER_PROVISIONED)
                 .description("Cuentas con control total de la plataforma creadas por invitacion")
                 .register(registry);
+        subscriptionCharges = Counter.builder(BusinessMetricNames.SUBSCRIPTION_CHARGES)
+                .baseUnit("charges")
+                .description("Cargos de suscripcion devengados o anulados, por clase y resultado")
+                .withRegistry(registry);
+        subscriptionChargedAmount = DistributionSummary
+                .builder(BusinessMetricNames.SUBSCRIPTION_CHARGED_AMOUNT).baseUnit("cop")
+                .description("Importe devengado por clase de cargo; el signo va en charge.sign"
+                        + " porque DistributionSummary descarta los negativos")
+                .withRegistry(registry);
+        subscriptionDocuments = Counter.builder(BusinessMetricNames.SUBSCRIPTION_DOCUMENTS)
+                .baseUnit("documents")
+                .description("Cuentas de cobro de suscripcion por estado de emision y resultado")
+                .withRegistry(registry);
+        subscriptionPayments = Counter.builder(BusinessMetricNames.SUBSCRIPTION_PAYMENTS)
+                .baseUnit("payments")
+                .description("Pagos de suscripcion registrados, por medio y estado alcanzado")
+                .withRegistry(registry);
+        subscriptionApplications = Counter.builder(BusinessMetricNames.SUBSCRIPTION_APPLICATIONS)
+                .baseUnit("applications")
+                .description("Imputaciones contra cuentas de cobro, por clase de fuente")
+                .withRegistry(registry);
+        subscriptionStatusTransitions = Counter
+                .builder(BusinessMetricNames.SUBSCRIPTION_STATUS_TRANSITIONS)
+                .baseUnit("transitions")
+                .description("Transiciones persistidas del estado del contrato;"
+                        + " to.status=read_only es un cliente sin escritura")
+                .withRegistry(registry);
+        subscriptionEntitlementRecalculations = Counter
+                .builder(BusinessMetricNames.SUBSCRIPTION_ENTITLEMENT_RECALCULATIONS)
+                .baseUnit("recalculations")
+                .description("Recalculos de entitlements disparados por un cambio de contrato")
+                .withRegistry(registry);
     }
 
     /**
@@ -341,6 +396,128 @@ public class MicrometerBusinessMetrics
     @Override
     public void provisioned() {
         recorder.recordAfterCommit(systemUserProvisioned::increment);
+    }
+
+    // -- Dinero de suscripciones (#606) ----------------------------------------
+    //
+    // Todo lo que representa un hecho persistido va por recordAfterCommit: contar
+    // un cargo que despues hace rollback es publicar una venta que no existio, y
+    // el cierre de mes es justo donde eso se paga caro. Los desenlaces que NO
+    // persisten -las dos formas de rechazo de la emision- van por recordNow, y no
+    // es una inconsistencia: nacen de una excepcion que revierte la transaccion,
+    // asi que recordAfterCommit los descartaria a todos y el contador de rechazos
+    // seria constantemente cero. Es el mismo reparto que ya usan `completed` y
+    // `failed` de las ventas.
+
+    @Override
+    public void chargeAccrued(ChargeType chargeType, BigDecimal amount) {
+        BigDecimal immutable = zeroIfNull(amount);
+        recorder.recordAfterCommit(() -> {
+            String type = lower(chargeType);
+            subscriptionCharges.withTags("charge.type", type, "result", "completed").increment();
+            subscriptionChargedAmount
+                    .withTags("charge.type", type, "charge.sign", chargeSign(immutable))
+                    .record(immutable.abs().doubleValue());
+        });
+    }
+
+    @Override
+    public void chargeVoided(ChargeType chargeType) {
+        recorder.recordAfterCommit(() -> subscriptionCharges
+                .withTags("charge.type", lower(chargeType), "result", "cancelled").increment());
+    }
+
+    @Override
+    public void documentIssued(IssueStatus issueStatus) {
+        recorder.recordAfterCommit(() -> subscriptionDocuments
+                .withTags("issue.status", lower(issueStatus), "result", "completed").increment());
+    }
+
+    @Override
+    public void documentVoided(IssueStatus issueStatus) {
+        recorder.recordAfterCommit(() -> subscriptionDocuments
+                .withTags("issue.status", lower(issueStatus), "result", "cancelled").increment());
+    }
+
+    /**
+     * {@code issue.status=draft} porque el documento nunca llego a existir: el
+     * rechazo ocurre antes de asignarle numero. Usar el estado que habria tenido
+     * seria inventarse un hecho.
+     */
+    @Override
+    public void documentRejected(SubscriptionBillingMetrics.Rejection rejection) {
+        recorder.recordNow(() -> subscriptionDocuments
+                .withTags("issue.status", "draft", "result", rejection.value()).increment());
+    }
+
+    @Override
+    public void paymentRegistered(PaymentMethod method, SubscriptionPaymentStatus status) {
+        recorder.recordAfterCommit(() -> subscriptionPayments
+                .withTags("payment.method", lower(method), "result", paymentResult(status))
+                .increment());
+    }
+
+    @Override
+    public void paymentStatusChanged(PaymentMethod method, SubscriptionPaymentStatus status) {
+        recorder.recordAfterCommit(() -> subscriptionPayments
+                .withTags("payment.method", lower(method), "result", paymentResult(status))
+                .increment());
+    }
+
+    @Override
+    public void applicationRecorded(ApplicationSourceKind sourceKind) {
+        recorder.recordAfterCommit(() -> subscriptionApplications
+                .withTags("source.kind", lower(sourceKind), "result", "completed").increment());
+    }
+
+    @Override
+    public void applicationReversed(ApplicationSourceKind sourceKind) {
+        recorder.recordAfterCommit(() -> subscriptionApplications
+                .withTags("source.kind", lower(sourceKind), "result", "cancelled").increment());
+    }
+
+    @Override
+    public void statusTransitioned(SubscriptionStatus toStatus) {
+        recorder.recordAfterCommit(() -> subscriptionStatusTransitions
+                .withTags("to.status", lower(toStatus)).increment());
+    }
+
+    @Override
+    public void recalculated(SubscriptionEntitlementMetrics.Trigger trigger) {
+        recorder.recordAfterCommit(() -> subscriptionEntitlementRecalculations
+                .withTags("trigger.reason", trigger.value(), "result", "completed").increment());
+    }
+
+    /**
+     * {@code recordNow} y no {@code recordAfterCommit}: el recalculo corre DENTRO
+     * de la transaccion del cambio de contrato, asi que su fallo la revierte y no
+     * hay commit que esperar. Diferirlo seria descartar en silencio el unico
+     * contador de la unica ruta que deja a una empresa entera sin permisos.
+     */
+    @Override
+    public void recalculationFailed(SubscriptionEntitlementMetrics.Trigger trigger) {
+        recorder.recordNow(() -> subscriptionEntitlementRecalculations
+                .withTags("trigger.reason", trigger.value(), "result", "failed").increment());
+    }
+
+    /**
+     * Traduce el estado alcanzado por el pago al vocabulario ya vivo del tag
+     * {@code result}, en vez de abrir uno paralelo: {@code result=failed} tiene el
+     * mismo significado aqui que en la entrega de documentos, y compartirlo es lo
+     * que permite preguntar por todos los fallos del sistema de una vez.
+     */
+    private static String paymentResult(SubscriptionPaymentStatus status) {
+        return switch (status) {
+            case PENDING -> "pending";
+            case CONFIRMED -> "completed";
+            case FAILED -> "failed";
+            case REFUNDED -> "cancelled";
+        };
+    }
+
+    /** Ver el comentario de {@code charge.sign} en el filtro de cardinalidad. */
+    private static String chargeSign(BigDecimal amount) {
+        return amount.signum() < 0 ? "credit" : "debit";
     }
 
     private static String documentType(ElectronicDocumentType type) {

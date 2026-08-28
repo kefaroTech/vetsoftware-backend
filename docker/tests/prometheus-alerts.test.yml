@@ -8,6 +8,8 @@ group_eval_order:
   - vetsoftware-http
   - vetsoftware-dependencies
   - vetsoftware-telemetry-pipeline
+  - vetsoftware-entitlements
+  - vetsoftware-scheduled-jobs
 
 tests:
   - name: backend down becomes critical
@@ -238,3 +240,145 @@ tests:
               summary: "Una tabla de tokens de seguridad supera el umbral de crecimiento"
               description: "La tabla indicada por token_type sigue por encima del umbral después de varias ejecuciones de la purga."
               runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresecuritytokentablegrowth"
+
+  # ───────────────────────── Entitlements (#608) ─────────────────────────
+  #
+  # Las dos causas se prueban por separado, y una tercera prueba comprueba que NO se
+  # contaminan: la crítica no puede dispararse por actividad de la otra. Sin ese caso, un
+  # matcher mal escrito —o borrado por un refactor— dejaría la crítica sonando por el motivo
+  # equivocado, que en esta pareja significa despertar a alguien por un caso de negocio.
+  - name: empresa sin entitlements dispara la critica desde el primer incremento
+    interval: 1m
+    input_series:
+      - series: 'vetsoftware_entitlement_resolution_empty_total{job="vetsoftware",cause="company_without_entitlements"}'
+        values: '0 0 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: VetSoftwareEntitlementResolutionEmpty
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareEntitlementResolutionEmpty
+              cause: company_without_entitlements
+              domain: entitlements
+              job: vetsoftware
+              service: vetsoftware
+              severity: critical
+            exp_annotations:
+              summary: "Una empresa se quedó sin entitlements y sus empleados no pueden entrar"
+              description: "Al menos una resolución de permisos efectivos devolvió el conjunto vacío porque la empresa no tiene ni una fila en company_entitlements. Es un corte total de acceso para ese tenant. La empresa NO está en esta alerta a propósito (etiquetar por empresa multiplicaría las series por 500): sale del log, campo actor.companyId del WARN de JpaEntitlementEffectivePermissionResolver."
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareentitlementresolutionempty"
+
+  - name: la serie pre-registrada en cero no dispara nada
+    interval: 1m
+    input_series:
+      # Este es el caso que justifica el registro ansioso del contador: la serie EXISTE
+      # desde el primer scrape aunque nunca se haya incrementado. Si la alerta disparara
+      # aquí, el diseño entero sería contraproducente.
+      - series: 'vetsoftware_entitlement_resolution_empty_total{job="vetsoftware",cause="company_without_entitlements"}'
+        values: '0x10'
+      - series: 'vetsoftware_entitlement_resolution_empty_total{job="vetsoftware",cause="contract_restricted"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: VetSoftwareEntitlementResolutionEmpty
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: VetSoftwareEntitlementContractRestricted
+        exp_alerts: []
+
+  - name: contrato restrictivo avisa en warning sin arrastrar a la critica
+    interval: 1m
+    input_series:
+      - series: 'vetsoftware_entitlement_resolution_empty_total{job="vetsoftware",cause="contract_restricted"}'
+        values: '0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20'
+      - series: 'vetsoftware_entitlement_resolution_empty_total{job="vetsoftware",cause="company_without_entitlements"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 18m
+        alertname: VetSoftwareEntitlementContractRestricted
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareEntitlementContractRestricted
+              cause: contract_restricted
+              domain: entitlements
+              job: vetsoftware
+              service: vetsoftware
+              severity: warning
+            exp_annotations:
+              summary: "Un empleado se quedó sin ningún permiso efectivo dentro de su contrato"
+              description: "Sus permisos base caen todos fuera de lo que el contrato de su empresa concede, así que recibe 403 en todo. O el contrato perdió una línea que sí paga, o un downgrade dejó roles asignados que ya no cubre. Empresa y empleado salen del log, no de esta alerta."
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwareentitlementcontractrestricted"
+      # La contaminación cruzada: la crítica NO puede sonar por esto.
+      - eval_time: 18m
+        alertname: VetSoftwareEntitlementResolutionEmpty
+        exp_alerts: []
+
+  # ───────────────────── Barridos programados (#609) ─────────────────────
+  - name: un barrido que no corre dispara la alerta de retraso
+    interval: 1m
+    input_series:
+      # El heartbeat se queda clavado en su valor inicial: el barrido no volvió a terminar
+      # bien. El umbral viaja como serie, así que la prueba lo declara igual que lo declara
+      # el proceso — 60 s de intervalo esperado, umbral efectivo 75 s.
+      - series: 'vetsoftware_scheduled_job_last_success_timestamp_seconds{job="vetsoftware",job_name="subscription.lifecycle",single_writer="true"}'
+        values: '0x30'
+      - series: 'vetsoftware_scheduled_job_expected_interval_seconds{job="vetsoftware",job_name="subscription.lifecycle",single_writer="true"}'
+        values: '60x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: VetSoftwareScheduledJobOverdue
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareScheduledJobOverdue
+              domain: scheduling
+              job: vetsoftware
+              job_name: subscription.lifecycle
+              service: vetsoftware
+              severity: critical
+              single_writer: "true"
+            exp_annotations:
+              summary: "El barrido subscription.lifecycle no ha terminado bien dentro de su ventana"
+              description: "Han pasado más de 1,25 intervalos desde su último final correcto. No es lo mismo que un fallo: VetSoftwareScheduledJobFailing vigila los que fallan, esta vigila los que NO CORREN, que no dejan ninguna otra señal. Un partial_failure SÍ sella el heartbeat a propósito —el job corrió—, así que si esta alerta suena, el barrido no llegó a ejecutarse. Horas acordadas en docs/ALERTAS_STACK_LOCAL.md."
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarescheduledjoboverdue"
+
+  - name: un barrido que sella su heartbeat dentro de la ventana no dispara nada
+    interval: 1m
+    input_series:
+      # Sube al ritmo del reloj: cada minuto sella el minuto anterior. Es el caso sano, y es
+      # el que demuestra que el umbral no es una alerta permanente disfrazada.
+      - series: 'vetsoftware_scheduled_job_last_success_timestamp_seconds{job="vetsoftware",job_name="security.tokens.cleanup",single_writer="true"}'
+        values: '0+60x30'
+      - series: 'vetsoftware_scheduled_job_expected_interval_seconds{job="vetsoftware",job_name="security.tokens.cleanup",single_writer="true"}'
+        values: '120x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: VetSoftwareScheduledJobOverdue
+        exp_alerts: []
+
+  - name: dos replicas del mismo barrido de escritor unico se avisan
+    interval: 1m
+    input_series:
+      - series: 'vetsoftware_scheduled_job_expected_interval_seconds{job="vetsoftware",instance="backend-a:8080",job_name="subscription.dunning",single_writer="true"}'
+        values: '86400x15'
+      - series: 'vetsoftware_scheduled_job_expected_interval_seconds{job="vetsoftware",instance="backend-b:8080",job_name="subscription.dunning",single_writer="true"}'
+        values: '86400x15'
+      # Los DIAN toleran N replicas porque reclaman su lote en exclusiva: dos instancias
+      # suyas NO deben producir alerta, y este par lo demuestra.
+      - series: 'vetsoftware_scheduled_job_expected_interval_seconds{job="vetsoftware",instance="backend-a:8080",job_name="dian.delivery.retry",single_writer="false"}'
+        values: '43200x15'
+      - series: 'vetsoftware_scheduled_job_expected_interval_seconds{job="vetsoftware",instance="backend-b:8080",job_name="dian.delivery.retry",single_writer="false"}'
+        values: '43200x15'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: VetSoftwareScheduledJobMultipleReplicas
+        exp_alerts:
+          - exp_labels:
+              alertname: VetSoftwareScheduledJobMultipleReplicas
+              domain: scheduling
+              job_name: subscription.dunning
+              service: vetsoftware
+              severity: critical
+            exp_annotations:
+              summary: "Más de una réplica está ejecutando el barrido subscription.dunning"
+              description: "Ese barrido recorre su tabla con un cursor y no arbitra nada entre réplicas: dos procesos con el mismo cron procesan el mismo lote y duplican su efecto —cargos emitidos dos veces, degradaciones repetidas—. O se vuelve a una sola tarea, o hay que implementar el candado distribuido antes del siguiente cierre de mes."
+              runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarescheduledjobmultiplereplicas"

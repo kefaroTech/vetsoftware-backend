@@ -249,6 +249,108 @@ ajuste con prudencia `TOKEN_CLEANUP_BATCH_SIZE` o `TOKEN_CLEANUP_MAX_BATCHES_PER
 filas elegibles, el crecimiento corresponde a sesiones o solicitudes todavía vigentes y debe
 investigarse antes de reducir la retención.
 
+## VetSoftwareEntitlementResolutionEmpty
+
+Una empresa se quedó **sin ninguna fila en `company_entitlements`**. Sus empleados reciben 403 en
+todos los endpoints, sin ningún mensaje que lo explique: parece un problema de permisos del
+usuario y no lo es.
+
+**Qué empresa es no está en la alerta y es deliberado.** Etiquetar por empresa multiplicaría cada
+serie por las 500 clínicas del plan, así que la empresa viaja por el registro y por el span, no por
+la métrica. Se obtiene del `WARN` de `JpaEntitlementEffectivePermissionResolver`, que la nombra en
+el mensaje y la lleva en `actor.companyId`. Ojo con la consulta: **desde agosto de 2026 los
+registros van por CloudWatch/Firehose y ya no llevan `trace_id` ni `scope_name` como etiquetas de
+Loki**; los atributos están dentro del cuerpo del mensaje, así que hay que filtrar con `| json`
+sobre el contenido y no por etiqueta, o la consulta devuelve vacío y parece que la tubería murió.
+
+**Cómo se arregla**: ejecutar `RecalculateCompanyEntitlementsUseCase` para esa empresa
+(`POST /company-entitlements/recalculate` con principal SYSTEM). Es idempotente: borra y reinserta
+las filas derivándolas del contrato vigente.
+
+**Antes de cerrar**, mirar por qué se quedó sin filas: lo normal es que un cambio de contrato no
+llamara al recálculo, y ahí la métrica que lo dice es
+`vetsoftware_business_subscription_entitlement_recalculations_total{result="failed"}`.
+
+## VetSoftwareEntitlementContractRestricted
+
+Un empleado resolvió permisos efectivos y **todos sus permisos base cayeron fuera de lo que el
+contrato de su empresa concede**: se queda sin una sola authority y recibe el mismo 403 universal
+que el caso anterior, pero por otro motivo.
+
+**No es un caso legítimo de "bajó de plan".** Un downgrade correcto retira módulos y deja al
+empleado con el resto; que se quede con cero significa que su rol entero dependía de algo que ya no
+se paga. Las dos causas posibles:
+
+1. **El contrato perdió una línea que sí paga.** Es la carrera que abre la capa de límites del
+   modelo: el recálculo borra y reinserta la tabla entera sin tomar el candado del contrato, así
+   que un otrosí confirmado en medio reinserta sin la línea nueva. Se comprueba cruzando
+   `subscription_items` vigentes contra `company_entitlements`; el arreglo es volver a recalcular.
+2. **Un downgrade dejó roles asignados que ya no cubre.** Aquí el arreglo es de negocio —reasignar
+   el rol del empleado— y no técnico.
+
+**El umbral es cero y no una línea base medida, a propósito.** Si esto resulta ser rutinario, la
+respuesta correcta es corregir el flujo de downgrade para que reasigne el rol, **no** subir el
+umbral hasta que la alerta deje de sonar: eso convertiría un cliente sin acceso en ruido tolerado.
+
+## VetSoftwareScheduledJobOverdue
+
+El barrido nombrado por `job_name` **no ha terminado bien dentro de su ventana**. Han pasado más de
+1,25 intervalos esperados desde su último final correcto.
+
+**No es lo mismo que un fallo.** `VetSoftwareScheduledJobFailing` vigila los barridos que fallan
+—cuenta `job_outcome` de fallo—; esta vigila los que **no se ejecutan**, que es el caso que no deja
+ninguna otra señal: ni contador, ni log, ni serie que cambie. Un `partial_failure` **sí** sella el
+heartbeat a propósito, porque el barrido corrió; si esta alerta suena, no llegó a ejecutarse.
+
+**Horas acordadas** (zona `America/Bogota`, declaradas en `ScheduledJobCatalog`; cambiarlas es
+cambiar el contrato del que cuelga esta alerta):
+
+| `job_name` | cron | hora | ¿una sola réplica? |
+|---|---|---|---|
+| `subscription.lifecycle` | `0 10 3 * * *` | 03:10 | sí |
+| `quote.expiration` | `0 25 3 * * *` | 03:25 | sí |
+| `subscription.dunning` | `0 40 3 * * *` | 03:40 | sí |
+| `usage.reconciliation` | `0 10 4 * * *` | 04:10 | sí |
+| `security.tokens.cleanup` | `0 20 * * * *` | cada hora, :20 | sí |
+| `dian.contingency.retry` | `0 15 2,14 * * *` | 02:15 y 14:15 | no (lease por lote) |
+| `dian.pending.reconciliation` | `0 30 2,14 * * *` | 02:30 y 14:30 | no (lease por lote) |
+| `dian.delivery.retry` | `0 45 2,14 * * *` | 02:45 y 14:45 | no (lease por lote) |
+
+Los tres de negocio corren de madrugada por una razón medida, no estética: el servidor son dos
+núcleos y los créditos de CPU son el primer techo, así que un barrido de facturación a media mañana
+compite con las clínicas que están atendiendo. A las 03:10 no compite con nadie.
+
+**Qué mirar, en este orden**: (1) ¿el proceso está vivo? — si no, la causa es otra alerta;
+(2) ¿arrancó el scheduler? — el arranque registra la programación, y un `@Scheduled` que no se
+registró no deja más rastro; (3) el log del job por `job.name`, que **desde agosto de 2026 viaja
+dentro del cuerpo del mensaje y no como etiqueta de Loki**; (4) `tasks_scheduled_execution_*` con
+ese `job_name`, para ver si hubo ejecución con desenlace de fallo — si la hay, el problema es de la
+otra alerta y esta es consecuencia.
+
+**Ojo con el reinicio**: el heartbeat se inicializa al arranque del proceso, así que un despliegue
+reinicia el reloj de esta alerta. Eso es correcto —tras un despliegue el barrido vuelve a tener su
+ventana completa— pero significa que **un contenedor que se reinicia continuamente puede tapar un
+barrido que nunca corre**. Si esta alerta va y viene, mirar primero la estabilidad del proceso.
+
+## VetSoftwareScheduledJobMultipleReplicas
+
+Más de un proceso está publicando el heartbeat del mismo barrido, y ese barrido **exige una sola
+réplica**.
+
+**Por qué importa hoy y no importaba ayer.** Los cinco barridos con `single_writer="true"`
+recorren su tabla con un cursor y no arbitran nada entre réplicas. Mientras usaban `fixedDelay`, dos
+tareas se escalonaban por accidente y el solape era intermitente; con `cron` arrancan **a la vez**,
+así que el solape pasa a ser seguro. Lo único que lo impide hoy es que el servicio corre con una
+sola tarea de ECS — una propiedad del despliegue, no del código.
+
+**Qué se rompe si se ignora**: el barrido de facturación emite los cargos del cierre de mes dos
+veces (`subscription_charges` es la única tabla del bloque sin llave antiduplicados), y el de
+cobranza degrada dos veces al mismo moroso. El cliente lo descubre en su factura del mes siguiente.
+
+**Las dos salidas, y solo hay dos**: volver a una sola tarea, o implementar el candado distribuido
+antes del siguiente cierre de mes. Los tres barridos DIAN **no** aparecen aquí porque reclaman su
+lote en exclusiva con `DianJobLeasePort` y toleran N réplicas; ese es el patrón a copiar.
+
 ## Alertas de negocio
 
 Las cuatro alertas siguientes viven en `docker/prometheus-business-alerts.yml` y no vigilan la

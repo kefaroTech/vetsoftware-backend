@@ -87,7 +87,38 @@ public final class LogFieldPolicy {
             // dos anteriores — los produce el reloj y un bucle, no un humano — y por eso
             // van VERBATIM: someterlos al enmascarado solo podría mutilarlos, porque una
             // racha larga produce un número que el patrón de documento confundiría.
-            "database.outage.seconds", "database.failed.probes");
+            "database.outage.seconds", "database.failed.probes",
+            // Origen de una operacion que no cruza el borde HTTP: el nombre del
+            // barrido que la ejecuto. Lo pone ScheduledJobTelemetry junto con
+            // actor.type=SYSTEM y su conjunto de valores lo cierra
+            // ScheduledJobCatalog. Es lowercase.dot.notation generado por el
+            // sistema, nunca texto de usuario.
+            MdcKeys.JOB_NAME,
+            // ── Dinero de suscripciones (#607) ──────────────────────────────────
+            //
+            // Todos VERBATIM y por el mismo criterio del resto del bloque: son ids
+            // numericos, enums de dominio en mayusculas, importes decimales y
+            // cantidades enteras. Su FORMA la garantiza el sistema, que es lo que
+            // VERBATIM significa aqui — no «no es confidencial».
+            //
+            // Y someterlos al enmascarado no seria neutro, seria destructivo: el
+            // redactor suprime corridas de diez digitos o mas por parecerse a un
+            // documento personal, y una factura de suscripcion anual de 500
+            // clinicas pasa de diez digitos con facilidad. Un importe mutilado en
+            // el rastro de auditoria del dinero es peor que no tenerlo, porque
+            // parece un dato.
+            //
+            // Lo que NO esta aqui y no debe estarlo: la descripcion de un cargo,
+            // el motivo tecleado al anular y la referencia de la factura externa.
+            // Los tres son texto que elige un humano o un tercero, y esta lista
+            // no es el sitio para decidir que se puede leer de ellos: el sitio es
+            // no emitirlos.
+            "subscription.id", "subscription.item.id", "catalog.item.id", "amendment.id",
+            "charge.id", "charge.compensation.id", "charge.type", "billing.document.id",
+            "billing.document.number", "billing.document.charges", "payment.id", "payment.method",
+            "application.id", "source.kind", "issue.status", "amount", "monthly.delta.amount",
+            "quantity", "previous.quantity", "from.status", "to.status", "effective.on",
+            "trigger.reason", "entitlement.rows");
 
     /**
      * Claves permitidas cuyo valor sí se somete al enmascarado de texto.
@@ -123,7 +154,16 @@ public final class LogFieldPolicy {
      * exactamente lo que debe pasarle a un documento personal.
      */
     private static final Set<String> SCANNED = Set.of(MdcKeys.HTTP_PATH, MdcKeys.USER_AGENT,
-            "company.name", "actor.identifier", "employee.identifier", "email.domain");
+            "company.name", "actor.identifier", "employee.identifier", "email.domain",
+            // El motivo de un cambio de contrato o de la anulacion de una cuenta de
+            // cobro. AQUI Y NO EN VERBATIM, aunque el campo se llame casi igual que
+            // `reason`: ese es vocabulario cerrado en snake_case en todo el resto
+            // del canal AUDIT y por eso sale sin tocar. Este lo TECLEA una persona,
+            // asi que puede traer el correo del cliente, una cedula o un CRLF que
+            // fabrique una segunda linea de auditoria falsa (ASVS V7.3.1). Escaneado,
+            // un motivo normal -«downgrade solicitado por el cliente»- sale entero y
+            // un dato personal sale enmascarado.
+            "change.reason");
 
     /**
      * {@code true} si el valor de {@code key} se emite sin transformación alguna.

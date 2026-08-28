@@ -1,5 +1,6 @@
 package com.vetsoftware.app.infrastructure.audit;
 
+import java.math.BigDecimal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -71,6 +72,20 @@ public class AuditLogger {
                 .addKeyValue("actor.employeeId", ownerEmployeeId)
                 .addKeyValue("actor.identifier", ownerCode).addKeyValue("outcome", "SUCCESS")
                 .log("company registered id={} name={}", companyId, companyName);
+    }
+
+    /**
+     * Una empresa archivada vuelve al registro. Es un cambio de alcance de accesos
+     * —todos los empleados de esa clínica vuelven a poder entrar de golpe—, no una
+     * edición de ficha, así que deja su propio evento en vez de conformarse con el
+     * {@code http_mutation} genérico del borde. El actor viaja en el MDC.
+     */
+    public void companyReactivated(Long companyId, String companyName, String companyIdentifier) {
+        audit.atInfo().addKeyValue("event", "company_reactivated")
+                .addKeyValue("company.id", companyId).addKeyValue("company.name", companyName)
+                .addKeyValue("company.identifier", companyIdentifier)
+                .addKeyValue("outcome", "SUCCESS")
+                .log("company reactivated id={} name={}", companyId, companyName);
     }
 
     /**
@@ -459,5 +474,302 @@ public class AuditLogger {
                 .addKeyValue("system.user.request.id", requestId)
                 .addKeyValue("actor.systemUserId", systemUserId).addKeyValue("outcome", "SUCCESS")
                 .log("platform system user provisioned id={}", systemUserId);
+    }
+
+    // ── Dinero de suscripciones (#607) ──────────────────────────────────────────
+    //
+    // Catorce hechos que cambian lo que un cliente paga. Antes de tocarlos, cinco
+    // cosas:
+    //
+    // 1. POR QUE EXISTEN, si ya estaba `http_mutation`. Ese evento solo sabe decir
+    // metodo, ruta, estado y duracion: «POST /subscriptions/7/items -> 200», sin
+    // importe, sin articulo y sin delta mensual. AU-3 de NIST SP 800-53 y el
+    // req. 10.2 de PCI DSS v4.0 piden quien / que / cuando / desde donde / con
+    // que resultado, y el «que» faltaba entero. Y hay un agujero peor que la
+    // granularidad: las degradaciones a READ_ONLY y la emision de cargos del
+    // cierre de mes NACEN DE UN BARRIDO y no cruzan el borde HTTP, asi que no
+    // producian ni ese evento generico. Es el escenario de las tres de la
+    // manana: una clinica amanece en solo lectura y la pregunta «quien la
+    // degrado y cuando» solo se responde abriendo la base de produccion.
+    //
+    // 2. EL ACTOR NO VIAJA AQUI. Ni el empleado, ni la empresa, ni la IP: los pone
+    // el MDC (AuthFilter y RequestLoggingContextFilter) y, cuando el origen es
+    // un barrido, ScheduledJobTelemetry con `actor.type=SYSTEM` y `job.name`.
+    // Esa es la propiedad que pedia el issue: un cambio de estado hecho por
+    // proceso es INDISTINGUIBLE EN FORMATO de uno hecho por una persona y
+    // PERFECTAMENTE DISTINGUIBLE EN ACTOR. Repetir el actor en cada llamada lo
+    // unico que consigue es que un dia diga algo distinto del MDC.
+    //
+    // 3. NINGUN TEXTO LIBRE. `reason` es vocabulario cerrado en snake_case, como en
+    // el resto del archivo. La descripcion que teclea un operador de plataforma
+    // al anular un cargo NO entra: es texto controlado por un humano, y en un
+    // canal de texto plano un CRLF dentro fabrica una linea de auditoria falsa
+    // (ASVS V7.3.1). Quien necesite esa descripcion la tiene en la fila.
+    //
+    // 4. LOS IMPORTES SI ENTRAN, y son el punto. `monthly.delta.amount` en el alta
+    // y el cambio de cantidad es literalmente «que importe se le mostro antes de
+    // confirmar», que es el unico dato que prueba que el cliente supo lo que
+    // aceptaba cuando niegue la ampliacion que le duplico la factura.
+    //
+    // 5. TODOS INFO. Son hechos normales de flujos que funcionaron; ninguno pide
+    // que nadie actue. Subirlos «para que destaquen» seria usar la severidad de
+    // resaltador, que es lo que satura el canal. Su vigilancia son los contadores
+    // vetsoftware.business.subscription.* y sus alertas, no el nivel de log.
+    //
+    // 6. NINGUN IMPORTE NI MOTIVO EN EL TEXTO DEL MENSAJE, solo en los campos
+    // estructurados. No es estilo: el redactor central escanea el mensaje
+    // formateado y su regla LONG_DIGIT_RUN suprime toda corrida de diez digitos
+    // o mas por parecerse a una cedula. Una factura anual de 500 clinicas pasa
+    // de diez digitos con facilidad, asi que interpolar el importe lo dejaria
+    // como '***' EN EL MENSAJE mientras el campo `amount` sale entero: dos
+    // verdades distintas en el mismo evento, y la que primero ve un humano es la
+    // mutilada. El mensaje se queda con ids cortos; lo variable va en campos, que
+    // ademas es lo que permite agrupar por plantilla en Loki.
+    //
+    // LIMITE CONOCIDO, y no lo tapa este bloque: este canal sigue siendo traza
+    // operativa, no registro de auditoria con garantias. Sin proteccion de
+    // integridad (NIST AU-9), sin retencion declarada por cumplimiento (ISO/IEC
+    // 27001 A.8.15) y sin no repudio desde que se retiro el outbox con su cadena de
+    // hash y su archivo en S3 Object Lock (docs/OBSERVABILIDAD_PROD_GRAFANA_S3.md).
+    // Que el rastro EXISTA es condicion necesaria y no suficiente; reponer el
+    // destino durable es una decision de producto que este bloque no toma.
+
+    /**
+     * Alta de linea de contrato: el cliente contrato algo mas.
+     * {@code monthlyDeltaAmount} es lo que sube la cuota recurrente.
+     */
+    public void subscriptionItemAdded(Long subscriptionId, Long itemId, Long catalogItemId,
+            Integer quantity, BigDecimal monthlyDeltaAmount, Long amendmentId) {
+        audit.atInfo().addKeyValue("event", "subscription_item_added")
+                .addKeyValue("subscription.id", subscriptionId)
+                .addKeyValue("subscription.item.id", itemId)
+                .addKeyValue("catalog.item.id", catalogItemId).addKeyValue("quantity", quantity)
+                .addKeyValue("monthly.delta.amount", monthlyDeltaAmount)
+                .addKeyValue("amendment.id", amendmentId).addKeyValue("outcome", "SUCCESS")
+                .log("subscription item added subscription={} item={}", subscriptionId, itemId);
+    }
+
+    /**
+     * Baja de linea. {@code monthlyDeltaAmount} es negativo: lo que deja de
+     * cobrarse.
+     */
+    public void subscriptionItemRemoved(Long subscriptionId, Long itemId,
+            BigDecimal monthlyDeltaAmount, Long amendmentId) {
+        audit.atInfo().addKeyValue("event", "subscription_item_removed")
+                .addKeyValue("subscription.id", subscriptionId)
+                .addKeyValue("subscription.item.id", itemId)
+                .addKeyValue("monthly.delta.amount", monthlyDeltaAmount)
+                .addKeyValue("amendment.id", amendmentId).addKeyValue("outcome", "SUCCESS")
+                .log("subscription item removed subscription={} item={}", subscriptionId, itemId);
+    }
+
+    /**
+     * Cambio de cantidad de una linea. Los dos valores viajan juntos a proposito:
+     * «paso a 12» no es auditable sin saber de cuanto venia.
+     */
+    public void subscriptionItemQuantityChanged(Long subscriptionId, Long itemId,
+            Integer previousQuantity, Integer quantity, BigDecimal monthlyDeltaAmount,
+            Long amendmentId) {
+        audit.atInfo().addKeyValue("event", "subscription_item_quantity_changed")
+                .addKeyValue("subscription.id", subscriptionId)
+                .addKeyValue("subscription.item.id", itemId)
+                .addKeyValue("previous.quantity", previousQuantity)
+                .addKeyValue("quantity", quantity)
+                .addKeyValue("monthly.delta.amount", monthlyDeltaAmount)
+                .addKeyValue("amendment.id", amendmentId).addKeyValue("outcome", "SUCCESS")
+                .log("subscription item quantity changed subscription={} item={} {} -> {}",
+                        subscriptionId, itemId, previousQuantity, quantity);
+    }
+
+    /**
+     * Cambio de estado del contrato. <b>Es el evento del escenario que motivo el
+     * issue</b>: la clinica que amanece en solo lectura. Con
+     * {@code actor.type=SYSTEM} y {@code job.name=subscription.dunning} en el MDC,
+     * la respuesta a «quien la degrado» sale de una consulta a Loki en vez de una
+     * lectura de {@code subscription_status_history} en produccion.
+     *
+     * <p>
+     * <b>{@code change.reason} y no {@code reason}, y la distincion importa.</b>
+     * {@code reason} es VERBATIM en {@code LogFieldPolicy} porque en todo el resto
+     * del archivo es vocabulario cerrado en snake_case. Aqui el motivo lo teclea
+     * quien hace el cambio, asi que puede traer un correo, una cedula o un CRLF que
+     * fabrique una linea de auditoria falsa. {@code change.reason} esta declarado
+     * SCANNED: pasa por el redactor, un motivo normal sale entero y un dato
+     * personal sale enmascarado. Meterlo en {@code reason} habria publicado texto
+     * de usuario sin tocar y habria vuelto inagrupable un tag que hoy se filtra en
+     * Grafana.
+     */
+    public void subscriptionStatusChanged(Long subscriptionId, String fromStatus, String toStatus,
+            String reason) {
+        audit.atInfo().addKeyValue("event", "subscription_status_changed")
+                .addKeyValue("subscription.id", subscriptionId)
+                .addKeyValue("from.status", fromStatus).addKeyValue("to.status", toStatus)
+                .addKeyValue("change.reason", reason).addKeyValue("outcome", "SUCCESS")
+                .log("subscription status changed subscription={} {} -> {}", subscriptionId,
+                        fromStatus, toStatus);
+    }
+
+    /**
+     * Solicitud de cancelacion. Se registra aparte del cambio de estado porque
+     * ocurre antes: el contrato sigue vigente hasta {@code effectiveOn}, y la
+     * distancia entre las dos fechas es justo lo que se discute cuando el cliente
+     * reclama el ultimo mes cobrado.
+     */
+    public void subscriptionCancellationRequested(Long subscriptionId, String effectiveOn) {
+        audit.atInfo().addKeyValue("event", "subscription_cancellation_requested")
+                .addKeyValue("subscription.id", subscriptionId)
+                .addKeyValue("effective.on", effectiveOn).addKeyValue("outcome", "SUCCESS")
+                .log("subscription cancellation requested subscription={} effectiveOn={}",
+                        subscriptionId, effectiveOn);
+    }
+
+    /**
+     * Se devengo un cargo: el servicio se presto, con o sin factura todavia. Es el
+     * hecho que hoy no deja rastro cuando lo emite el cierre de mes, y el que hace
+     * falta para responder «cuantos cargos se emitieron esta noche y por cuanto»
+     * sin abrir la base.
+     */
+    public void subscriptionChargeAccrued(Long chargeId, Long subscriptionId, String chargeType,
+            BigDecimal amount, Long amendmentId) {
+        audit.atInfo().addKeyValue("event", "subscription_charge_accrued")
+                .addKeyValue("charge.id", chargeId).addKeyValue("subscription.id", subscriptionId)
+                .addKeyValue("charge.type", chargeType).addKeyValue("amount", amount)
+                .addKeyValue("amendment.id", amendmentId).addKeyValue("outcome", "SUCCESS")
+                .log("subscription charge accrued charge={} subscription={} type={}", chargeId,
+                        subscriptionId, chargeType);
+    }
+
+    /**
+     * Anulacion de un cargo. El dinero de suscripciones solo agrega: no se corrige
+     * encima, se emite un cargo de compensacion. Los dos ids salen porque el rastro
+     * sin el par no permite reconstruir el saldo.
+     */
+    public void subscriptionChargeVoided(Long chargeId, Long compensationChargeId,
+            Long subscriptionId, BigDecimal amount) {
+        audit.atInfo().addKeyValue("event", "subscription_charge_voided")
+                .addKeyValue("charge.id", chargeId)
+                .addKeyValue("charge.compensation.id", compensationChargeId)
+                .addKeyValue("subscription.id", subscriptionId).addKeyValue("amount", amount)
+                .addKeyValue("outcome", "SUCCESS")
+                .log("subscription charge voided charge={} compensation={}", chargeId,
+                        compensationChargeId);
+    }
+
+    /**
+     * Emision de una cuenta de cobro. {@code chargeCount} es la barandilla del
+     * descuadre: un documento cuyo numero de cargos no cuadra con la conciliacion
+     * mensual se detecta aqui y no un mes despues.
+     *
+     * <p>
+     * <b>Por que el mensaje dice {@code billingDocument=} y no
+     * {@code document=}</b> (aqui y en los tres eventos de facturacion que siguen).
+     * {@code document} es una clave de {@code LogRedactor.PII_KEYS} —es el
+     * documento de identidad, la cedula— y la regla de clave-valor sobre texto
+     * libre enmascara su valor sin mirar el contexto. Escrito {@code document={}},
+     * el id de la cuenta de cobro salia a Loki como {@code document=***} y el
+     * evento perdia exactamente el dato que lo hace auditable. El prefijo en
+     * camelCase quita la frontera de palabra que necesita el lookbehind del patron,
+     * asi que el id sobrevive sin tocar la lista de PII. Lo vigila
+     * {@code AuditFieldsSurviveRedactionTest}.
+     */
+    public void subscriptionDocumentIssued(Long documentId, String documentNumber,
+            Long subscriptionId, String issueStatus, BigDecimal amount, Integer chargeCount) {
+        audit.atInfo().addKeyValue("event", "subscription_document_issued")
+                .addKeyValue("billing.document.id", documentId)
+                .addKeyValue("billing.document.number", documentNumber)
+                .addKeyValue("subscription.id", subscriptionId)
+                .addKeyValue("issue.status", issueStatus).addKeyValue("amount", amount)
+                .addKeyValue("billing.document.charges", chargeCount)
+                .addKeyValue("outcome", "SUCCESS")
+                .log("subscription document issued billingDocument={} number={} status={}",
+                        documentId, documentNumber, issueStatus);
+    }
+
+    /**
+     * Anulacion de una cuenta de cobro. Deja los cargos sellados dentro huerfanos
+     * si nadie los libera, que es uno de los fallos silenciosos del catalogo del
+     * modelo: sin este evento, la anulacion no ocurre en ningun registro.
+     */
+    public void subscriptionDocumentVoided(Long documentId, String documentNumber,
+            Long subscriptionId, String reason) {
+        audit.atInfo().addKeyValue("event", "subscription_document_voided")
+                .addKeyValue("billing.document.id", documentId)
+                .addKeyValue("billing.document.number", documentNumber)
+                .addKeyValue("subscription.id", subscriptionId).addKeyValue("change.reason", reason)
+                .addKeyValue("outcome", "SUCCESS")
+                .log("subscription document voided billingDocument={} number={}", documentId,
+                        documentNumber);
+    }
+
+    /** Registro de un pago recibido. */
+    public void subscriptionPaymentRegistered(Long paymentId, String paymentMethod,
+            BigDecimal amount, String toStatus) {
+        audit.atInfo().addKeyValue("event", "subscription_payment_registered")
+                .addKeyValue("payment.id", paymentId).addKeyValue("payment.method", paymentMethod)
+                .addKeyValue("amount", amount).addKeyValue("to.status", toStatus)
+                .addKeyValue("outcome", "SUCCESS")
+                .log("subscription payment registered payment={} method={}", paymentId,
+                        paymentMethod);
+    }
+
+    /**
+     * Cambio de estado de un pago. {@code CONFIRMED -> REFUNDED} es plata que sale;
+     * {@code PENDING -> FAILED}, plata que nunca entro y que alguien puede haber
+     * dado por cobrada.
+     */
+    public void subscriptionPaymentStatusChanged(Long paymentId, String fromStatus,
+            String toStatus) {
+        audit.atInfo().addKeyValue("event", "subscription_payment_status_changed")
+                .addKeyValue("payment.id", paymentId).addKeyValue("from.status", fromStatus)
+                .addKeyValue("to.status", toStatus).addKeyValue("outcome", "SUCCESS")
+                .log("subscription payment status changed payment={} {} -> {}", paymentId,
+                        fromStatus, toStatus);
+    }
+
+    /**
+     * Imputacion de una fuente contra una cuenta de cobro. {@code sourceKind}
+     * separa el pago que entro de la nota credito y de la retencion, que saldan
+     * igual pero no traen un peso.
+     */
+    public void subscriptionDocumentApplied(Long applicationId, Long documentId, String sourceKind,
+            BigDecimal amount) {
+        audit.atInfo().addKeyValue("event", "subscription_document_applied")
+                .addKeyValue("application.id", applicationId)
+                .addKeyValue("billing.document.id", documentId)
+                .addKeyValue("source.kind", sourceKind).addKeyValue("amount", amount)
+                .addKeyValue("outcome", "SUCCESS")
+                .log("subscription document applied application={} billingDocument={} source={}",
+                        applicationId, documentId, sourceKind);
+    }
+
+    /** Reverso de una imputacion: el saldo de la cuenta de cobro vuelve a subir. */
+    public void subscriptionApplicationReversed(Long applicationId, Long documentId,
+            BigDecimal amount) {
+        audit.atInfo().addKeyValue("event", "subscription_application_reversed")
+                .addKeyValue("application.id", applicationId)
+                .addKeyValue("billing.document.id", documentId).addKeyValue("amount", amount)
+                .addKeyValue("outcome", "SUCCESS")
+                .log("subscription application reversed application={} billingDocument={}",
+                        applicationId, documentId);
+    }
+
+    /**
+     * Se reconstruyeron los permisos de una empresa desde su contrato.
+     *
+     * <p>
+     * Es el evento que ata el dinero con el acceso: {@code company.id} mas
+     * {@code trigger.reason} responde «por que esta clinica dejo de ver el modulo
+     * que paga», que hoy solo se puede reconstruir cruzando dos tablas. El
+     * recalculo borra y reinserta la tabla entera, asi que un fallo aqui deja a una
+     * empresa sin authorities y a sus empleados con 403 en todo — el mismo corte
+     * que vigila {@code vetsoftware_entitlement_resolution_empty_total}.
+     */
+    public void companyEntitlementsRecalculated(Long companyId, String triggerReason,
+            Integer permissionRows) {
+        audit.atInfo().addKeyValue("event", "company_entitlements_recalculated")
+                .addKeyValue("company.id", companyId).addKeyValue("trigger.reason", triggerReason)
+                .addKeyValue("entitlement.rows", permissionRows).addKeyValue("outcome", "SUCCESS")
+                .log("company entitlements recalculated company={} trigger={} rows={}", companyId,
+                        triggerReason, permissionRows);
     }
 }

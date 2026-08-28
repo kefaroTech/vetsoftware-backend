@@ -31,6 +31,27 @@ Quedan deliberadamente fuera:
 - **Citas.** Las transiciones de estado las decide el usuario; no hay noción de "transición mala".
 - **Backlog DIAN.** Es un estado acumulado, no un flujo de eventos; ya tiene alerta propia
   (`VetSoftwareDianBacklogOlderThanOneHour`).
+- **Todo el bloque de dinero de suscripciones** (cargos, cuentas de cobro, pagos, imputaciones,
+  cobranza, entitlements), y esta exclusion es la mejor argumentada de la lista.
+
+  El bloque mueve del orden de **500 eventos al mes**. Un SLI basado en tasa necesita un numero
+  minimo de muestras por ventana para que el estadistico exista: con el umbral del 5 % que usa el
+  resto de este documento hacen falta 20 eventos por ventana solo para que un fallo suelto no
+  supere el objetivo por si mismo, y aqui la ventana de 5 minutos contiene **cero** eventos casi
+  siempre. Calcular un porcentaje sobre eso no produce un indicador impreciso: produce un
+  indicador **vacio**, que alterna entre 0 % y 100 % segun caiga un evento dentro o fuera.
+
+  Y el error budget seria peor todavia. Con 500 eventos mensuales, un objetivo del 99,5 % concede
+  dos fallos y medio al mes: el tercer cargo mal emitido bloquearia los despliegues del resto del
+  mes, y el primero no bloquearia nada. Ninguno de los dos comportamientos describe lo que hay que
+  hacer cuando un cargo sale duplicado.
+
+  **Se vigila por conteo absoluto**, que es lo correcto a este volumen: la afirmacion es «esto
+  deberia ser cero» y el umbral es el cero. Las metricas estan en
+  `docs/CONVENCION_NOMBRES_OBSERVABILIDAD.md` y sus alertas en
+  `docker/prometheus-platform-alerts.yml` (grupos `vetsoftware-entitlements` y
+  `vetsoftware-scheduled-jobs`) con su gemelo cloud. Si algun dia el volumen sube dos ordenes de
+  magnitud, esta decision se revisa con el procedimiento de la seccion 10 — no antes.
 
 ## 2. Catálogo de SLO
 
