@@ -29,6 +29,15 @@
 
         <addNotNullConstraint tableName="owners" columnName="document_type" columnDataType="VARCHAR(30)"/>
         <addNotNullConstraint tableName="owners" columnName="person_type" columnDataType="VARCHAR(20)"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): los dos <update> de backfill bloquean la auto-inversion del changeset
+             entero. dropColumn se lleva las cuatro columnas, restaurando el esquema. -->
+        <rollback>
+            <dropColumn tableName="owners" columnName="document_type"/>
+            <dropColumn tableName="owners" columnName="person_type"/>
+            <dropColumn tableName="owners" columnName="verification_digit"/>
+            <dropColumn tableName="owners" columnName="legal_name"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

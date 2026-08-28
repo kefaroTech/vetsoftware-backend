@@ -141,8 +141,21 @@
             <column name="terminal_id"/>
             <column name="opened_at"/>
         </createIndex>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): idx_cash_session_terminal_history (terminal_id, opened_at) es el UNICO indice
+             con terminal_id como prefijo izquierdo que sostiene fk_cash_session_terminal -
+             uq_cash_session_terminal_open (211_06) no sirve, porque ahi terminal_id no es la
+             primera columna-. dropIndex a secas revienta con "Cannot drop index ... needed in a
+             foreign key constraint" (mismo defecto que 306/218/212). La FK se suelta antes y se
+             devuelve identica -mismo nombre, mismas columnas, sin ON DELETE/ON UPDATE explicito
+             (RESTRICT por defecto), tal como la declaro 211_04- despues de soltar el indice. -->
         <rollback>
+            <dropForeignKeyConstraint baseTableName="cash_session"
+                                      constraintName="fk_cash_session_terminal"/>
             <dropIndex tableName="cash_session" indexName="idx_cash_session_terminal_history"/>
+            <addForeignKeyConstraint baseTableName="cash_session" baseColumnNames="terminal_id"
+                                     referencedTableName="cash_terminals" referencedColumnNames="id"
+                                     constraintName="fk_cash_session_terminal"/>
         </rollback>
     </changeSet>
 </databaseChangeLog>

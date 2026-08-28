@@ -17,6 +17,7 @@
             <columnExists tableName="consultation_types" columnName="general"/>
         </preConditions>
         <sql>DO 0;</sql>
+        <rollback/>
     </changeSet>
 
     <changeSet id="293_seed_consultation_types_catalog" author="orlando">
@@ -86,6 +87,7 @@
             <sqlCheck expectedResult="27">SELECT COUNT(*) FROM consultation_types WHERE general = TRUE AND enabled = 1</sqlCheck>
         </preConditions>
         <sql>DO 0;</sql>
+        <rollback/>
     </changeSet>
 
 </databaseChangeLog>

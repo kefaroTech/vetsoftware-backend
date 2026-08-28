@@ -18,6 +18,14 @@
             <column name="tax_regime" value="RESPONSABLE_IVA"/>
             <where>person_type = 'JURIDICA' OR document_type = 'NIT'</where>
         </update>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): el <update> sin <rollback> bloquea la auto-inversion del changeset entero
+             -"No inverse to UpdateDataChange created"-, incluido el addColumn de arriba que si
+             seria trivialmente invertible. dropColumn se lleva la columna completa -y con ella
+             el backfill-, restaurando el esquema, no el dato. -->
+        <rollback>
+            <dropColumn tableName="owners" columnName="tax_regime"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

@@ -16,6 +16,12 @@
         </sql>
 
         <addNotNullConstraint tableName="taxes" columnName="tax_scheme" columnDataType="VARCHAR(20)"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): el <sql> de backfill bloquea la auto-inversion del changeset entero. dropColumn
+             se lleva la columna completa, restaurando el esquema. -->
+        <rollback>
+            <dropColumn tableName="taxes" columnName="tax_scheme"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

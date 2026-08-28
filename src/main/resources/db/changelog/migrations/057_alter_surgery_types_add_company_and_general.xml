@@ -16,6 +16,12 @@
                              references="companies(id)"/>
             </column>
         </addColumn>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback>, el dropColumn auto-generado no suelta la FK primero. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="surgery_types" constraintName="fk_surgery_types_company"/>
+            <dropColumn tableName="surgery_types" columnName="company_id"/>
+        </rollback>
     </changeSet>
 
     <changeSet id="057_add_general_to_surgery_types" author="orlando">
@@ -37,6 +43,12 @@
             <column name="general" valueBoolean="true"/>
             <where>general = FALSE AND company_id IS NULL</where>
         </update>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback>, Liquibase no genera inversa para <update>. Backfill de datos
+             puro sin efecto de esquema: el dropColumn(general) auto-generado del propio
+             changeset _add_general_to_surgery_types (que se revierte despues en la reversion
+             completa) se lleva la columna con el dato incluido. -->
+        <rollback/>
     </changeSet>
 
 </databaseChangeLog>

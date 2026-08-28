@@ -28,6 +28,13 @@
             <column name="uvt_value" valueNumeric="49799.00"/>
             <column name="enabled" valueBoolean="true"/>
         </insert>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): createTable + insert en el mismo changeset sin <rollback> explicito revienta
+             con "No inverse to InsertDataChange created". dropTable se lleva la tabla y la fila
+             sembrada de un solo golpe. -->
+        <rollback>
+            <dropTable tableName="system_configurations"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

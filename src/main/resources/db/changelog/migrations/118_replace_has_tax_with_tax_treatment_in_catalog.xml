@@ -26,6 +26,24 @@
 
         <dropColumn tableName="products" columnName="has_tax"/>
         <dropColumn tableName="services" columnName="has_tax"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): el <sql> de backfill bloquea la auto-inversion, y dropColumn tampoco es
+             auto-invertible. Se declara a mano: restaura has_tax tal como lo definio 092/093
+             (BOOLEAN NOT NULL DEFAULT FALSE) y retira tax_treatment -esquema, no dato-. -->
+        <rollback>
+            <addColumn tableName="products">
+                <column name="has_tax" type="BOOLEAN" defaultValueBoolean="false">
+                    <constraints nullable="false"/>
+                </column>
+            </addColumn>
+            <addColumn tableName="services">
+                <column name="has_tax" type="BOOLEAN" defaultValueBoolean="false">
+                    <constraints nullable="false"/>
+                </column>
+            </addColumn>
+            <dropColumn tableName="products" columnName="tax_treatment"/>
+            <dropColumn tableName="services" columnName="tax_treatment"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

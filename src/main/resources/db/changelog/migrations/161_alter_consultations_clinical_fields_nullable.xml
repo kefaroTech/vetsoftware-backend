@@ -13,9 +13,16 @@
                   AND COLUMN_NAME = 'diagnosis'
             </sqlCheck>
         </preConditions>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): dropNotNullConstraint no tiene inversa automatica. Se restaura el NOT NULL
+             original de 033. -->
         <dropNotNullConstraint tableName="consultations"
                                columnName="diagnosis"
                                columnDataType="VARCHAR(2000)"/>
+        <rollback>
+            <addNotNullConstraint tableName="consultations" columnName="diagnosis"
+                                  columnDataType="VARCHAR(2000)"/>
+        </rollback>
     </changeSet>
 
     <changeSet id="161_drop_not_null_consultations_therapeutic_plan" author="orlando">
@@ -27,9 +34,16 @@
                   AND COLUMN_NAME = 'therapeutic_plan'
             </sqlCheck>
         </preConditions>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): dropNotNullConstraint no tiene inversa automatica. Se restaura el NOT NULL
+             original de 033. -->
         <dropNotNullConstraint tableName="consultations"
                                columnName="therapeutic_plan"
                                columnDataType="VARCHAR(2000)"/>
+        <rollback>
+            <addNotNullConstraint tableName="consultations" columnName="therapeutic_plan"
+                                  columnDataType="VARCHAR(2000)"/>
+        </rollback>
     </changeSet>
 
     <changeSet id="161_drop_not_null_consultations_diagnosis_plan" author="orlando">
@@ -41,9 +55,16 @@
                   AND COLUMN_NAME = 'diagnosis_plan'
             </sqlCheck>
         </preConditions>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): dropNotNullConstraint no tiene inversa automatica. Se restaura el NOT NULL
+             original de 033. -->
         <dropNotNullConstraint tableName="consultations"
                                columnName="diagnosis_plan"
                                columnDataType="VARCHAR(2000)"/>
+        <rollback>
+            <addNotNullConstraint tableName="consultations" columnName="diagnosis_plan"
+                                  columnDataType="VARCHAR(2000)"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

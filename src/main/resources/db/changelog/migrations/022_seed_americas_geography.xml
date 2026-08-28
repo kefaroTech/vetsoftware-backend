@@ -4,6 +4,10 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
+    <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta hoy):
+         sqlFile no tiene inversa automatica. Es semilla de datos pura (paises/departamentos/
+         municipios), sin efecto de esquema propio: countries/states/cities se dropean mas
+         abajo en la reversion completa (011/012/013), llevandose este dato con ellas. -->
     <changeSet id="022_seed_americas_geography" author="orlando">
         <sqlFile path="db/changelog/migrations/022_seed_americas_geography.sql"
                  relativeToChangelogFile="false"
@@ -11,6 +15,7 @@
                  stripComments="true"
                  endDelimiter=";"
                  encoding="UTF-8"/>
+        <rollback/>
     </changeSet>
 
 </databaseChangeLog>

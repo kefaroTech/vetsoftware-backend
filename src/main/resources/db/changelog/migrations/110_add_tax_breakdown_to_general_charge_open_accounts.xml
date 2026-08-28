@@ -36,6 +36,15 @@
                               columnName="tax_amount" columnDataType="DECIMAL(12,2)"/>
         <addNotNullConstraint tableName="general_charge_open_accounts"
                               columnName="total_amount" columnDataType="DECIMAL(12,2)"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): los dos <sql> de backfill bloquean la auto-inversion del changeset entero.
+             dropColumn se lleva las cuatro columnas, restaurando el esquema. -->
+        <rollback>
+            <dropColumn tableName="general_charge_open_accounts" columnName="total_amount"/>
+            <dropColumn tableName="general_charge_open_accounts" columnName="tax_amount"/>
+            <dropColumn tableName="general_charge_open_accounts" columnName="base_amount"/>
+            <dropColumn tableName="general_charge_open_accounts" columnName="tax_name"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

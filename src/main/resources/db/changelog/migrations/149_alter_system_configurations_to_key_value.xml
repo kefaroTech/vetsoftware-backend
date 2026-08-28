@@ -29,6 +29,22 @@
                              constraintName="uq_system_configurations_property_name"/>
 
         <dropColumn tableName="system_configurations" columnName="uvt_value"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): la combinacion addColumn+update+addNotNullConstraint+addUniqueConstraint+
+             dropColumn en un solo changeset sin <rollback> hace que Liquibase intente
+             auto-invertir TODO, y dropColumn no tiene inversa -"No inverse to
+             DropColumnChange created"-. Se declara a mano: vuelve exactamente al estado de
+             148 (solo uvt_value, sin property_name/value), sin reconstruir el dato migrado
+             -restaura esquema, no datos, mismo criterio que 218-. -->
+        <rollback>
+            <addColumn tableName="system_configurations">
+                <column name="uvt_value" type="DECIMAL(15,2)"/>
+            </addColumn>
+            <dropUniqueConstraint tableName="system_configurations"
+                                  constraintName="uq_system_configurations_property_name"/>
+            <dropColumn tableName="system_configurations" columnName="value"/>
+            <dropColumn tableName="system_configurations" columnName="property_name"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

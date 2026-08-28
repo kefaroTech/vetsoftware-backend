@@ -8,6 +8,11 @@
         <addUniqueConstraint tableName="base_permissions"
                              columnNames="code"
                              constraintName="uq_base_permissions_code"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): dropUniqueConstraint no tiene inversa automatica. -->
+        <rollback>
+            <dropUniqueConstraint tableName="base_permissions" constraintName="uq_base_permissions_code"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

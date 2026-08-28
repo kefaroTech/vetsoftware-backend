@@ -7,8 +7,15 @@
     <!-- El diagnóstico de la receta es el mismo de la consulta a la que pertenece (una receta
          siempre tiene consultation_id). Se deja de exigir en la receta y se toma de la consulta,
          por lo que la columna pasa a ser nullable. -->
+    <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+         hoy): dropNotNullConstraint no tiene inversa automatica. Se restaura el NOT NULL
+         original de 039. -->
     <changeSet id="169_alter_prescriptions_diagnosis_nullable" author="orlando">
         <dropNotNullConstraint tableName="prescriptions" columnName="diagnosis" columnDataType="VARCHAR(2000)"/>
+        <rollback>
+            <addNotNullConstraint tableName="prescriptions" columnName="diagnosis"
+                                  columnDataType="VARCHAR(2000)"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

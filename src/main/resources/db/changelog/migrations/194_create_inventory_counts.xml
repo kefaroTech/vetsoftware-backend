@@ -62,6 +62,15 @@
         <createIndex tableName="inventory_count_line" indexName="idx_inventory_count_line_count">
             <column name="count_id"/>
         </createIndex>
-    </changeSet>
+            <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback> explicito, Liquibase auto-invierte en orden inverso -dropIndex
+             primero- y revienta con "Cannot drop index ... needed in a foreign key constraint"
+             porque idx_inventory_count_line_count sostiene fk_inventory_count_line_count.
+             dropTable se lleva la FK y el indice de un solo golpe. -->
+        <rollback>
+            <dropTable tableName="inventory_count_line"/>
+            <dropTable tableName="inventory_count"/>
+        </rollback>
+</changeSet>
 
 </databaseChangeLog>

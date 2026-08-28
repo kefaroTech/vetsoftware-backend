@@ -22,11 +22,21 @@
                 ) STORED,
                 ADD CONSTRAINT uq_numbering_resolutions_active UNIQUE (company_id, active_document_type)
         </sql>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): mismo defecto que 154/203/197/150/027 -uq_numbering_resolutions_active
+             (company_id, active_document_type) sostiene fk_numbering_resolutions_company (120,
+             sin indice propio). La FK se suelta antes y se devuelve identica. -->
         <rollback>
             <sql>
+                ALTER TABLE numbering_resolutions DROP FOREIGN KEY fk_numbering_resolutions_company;
+
                 ALTER TABLE numbering_resolutions
                     DROP INDEX uq_numbering_resolutions_active,
-                    DROP COLUMN active_document_type
+                    DROP COLUMN active_document_type;
+
+                ALTER TABLE numbering_resolutions
+                    ADD CONSTRAINT fk_numbering_resolutions_company
+                        FOREIGN KEY (company_id) REFERENCES companies (id);
             </sql>
         </rollback>
     </changeSet>

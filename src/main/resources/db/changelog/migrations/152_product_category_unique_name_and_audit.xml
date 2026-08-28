@@ -18,11 +18,21 @@
                 ) STORED,
                 ADD CONSTRAINT uq_product_categories_company_active_name UNIQUE (company_id, active_name)
         </sql>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): mismo defecto que 203/197/193/154 -uq_product_categories_company_active_name (company_id, active_name) es
+             indice con company_id como prefijo izquierdo y puede sostener fk_product_categories_company
+             (product_categories, sin indice propio). La FK se suelta antes y se devuelve identica. -->
         <rollback>
             <sql>
+                ALTER TABLE product_categories DROP FOREIGN KEY fk_product_categories_company;
+
                 ALTER TABLE product_categories
                     DROP INDEX uq_product_categories_company_active_name,
-                    DROP COLUMN active_name
+                    DROP COLUMN active_name;
+
+                ALTER TABLE product_categories
+                    ADD CONSTRAINT fk_product_categories_company
+                        FOREIGN KEY (company_id) REFERENCES companies (id);
             </sql>
         </rollback>
     </changeSet>

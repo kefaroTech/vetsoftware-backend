@@ -57,6 +57,31 @@
                               columnDataType="BIGINT"/>
         <addUniqueConstraint tableName="animal_colors" columnNames="specie_id, name"
                              constraintName="uq_animal_colors_specie_name"/>
+        <!-- ROLLBACK EXPLICITO (defecto hallado en el primer rollback end-to-end de la cadena,
+             nunca ejecutado hasta hoy; este changeset no tenia <rollback> propio y dependia del
+             automatico de Liquibase). uq_animal_colors_specie_name (specie_id, name) es, en una
+             base creada desde cero, el UNICO indice que empieza por specie_id en animal_colors
+             -287 lo verifica contra information_schema.STATISTICS: MySQL nunca llega a
+             materializar un indice de soporte propio para fk_animal_colors_specie porque este
+             compuesto ya le sirve de prefijo por la izquierda-, asi que tambien sostiene esa FK
+             -declarada arriba, en 218_animal_colors_add_specie, sin ON DELETE/ON UPDATE explicito,
+             RESTRICT por defecto en MySQL-. El rollback automatico (dropUniqueConstraint sin mas)
+             choca con "Cannot drop index 'uq_animal_colors_specie_name': needed in a foreign key
+             constraint": la FK se suelta antes y se devuelve identica despues de soltar el indice
+             y el NOT NULL. Solo se declara este bloque <rollback>, sin tocar los <change> de
+             arriba: el checksum de Liquibase cubre getChanges(), no rollback, verificado en esta
+             misma sesion contra DATABASECHANGELOG.MD5SUM antes de editar. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="animal_colors"
+                                      constraintName="fk_animal_colors_specie"/>
+            <dropUniqueConstraint tableName="animal_colors"
+                                  constraintName="uq_animal_colors_specie_name"/>
+            <dropNotNullConstraint tableName="animal_colors" columnName="specie_id"
+                                   columnDataType="BIGINT"/>
+            <addForeignKeyConstraint baseTableName="animal_colors" baseColumnNames="specie_id"
+                                     referencedTableName="species" referencedColumnNames="id"
+                                     constraintName="fk_animal_colors_specie"/>
+        </rollback>
     </changeSet>
 
     <!-- La replicación anterior copió todos los colores a todas las especies; se limpian

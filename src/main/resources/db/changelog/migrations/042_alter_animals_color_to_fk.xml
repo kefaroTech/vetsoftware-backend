@@ -12,6 +12,21 @@
                              references="animal_colors(id)"/>
             </column>
         </addColumn>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): dropColumn (sobre `color`) no tiene inversa automatica, asi que la
+             auto-generacion del changeset entero fallaba. Se declara a mano: quita color_id
+             (FK incluida) y devuelve `color` tal como lo definio 031 (VARCHAR(20) NOT NULL;
+             aqui con defaultValue de relleno solo para que el ADD COLUMN no falle si ya hay
+             filas, valor de reversion, no dato real). -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="animals" constraintName="fk_animals_color"/>
+            <dropColumn tableName="animals" columnName="color_id"/>
+            <addColumn tableName="animals">
+                <column name="color" type="VARCHAR(20)" defaultValue="SIN_COLOR">
+                    <constraints nullable="false"/>
+                </column>
+            </addColumn>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

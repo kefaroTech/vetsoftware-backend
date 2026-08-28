@@ -62,6 +62,14 @@
 
         <!-- El peso escalar ya no es la fuente de verdad; se deriva del último weight_record. -->
         <dropColumn tableName="animals" columnName="weight"/>
-    </changeSet>
+            <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado
+             hasta hoy): sin <rollback> explicito, Liquibase auto-invierte createIndex antes que
+             createTable y el dropIndex revienta con "Cannot drop index ... needed in a foreign
+             key constraint" cuando el indice sostiene una FK inline sin indice propio. dropTable
+             se lleva la FK y el indice de un solo golpe. -->
+        <rollback>
+            <dropTable tableName="weight_records"/>
+        </rollback>
+</changeSet>
 
 </databaseChangeLog>

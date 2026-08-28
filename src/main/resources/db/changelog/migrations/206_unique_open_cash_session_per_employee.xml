@@ -24,9 +24,19 @@
                              columnNames="company_id, opened_by_employee_id, open_marker"
                              constraintName="uq_cash_session_employee_open"/>
 
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): uq_cash_session_employee_open (company_id, opened_by_employee_id,
+             open_marker) es indice con company_id como prefijo izquierdo y puede sostener
+             fk_cash_session_company (195, sin indice propio) -mismo defecto que
+             154/203/197/150/027/144/185/134. La FK se suelta antes y se devuelve identica. -->
         <rollback>
+            <dropForeignKeyConstraint baseTableName="cash_session"
+                                      constraintName="fk_cash_session_company"/>
             <dropUniqueConstraint tableName="cash_session"
                                   constraintName="uq_cash_session_employee_open"/>
+            <addForeignKeyConstraint baseTableName="cash_session" baseColumnNames="company_id"
+                                     referencedTableName="companies" referencedColumnNames="id"
+                                     constraintName="fk_cash_session_company"/>
         </rollback>
     </changeSet>
 

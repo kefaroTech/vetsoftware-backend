@@ -50,6 +50,15 @@
                   WHERE act.id = dups.keep_id
               );
         </sql>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback>, Liquibase no genera inversa para <sql>. Este changeset es
+             GENUINAMENTE IRREVERSIBLE -desactiva y BORRA duplicados; no queda registro de cual
+             fila exacta se elimino ni de que combinacion tenia mas de una activa antes-, y no
+             hay forma de arreglarlo sin cambiar el <changeSet> ya aplicado (que rompe checksum).
+             Rollback vacio: no bloquea nada estructural -no toca ninguna FK, indice ni
+             columna-, solo deja sin deshacer una limpieza de datos que por definicion no se
+             puede reconstruir. -->
+        <rollback/>
     </changeSet>
 
     <changeSet id="070-add-unique-system-user-permissions" author="claude">
@@ -57,6 +66,20 @@
             tableName="system_user_permissions"
             columnNames="system_user_id, system_permission_id"
             constraintName="uq_system_user_permissions"/>
+        <!-- AJUSTE (mismo motivo generico que arriba, mas especifico): uq_system_user_permissions
+             (system_user_id, system_permission_id) es el unico indice con system_user_id como
+             prefijo izquierdo y sostiene fk_system_user_permissions_user (010, sin indice
+             propio) -mismo defecto que 154/203/197. La FK se suelta antes y se devuelve
+             identica. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="system_user_permissions"
+                                      constraintName="fk_system_user_permissions_user"/>
+            <dropUniqueConstraint tableName="system_user_permissions"
+                                  constraintName="uq_system_user_permissions"/>
+            <addForeignKeyConstraint baseTableName="system_user_permissions" baseColumnNames="system_user_id"
+                                     referencedTableName="system_users" referencedColumnNames="id"
+                                     constraintName="fk_system_user_permissions_user"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

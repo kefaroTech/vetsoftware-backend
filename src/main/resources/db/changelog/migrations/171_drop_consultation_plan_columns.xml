@@ -7,11 +7,22 @@
     <!-- El plan diagnóstico y terapéutico deja de capturarse como texto libre en la consulta:
          las acciones rápidas (laboratorio/imagen = plan diagnóstico; receta/procedimientos =
          plan terapéutico) son ahora el origen de verdad. Se eliminan las columnas. -->
+    <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta hoy):
+         dropColumn no tiene inversa automatica -"No inverse to DropColumnChange created"-. Se
+         recrean tal como quedaron tras 161 (VARCHAR(2000) NULLABLE; el NOT NULL original de 033
+         ya se habia retirado ahi, y ese ajuste lo revierte el propio 161 en SU rollback, que
+         corre despues de este en la reversion completa). -->
     <changeSet id="171_drop_consultation_plan_columns" author="orlando">
         <dropColumn tableName="consultations">
             <column name="diagnosis_plan"/>
             <column name="therapeutic_plan"/>
         </dropColumn>
+        <rollback>
+            <addColumn tableName="consultations">
+                <column name="diagnosis_plan" type="VARCHAR(2000)"/>
+                <column name="therapeutic_plan" type="VARCHAR(2000)"/>
+            </addColumn>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

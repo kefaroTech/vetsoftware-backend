@@ -70,6 +70,16 @@
             <column name="enabled" valueBoolean="true"/>
             <column name="created_date" valueComputed="CURRENT_TIMESTAMP"/>
         </insert>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): Liquibase no auto-genera inversa para un <insert> con valueComputed
+             (created_date=CURRENT_TIMESTAMP) -no puede construir un WHERE que reevaluado en el
+             DELETE siga casando con la fila-, y revienta con "No inverse to InsertDataChange
+             created". Se borra a mano por name, que es estable y (estos seis) unico. -->
+        <rollback>
+            <delete tableName="medicaments">
+                <where>name IN ('Amoxicilina + Clavulánico','Meloxicam','Metronidazol','Omeprazol','Sucralfato','Maropitant')</where>
+            </delete>
+        </rollback>
     </changeSet>
 
     <!-- FK en la línea recetada (nullable de momento para poder hacer backfill de filas existentes). -->
@@ -81,6 +91,14 @@
 
     <!-- Backfill: por cada nombre distinto ya recetado que no esté en el catálogo, se crea como
          medicamento global; luego se enlaza cada línea con su medicamento por nombre. -->
+    <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta hoy):
+         sin <rollback>, Liquibase no genera inversa para <sql> -"No inverse to RawSQLChange
+         created"-. Es reconciliacion de datos pura, sin efecto de esquema propio: 173e (que ya
+         se revirtio antes que esta) quita el NOT NULL/FK, 173c (que se revierte justo despues)
+         dropea la columna medicament_id entera, y 173a dropea la tabla medicaments completa. Los
+         medicamentos sembrados aqui y los FK que esta rellena desaparecen solos con esos DROP
+         mas abajo en la reversion completa, asi que no hay nada que deshacer aparte. Mismo
+         criterio que 218 con sus backfills. -->
     <changeSet id="173d_backfill_medicament_prescriptions" author="orlando">
         <sql>
             INSERT INTO medicaments (name, general, enabled, created_date)
@@ -95,6 +113,7 @@
             SET mp.medicament_id = m.id
             WHERE mp.medicament_id IS NULL;
         </sql>
+        <rollback/>
     </changeSet>
 
     <changeSet id="173e_medicament_id_not_null_and_fk" author="orlando">

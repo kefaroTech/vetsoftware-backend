@@ -98,6 +98,12 @@
             UPDATE cities ci JOIN states s ON ci.state_id = s.id JOIN countries c ON s.country_id = c.id SET ci.dane_code = '99001' WHERE c.name = 'Colombia' AND s.name = 'Vichada' AND ci.name = 'Puerto Carreño';
         </sql>
 
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback>, Liquibase no genera inversa para <sql>. Es backfill de datos
+             puro, sin cambio de esquema propio: 113 (que se revierte despues, en la reversion
+             completa) dropea la columna dane_code entera en states y cities, asi que el dato
+             que aqui se escribe desaparece solo. -->
+        <rollback/>
     </changeSet>
 
 </databaseChangeLog>

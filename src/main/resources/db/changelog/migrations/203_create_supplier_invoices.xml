@@ -105,11 +105,27 @@
                 ) STORED,
                 ADD CONSTRAINT uq_supplier_invoices_active_number UNIQUE (company_id, supplier_id, active_invoice_number)
         </sql>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): uq_supplier_invoices_active_number (company_id, supplier_id,
+             active_invoice_number) es el UNICO indice con company_id como prefijo izquierdo en
+             esta tabla, asi que tambien sostiene fk_supplier_invoices_company (declarada en
+             203_create_supplier_invoices sin indice propio -MySQL nunca materializo uno
+             separado, mismo patron que fk_animal_colors_specie/218-). El DROP INDEX a secas
+             revienta con "Cannot drop index ... needed in a foreign key constraint" (mismo
+             defecto que 306/218/212/211). La FK se suelta antes y se devuelve identica -mismo
+             nombre, mismas columnas, sin ON DELETE/ON UPDATE explicito (RESTRICT por defecto)-
+             despues de soltar el indice y la columna generada. -->
         <rollback>
             <sql>
+                ALTER TABLE supplier_invoices DROP FOREIGN KEY fk_supplier_invoices_company;
+
                 ALTER TABLE supplier_invoices
                     DROP INDEX uq_supplier_invoices_active_number,
-                    DROP COLUMN active_invoice_number
+                    DROP COLUMN active_invoice_number;
+
+                ALTER TABLE supplier_invoices
+                    ADD CONSTRAINT fk_supplier_invoices_company
+                        FOREIGN KEY (company_id) REFERENCES companies (id);
             </sql>
         </rollback>
     </changeSet>

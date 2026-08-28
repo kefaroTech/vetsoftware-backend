@@ -16,6 +16,13 @@
                              references="consultations(id)"/>
             </column>
         </addColumn>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback>, el dropColumn auto-generado no suelta la FK primero. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="laboratory_tests"
+                                      constraintName="fk_laboratory_tests_consultation"/>
+            <dropColumn tableName="laboratory_tests" columnName="consultation_id"/>
+        </rollback>
     </changeSet>
 
     <changeSet id="047_drop_not_null_laboratory_tests_consultation" author="orlando">
@@ -30,6 +37,12 @@
         <dropNotNullConstraint tableName="laboratory_tests"
                                columnName="consultation_id"
                                columnDataType="BIGINT"/>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): dropNotNullConstraint no tiene inversa automatica. -->
+        <rollback>
+            <addNotNullConstraint tableName="laboratory_tests" columnName="consultation_id"
+                                  columnDataType="BIGINT"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

@@ -54,8 +54,14 @@
                 ADD CONSTRAINT chk_audit_outbox_attempts CHECK (attempts &gt;= 0)
         </sql>
 
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): 224_01_drop_audit_outbox ya se llevo esta tabla por delante a proposito y
+             documenta que su propio rollback es <empty/> -no la recrea; recuperar desde git si
+             hace falta-. dropTable a secas revienta con "Unknown table" en una reversion
+             completa; DROP TABLE IF EXISTS es tolerante sin dejar de revertir de verdad en un
+             rollback parcial anterior a 224. Solo se toca el bloque <rollback>. -->
         <rollback>
-            <dropTable tableName="audit_event_outbox"/>
+            <sql>DROP TABLE IF EXISTS audit_event_outbox;</sql>
         </rollback>
     </changeSet>
 </databaseChangeLog>

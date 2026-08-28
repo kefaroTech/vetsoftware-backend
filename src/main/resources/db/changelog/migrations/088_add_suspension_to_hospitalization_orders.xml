@@ -12,6 +12,14 @@
                              references="employees(id)"/>
             </column>
         </addColumn>
+        <!-- AJUSTE (primer rollback end-to-end de la cadena completa, nunca ejecutado hasta
+             hoy): sin <rollback>, el dropColumn batched auto-generado no suelta la FK primero. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="hospitalization_medications"
+                                      constraintName="fk_hosp_medications_suspension_by"/>
+            <dropColumn tableName="hospitalization_medications" columnName="suspension_by_id"/>
+            <dropColumn tableName="hospitalization_medications" columnName="suspension_date"/>
+        </rollback>
     </changeSet>
 
     <changeSet id="088_add_suspension_to_hospitalization_procedures" author="orlando">
@@ -22,6 +30,13 @@
                              references="employees(id)"/>
             </column>
         </addColumn>
+        <!-- AJUSTE (mismo motivo que arriba). -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="hospitalization_procedures"
+                                      constraintName="fk_hosp_procedures_suspension_by"/>
+            <dropColumn tableName="hospitalization_procedures" columnName="suspension_by_id"/>
+            <dropColumn tableName="hospitalization_procedures" columnName="suspension_date"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>
