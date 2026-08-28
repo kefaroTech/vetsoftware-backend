@@ -42,12 +42,14 @@ public enum ChargeType {
      * <b>Tres cosas que hay que saber antes de tocarlo:</b>
      *
      * <ol>
-     * <li><b>El esquema todavía no lo admite.</b>
-     * {@code chk_subscription_charges_type} (changeset 251) enumera cinco literales
-     * y {@code chk_subscription_charges_sign} no tiene rama para este; insertar un
-     * {@code OVERAGE} muere en el motor hasta que se aplique el changeset que
-     * amplía las dos restricciones. Está reportado y no se escribe aquí: los
-     * changesets son de {@code db-migrations}.
+     * <li><b>El esquema lo admite desde el changeset 374, y hubo que ampliar DOS
+     * restricciones, no una.</b> {@code chk_subscription_charges_type} (changeset
+     * 251) enumeraba cinco literales, pero {@code chk_subscription_charges_sign}
+     * <b>también</b> los enumera uno a uno: ampliar solo la primera habría dejado
+     * la fila muriendo igual en el motor, y con un error que señala a la
+     * restricción equivocada. El excedente entró en la rama de signo positivo,
+     * junto a {@code RECURRING} y {@code ONE_TIME}, que es lo que
+     * {@link #exigeSubtotalNoNegativo()} ya declaraba en código.
      * <li><b>Queda fuera de {@code uq_subscription_charges_recurring}</b>
      * (changeset 372) <b>por diseño</b>: {@code recurring_charge_key} solo se
      * rellena cuando {@code charge_type = 'RECURRING'} y vale {@code NULL} en
