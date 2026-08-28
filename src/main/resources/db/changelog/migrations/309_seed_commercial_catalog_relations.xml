@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ====================================================================================
+         LAS TRES TABLAS PUENTE DEL CATÁLOGO COMERCIAL. Sin `context`: todos los entornos.
+         Continúa 308. 30 + 13 + 27 filas.
+
+         QUÉ ABRE CADA ARTÍCULO (catalog_item_sub_modules, 30 filas). Las siete capacidades, los
+         dos cobros únicos y los tres paquetes NO tienen ninguna fila, y la ausencia es correcta,
+         no un olvido: una capacidad no abre pantallas -es una cantidad, no un permiso-, y por eso
+         findInitialCapacityTemplates NO hace el JOIN a esta tabla mientras que
+         findInitialContractTemplate SÍ lo exige. Un paquete tampoco abre nada: explota en una
+         línea por pieza al cotizar (D-05) y son los componentes los que abren.
+
+         MEDICAMENTS, PROMOTIONS y TAXES no son artículo propio: cuelgan de CLINICAL_HISTORY,
+         SERVICES y CASH_REGISTER respectivamente. Un catálogo de medicamentos sin historia clínica,
+         o uno de impuestos sin caja, no se vende suelto -y a 5.000 pesos la comisión de la pasarela
+         se lo comería entero-.
+
+         CORE ABRE ONCE SUBMÓDULOS y esto es lo que hace operable una empresa recién dada de alta:
+         OWNERS_ANIMALS (clientes y pacientes, #517), BRANCH/EMPLOYEES/ROLES (el mínimo operable de
+         #504: crear una sede, dar de alta un empleado con su rol), COMPANY (los datos de la propia
+         empresa) y los seis de autoservicio que D-58 exige que el cliente vea -SUBSCRIPTION, QUOTE,
+         ENTITLEMENT, SUBSCRIPTION_BILLING, SUBSCRIPTION_PAYMENT, DUNNING-, cuyos permisos ya
+         sembraron 256/257/259/260 para el ADMIN del inquilino y que hasta hoy estaban sembrados
+         pero INALCANZABLES, porque ningún artículo del catálogo los ataba.
+
+         Esto responde literalmente a la pregunta que 269 dejó escrita -«qué debe replicar el
+         catálogo REAL de producción cuando se siembre»- y va más allá: 269 ató BRANCH, EMPLOYEES y
+         ROLES y dejó COMPANY fuera; aquí entra, porque el mismo razonamiento aplica y porque el
+         autoservicio de D-58 lo necesita.
+
+         SE RETIRA CORE -> AGENDA. 263 ató CORE a AGENDA como apaño de laboratorio, por no existir
+         entonces un submódulo de «clientes y mascotas» -su propio comentario lo dice-. En el
+         catálogo real AGENDA se vende: la abre SCHEDULING. Si esa fila sobreviviera en local/e2e,
+         cualquier empresa tendría agenda gratis con solo el núcleo y el módulo de agenda no se
+         vendería nunca. El DELETE no encuentra nada en desarrollo ni en producción, donde 263 no
+         corrió.
+         ==================================================================================== -->
+
+    <changeSet id="309_seed_catalog_item_sub_modules" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_sub_modules (catalog_item_id, sub_module_id)
+            SELECT ci.id, sm.id
+              FROM (
+                SELECT 'CORE' AS item_code, 'OWNERS_ANIMALS' AS sub_module_code
+                UNION ALL SELECT 'CORE', 'COMPANY'
+                UNION ALL SELECT 'CORE', 'BRANCH'
+                UNION ALL SELECT 'CORE', 'EMPLOYEES'
+                UNION ALL SELECT 'CORE', 'ROLES'
+                UNION ALL SELECT 'CORE', 'SUBSCRIPTION'
+                UNION ALL SELECT 'CORE', 'QUOTE'
+                UNION ALL SELECT 'CORE', 'ENTITLEMENT'
+                UNION ALL SELECT 'CORE', 'SUBSCRIPTION_BILLING'
+                UNION ALL SELECT 'CORE', 'SUBSCRIPTION_PAYMENT'
+                UNION ALL SELECT 'CORE', 'DUNNING'
+                UNION ALL SELECT 'SCHEDULING', 'AGENDA'
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'CLINICAL_HISTORY'
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'MEDICAMENTS'
+                UNION ALL SELECT 'VACCINATION_DEWORMING', 'VACCINATION'
+                UNION ALL SELECT 'VACCINATION_DEWORMING', 'DEWORMING'
+                UNION ALL SELECT 'HOSPITALIZATION', 'HOSPITALIZATION'
+                UNION ALL SELECT 'SURGERY', 'SURGERY'
+                UNION ALL SELECT 'LAB_IMAGING', 'LABORATORY'
+                UNION ALL SELECT 'LAB_IMAGING', 'DIAGNOSTIC_IMAGING'
+                UNION ALL SELECT 'GROOMING', 'SPA'
+                UNION ALL SELECT 'GROOMING', 'DAYCARE'
+                UNION ALL SELECT 'SERVICES', 'SERVICES'
+                UNION ALL SELECT 'SERVICES', 'PROMOTIONS'
+                UNION ALL SELECT 'CASH_REGISTER', 'CASH'
+                UNION ALL SELECT 'CASH_REGISTER', 'TAXES'
+                UNION ALL SELECT 'INVENTORY', 'INVENTORY'
+                UNION ALL SELECT 'PURCHASES', 'PURCHASES'
+                UNION ALL SELECT 'OPEN_ACCOUNTS', 'OPEN_ACCOUNTS'
+                UNION ALL SELECT 'ELECTRONIC_INVOICING', 'BILLING'
+              ) seed
+              JOIN catalog_items ci ON ci.code = seed.item_code
+              JOIN sub_modules sm ON sm.code = seed.sub_module_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM catalog_item_sub_modules x
+                  WHERE x.catalog_item_id = ci.id AND x.sub_module_id = sm.id);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE cism FROM catalog_item_sub_modules cism
+                  JOIN catalog_items ci ON ci.id = cism.catalog_item_id
+                 WHERE ci.code IN ('CORE','SCHEDULING','CLINICAL_HISTORY','VACCINATION_DEWORMING',
+                                   'HOSPITALIZATION','SURGERY','LAB_IMAGING','GROOMING','SERVICES',
+                                   'CASH_REGISTER','INVENTORY','PURCHASES','OPEN_ACCOUNTS',
+                                   'ELECTRONIC_INVOICING');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Reactivación defensiva: la tabla puente lleva borrado lógico y una fila desactivada a mano
+         en local dejaría el mínimo estructural cojo sin que se note, porque findInitialContract-
+         Template exige cism.enabled = TRUE. El NOT EXISTS de arriba comprueba la pareja completa,
+         no `enabled`, así que una fila apagada no se vuelve a insertar: hay que encenderla. -->
+    <changeSet id="309_enable_catalog_item_sub_modules" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_item_sub_modules cism
+              JOIN catalog_items ci ON ci.id = cism.catalog_item_id
+               SET cism.enabled = TRUE
+             WHERE ci.code IN ('CORE','SCHEDULING','CLINICAL_HISTORY','VACCINATION_DEWORMING',
+                               'HOSPITALIZATION','SURGERY','LAB_IMAGING','GROOMING','SERVICES',
+                               'CASH_REGISTER','INVENTORY','PURCHASES','OPEN_ACCOUNTS',
+                               'ELECTRONIC_INVOICING')
+               AND cism.enabled = FALSE;
+        ]]></sql>
+        <rollback>
+            <comment>
+                Encender una fila puente no tiene vuelta atrás sensata: apagarlas todas dejaría el
+                catálogo sin ningún módulo abierto y el alta de empresa rota.
+            </comment>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="309_retire_lab_core_agenda_bridge" author="orlando">
+        <sql><![CDATA[
+            DELETE cism FROM catalog_item_sub_modules cism
+              JOIN catalog_items ci ON ci.id = cism.catalog_item_id
+              JOIN sub_modules sm ON sm.id = cism.sub_module_id
+             WHERE ci.code = 'CORE' AND sm.code = 'AGENDA';
+        ]]></sql>
+        <rollback>
+            <sql>
+                INSERT INTO catalog_item_sub_modules (catalog_item_id, sub_module_id)
+                SELECT ci.id, sm.id
+                  FROM catalog_items ci
+                  JOIN sub_modules sm ON sm.code = 'AGENDA'
+                 WHERE ci.code = 'CORE'
+                   AND NOT EXISTS (
+                       SELECT 1 FROM catalog_item_sub_modules x
+                        WHERE x.catalog_item_id = ci.id AND x.sub_module_id = sm.id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- LAS REGLAS DEL CONFIGURADOR (13 filas). Nueve REQUIRES y cuatro RECOMMENDS.
+
+         NINGÚN EXCLUDES, y queda escrito para que nadie invente uno solo por ejercitar el camino:
+         hoy no hay dos artículos que no puedan coexistir, y los tres paquetes tampoco se excluyen
+         entre sí porque explotan en líneas y la unicidad del contrato actúa sobre el COMPONENTE,
+         no sobre el paquete.
+
+         EXTRA_STORAGE REQUIRES LAB_IMAGING tiene una consecuencia que hay que conocer: hoy nadie
+         incrementa el contador de almacenamiento (D-89 pide guardar el tamaño en el alta de
+         fichero), así que el cupo informaría «0 de 5 GB» con 400 dentro. O se instrumenta o se
+         retira EXTRA_STORAGE de la venta; queda como hallazgo abierto, no se resuelve aquí. -->
+    <changeSet id="309_seed_catalog_item_dependencies" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_dependencies
+                    (catalog_item_id, related_item_id, relation_type, note)
+            SELECT a.id, b.id, seed.relation_type, seed.note
+              FROM (
+                SELECT 'ELECTRONIC_INVOICING' AS item_code, 'CASH_REGISTER' AS related_code,
+                       'REQUIRES' AS relation_type,
+                       'Facturar electrónicamente necesita el módulo de Caja' AS note
+                UNION ALL SELECT 'CAPACITY_TERMINAL', 'CASH_REGISTER', 'REQUIRES',
+                       'Las terminales de caja necesitan el módulo de Caja'
+                UNION ALL SELECT 'EXTRA_TERMINAL', 'CASH_REGISTER', 'REQUIRES',
+                       'Las terminales de caja necesitan el módulo de Caja'
+                UNION ALL SELECT 'OPEN_ACCOUNTS', 'CASH_REGISTER', 'REQUIRES',
+                       'Las cuentas abiertas se cierran cobrando en caja'
+                UNION ALL SELECT 'PURCHASES', 'INVENTORY', 'REQUIRES',
+                       'Registrar compras necesita Inventario para recibir la mercancía'
+                UNION ALL SELECT 'HOSPITALIZATION', 'CLINICAL_HISTORY', 'REQUIRES',
+                       'La hospitalización cuelga de la historia clínica del paciente'
+                UNION ALL SELECT 'SURGERY', 'CLINICAL_HISTORY', 'REQUIRES',
+                       'La cirugía se registra dentro de la historia clínica'
+                UNION ALL SELECT 'LAB_IMAGING', 'CLINICAL_HISTORY', 'REQUIRES',
+                       'Los resultados de laboratorio se adjuntan a la historia clínica'
+                UNION ALL SELECT 'EXTRA_STORAGE', 'LAB_IMAGING', 'REQUIRES',
+                       'El almacenamiento se consume con los archivos de laboratorio e imagen'
+                UNION ALL SELECT 'INVENTORY', 'CASH_REGISTER', 'RECOMMENDS',
+                       'Con Caja, el inventario descuenta solo al vender'
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'SCHEDULING', 'RECOMMENDS',
+                       'La historia clínica se llena sola desde las citas'
+                UNION ALL SELECT 'VACCINATION_DEWORMING', 'SCHEDULING', 'RECOMMENDS',
+                       'Los refuerzos se programan como citas'
+                UNION ALL SELECT 'GROOMING', 'SCHEDULING', 'RECOMMENDS',
+                       'Los baños se agendan como citas'
+              ) seed
+              JOIN catalog_items a ON a.code = seed.item_code
+              JOIN catalog_items b ON b.code = seed.related_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM catalog_item_dependencies x
+                  WHERE x.catalog_item_id = a.id AND x.related_item_id = b.id
+                    AND x.relation_type = seed.relation_type);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE cid FROM catalog_item_dependencies cid
+                  JOIN catalog_items a ON a.id = cid.catalog_item_id
+                 WHERE a.code IN ('ELECTRONIC_INVOICING','CAPACITY_TERMINAL','EXTRA_TERMINAL',
+                                  'OPEN_ACCOUNTS','PURCHASES','HOSPITALIZATION','SURGERY',
+                                  'LAB_IMAGING','EXTRA_STORAGE','INVENTORY','CLINICAL_HISTORY',
+                                  'VACCINATION_DEWORMING','GROOMING');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- LOS COMPONENTES DE LOS TRES PAQUETES (27 filas: 6 + 6 + 15), cantidad 1 en todas.
+
+         SIN ANIDAMIENTO: `component_item_id` no apunta a ningún BUNDLE. PACK_FULL lleva sus quince
+         piezas ENUMERADAS, no un PACK_CLINIC dentro. Que un componente no sea a su vez un paquete
+         no es declarable en un CHECK -comparar contra el tipo de la fila referenciada no cabe en
+         una restricción de MySQL 8-, así que la garantía es esta enumeración y la prueba que la
+         acompañe.
+
+         Los tres cumplen sus propias dependencias REQUIRES, comprobado uno a uno:
+           · PACK_SPA trae CASH_REGISTER, que es lo que CAPACITY_TERMINAL exige.
+           · PACK_CLINIC, lo mismo.
+           · PACK_FULL trae CASH_REGISTER (para ELECTRONIC_INVOICING, CAPACITY_TERMINAL y
+             OPEN_ACCOUNTS), INVENTORY (para PURCHASES) y CLINICAL_HISTORY (para HOSPITALIZATION,
+             SURGERY y LAB_IMAGING).
+
+         PACK_SPA es literalmente el caso de Ana: trabaja sola, un local, una caja, baños y
+         estética. No vende productos y no atiende consultas médicas, así que en su menú NO EXISTEN
+         «Inventario» ni «Historia clínica» -no están bajo candado: no están-.
+
+         En local/e2e, PACK_CLINIC ya tiene cuatro componentes de laboratorio sembrados por 263
+         (CORE, SCHEDULING, CLINICAL_HISTORY, CASH_REGISTER). Son un subconjunto exacto de los seis
+         reales, así que el NOT EXISTS añade los dos que faltan -VACCINATION_DEWORMING y
+         CAPACITY_TERMINAL- y no hay nada que corregir. -->
+    <changeSet id="309_seed_bundle_components" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO bundle_components (bundle_item_id, component_item_id, quantity)
+            SELECT b.id, c.id, 1
+              FROM (
+                SELECT 'PACK_SPA' AS bundle_code, 'CORE' AS component_code
+                UNION ALL SELECT 'PACK_SPA', 'SCHEDULING'
+                UNION ALL SELECT 'PACK_SPA', 'SERVICES'
+                UNION ALL SELECT 'PACK_SPA', 'GROOMING'
+                UNION ALL SELECT 'PACK_SPA', 'CASH_REGISTER'
+                UNION ALL SELECT 'PACK_SPA', 'CAPACITY_TERMINAL'
+                UNION ALL SELECT 'PACK_CLINIC', 'CORE'
+                UNION ALL SELECT 'PACK_CLINIC', 'SCHEDULING'
+                UNION ALL SELECT 'PACK_CLINIC', 'CLINICAL_HISTORY'
+                UNION ALL SELECT 'PACK_CLINIC', 'VACCINATION_DEWORMING'
+                UNION ALL SELECT 'PACK_CLINIC', 'CASH_REGISTER'
+                UNION ALL SELECT 'PACK_CLINIC', 'CAPACITY_TERMINAL'
+                UNION ALL SELECT 'PACK_FULL', 'CORE'
+                UNION ALL SELECT 'PACK_FULL', 'SCHEDULING'
+                UNION ALL SELECT 'PACK_FULL', 'CLINICAL_HISTORY'
+                UNION ALL SELECT 'PACK_FULL', 'VACCINATION_DEWORMING'
+                UNION ALL SELECT 'PACK_FULL', 'HOSPITALIZATION'
+                UNION ALL SELECT 'PACK_FULL', 'SURGERY'
+                UNION ALL SELECT 'PACK_FULL', 'LAB_IMAGING'
+                UNION ALL SELECT 'PACK_FULL', 'GROOMING'
+                UNION ALL SELECT 'PACK_FULL', 'SERVICES'
+                UNION ALL SELECT 'PACK_FULL', 'CASH_REGISTER'
+                UNION ALL SELECT 'PACK_FULL', 'CAPACITY_TERMINAL'
+                UNION ALL SELECT 'PACK_FULL', 'INVENTORY'
+                UNION ALL SELECT 'PACK_FULL', 'PURCHASES'
+                UNION ALL SELECT 'PACK_FULL', 'OPEN_ACCOUNTS'
+                UNION ALL SELECT 'PACK_FULL', 'ELECTRONIC_INVOICING'
+              ) seed
+              JOIN catalog_items b ON b.code = seed.bundle_code
+              JOIN catalog_items c ON c.code = seed.component_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM bundle_components x
+                  WHERE x.bundle_item_id = b.id AND x.component_item_id = c.id);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE bc FROM bundle_components bc
+                  JOIN catalog_items b ON b.id = bc.bundle_item_id
+                 WHERE b.code IN ('PACK_SPA','PACK_CLINIC','PACK_FULL');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

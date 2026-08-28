@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Capa J (modelo-datos-suscripciones.html, ficha company_limit_events). LA FILA QUE HOY NO SE
+         ESCRIBE. Cuando a un cliente se le niega crear algo por haber llegado al tope, hoy no queda
+         absolutamente ninguna huella: la operación se deshace y se lleva por delante cualquier
+         rastro. Esta tabla se escribe APARTE -en su propia transacción-, precisamente para
+         sobrevivir a esa vuelta atrás. Sin ella el límite es indemostrable y se pierde la mejor
+         señal de venta del producto: el momento exacto en que a Ana le sirve que le ofrezcas
+         ampliar.
+
+         Los tres números del momento -limit_quantity, used_quantity, requested_delta- van COPIADOS y
+         no referenciados: dentro de un año el techo habrá cambiado y esta fila tiene que seguir
+         siendo verdad. Lo mismo con limit_source.
+
+         El trío del actor, según la convención de la casa: el empleado de la clínica que intentó la
+         operación, la persona de plataforma que corrigió el consumo, o el proceso. La base comprueba
+         que EXACTAMENTE UNO esté relleno. OVER_LIMIT_ON_DOWNGRADE lo escribe el recálculo y no el
+         cliente: los otros nacen cuando alguien intenta algo, y el momento en que un cliente pasa a
+         estar por encima del techo no lo intenta nadie, le pasa.
+
+         USAGE_ADJUSTED es la válvula de escape de D-12, y por eso su motivo es obligatorio. La
+         corrección NO sobrescribe el contador: escribe un hecho que lo compensa, para que la cifra
+         siga siendo demostrable. Existe porque el contador acumulativo no perdona -si un cliente
+         migra mal y carga quinientas mascotas duplicadas, sin válvula auditable soporte acabará
+         escribiendo en producción, que es la peor versión de la misma operación-. Su caso de uso
+         tiene que ser SOLO DE PLATAFORMA: si aterriza en un puerto cuya autorización ya admite al
+         cliente, la administradora recupera su cupo cada vez que topa.
+
+         BITÁCORA PROBATORIA: sin enabled -una prueba que se puede desactivar no prueba nada- y sin
+         version -solo se agrega-.
+
+         uq_employees_company_id es una clave AUXILIAR que la tabla de empleados no tenía y que hace
+         falta aquí: sin ella, la referencia al empleado que intentó la operación tendría que ser
+         plana, y una bitácora de cupo de una clínica podría citar al empleado de otra. Se añade en
+         este changeset y no reescribiendo 015 para no mover el checksum de la tabla más
+         referenciada del esquema por una necesidad de esta capa. -->
+    <changeSet id="306_add_company_aux_key_to_employees" author="orlando">
+        <addUniqueConstraint tableName="employees" columnNames="company_id, id"
+                             constraintName="uq_employees_company_id"/>
+        <!-- ROLLBACK CORREGIDO (defecto hallado en el primer rollback end-to-end de la cadena,
+             nunca ejecutado hasta hoy). uq_employees_company_id (company_id, id) es tambien el
+             UNICO indice de employees que empieza por company_id, asi que sostiene de rebote
+             fk_employees_company (employees.company_id -> companies.id, declarada en 015 sin
+             ON DELETE/ON UPDATE explicito -RESTRICT por defecto en MySQL-). El dropUniqueConstraint
+             directo choca con "Cannot drop index 'uq_employees_company_id': needed in a foreign
+             key constraint": la FK se suelta antes y se devuelve identica -mismo nombre, mismas
+             columnas, mismas reglas- despues de soltar el indice. Solo se toca este bloque
+             <rollback>: el checksum de Liquibase cubre getChanges(), no rollback, verificado en
+             esta misma sesion contra DATABASECHANGELOG.MD5SUM antes de editar. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="employees"
+                                      constraintName="fk_employees_company"/>
+            <dropUniqueConstraint tableName="employees"
+                                  constraintName="uq_employees_company_id"/>
+            <addForeignKeyConstraint baseTableName="employees" baseColumnNames="company_id"
+                                     referencedTableName="companies" referencedColumnNames="id"
+                                     constraintName="fk_employees_company"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="306_create_company_limit_events" author="orlando">
+        <createTable tableName="company_limit_events">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="limit_dimension_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="event_type" type="VARCHAR(25)"><constraints nullable="false"/></column>
+            <column name="limit_quantity" type="INT UNSIGNED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="used_quantity" type="INT UNSIGNED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="requested_delta" type="INT"><constraints nullable="false"/></column>
+            <column name="limit_source" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="override_id" type="BIGINT"/>
+            <column name="actor_employee_id" type="BIGINT"/>
+            <column name="actor_system_user_id" type="BIGINT"/>
+            <!-- Sin valor por defecto a propósito: la regla de la casa solo admite tres columnas
+                 con defecto -estado inicial, marca de activo y contador de concurrencia-, y esta
+                 no es ninguna de las tres. Quien escribe el hecho tiene que declarar quién lo
+                 hizo. -->
+            <column name="actor_is_process" type="BOOLEAN"><constraints nullable="false"/></column>
+            <column name="reason_code" type="VARCHAR(30)"/>
+            <column name="reason" type="VARCHAR(255)"/>
+            <column name="occurred_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE company_limit_events
+                ADD CONSTRAINT chk_company_limit_events_type
+                    CHECK (event_type IN ('THRESHOLD_WARNED','LIMIT_BLOCKED','LIMIT_RAISED',
+                                          'USAGE_RECONCILED','USAGE_ADJUSTED',
+                                          'OVER_LIMIT_ON_DOWNGRADE')),
+                ADD CONSTRAINT chk_company_limit_events_limit_source
+                    CHECK (limit_source IN ('COMPANY_OVERRIDE','SUBSCRIPTION',
+                                            'CATALOG_DEFAULT','NONE')),
+                ADD CONSTRAINT chk_company_limit_events_override
+                    CHECK ((limit_source = 'COMPANY_OVERRIDE' AND override_id IS NOT NULL)
+                           OR (limit_source <> 'COMPANY_OVERRIDE' AND override_id IS NULL)),
+                ADD CONSTRAINT chk_company_limit_events_actor
+                    CHECK (((actor_employee_id IS NOT NULL)
+                            + (actor_system_user_id IS NOT NULL)
+                            + (actor_is_process = TRUE)) = 1),
+                ADD CONSTRAINT chk_company_limit_events_reason
+                    CHECK ((event_type <> 'USAGE_ADJUSTED'
+                            AND (reason_code IS NULL) = (reason IS NULL))
+                           OR (event_type = 'USAGE_ADJUSTED'
+                               AND reason_code IS NOT NULL AND reason IS NOT NULL))
+        ]]></sql>
+
+        <createIndex tableName="company_limit_events" indexName="ix_company_limit_events_company">
+            <column name="company_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+        <createIndex tableName="company_limit_events" indexName="ix_company_limit_events_dimension">
+            <column name="company_id"/>
+            <column name="limit_dimension_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+        <createIndex tableName="company_limit_events" indexName="ix_company_limit_events_override">
+            <column name="company_id"/>
+            <column name="override_id"/>
+        </createIndex>
+        <createIndex tableName="company_limit_events" indexName="ix_company_limit_events_employee">
+            <column name="company_id"/>
+            <column name="actor_employee_id"/>
+        </createIndex>
+        <createIndex tableName="company_limit_events"
+                     indexName="ix_company_limit_events_system_user">
+            <column name="actor_system_user_id"/>
+        </createIndex>
+        <createIndex tableName="company_limit_events"
+                     indexName="ix_company_limit_events_dimension_only">
+            <column name="limit_dimension_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="company_limit_events"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_limit_events_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_limit_events"
+                                 baseColumnNames="limit_dimension_id"
+                                 referencedTableName="limit_dimensions"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_limit_events_dimension"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_limit_events"
+                                 baseColumnNames="company_id, override_id"
+                                 referencedTableName="company_limit_overrides"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_company_limit_events_override"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_limit_events"
+                                 baseColumnNames="company_id, actor_employee_id"
+                                 referencedTableName="employees"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_company_limit_events_employee"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_limit_events"
+                                 baseColumnNames="actor_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_limit_events_system_user"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="company_limit_events"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

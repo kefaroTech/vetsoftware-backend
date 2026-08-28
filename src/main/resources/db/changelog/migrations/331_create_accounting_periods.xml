@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- EL MES CERRADO, Y QUIEN LO CERRO (ficha accounting_periods, bloque 16 del orden de
+         construccion). Nace aqui, fuera de su capa, porque la conciliacion externa (330) declara
+         posting_period como clave foranea contra esta tabla y sin ella esa clave no se puede
+         cerrar: la columna quedaria como texto validado solo por formato.
+
+         ES LA PIEZA QUE IMPIDE QUE UN HECHO TARDIO REESCRIBA UN MES YA DECLARADO. Sin ella, "solo
+         se agrega" NO protege el pasado: insertar una fila con fecha de marzo altera marzo igual
+         que editarla. Con ella, resolver una conciliacion imputandola a 2026-03 seis meses despues
+         de que marzo este LOCKED deja de ser posible -y ese fallo era silencioso por definicion: no
+         hay error, hay un numero mal imputado en una declaracion-.
+
+         TRES ESTADOS Y NO DOS: OPEN se puede registrar · SOFT_CLOSED cerrado pero reabrible ·
+         LOCKED declarado, no se toca. La regla que los acompana -"un hecho de un periodo no abierto
+         se registra en el primer periodo abierto, nunca hacia atras"- es de codigo: la base no
+         puede saber cual es el primer periodo abierto en el momento de un INSERT.
+
+         SIN COLUMNA GENERADA, y es el unico de los nueve marcadores del modelo donde ese truco no
+         sirve: la unicidad que hace falta es "un periodo por clave de mes" y period_key ya es unica
+         a secas. El disparador que la ficha menciona seria para impedir cerrar un periodo con
+         hechos pendientes, que es una comprobacion de conjunto y no de fila.
+
+         LO CIERRA EL CONTADOR EXTERNO Y SOLO EL PUEDE REABRIR, CON FIRMA. Un cierre que cualquiera
+         deshace no significa nada, y por eso reopened_reason es obligatorio cuando hay reapertura:
+         es la operacion que un revisor mirara primero.
+
+         SIN enabled Y SIN version por decision escrita: solo se agrega en el sentido de que un
+         cierre no se desactiva -se reabre, y queda constancia-. Lleva version SI, porque el estado
+         muta dos veces declaradamente (cierre y reapertura) y eximirla seria una exencion que
+         miente.
+
+         period_key en ascii_bin: es una clave de periodo, o sea un identificador, y ademas es el
+         destino de una clave foranea desde una columna que ya es ascii_bin. Cruzar dos colaciones
+         distintas impide crear la clave (errno 3780). -->
+    <changeSet id="331_create_accounting_periods" author="orlando">
+        <createTable tableName="accounting_periods">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="period_key" type="CHAR(7)"><constraints nullable="false"/></column>
+            <column name="status" type="VARCHAR(15)" defaultValue="OPEN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="closed_at" type="DATETIME(6)"/>
+            <column name="closed_by_system_user_id" type="BIGINT"/>
+            <column name="reopened_at" type="DATETIME(6)"/>
+            <column name="reopened_by_system_user_id" type="BIGINT"/>
+            <column name="reopened_reason" type="VARCHAR(255)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE accounting_periods
+                MODIFY COLUMN period_key CHAR(7)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                ADD CONSTRAINT uq_accounting_periods_period UNIQUE (period_key),
+                ADD CONSTRAINT chk_accounting_periods_key
+                    CHECK (period_key REGEXP '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+                ADD CONSTRAINT chk_accounting_periods_status
+                    CHECK (status IN ('OPEN','SOFT_CLOSED','LOCKED')),
+                ADD CONSTRAINT chk_accounting_periods_closure
+                    CHECK ((status = 'OPEN' AND closed_at IS NULL
+                            AND closed_by_system_user_id IS NULL)
+                           OR (status IN ('SOFT_CLOSED','LOCKED') AND closed_at IS NOT NULL
+                            AND closed_by_system_user_id IS NOT NULL)),
+                ADD CONSTRAINT chk_accounting_periods_reopening
+                    CHECK ((reopened_at IS NULL AND reopened_by_system_user_id IS NULL
+                            AND reopened_reason IS NULL)
+                           OR (reopened_at IS NOT NULL AND reopened_by_system_user_id IS NOT NULL
+                            AND reopened_reason IS NOT NULL AND closed_at IS NOT NULL
+                            AND reopened_at >= closed_at))
+        ]]></sql>
+
+        <createIndex tableName="accounting_periods" indexName="ix_accounting_periods_status">
+            <column name="status"/>
+            <column name="period_key"/>
+        </createIndex>
+        <createIndex tableName="accounting_periods" indexName="ix_accounting_periods_closed_by">
+            <column name="closed_by_system_user_id"/>
+        </createIndex>
+        <createIndex tableName="accounting_periods" indexName="ix_accounting_periods_reopened_by">
+            <column name="reopened_by_system_user_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="accounting_periods"
+                                 baseColumnNames="closed_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_accounting_periods_closed_by"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="accounting_periods"
+                                 baseColumnNames="reopened_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_accounting_periods_reopened_by"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <!-- La clave HACIA ATRAS que cierra la carencia declarada en 330: la columna y su indice
+             (ix_eir_status_period) ya viven alli; aqui solo se cierra la clave. Con esto, imputar
+             un ajuste a un mes que no existe deja de ser posible, y cuando el proceso de cierre
+             marque marzo como LOCKED la referencia sigue siendo valida -lo que impide reescribir un
+             mes declarado es la regla de codigo, no la clave; la clave impide inventarse el mes-. -->
+        <addForeignKeyConstraint baseTableName="external_invoice_reconciliations"
+                                 baseColumnNames="posting_period"
+                                 referencedTableName="accounting_periods"
+                                 referencedColumnNames="period_key"
+                                 constraintName="fk_eir_posting_period"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="external_invoice_reconciliations"
+                                      constraintName="fk_eir_posting_period"/>
+            <dropTable tableName="accounting_periods"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

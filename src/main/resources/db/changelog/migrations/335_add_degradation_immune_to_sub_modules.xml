@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- R-ENT-05: "Un submódulo con degradation_immune = true no se degrada jamás -ni por mora,
+         ni por cupo, ni por baja. Lo lee el mismo proceso que calcula los permisos." Es la
+         barandilla para que una clínica en solo lectura por mora siga pudiendo emitir facturas
+         electrónicas: el recálculo de entitlements consulta esta columna por SQL nativo antes de
+         bajar un submódulo a READ_ONLY o deshabilitarlo.
+
+         Declarada exactamente como read_only_capable en 228 (type="BOOLEAN", que en este
+         proyecto MySQL materializa como tinyint pelado, nunca TINYINT(1) -ver "Columnas
+         booleanas" en CLAUDE.md-), para que el tipo case con lo que ya valida Hibernate sobre
+         sub_modules. Default FALSE: solo BILLING (Facturación electrónica / DIAN, sembrado en
+         258 y con su configuración DIAN en 278) se siembra a TRUE en este mismo changeset. No se
+         encontró en el catálogo ningún sub_module separado para "resolución de numeración" o
+         "documento electrónico" -278 confirma que toda la configuración DIAN (perfil tributario,
+         proveedor tecnológico, resoluciones de numeración, retenciones) cuelga del único
+         sub_module BILLING-, así que la siembra se limita a ese código real. -->
+    <changeSet id="335_add_degradation_immune_to_sub_modules" author="orlando">
+        <addColumn tableName="sub_modules">
+            <column name="degradation_immune" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="sub_modules" columnName="degradation_immune"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="335_seed_degradation_immune_billing" author="orlando">
+        <sql><![CDATA[
+            UPDATE sub_modules SET degradation_immune = TRUE WHERE code = 'BILLING'
+        ]]></sql>
+        <rollback>
+            <sql>UPDATE sub_modules SET degradation_immune = FALSE WHERE code = 'BILLING';</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

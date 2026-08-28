@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha customer_credit_entries). EL SALDO A FAVOR, COMO LIBRO DE ASIENTOS.
+         SUSTITUYE AL ACUMULADOR. El saldo a favor era la unica tabla del bloque del dinero cuya
+         verdad dependia de que ningun camino de codigo se equivocara -un contador que se lee, se
+         suma y se guarda- dentro de una capa que argumenta cincuenta veces que eso es exactamente
+         lo que hay que evitar. Aqui el saldo NO SE GUARDA: se suma.
+
+         POR LOTES, Y SE CONSUME PRIMERO LO QUE ANTES CADUCA (D-71). Sin lotes la caducidad no es
+         calculable: cien mil que caducan en diciembre mas cincuenta mil sin fecha, consumidos
+         ciento veinte mil, admite dos respuestas defendibles y la suma no sabe cual. Consumiendo
+         por caducidad mas proxima no caduca nada y quedan treinta mil vivos -lo mas favorable al
+         cliente y lo que hacen los sistemas del mercado-. Eso OBLIGA a que cada consumo anote de
+         que lote salio, y por eso lot_entry_id es una clave foranea contra el propio asiento de
+         alta, obligatoria en el consumo y en la caducidad.
+
+         ORIGEN CON CLAVE FORANEA REAL POR RAMA, no un identificador suelto: un asiento con origen
+         huerfano es un pasivo que nadie puede probar. Tres ramas apuntan a algo -pago en exceso,
+         nota credito sobre factura saldada, baja con periodo pagado por delante- y una cuarta al
+         documento al que se aplico. El redondeo y la correccion manual no apuntan a nada.
+
+         DOS UNICIDADES, Y ES EL ARREGLO DEL DEFECTO QUE LA FICHA TENIA:
+         · La ficha ponia la clave sobre (empresa, clase de origen, documento) y LAS CINCO CLASES DE
+           ASIENTO COMPARTEN ORIGEN. Una nota credito genera su asiento de alta; si la nota se
+           anula, el asiento de anulacion lleva EL MISMO ORIGEN y la base lo rechaza: un libro que
+           no deja escribir su propia correccion. origin_marker lleva por eso la CLASE DE ASIENTO y
+           EL LOTE dentro.
+         · Y al reves: en el redondeo y en la correccion manual el documento de origen va vacio, y
+           en un indice unico DOS VACIOS NO CHOCAN, asi que el reintento escribiria el asiento dos
+           veces. Esas dos ramas quedan fuera de origin_marker -vale NULL- y las cubre
+           uq_cce_idempotency, con client_request_id OBLIGATORIO. Un libro de dinero sin llave de
+           idempotencia es un doble clic esperando.
+
+         SOLO SE AGREGA: sin enabled y sin version. Corregir un asiento es escribir otro que lo
+         compensa, y los dos quedan.
+
+         Y LA BARANDILLA NO ESTA AQUI. Sumar filas no impide gastar credito que no existe: una suma
+         es una lectura que no bloquea a nadie. Esa mitad la pone customer_credit_balances (324).
+         Leer este changeset sin el otro deja el problema abierto. -->
+    <changeSet id="323_create_customer_credit_entries" author="orlando">
+        <createTable tableName="customer_credit_entries">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="entry_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="lot_entry_id" type="BIGINT"/>
+            <column name="origin_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="origin_payment_id" type="BIGINT"/>
+            <column name="origin_document_id" type="BIGINT"/>
+            <column name="origin_subscription_id" type="BIGINT"/>
+            <column name="occurred_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="value_date" type="DATE"><constraints nullable="false"/></column>
+            <column name="expires_on" type="DATE"/>
+            <column name="client_request_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="customer_credit_entries" columnNames="company_id, id"
+                             constraintName="uq_cce_company_id"/>
+        <addUniqueConstraint tableName="customer_credit_entries"
+                             columnNames="company_id, client_request_id"
+                             constraintName="uq_cce_idempotency"/>
+
+        <sql><![CDATA[
+            ALTER TABLE customer_credit_entries
+                MODIFY COLUMN client_request_id VARCHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                ADD COLUMN origin_marker VARCHAR(120)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN origin_kind IN ('OVERPAYMENT','CREDIT_NOTE',
+                                                 'CANCELLATION','APPLICATION')
+                            THEN CONCAT(company_id, '|', entry_kind, '|', origin_kind, '|',
+                                        COALESCE(origin_payment_id, origin_document_id,
+                                                 origin_subscription_id, 0), '|',
+                                        COALESCE(lot_entry_id, 0))
+                            ELSE NULL
+                        END
+                    ) STORED,
+                ADD CONSTRAINT uq_cce_origin UNIQUE (origin_marker),
+                ADD CONSTRAINT chk_cce_entry_kind
+                    CHECK (entry_kind IN ('GRANT','CONSUMPTION','EXPIRATION','VOID','CORRECTION')),
+                ADD CONSTRAINT chk_cce_origin_kind
+                    CHECK (origin_kind IN ('OVERPAYMENT','CREDIT_NOTE','CANCELLATION',
+                                           'APPLICATION','EXPIRY','ROUNDING','MANUAL')),
+                ADD CONSTRAINT chk_cce_amount_not_zero CHECK (amount <> 0),
+                ADD CONSTRAINT chk_cce_sign
+                    CHECK ((entry_kind = 'GRANT' AND amount > 0)
+                           OR (entry_kind IN ('CONSUMPTION','EXPIRATION') AND amount < 0)
+                           OR entry_kind IN ('VOID','CORRECTION')),
+                ADD CONSTRAINT chk_cce_lot
+                    CHECK ((entry_kind IN ('CONSUMPTION','EXPIRATION') AND lot_entry_id IS NOT NULL)
+                           OR (entry_kind = 'GRANT' AND lot_entry_id IS NULL)
+                           OR entry_kind IN ('VOID','CORRECTION')),
+                ADD CONSTRAINT chk_cce_origin_branch
+                    CHECK ((origin_kind = 'OVERPAYMENT' AND origin_payment_id IS NOT NULL
+                            AND origin_document_id IS NULL AND origin_subscription_id IS NULL)
+                           OR (origin_kind IN ('CREDIT_NOTE','APPLICATION')
+                            AND origin_document_id IS NOT NULL
+                            AND origin_payment_id IS NULL AND origin_subscription_id IS NULL)
+                           OR (origin_kind = 'CANCELLATION' AND origin_subscription_id IS NOT NULL
+                            AND origin_payment_id IS NULL AND origin_document_id IS NULL)
+                           OR (origin_kind IN ('EXPIRY','ROUNDING','MANUAL')
+                            AND origin_payment_id IS NULL AND origin_document_id IS NULL
+                            AND origin_subscription_id IS NULL)),
+                ADD CONSTRAINT chk_cce_expiry_only_on_grant
+                    CHECK (expires_on IS NULL OR entry_kind = 'GRANT')
+        ]]></sql>
+
+        <createIndex tableName="customer_credit_entries" indexName="ix_cce_expiring">
+            <column name="company_id"/>
+            <column name="expires_on"/>
+        </createIndex>
+        <createIndex tableName="customer_credit_entries" indexName="ix_cce_lot">
+            <column name="company_id"/>
+            <column name="lot_entry_id"/>
+        </createIndex>
+        <createIndex tableName="customer_credit_entries" indexName="ix_cce_origin_payment">
+            <column name="company_id"/>
+            <column name="origin_payment_id"/>
+        </createIndex>
+        <createIndex tableName="customer_credit_entries" indexName="ix_cce_origin_document">
+            <column name="company_id"/>
+            <column name="origin_document_id"/>
+        </createIndex>
+        <createIndex tableName="customer_credit_entries" indexName="ix_cce_origin_subscription">
+            <column name="company_id"/>
+            <column name="origin_subscription_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="customer_credit_entries"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_cce_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="customer_credit_entries"
+                                 baseColumnNames="company_id, lot_entry_id"
+                                 referencedTableName="customer_credit_entries"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_cce_lot"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="customer_credit_entries"
+                                 baseColumnNames="company_id, origin_payment_id"
+                                 referencedTableName="subscription_payments"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_cce_origin_payment"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="customer_credit_entries"
+                                 baseColumnNames="company_id, origin_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_cce_origin_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="customer_credit_entries"
+                                 baseColumnNames="company_id, origin_subscription_id"
+                                 referencedTableName="subscriptions"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_cce_origin_subscription"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <!-- La clave HACIA ATRAS: billing_document_applications (253) nace antes y lleva desde alli
+             la columna credit_entry_id y su indice. Es el camino de SALIDA del saldo a favor, el
+             que la ficha decia que no existia -una nota credito creaba un credito que se quedaba
+             ahi para siempre-. -->
+        <addForeignKeyConstraint baseTableName="billing_document_applications"
+                                 baseColumnNames="company_id, credit_entry_id"
+                                 referencedTableName="customer_credit_entries"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_bda_credit_entry"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="billing_document_applications"
+                                      constraintName="fk_bda_credit_entry"/>
+            <dropTable tableName="customer_credit_entries"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

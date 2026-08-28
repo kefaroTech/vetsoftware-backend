@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Mismo defecto que 339, ahora en el bloque fiscal (317/328/329, capa K): tres rodajas
+         declaran @PreAuthorize con guard dual `hasRole('SYSTEM') or (hasAuthority('<code>') and
+         @authz.isMyCompany(#companyId))` contra autoridades que no existen en base_permissions,
+         así que el tenant nunca pasa el guard aunque esté escrito para admitirlo -SOLO SYSTEM
+         puede, y eso se lee como 403 de rol, no como semilla que falta-.
+
+         VERIFICADO PUERTO A PUERTO CONTRA EL @PreAuthorize REAL, NO DE SEGUNDA MANO. La lista
+         que llegó traía tres códigos y decía "ocho puertos"; son los mismos tres códigos, pero
+         NUEVE puertos, no ocho -se confirma aquí para que quien retome esto no repita el conteo
+         de memoria-:
+
+           - withholdingRateRule.read    ResolveWithholdingRateRuleUseCase.java:62,
+                                          ListWithholdingRateRulesUseCase.java:42,
+                                          FindWithholdingRateRuleUseCase.java:42
+           - withholdingCertificate.read ListWithholdingCertificatesUseCase.java:16,
+                                          ListMissingWithholdingCertificatesByCompanyUseCase.java:27,
+                                          FindWithholdingCertificateUseCase.java:18
+           - documentWithholding.read    ListUncertifiedDocumentWithholdingsByCompanyUseCase.java:25,
+                                          ListDocumentWithholdingsUseCase.java:21,
+                                          FindDocumentWithholdingUseCase.java:20
+
+         NO se siembran (siguen exclusivamente SYSTEM, mismo criterio que 257/339):
+         withholdingRateRule.{create,close}, withholdingCertificate.{create,receive,
+         attachSubstituteEvidence,listAll,listMissing}, documentWithholding.{register,
+         link,listAll,listUncertified}. Las de alta, cierre, recepción de certificado y los
+         "listAll"/"listMissing" sin acotar son barridos y altas de plataforma, no facultades de
+         la clínica -mismo argumento del punto "Los barridos son nueve, no tres" en
+         modelo-datos-suscripciones.html, «Quién puede tocar cada tabla»-.
+
+         LAS DOS DE CONCILIACIÓN QUEDAN FUERA, Y ESO NO ES UN HUECO: externalinvoicereconciliation
+         (330) y bankreceipt (325) se revisaron puerto a puerto -8 y 6 respectivamente- y las
+         CATORCE llevan `hasRole('SYSTEM')` a secas, ninguna declara hasAuthority. Coincide
+         exactamente con modelo-datos-suscripciones.html, fila «Conciliación» de «Quién puede
+         tocar cada tabla»: Lee = SOLO PLATAFORMA, con la advertencia explícita de que el detalle
+         de una liquidación agrupa el cobro de muchas clínicas -abrir una referencia de
+         liquidación al cliente le enseña los importes de las otras cincuenta y nueve-. Sembrarles
+         una autoridad de tenant sería abrir por permiso justo lo que el propio guard cierra
+         adrede: no hay nada que corregir en 325/330, y por eso este changeset no las toca.
+
+         SIN SUBMÓDULO NUEVO: LAS TRES REUTILIZAN BILLING (creado en 258, ya is_sellable=TRUE,
+         read_only_capable=TRUE, ligado al artículo comercial ELECTRONIC_INVOICING). Es el mismo
+         submódulo donde 278 sembró electronicbilling.{create,read,update,delete} -perfil
+         tributario, proveedor DIAN, numeración, Y la propia configuración de retención
+         (SetWithholdingConfigUseCase/FindWithholdingConfigUseCase, ambas guardadas con
+         electronicbilling.*-. Retenciones practicadas, su certificado y el catálogo de tarifas
+         que las resuelve son la MISMA capacidad de cumplimiento DIAN, no una nueva: mismo
+         criterio que folded billingDocumentApplication.read en SUBSCRIPTION_PAYMENT (339) en vez
+         de darle submódulo propio.
+
+         EL MATIZ DE withholdingRateRule.read: la tabla withholding_rate_rules (317) es CATÁLOGO
+         GLOBAL, SIN company_id -a propósito, va sola en su changeset para no arrastrar las cuatro
+         reglas duras de aislamiento sobre una tabla que no varía por cliente-. Aun así los tres
+         puertos exigen companyId y @authz.isMyCompany(#companyId): ResolveWithholdingRateRuleUseCase,
+         ListWithholdingRateRulesUseCase y FindWithholdingRateRuleUseCase.java:42-43. Coincide con
+         modelo-datos-suscripciones.html, fila «Referencia fiscal y textos»: "ese puerto tiene que
+         recibir la empresa aunque la tabla no la tenga, o rompe la regla que impide abrir por
+         permiso lo que sus hermanas cierran". El reparto lo refleja igual que el código: se siembra
+         permissions.company_id para withholdingRateRule.read exactamente igual que para las otras
+         dos, aunque la tabla que resuelve no lleve empresa -el aislamiento vive en el permiso y en
+         el guard, no en una columna que esa tabla no puede tener-.
+
+         ADMIN tenant recibe los TRES: son lo que su propio guard @authz.isMyCompany admite para
+         el actor de la clínica -ver el saber qué le retuvieron, el certificado que lo respalda y
+         la tarifa que anticipa cuánto le van a girar de menos-.
+
+         BACKFILL a empresas EXISTENTES con BILLING contratado (company_entitlements.access_level
+         IN ('FULL','READ_ONLY') sobre sub_modules.code='BILLING'), mismo criterio que 278 y 339:
+         son permisos de LECTURA, válidos también en solo lectura. BILLING es submódulo YA
+         existente desde 258 y potencialmente ya entitled en empresas reales -a diferencia de
+         CUSTOMER_CREDIT/SUBSCRIPTION_PAYMENT_METHOD en 339, que nacían en ese mismo changeset-.
+
+         Todas las sentencias son idempotentes (guardas NOT EXISTS, nunca INSERT IGNORE). -->
+
+    <changeSet id="340_withholding_base_permissions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT seed.name, seed.code, sm.id, TRUE
+            FROM (
+                SELECT 'Ver retenciones practicadas' AS name, 'documentWithholding.read' AS code
+                UNION ALL SELECT 'Ver certificados de retención', 'withholdingCertificate.read'
+                UNION ALL SELECT 'Ver tarifas de retención', 'withholdingRateRule.read'
+            ) seed
+            JOIN sub_modules sm ON sm.code = 'BILLING'
+            LEFT JOIN base_permissions existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_permissions
+                WHERE code IN ('documentWithholding.read', 'withholdingCertificate.read',
+                                'withholdingRateRule.read');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="340_withholding_base_role_permissions_admin" author="orlando">
+        <!-- ADMIN tenant recibe los tres: son lo que su propio guard @authz.isMyCompany admite
+             para el actor de la clínica. -->
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN (
+                'documentWithholding.read', 'withholdingCertificate.read',
+                'withholdingRateRule.read')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id FROM base_permissions
+                    WHERE code IN ('documentWithholding.read', 'withholdingCertificate.read',
+                                    'withholdingRateRule.read'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="340_withholding_permissions_backfill_companies" author="orlando">
+        <!-- Backfill acotado a empresas con BILLING contratado (submódulo ya existente desde
+             258): solo company_entitlements.access_level IN ('FULL','READ_ONLY'), mismo criterio
+             que electronicbilling.read en 278 y customerCredit/paymentRefund/... en 339 -son
+             permisos de LECTURA, válidos también en solo lectura-. Los tres códigos se siembran
+             con permissions.company_id, incluido withholdingRateRule.read cuya tabla de origen
+             no lleva empresa: el aislamiento vive en el permiso, no en una columna que
+             withholding_rate_rules no puede tener. -->
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'BILLING'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code IN ('documentWithholding.read', 'withholdingCertificate.read',
+                               'withholdingRateRule.read')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM permissions
+                WHERE code IN ('documentWithholding.read', 'withholdingCertificate.read',
+                                'withholdingRateRule.read');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="340_withholding_role_permissions_backfill_admin" author="orlando">
+        <!-- Asigna esos tres permisos al rol ADMIN (code = 'ADMIN') de cada empresa
+             backfillada. -->
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id
+                AND p.code IN ('documentWithholding.read', 'withholdingCertificate.read',
+                                'withholdingRateRule.read')
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM role_permissions
+                WHERE permission_id IN (
+                    SELECT id FROM permissions
+                    WHERE code IN ('documentWithholding.read', 'withholdingCertificate.read',
+                                    'withholdingRateRule.read'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

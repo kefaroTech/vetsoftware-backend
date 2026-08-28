@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- D-76 / R-CAT-03. LA COMPOSICION DE UN ARTICULO SE CONGELA AL FIRMAR, IGUAL QUE EL PRECIO Y
+         QUE EL CUPO.
+
+         Hasta hoy se resolvia EN VIVO: ContractItemJpaRepository.findModuleLines cruzaba
+         subscription_items contra catalog_item_sub_modules y bundle_components tal y como estaban en
+         el instante del recalculo. Quitar un submodulo del catalogo se lo quitaba a todas las
+         clinicas que lo pagan -sin otrosi, sin aviso y sin bajarles el precio-, y ni siquiera en
+         solo lectura: la degradacion solo alcanza a lo que la consulta devuelve, y eso ya no lo
+         devolvia. Con un agravante de reloj: ningun cambio de catalogo dispara recalculo, asi que
+         las cuarenta no lo pierden el dia del cambio, lo pierden de una en una meses despues, cada
+         una el dia que le toque recalculo por cualquier otro motivo. Un incidente sin fecha y sin
+         correlacion con su causa.
+
+         Lo que el cliente compro es lo que el articulo tenia el dia que firmo. Esta tabla es esa
+         foto, y vale para modulos y para paquetes por igual: la composicion de un BUNDLE se expande
+         al congelar -sus componentes y los submodulos de sus componentes-, de modo que el recalculo
+         lee UNA tabla plana y ya no tiene que reproducir la expansion en cada pasada.
+
+         POR QUE UNA TABLA Y NO UN JSON EN LA LINEA. El recalculo cruza estas filas contra
+         sub_modules para leer read_only_capable y degradation_immune, que son propiedades VIVAS del
+         submodulo -no de la venta- y tienen que seguir mandando. Congelar el JSON congelaria tambien
+         eso, que es justo lo contrario de lo que D-76 decide.
+
+         LA CLAVE FORANEA COMPUESTA CON company_id (regla 2 del anexo de claves): la composicion
+         congelada de una clinica no puede colgar de la linea de contrato de otra.
+
+         SIN RELLENO (D-53): la base arranca vacia, asi que no hay ninguna linea ya firmada cuya
+         foto haya que reconstruir. La tabla nace limpia -solo estructura- y el recalculo escribe la
+         foto de cada linea el dia que se firma, que es el unico momento en que esa composicion es
+         un dato real y no una inferencia contra el catalogo de hoy. -->
+
+    <changeSet id="338_create_subscription_item_sub_modules" author="orlando">
+        <createTable tableName="subscription_item_sub_modules">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="subscription_item_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sub_module_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="subscription_item_sub_modules"
+                             columnNames="subscription_item_id, sub_module_id"
+                             constraintName="uq_subscription_item_sub_modules"/>
+
+        <!-- Los índices van antes que las claves foráneas que los usan (convención de esta casa,
+             ver 244): sin ellos MySQL crea uno implícito por cada FK y luego cualquier índice
+             explícito que se añada queda redundante encima. ix_..._item cubre de paso la FK de
+             solo company_id (mismo patrón de prefijo que ix_subscription_items_vigencia). -->
+        <createIndex tableName="subscription_item_sub_modules"
+                     indexName="ix_subscription_item_sub_modules_item">
+            <column name="company_id"/>
+            <column name="subscription_item_id"/>
+        </createIndex>
+        <createIndex tableName="subscription_item_sub_modules"
+                     indexName="ix_subscription_item_sub_modules_sub_module">
+            <column name="sub_module_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="subscription_item_sub_modules"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_subscription_item_sub_modules_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_item_sub_modules"
+                                 baseColumnNames="company_id, subscription_item_id"
+                                 referencedTableName="subscription_items"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_subscription_item_sub_modules_item"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_item_sub_modules"
+                                 baseColumnNames="sub_module_id"
+                                 referencedTableName="sub_modules"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_subscription_item_sub_modules_sub_module"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="subscription_item_sub_modules"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

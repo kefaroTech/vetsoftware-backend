@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K, paso previo obligatorio. El efecto colateral que el documento avisa y que si se
+         pasa por alto obliga a rehacer las dos tablas fiscales.
+
+         La convencion dice comparacion exacta en todo identificador ajeno, y el CODIGO DE MUNICIPIO
+         esta nombrado en la lista. Pero el codigo de municipio no vive solo: se cruza contra
+         cities.dane_code, que es DIVIPOLA y hereda la colacion del servidor. Y cruzar dos columnas
+         de colacion distinta hace dos cosas, las dos malas: desactiva el indice, y -en el caso de
+         una clave foranea- MySQL ni siquiera la deja crear (errno 3780, "referencing column and
+         referenced column are incompatible"). O las dos columnas cambian juntas, o document_
+         withholdings y withholding_rate_rules no pueden atar su municipio a nada.
+
+         Por eso este changeset va SOLO y va ANTES: alinea el lado que ya existe. Los dos lados que
+         nacen despues (316 y 328) declaran ascii/ascii_bin y ya pueden apuntar aqui.
+
+         uq_cities_dane_code es la otra mitad: MySQL exige un indice unico sobre la columna
+         referenciada para poder crear una FK contra ella. Es ademas una verdad del dato -DIVIPOLA
+         asigna un codigo por municipio y solo uno-, y hoy nada lo impedia: dos municipios con el
+         mismo codigo son dos tarifas de industria y comercio en conflicto y un reporte de terceros
+         que no cuadra. Los NULL no chocan entre si, asi que los municipios sin codigo -y las
+         ciudades de cualquier pais que no sea Colombia- siguen cabiendo.
+
+         Sobre bloqueo en produccion: cities tiene 1.121 filas en el peor caso (los municipios
+         DIVIPOLA de Colombia). Un MODIFY sobre esa tabla es de milisegundos y no hay entorno con
+         volumen; la advertencia de coste no aplica aqui. Si en algun entorno hubiera dos ciudades
+         con el mismo dane_code, la creacion del indice unico falla RUIDOSAMENTE, que es el
+         comportamiento correcto: ese dato ya estaba mal. -->
+    <changeSet id="315_align_city_dane_code_for_withholdings" author="orlando">
+        <!-- El LPAD va PRIMERO y no es decorativo: el municipio DIVIPOLA son cinco digitos -dos de
+             departamento y tres de municipio- y '5001' y '05001' son el mismo municipio escrito de
+             dos formas. Sobre base vacia no hace nada; en cualquier entorno donde alguien haya
+             sembrado geografia a mano, es lo que hace que el indice unico y el CHECK que vienen
+             detras no revienten por un cero perdido. Ejecutarlo despues del CHECK seria tarde. -->
+        <sql><![CDATA[
+            UPDATE cities SET dane_code = LPAD(dane_code, 5, '0')
+             WHERE dane_code IS NOT NULL AND CHAR_LENGTH(dane_code) < 5
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE cities
+                MODIFY COLUMN dane_code VARCHAR(5)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD CONSTRAINT uq_cities_dane_code UNIQUE (dane_code),
+                ADD CONSTRAINT chk_cities_dane_code
+                    CHECK (dane_code IS NULL OR dane_code REGEXP '^[0-9]{5}$')
+        ]]></sql>
+
+        <!-- Se queda en VARCHAR(5) y NO pasa a CHAR(5), aunque CHAR seria el tipo natural para un
+             codigo de longitud fija: CityJpaEntity mapea la columna como String sin
+             columnDefinition, e Hibernate espera varchar. Cambiarla a char rompe ddl-auto: validate
+             con un desajuste de tipo JDBC y la aplicacion no levanta -es el mismo motivo por el que
+             subscription_payments.currency lleva columnDefinition explicito-. El CHECK de formato
+             da la garantia que se buscaba con CHAR sin tocar el arranque. -->
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE cities
+                    DROP CHECK chk_cities_dane_code,
+                    DROP INDEX uq_cities_dane_code,
+                    MODIFY COLUMN dane_code VARCHAR(5) NULL
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

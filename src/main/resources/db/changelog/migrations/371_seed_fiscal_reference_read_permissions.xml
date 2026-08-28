@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Mismo defecto que 339/340/366/370: cinco rodajas nuevas de la fila «Referencia fiscal y
+         textos» de modelo-datos-suscripciones.html (uvt_values 347, smmlv_values 348,
+         vat_filing_periods 349, public_holidays 350, legal_document_versions 353) declaran
+         @PreAuthorize contra autoridades que no existen en base_permissions. VERIFICADO PUERTO A
+         PUERTO CONTRA EL @PreAuthorize REAL, no de segunda mano -diez puertos en total, los cinco
+         codigos que traia el encargo, ni uno mas ni uno menos-:
+
+           - uvt.read           FindUvtValueForYearUseCase.java:19, ListUvtValuesUseCase.java:9
+           - smmlv.read         FindSmmlvValueForYearUseCase.java:14,
+                                 ListSmmlvValuesUseCase.java:9
+           - holiday.read       FindPublicHolidayUseCase.java:15, ListPublicHolidaysUseCase.java:13,
+                                 ListPublicHolidaysUseCase.java:24 (listByYear, mismo codigo),
+                                 ResolveBusinessDayDeadlineUseCase.java:22
+           - vatfiling.read     FindVatFilingPeriodForYearUseCase.java:14,
+                                 ListVatFilingPeriodsUseCase.java:9
+           - legaldocument.read FindAcceptedLegalDocumentUseCase.java:21,
+                                 FindCurrentLegalDocumentUseCase.java:11,
+                                 ListLegalDocumentVersionsUseCase.java:13
+
+         Los diez comparten el mismo guard dual `hasRole('SYSTEM') or (hasAuthority('<code>') and
+         @authz.isMyCompany(#companyId))`: sin la fila en base_permissions SOLO SYSTEM pasa, y el
+         tenant nunca llega aunque el guard este escrito para admitirlo -exactamente la fila
+         «Referencia fiscal y textos»: Escribe = Plataforma, Lee = Ambos-.
+
+         EL MATIZ DE LAS CINCO TABLAS, YA RAZONADO EN 340 PARA withholdingRateRule.read Y AQUI
+         IDENTICO: las cinco son CATALOGO GLOBAL, SIN company_id -347/348/349/350/353 lo dicen en
+         su propio changeset, "sin empresa"-. Aun asi los diez puertos exigen companyId y
+         @authz.isMyCompany(#companyId): "ese puerto tiene que recibir la empresa aunque la tabla
+         no la tenga, o rompe la regla que impide abrir por permiso lo que sus hermanas cierran"
+         (modelo-datos-suscripciones.html, fila «Referencia fiscal y textos»). El reparto lo
+         refleja igual que el codigo: se siembra permissions.company_id para los cinco codigos
+         exactamente igual que para cualquier otro permiso de lectura, aunque ninguna de las cinco
+         tablas de origen lleve empresa -el aislamiento vive en el permiso y en el guard, no en una
+         columna que esas tablas no pueden tener-.
+
+         legaldocument.read TIENE ADEMAS UNA RAZON DE NEGOCIO PROPIA, DISTINTA DE LAS OTRAS
+         CUATRO: FindAcceptedLegalDocumentUseCase.java existe para que el cliente pueda releer,
+         por (code, contentHash), el texto EXACTO que acepto -uq_ldv_content, 353-. "El cliente
+         tiene que poder releer el texto que acepto" (misma fila del documento maestro): una
+         aceptacion que guarda un hash y no puede exhibir el texto detras de ese hash no es una
+         prueba que sirva. Por eso legaldocument.read no es opcional para el tenant, es la mitad
+         que le da sentido a la otra mitad (la aceptacion) que ya existe en el modelo.
+
+         SIN SUBMODULO REUTILIZABLE: se recorrieron los sub_modules ya sembrados (COMPANY,
+         BILLING, ENTITLEMENT, SUBSCRIPTION, SUBSCRIPTION_PAYMENT, SUBSCRIPTION_PAYMENT_METHOD,
+         CUSTOMER_CREDIT, CLINICAL_HISTORY, OWNERS_ANIMALS, AGENDA, AAB/PURCHASES/INVENTORY/CASH/
+         OPEN_ACCOUNTS/BRANCH/EMPLOYEES) y ninguno encaja: no es dinero cobrado (SUBSCRIPTION_
+         PAYMENT), no es DIAN por documento (BILLING), no es derecho de suscripcion (ENTITLEMENT).
+         Nace UN SUBMODULO NUEVO, FISCAL_REFERENCE, que agrupa las cinco tablas de la MISMA fila
+         del documento maestro -mismo criterio de agrupar por capacidad, no por tabla suelta, que
+         ya uso 339 para CUSTOMER_CREDIT/SUBSCRIPTION_PAYMENT_METHOD y 340 al reusar BILLING-.
+         module_id = GENERAL (mismo patron que ENTITLEMENT/SUBSCRIPTION_PAYMENT/CUSTOMER_CREDIT/
+         SUBSCRIPTION_PAYMENT_METHOD en 256/257/339), is_sellable=FALSE, read_only_capable=TRUE:
+         pieza tecnica de autoservicio SaaS -consulta de referencia-, no articulo comercial
+         independiente, utilizable cuando el entitlement baja a READ_ONLY.
+
+         ADMIN tenant recibe los CINCO: es lo que su propio guard @authz.isMyCompany admite para
+         el actor de la clinica.
+
+         SIN BACKFILL: FISCAL_REFERENCE es un submodulo que ESTE changeset crea, asi que ninguna
+         empresa existente puede tener ya una fila en company_entitlements que lo referencie
+         -identico argumento que 339 uso para CUSTOMER_CREDIT y SUBSCRIPTION_PAYMENT_METHOD-. Las
+         empresas nuevas lo heredan del alta via base_role_permissions; las existentes lo
+         recibiran cuando su contrato lo incluya y se recalculen sus entitlements.
+
+         Todas las sentencias son idempotentes (guardas NOT EXISTS, nunca INSERT IGNORE). -->
+
+    <changeSet id="371_fiscal_reference_submodule" author="orlando">
+        <sql>
+            INSERT INTO sub_modules (name, code, module_id, enabled, is_sellable,
+                                     read_only_capable)
+            SELECT 'Referencia fiscal y textos', 'FISCAL_REFERENCE',
+                   (SELECT id FROM modules WHERE code = 'GENERAL'), 1, 0, 1
+            WHERE NOT EXISTS (SELECT 1 FROM sub_modules WHERE code = 'FISCAL_REFERENCE');
+        </sql>
+        <rollback>
+            <sql>DELETE FROM sub_modules WHERE code = 'FISCAL_REFERENCE';</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="371_fiscal_reference_base_permissions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT seed.name, seed.code, sm.id, TRUE
+            FROM (
+                SELECT 'Ver unidad de valor tributario' AS name, 'uvt.read' AS code
+                UNION ALL SELECT 'Ver salario minimo', 'smmlv.read'
+                UNION ALL SELECT 'Ver periodicidad de IVA', 'vatfiling.read'
+                UNION ALL SELECT 'Ver festivos', 'holiday.read'
+                UNION ALL SELECT 'Ver textos legales', 'legaldocument.read'
+            ) seed
+            JOIN sub_modules sm ON sm.code = 'FISCAL_REFERENCE'
+            LEFT JOIN base_permissions existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_permissions
+                WHERE code IN ('uvt.read', 'smmlv.read', 'vatfiling.read', 'holiday.read',
+                                'legaldocument.read');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="371_fiscal_reference_base_role_permissions_admin" author="orlando">
+        <!-- ADMIN tenant recibe los cinco: es lo que su propio guard @authz.isMyCompany admite
+             para el actor de la clinica. -->
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN (
+                'uvt.read', 'smmlv.read', 'vatfiling.read', 'holiday.read', 'legaldocument.read')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id FROM base_permissions
+                    WHERE code IN ('uvt.read', 'smmlv.read', 'vatfiling.read', 'holiday.read',
+                                    'legaldocument.read'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

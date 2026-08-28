@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha gateway_settlements). LO QUE LA PASARELA LIQUIDO DE VERDAD.
+         La pasarela paga EN LOTES Y CON DIAS DE RETRASO, agrupando muchos cobros y descontando su
+         comision del total. Hoy la referencia de la liquidacion es un texto suelto sin tabla
+         detras, asi que cuadrar el extracto bancario con los cobros es trabajo manual todos los
+         meses.
+
+         CINCO IMPORTES, NO CUATRO:
+           gross_amount    lo que cobraron los clientes.
+           fee_amount      la comision de la pasarela.
+           fee_tax_amount  EL IMPUESTO DE ESA COMISION, APARTE. Si el servicio propio resulta
+                           excluido, ese impuesto no es descontable y se vuelve mayor valor del
+                           gasto: sumarlo dentro de la comision hace imposible saberlo despues.
+           gmf_amount      el impuesto a los movimientos financieros de la salida -el cuatro por
+                           mil-. 34.000 al mes, 408.000 al ano, la mitad deducible si esta
+                           certificada, y hoy en ningun informe de margen.
+           net_amount      lo que cayo al banco, y chk_gateway_settlements_net exige que cuadre.
+
+         provider_invoice_ref + provider_tax_id: la factura del proveedor y su NIT. Sin la
+         referencia del soporte, cinco millones al ano de gasto y casi un millon de impuesto quedan
+         expuestos a que los rechacen -la ley exige factura con requisitos para deducir-. Las otras
+         dos tablas de coste si la guardan; esta, que es el gasto MAYOR y mas recurrente del
+         negocio, no la tenia. Y sin el NIT no se puede armar el reporte anual de terceros. Nulables
+         porque la factura del proveedor llega despues de la liquidacion; van juntas o ninguna.
+
+         payment_count: cuantos cobros trae. Si no cuadra con los pagos enlazados, HAY UNO PERDIDO,
+         y esa comprobacion pasa a ser una consulta en vez de una revision a ojo.
+
+         SIN EMPRESA, Y VA SOLA EN SU CHANGESET. Y hay una fuga real que vigilar en la capa de
+         aplicacion, no en el esquema: UNA FILA DE AQUI AGRUPA LOS COBROS DE MUCHAS CLINICAS. Si el
+         detalle del pago de un cliente ensena su settlement_reference y ese dato abre el lote, se
+         le estan ensenando los importes de las otras cincuenta y nueve. Esta tabla la lee SOLO
+         plataforma.
+
+         La clave HACIA ATRAS desde subscription_payments (252): esa tabla nace antes y lleva desde
+         alli gateway + settlement_reference y su indice. Se ata contra
+         uq_gateway_settlements_reference, que es unica y por eso sirve de destino. -->
+    <changeSet id="326_create_gateway_settlements" author="orlando">
+        <createTable tableName="gateway_settlements">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="gateway" type="VARCHAR(40)"><constraints nullable="false"/></column>
+            <column name="settlement_reference" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="provider_invoice_ref" type="VARCHAR(60)"/>
+            <column name="provider_tax_id" type="VARCHAR(50)"/>
+            <column name="gross_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="fee_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="fee_tax_amount" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gmf_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="net_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="payment_count" type="INT"><constraints nullable="false"/></column>
+            <column name="settled_on" type="DATE"><constraints nullable="false"/></column>
+            <column name="bank_receipt_id" type="BIGINT"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE gateway_settlements
+                MODIFY COLUMN gateway VARCHAR(40)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN settlement_reference VARCHAR(120)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN provider_invoice_ref VARCHAR(60)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN provider_tax_id VARCHAR(50)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD CONSTRAINT uq_gateway_settlements_reference
+                    UNIQUE (gateway, settlement_reference),
+                ADD CONSTRAINT chk_gateway_settlements_amounts
+                    CHECK (gross_amount > 0 AND fee_amount >= 0 AND fee_tax_amount >= 0
+                           AND gmf_amount >= 0 AND net_amount > 0),
+                ADD CONSTRAINT chk_gateway_settlements_net
+                    CHECK (net_amount = gross_amount - fee_amount - fee_tax_amount - gmf_amount),
+                ADD CONSTRAINT chk_gateway_settlements_payment_count
+                    CHECK (payment_count > 0),
+                ADD CONSTRAINT chk_gateway_settlements_provider_invoice
+                    CHECK ((provider_invoice_ref IS NULL AND provider_tax_id IS NULL)
+                           OR (provider_invoice_ref IS NOT NULL AND provider_tax_id IS NOT NULL))
+        ]]></sql>
+
+        <createIndex tableName="gateway_settlements" indexName="ix_gateway_settlements_settled">
+            <column name="settled_on"/>
+        </createIndex>
+        <createIndex tableName="gateway_settlements" indexName="ix_gateway_settlements_receipt">
+            <column name="bank_receipt_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="gateway_settlements"
+                                 baseColumnNames="bank_receipt_id"
+                                 referencedTableName="bank_receipts"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_gateway_settlements_receipt"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <!-- La clave HACIA ATRAS que cose el cobro con su lote. -->
+        <addForeignKeyConstraint baseTableName="subscription_payments"
+                                 baseColumnNames="gateway, settlement_reference"
+                                 referencedTableName="gateway_settlements"
+                                 referencedColumnNames="gateway, settlement_reference"
+                                 constraintName="fk_subscription_payments_settlement"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="subscription_payments"
+                                      constraintName="fk_subscription_payments_settlement"/>
+            <dropTable tableName="gateway_settlements"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

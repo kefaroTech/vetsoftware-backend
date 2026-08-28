@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Capa J, bloque 3 (modelo-datos-suscripciones.html, ficha catalog_item_limits). El techo DE
+         FÁBRICA de cada artículo: qué trae de serie y qué trae durante la prueba, que son dos
+         decisiones distintas. Su gemela congelada al firmar es subscription_item_limits (304).
+
+         SIN company_id: mismo slice global que catalog_items y limit_dimensions, y por la misma
+         razón -si una entidad de este slice alcanza la tabla de empresas, las cuatro reglas duras
+         BE-COV caen sobre la feature entera-.
+
+         LA COPIA DE measure_kind ATADA POR CLAVE es lo que hace expresable el resto. La FK
+         (limit_dimension_id, measure_kind) -> limit_dimensions(id, measure_kind) convierte "cambiar
+         un eje de acumulativo a flujo con artículos vendidos" en un error del motor. Sin esa copia,
+         reset_period y la prohibición del excedente sobre acumulativos no se podrían comprobar en
+         la fila: una restricción no puede mirar otra tabla.
+
+         reset_period BAJA AQUÍ desde el eje, y es una corrección del propio diseño: cada cuánto
+         vuelve a cero un cupo no es propiedad del eje sino DE LA VENTA -el mismo eje se vende
+         mensual a una clínica pequeña y semestral a una grande-. Solo tiene sentido en los cupos de
+         flujo y la base lo exige en ambas direcciones.
+
+         trial_mode nace en FULL por decisión de negocio (D-06): la prueba va SIN TECHO, porque para
+         lo que sirve una prueba es para migrar los datos que ya se tienen. Si Ana llega con 400
+         mascotas y el cupo gratis son 100, aplicarle el cupo desde el día 0 hace que la prueba no
+         convierta. Se puede endurecer por artículo sin desplegar nada, y por eso es columna y no
+         constante. Va NOT NULL sin valor por defecto en la base: el defecto es de negocio, no del
+         motor, y la regla de la casa solo admite tres columnas con valor por defecto.
+
+         chk_catalog_item_limits_overage escribe dos invariantes de una vez: sin precio por unidad no
+         hay excedente que cobrar -dejar pasar gratis lo que debería cobrarse es peor que bloquear-,
+         y el excedente NO CABE sobre un cupo acumulativo, porque cobrar por unidad sobre un contador
+         que no libera al borrar significa cobrar para siempre por registros ya suprimidos. -->
+    <changeSet id="303_create_catalog_item_limits" author="orlando">
+        <createTable tableName="catalog_item_limits">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="catalog_item_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="limit_dimension_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="measure_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="mode" type="VARCHAR(15)"><constraints nullable="false"/></column>
+            <column name="limit_quantity" type="INT UNSIGNED"/>
+            <column name="reset_period" type="VARCHAR(10)"/>
+            <column name="enforcement" type="VARCHAR(15)"><constraints nullable="false"/></column>
+            <column name="overage_unit_amount" type="DECIMAL(19,2)"/>
+            <column name="warn_threshold" type="TINYINT UNSIGNED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="trial_mode" type="VARCHAR(15)"><constraints nullable="false"/></column>
+            <column name="trial_limit_quantity" type="INT UNSIGNED"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="catalog_item_limits"
+                             columnNames="catalog_item_id, limit_dimension_id"
+                             constraintName="uq_catalog_item_limits"/>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_item_limits
+                ADD CONSTRAINT chk_catalog_item_limits_measure_kind
+                    CHECK (measure_kind IN ('STOCK','CUMULATIVE','FLOW')),
+                ADD CONSTRAINT chk_catalog_item_limits_mode
+                    CHECK ((mode = 'LIMITED' AND limit_quantity IS NOT NULL)
+                           OR (mode = 'FULL' AND limit_quantity IS NULL)),
+                ADD CONSTRAINT chk_catalog_item_limits_reset_period
+                    CHECK ((measure_kind = 'FLOW'
+                            AND reset_period IN ('MONTH','QUARTER','SEMESTER'))
+                           OR (measure_kind <> 'FLOW' AND reset_period IS NULL)),
+                ADD CONSTRAINT chk_catalog_item_limits_enforcement
+                    CHECK (enforcement IN ('WARN','BLOCK','READ_ONLY','OVERAGE')),
+                ADD CONSTRAINT chk_catalog_item_limits_overage
+                    CHECK ((enforcement = 'OVERAGE'
+                            AND overage_unit_amount IS NOT NULL AND overage_unit_amount > 0
+                            AND measure_kind <> 'CUMULATIVE')
+                           OR (enforcement <> 'OVERAGE' AND overage_unit_amount IS NULL)),
+                ADD CONSTRAINT chk_catalog_item_limits_warn_threshold
+                    CHECK (warn_threshold BETWEEN 1 AND 100),
+                ADD CONSTRAINT chk_catalog_item_limits_trial_mode
+                    CHECK ((trial_mode = 'LIMITED' AND trial_limit_quantity IS NOT NULL)
+                           OR (trial_mode = 'FULL' AND trial_limit_quantity IS NULL))
+        ]]></sql>
+
+        <createIndex tableName="catalog_item_limits" indexName="ix_catalog_item_limits_dimension">
+            <column name="limit_dimension_id"/>
+            <column name="measure_kind"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="catalog_item_limits"
+                                 baseColumnNames="catalog_item_id"
+                                 referencedTableName="catalog_items"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_catalog_item_limits_item"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="catalog_item_limits"
+                                 baseColumnNames="limit_dimension_id, measure_kind"
+                                 referencedTableName="limit_dimensions"
+                                 referencedColumnNames="id, measure_kind"
+                                 constraintName="fk_catalog_item_limits_dimension"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="catalog_item_limits"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

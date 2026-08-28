@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CUMPLIR Y MEDIR - CAPA O (ficha security_incident_companies). LA PUENTE DE AFECTADOS,
+         POR EMPRESA. Se escribe una sola vez, al cerrar el incidente (356): exenta
+         E2_TABLA_PUENTE, sin created_date, sin enabled, sin version.
+
+         EL AMBITO ENTRA EN LA UNICIDAD (decision propia, S8, coste bajo de revertir): el propio
+         documento dice que "el alcance decide el plazo de notificacion" y que dos clinicas del
+         mismo incidente pueden estar alcanzadas por cosas distintas -un ataque que expone
+         credenciales Y datos clinicos de la misma clinica son dos ambitos con dos plazos, y con
+         la clave corta (security_incident_id, company_id) el segundo seria inescribible-.
+
+         ix_sic_company va EN ORDEN INVERSO A PROPOSITO (company_id primero): la consulta que
+         importa es la del cliente -"que incidentes me afectaron"-, y sin el recorre la tabla.
+
+         SIN OPERACION DE BORRADO: quitar una clinica de la lista de afectados destruiria la
+         prueba de que se le notifico -eso lo aplica backend-feature, no exponiendo delete-. -->
+    <changeSet id="357_create_security_incident_companies" author="orlando">
+        <createTable tableName="security_incident_companies">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="security_incident_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="affected_scope" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="affected_subject_count" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE security_incident_companies
+                ADD CONSTRAINT uq_sic_pair
+                    UNIQUE (security_incident_id, company_id, affected_scope),
+                ADD CONSTRAINT chk_sic_scope
+                    CHECK (affected_scope IN ('PERSONAL_DATA','CLINICAL_DATA','BILLING_DATA',
+                                               'CREDENTIALS')),
+                ADD CONSTRAINT chk_sic_count
+                    CHECK (affected_subject_count >= 0)
+        ]]></sql>
+
+        <createIndex tableName="security_incident_companies" indexName="ix_sic_company">
+            <column name="company_id"/>
+            <column name="security_incident_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="security_incident_companies"
+                                 baseColumnNames="security_incident_id"
+                                 referencedTableName="security_incidents"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_sic_incident"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="security_incident_companies"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_sic_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="security_incident_companies"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CUMPLIR Y MEDIR - CAPA O (ficha external_invoicing_outages). CUANDO LA EMISION FISCAL SE
+         CAE, SIN EMPRESA -el reparto por clinica va en la puente 359-.
+
+         cause_party ES LA COLUMNA QUE SEPARA UN INCIDENTE DE UN INCUMPLIMIENTO, y por eso no
+         puede ser texto libre: CHECK con lista cerrada.
+
+         uq_eio_open (via open_outage_marker, decision propia S8): UNA SOLA CAIDA ABIERTA POR
+         CAUSANTE. Dos caidas simultaneas del emisor externo son la misma caida; sin el marcador
+         el proceso de deteccion abre una nueva en cada sondeo y deja un rastro de caidas vivas que
+         nunca se cierran. Dos causantes distintos (emisor y red) si pueden solaparse -por eso el
+         marcador lleva cause_party y no una constante-. SIN enabled. -->
+    <changeSet id="358_create_external_invoicing_outages" author="orlando">
+        <createTable tableName="external_invoicing_outages">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="started_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="ended_at" type="DATETIME(6)"/>
+            <column name="cause_party" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="summary" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="affected_company_count" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notified_companies_at" type="DATETIME(6)"/>
+            <column name="external_incident_ref" type="VARCHAR(100)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE external_invoicing_outages
+                ADD COLUMN open_outage_marker VARCHAR(20)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (
+                        CASE WHEN ended_at IS NULL THEN cause_party ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_eio_open UNIQUE (open_outage_marker),
+                ADD CONSTRAINT chk_eio_cause
+                    CHECK (cause_party IN ('EXTERNAL_ISSUER','AUTHORITY','NETWORK','OWN')),
+                ADD CONSTRAINT chk_eio_ended
+                    CHECK (ended_at IS NULL OR ended_at > started_at),
+                ADD CONSTRAINT chk_eio_count
+                    CHECK (affected_company_count >= 0),
+                ADD CONSTRAINT chk_eio_notified
+                    CHECK (notified_companies_at IS NULL OR notified_companies_at >= started_at)
+        ]]></sql>
+
+        <!-- Barridos de plataforma: sin empresa porque la tabla no la tiene. -->
+        <createIndex tableName="external_invoicing_outages" indexName="ix_eio_started">
+            <column name="started_at"/>
+        </createIndex>
+        <createIndex tableName="external_invoicing_outages" indexName="ix_eio_open">
+            <column name="ended_at"/>
+            <column name="started_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="external_invoicing_outages"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

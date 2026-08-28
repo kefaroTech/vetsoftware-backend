@@ -38,9 +38,11 @@
         <sql><![CDATA[
             INSERT INTO catalog_items
                     (code, name, short_description, item_type, capacity_unit, is_core,
-                     min_quantity, max_quantity, sort_order, status)
+                     min_quantity, max_quantity, sort_order, status,
+                     trial_eligibility, default_trial_days, trial_outcome, service_nature)
             SELECT seed.code, seed.name, seed.short_description, 'CAPACITY',
-                   seed.capacity_unit, TRUE, 1, NULL, seed.sort_order, 'ACTIVE'
+                   seed.capacity_unit, TRUE, 1, NULL, seed.sort_order, 'ACTIVE',
+                   'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
               FROM (
                 SELECT 'CAPACITY_BRANCH' AS code, 'Sede incluida' AS name,
                        'Una sede de trabajo (laboratorio)' AS short_description,

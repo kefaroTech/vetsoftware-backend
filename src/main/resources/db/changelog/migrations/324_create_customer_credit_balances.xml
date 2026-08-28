@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K. LA BARANDILLA DEL LIBRO DE ASIENTOS. UNA FILA POR EMPRESA, Y NO ES LA VERDAD.
+         El libro (322) elimino la clase entera de defecto que persigue todo el modelo -un contador
+         que se lee, se suma y se guarda- pero se llevo por delante lo unico que impedia gastar
+         credito que no existe. SUMAR FILAS NO BLOQUEA A NADIE: una suma es una lectura.
+
+         EL CASO CONCRETO, que no da error y descuadra dinero del cliente: saldo vivo de cien mil.
+         La contadora lo aplica a la factura de marzo desde una pestana y el proceso de renovacion
+         lo aplica a la de abril EN EL MISMO SEGUNDO. Las dos leen cien mil, las dos escriben
+         ochenta mil, las dos confirman. Saldo menos sesenta mil, y nadie ve un error.
+
+         COMO SE USA ESTA TABLA -y si no se usa asi, no sirve de nada-: la fila se actualiza EN LA
+         MISMA OPERACION que escribe el asiento, y LA CONDICION VA DENTRO DE LA PROPIA INSTRUCCION:
+
+             UPDATE customer_credit_balances
+                SET balance_amount = balance_amount + :delta,
+                    version        = version + 1,
+                    recalculated_at = :now
+              WHERE company_id = :company
+                AND balance_amount + :delta >= 0;
+
+         Si esa instruccion afecta cero filas, no hay saldo y la operacion se aborta. El bloqueo de
+         fila que toma el UPDATE serializa a los dos escritores; la condicion dentro del WHERE es la
+         barandilla. Leer el saldo, decidir en memoria y escribir despues NO equivale a esto, por
+         mucho que el resultado se parezca en las pruebas de un solo hilo.
+         chk_ccb_not_negative es el cinturon encima del tirante: aunque alguien escriba el UPDATE
+         sin la condicion, el motor rechaza el negativo.
+
+         ES UNA PROYECCION, NO LA VERDAD. La verdad es SUM(customer_credit_entries.amount). Un
+         recuento periodico afirma que las dos coinciden -la misma disciplina que el modelo ya exige
+         para los contadores de cupo- y recalculated_at es su marca. Si divergen, manda el libro y
+         esta fila se rehace.
+
+         Y resuelve la otra mitad del problema: "quien tiene saldo aplicable" vuelve a ser un indice
+         en vez de recorrer el historico entero. Ese indice y el de next_expiry_on van SIN LA
+         EMPRESA DELANTE: son barridos de plataforma -saldos que caducan, saldos vivos de clientes
+         que se fueron- y ponerles la empresa delante los haria inutiles.
+
+         TABLA DERIVADA: sin created_date y sin enabled, por la convencion del modelo -se tira y se
+         rehace, y darla de baja logicamente crearia un estado que nadie sabe interpretar-. CON
+         version, porque muta en cada aplicacion de saldo.
+         SIN valor por defecto en el importe, tambien por convencion: un importe con defecto cero
+         convierte un fallo de calculo en un dato plausible. La fila nace escribiendo su cero. -->
+    <changeSet id="324_create_customer_credit_balances" author="orlando">
+        <createTable tableName="customer_credit_balances">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="balance_amount" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="next_expiry_on" type="DATE"/>
+            <column name="recalculated_at" type="DATETIME(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="customer_credit_balances" columnNames="company_id"
+                             constraintName="uq_ccb_company"/>
+
+        <sql><![CDATA[
+            ALTER TABLE customer_credit_balances
+                ADD CONSTRAINT chk_ccb_not_negative CHECK (balance_amount >= 0)
+        ]]></sql>
+
+        <createIndex tableName="customer_credit_balances" indexName="ix_ccb_applicable">
+            <column name="balance_amount"/>
+            <column name="next_expiry_on"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="customer_credit_balances"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_ccb_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="customer_credit_balances"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

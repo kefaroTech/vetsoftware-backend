@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- LOS DISPARADORES DE CONTABILIDAD (ficha, S6.1 y S6.2). Lo que ningun CHECK puede decir
+         porque mira otra tabla o el conjunto -el manual prohibe subconsultas, columnas de otra
+         tabla y funciones no deterministas dentro de un CHECK-.
+
+         S6.1 - UN PERIODO CERRADO NO ADMITE ESCRITURAS. Uno BEFORE INSERT y uno BEFORE UPDATE por
+         cada tabla que escribe contra un periodo contable: revenue_recognition_lines (344, columna
+         posting_period), accounting_exports (345, columna period_key) y, cerrando la carencia
+         declarada en el propio 330, external_invoice_reconciliations (330, columna posting_period).
+         Sin esto, un hecho tardio se puede imputar a un mes ya LOCKED, y ese fallo es silencioso
+         por definicion: no hay error, hay un numero mal imputado en una declaracion.
+
+         S6.2 - SIEMPRE QUEDA AL MENOS UN PERIODO ABIERTO, Y UN LOCKED NO SE REABRE.
+         VERIFICADO EN ESTA SESION -la ficha lo dejaba como PENDIENTE DE VERIFICAR-: el SELECT
+         sobre accounting_periods dentro de su propio disparador BEFORE UPDATE es legal en MySQL
+         8.4 (ER_CANT_UPDATE_USED_TABLE, error 1442, prohibe ESCRIBIR en la tabla sujeto desde un
+         trigger, no LEERLA). Se probo cerrando el unico periodo abierto de una base de prueba y
+         el UPDATE fallo con el SIGNAL esperado; con dos periodos OPEN, cerrar uno de los dos tuvo
+         exito. Detalle de la prueba en el informe de verificacion de este changeset. -->
+    <changeSet id="346_create_accounting_period_triggers" author="orlando">
+
+        <sql splitStatements="false"><![CDATA[
+CREATE TRIGGER trg_rrl_bi_period_open BEFORE INSERT ON revenue_recognition_lines
+FOR EACH ROW
+BEGIN
+    DECLARE v_status VARCHAR(15);
+    SELECT status INTO v_status
+      FROM accounting_periods WHERE period_key = NEW.posting_period;
+    IF v_status <> 'OPEN' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'periodo contable no abierto: use el primer periodo abierto';
+    END IF;
+END
+        ]]></sql>
+
+        <sql splitStatements="false"><![CDATA[
+CREATE TRIGGER trg_rrl_bu_period_open BEFORE UPDATE ON revenue_recognition_lines
+FOR EACH ROW
+BEGIN
+    DECLARE v_status VARCHAR(15);
+    SELECT status INTO v_status
+      FROM accounting_periods WHERE period_key = NEW.posting_period;
+    IF v_status <> 'OPEN' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'periodo contable no abierto: use el primer periodo abierto';
+    END IF;
+END
+        ]]></sql>
+
+        <sql splitStatements="false"><![CDATA[
+CREATE TRIGGER trg_accounting_exports_bi_period_open BEFORE INSERT ON accounting_exports
+FOR EACH ROW
+BEGIN
+    DECLARE v_status VARCHAR(15);
+    SELECT status INTO v_status
+      FROM accounting_periods WHERE period_key = NEW.period_key;
+    IF v_status <> 'OPEN' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'periodo contable no abierto: use el primer periodo abierto';
+    END IF;
+END
+        ]]></sql>
+
+        <sql splitStatements="false"><![CDATA[
+CREATE TRIGGER trg_accounting_exports_bu_period_open BEFORE UPDATE ON accounting_exports
+FOR EACH ROW
+BEGIN
+    DECLARE v_status VARCHAR(15);
+    SELECT status INTO v_status
+      FROM accounting_periods WHERE period_key = NEW.period_key;
+    IF v_status <> 'OPEN' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'periodo contable no abierto: use el primer periodo abierto';
+    END IF;
+END
+        ]]></sql>
+
+        <sql splitStatements="false"><![CDATA[
+CREATE TRIGGER trg_eir_bi_period_open BEFORE INSERT ON external_invoice_reconciliations
+FOR EACH ROW
+BEGIN
+    DECLARE v_status VARCHAR(15);
+    SELECT status INTO v_status
+      FROM accounting_periods WHERE period_key = NEW.posting_period;
+    IF v_status <> 'OPEN' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'periodo contable no abierto: use el primer periodo abierto';
+    END IF;
+END
+        ]]></sql>
+
+        <sql splitStatements="false"><![CDATA[
+CREATE TRIGGER trg_eir_bu_period_open BEFORE UPDATE ON external_invoice_reconciliations
+FOR EACH ROW
+BEGIN
+    DECLARE v_status VARCHAR(15);
+    SELECT status INTO v_status
+      FROM accounting_periods WHERE period_key = NEW.posting_period;
+    IF v_status <> 'OPEN' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'periodo contable no abierto: use el primer periodo abierto';
+    END IF;
+END
+        ]]></sql>
+
+        <sql splitStatements="false"><![CDATA[
+CREATE TRIGGER trg_accounting_periods_bu_guard BEFORE UPDATE ON accounting_periods
+FOR EACH ROW
+BEGIN
+    IF OLD.status = 'LOCKED' AND NEW.status <> 'LOCKED' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'un periodo declarado no se reabre';
+    END IF;
+    IF OLD.status = 'OPEN' AND NEW.status <> 'OPEN'
+       AND (SELECT COUNT(*) FROM accounting_periods
+             WHERE status = 'OPEN' AND id <> OLD.id) = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'no queda ningun periodo abierto: abra el siguiente antes de cerrar';
+    END IF;
+END
+        ]]></sql>
+
+        <rollback>
+            <sql>DROP TRIGGER trg_rrl_bi_period_open</sql>
+            <sql>DROP TRIGGER trg_rrl_bu_period_open</sql>
+            <sql>DROP TRIGGER trg_accounting_exports_bi_period_open</sql>
+            <sql>DROP TRIGGER trg_accounting_exports_bu_period_open</sql>
+            <sql>DROP TRIGGER trg_eir_bi_period_open</sql>
+            <sql>DROP TRIGGER trg_eir_bu_period_open</sql>
+            <sql>DROP TRIGGER trg_accounting_periods_bu_guard</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

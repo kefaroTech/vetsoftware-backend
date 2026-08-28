@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Capa J (modelo-datos-suscripciones.html, ficha company_limit_overrides). La excepción
+         negociada, con su historia. Subirle el techo a un cliente por una llamada de retención es
+         una decisión comercial y merece un papel, no un UPDATE a mano. Cambiar el pacto no edita la
+         fila: la cierra y abre otra.
+
+         alive_company_marker: el mismo truco del contrato. Vale la empresa mientras el pacto esté
+         vivo -las DOS condiciones: ni revocado ni con fecha de fin escrita- y vacío si no. El
+         documento de diseño dejaba "vivo" sin definir y las dos lecturas daban esquemas
+         incompatibles.
+
+         Y OJO AL ÍNDICE ÚNICO, que es el detalle que se escapa: va sobre (alive_company_marker,
+         limit_dimension_id), LAS DOS COLUMNAS. Con la generada sola habría una excepción abierta por
+         empresa EN TOTAL, y negociarle a Ana 300 mascotas y 5 usuarios en la misma llamada fallaría
+         la segunda. Lo que hay que impedir es dos excepciones abiertas SOBRE EL MISMO EJE, que sería
+         un techo indeterminado: dos respuestas válidas a "¿cuántas mascotas puede crear?".
+
+         La caducidad por fecha NO entra en la columna generada, y no es un olvido: MySQL prohíbe
+         funciones no deterministas -CURRENT_DATE entre ellas- en una columna generada STORED. "Vivo"
+         se define aquí como "sin fecha de fin escrita y sin revocar", que es la misma forma que usan
+         los otros ocho marcadores del modelo. Una excepción que caduca por fecha se cierra
+         escribiendo valid_to, que es además lo que la deja auditada.
+
+         reason_code + reason: la convención de la casa para los motivos son SIEMPRE dos columnas
+         -un código de lista cerrada para poder agrupar a quinientos clientes y un texto libre para
+         poder explicar-. Ambas obligatorias: una excepción sin motivo escrito es una excepción que
+         nadie puede defender seis meses después.
+
+         uq_company_limit_overrides_company_id es la clave auxiliar que necesita company_capacities
+         para atar su override_id arrastrando la empresa. -->
+    <changeSet id="305_create_company_limit_overrides" author="orlando">
+        <createTable tableName="company_limit_overrides">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="limit_dimension_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="limit_quantity" type="INT UNSIGNED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="valid_from" type="DATE"><constraints nullable="false"/></column>
+            <column name="valid_to" type="DATE"/>
+            <column name="reason_code" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="reason" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="granted_by_system_user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revoked_by_system_user_id" type="BIGINT"/>
+            <column name="revoked_at" type="DATETIME(6)"/>
+            <column name="revoked_reason_code" type="VARCHAR(30)"/>
+            <column name="revoked_reason" type="VARCHAR(255)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="company_limit_overrides" columnNames="company_id, id"
+                             constraintName="uq_company_limit_overrides_company_id"/>
+
+        <sql><![CDATA[
+            ALTER TABLE company_limit_overrides
+                ADD COLUMN alive_company_marker BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN revoked_at IS NULL AND valid_to IS NULL
+                            THEN company_id
+                            ELSE NULL
+                        END
+                    ) STORED,
+                ADD CONSTRAINT uq_company_limit_overrides_alive
+                    UNIQUE (alive_company_marker, limit_dimension_id),
+                ADD CONSTRAINT chk_company_limit_overrides_validity
+                    CHECK (valid_to IS NULL OR valid_to >= valid_from),
+                ADD CONSTRAINT chk_company_limit_overrides_reason_code
+                    CHECK (reason_code IN ('RETENTION','MIGRATION','COMMERCIAL_AGREEMENT',
+                                           'SUPPORT_INCIDENT','OTHER')),
+                ADD CONSTRAINT chk_company_limit_overrides_revocation
+                    CHECK ((revoked_at IS NULL AND revoked_by_system_user_id IS NULL
+                            AND revoked_reason_code IS NULL AND revoked_reason IS NULL)
+                           OR (revoked_at IS NOT NULL AND revoked_by_system_user_id IS NOT NULL
+                               AND revoked_reason_code IS NOT NULL
+                               AND revoked_reason_code IN ('RETENTION','MIGRATION',
+                                                           'COMMERCIAL_AGREEMENT',
+                                                           'SUPPORT_INCIDENT','OTHER')
+                               AND revoked_reason IS NOT NULL))
+        ]]></sql>
+
+        <createIndex tableName="company_limit_overrides"
+                     indexName="ix_company_limit_overrides_history">
+            <column name="company_id"/>
+            <column name="limit_dimension_id"/>
+            <column name="valid_from"/>
+        </createIndex>
+        <createIndex tableName="company_limit_overrides"
+                     indexName="ix_company_limit_overrides_dimension">
+            <column name="limit_dimension_id"/>
+        </createIndex>
+        <createIndex tableName="company_limit_overrides"
+                     indexName="ix_company_limit_overrides_granted_by">
+            <column name="granted_by_system_user_id"/>
+        </createIndex>
+        <createIndex tableName="company_limit_overrides"
+                     indexName="ix_company_limit_overrides_revoked_by">
+            <column name="revoked_by_system_user_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="company_limit_overrides"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_limit_overrides_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_limit_overrides"
+                                 baseColumnNames="limit_dimension_id"
+                                 referencedTableName="limit_dimensions"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_limit_overrides_dimension"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_limit_overrides"
+                                 baseColumnNames="granted_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_limit_overrides_granted_by"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_limit_overrides"
+                                 baseColumnNames="revoked_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_limit_overrides_revoked_by"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="company_limit_overrides"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -36,7 +36,42 @@
          dinero causado por otro tenant-. company_id es NOT NULL, así que la compuesta es sólida
          y no hereda el problema de los NULL múltiples. Empresa primero: mismo criterio que las
          claves auxiliares de las FK compuestas (suscripciones-modelo.md §4.2), y sirve además para
-         acotar cualquier consulta de tenant sobre esta columna. -->
+         acotar cualquier consulta de tenant sobre esta columna. 
+
+         CAPA K (modelo-datos-suscripciones.html, ficha billing_document_applications). DE DOS
+         ORIGENES A SEIS, y es el cambio que motiva la capa entera. El caso: Ana debe 213.010, su
+         contadora le practica retencion y le gira 205.850. Con solo PAYMENT y CREDIT_NOTE quedan
+         7.160 vivos, arranca la mora y Spa Ana Pet cae a solo lectura por una deuda que FISCALMENTE
+         NO EXISTE -esa plata esta en la DIAN a nombre de VetSoftware y Ana tiene el certificado-.
+           + WITHHOLDING     apunta a document_withholdings; el detalle fiscal (tipo, base, tarifa,
+                             municipio, periodo, certificado) vive alli y no se duplica aqui.
+           + CUSTOMER_CREDIT apunta a customer_credit_entries; es el camino de SALIDA del saldo a
+                             favor, que sin el nacia y no podia aplicarse nunca.
+           + ROUNDING        el residuo de 1 a 3 pesos entre el impuesto calculado aqui y el del
+                             emisor externo. CON TOPE DURO (chk_bda_rounding_cap): sin tope este
+                             origen se convierte en el vertedero donde cuadra cualquier descuadre.
+           + WRITE_OFF       incobrable. Exige firma y motivo (chk_bda_write_off_signature): la
+                             deuda no se borra, se agrega un documento que la da de baja.
+         LA COMISION DE LA PASARELA NO ESTA EN LA LISTA Y NO DEBE ESTARLO: es gasto propio, no menor
+         pago del cliente. La factura se salda por el BRUTO y la comision vive en
+         subscription_payments.fee_amount y en gateway_settlements.
+
+         value_date NOT NULL: la fecha valor con la que el asiento cae en un periodo. applied_at es
+         cuando se registro, value_date cuando cuenta -y no son la misma: una retencion practicada
+         el 30 de octubre y registrada el 3 de noviembre pertenece a octubre-.
+
+         Las FK de withholding_id y credit_entry_id se declaran HACIA ATRAS, desde 323 y 329, porque
+         esas tablas nacen despues. Es la misma tecnica que el documento prescribe para el ciclo del
+         configurador y la que ya se uso para la ventana de prueba; la alternativa era renumerar.
+         Los indices de esas dos FK SI se crean aqui (regla: el indice antes que la clave).
+
+         client_request_id pasa a ascii_bin: es una llave de idempotencia ajena -la genera el
+         cliente- y bajo la colacion heredada "REQ-1" y "req-1" son la misma, que es exactamente lo
+         que la unicidad existe para distinguir.
+
+         PENDIENTE DECLARADO: ApplicationSourceKind (dominio Java) sigue teniendo dos valores. El
+         esquema admite seis y el codigo solo sabe escribir dos; ampliarlo es trabajo de la capa de
+         aplicacion y va con issue propio. Ampliar el CHECK no rompe ddl-auto: validate. -->
     <changeSet id="253_create_billing_document_applications" author="orlando">
         <createTable tableName="billing_document_applications">
             <column name="id" type="BIGINT" autoIncrement="true">
@@ -50,9 +85,14 @@
             <column name="source_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
             <column name="payment_id" type="BIGINT"/>
             <column name="source_document_id" type="BIGINT"/>
+            <column name="withholding_id" type="BIGINT"/>
+            <column name="credit_entry_id" type="BIGINT"/>
             <column name="applied_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
             <column name="reversal_of_id" type="BIGINT"/>
             <column name="applied_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="value_date" type="DATE"><constraints nullable="false"/></column>
+            <column name="write_off_authorized_by_system_user_id" type="BIGINT"/>
+            <column name="write_off_reason" type="VARCHAR(255)"/>
             <column name="client_request_id" type="VARCHAR(64)">
                 <constraints nullable="true"/>
             </column>
@@ -72,21 +112,57 @@
         <sql><![CDATA[
             ALTER TABLE billing_document_applications
                 ADD CONSTRAINT chk_bda_source_kind
-                    CHECK (source_kind IN ('PAYMENT','CREDIT_NOTE')),
+                    CHECK (source_kind IN ('PAYMENT','CREDIT_NOTE','WITHHOLDING',
+                                           'CUSTOMER_CREDIT','ROUNDING','WRITE_OFF')),
                 ADD CONSTRAINT chk_bda_source_exclusive
-                    CHECK ((source_kind = 'PAYMENT' AND payment_id IS NOT NULL AND source_document_id IS NULL)
-                           OR (source_kind = 'CREDIT_NOTE' AND source_document_id IS NOT NULL AND payment_id IS NULL)),
+                    CHECK ((source_kind = 'PAYMENT'
+                            AND payment_id IS NOT NULL AND source_document_id IS NULL
+                            AND withholding_id IS NULL AND credit_entry_id IS NULL)
+                           OR (source_kind = 'CREDIT_NOTE'
+                            AND source_document_id IS NOT NULL AND payment_id IS NULL
+                            AND withholding_id IS NULL AND credit_entry_id IS NULL)
+                           OR (source_kind = 'WITHHOLDING'
+                            AND withholding_id IS NOT NULL AND payment_id IS NULL
+                            AND source_document_id IS NULL AND credit_entry_id IS NULL)
+                           OR (source_kind = 'CUSTOMER_CREDIT'
+                            AND credit_entry_id IS NOT NULL AND payment_id IS NULL
+                            AND source_document_id IS NULL AND withholding_id IS NULL)
+                           OR (source_kind IN ('ROUNDING','WRITE_OFF')
+                            AND payment_id IS NULL AND source_document_id IS NULL
+                            AND withholding_id IS NULL AND credit_entry_id IS NULL)),
+                ADD CONSTRAINT chk_bda_write_off_signature
+                    CHECK ((source_kind <> 'WRITE_OFF'
+                            AND write_off_authorized_by_system_user_id IS NULL
+                            AND write_off_reason IS NULL)
+                           OR (source_kind = 'WRITE_OFF'
+                            AND write_off_authorized_by_system_user_id IS NOT NULL
+                            AND write_off_reason IS NOT NULL)),
+                ADD CONSTRAINT chk_bda_rounding_cap
+                    CHECK (source_kind <> 'ROUNDING' OR ABS(applied_amount) <= 3),
                 ADD CONSTRAINT chk_bda_amount_not_zero CHECK (applied_amount <> 0),
                 ADD CONSTRAINT chk_bda_reversal_sign
                     CHECK ((reversal_of_id IS NULL AND applied_amount > 0)
                            OR (reversal_of_id IS NOT NULL AND applied_amount < 0)),
                 ADD CONSTRAINT chk_bda_not_self_target
-                    CHECK (source_document_id IS NULL OR source_document_id <> target_document_id)
+                    CHECK (source_document_id IS NULL OR source_document_id <> target_document_id),
+                MODIFY COLUMN client_request_id VARCHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL
         ]]></sql>
 
         <createIndex tableName="billing_document_applications" indexName="ix_bda_company_applied">
             <column name="company_id"/>
             <column name="applied_at"/>
+        </createIndex>
+        <createIndex tableName="billing_document_applications" indexName="ix_bda_withholding">
+            <column name="company_id"/>
+            <column name="withholding_id"/>
+        </createIndex>
+        <createIndex tableName="billing_document_applications" indexName="ix_bda_credit_entry">
+            <column name="company_id"/>
+            <column name="credit_entry_id"/>
+        </createIndex>
+        <createIndex tableName="billing_document_applications" indexName="ix_bda_write_off_author">
+            <column name="write_off_authorized_by_system_user_id"/>
         </createIndex>
 
         <addForeignKeyConstraint baseTableName="billing_document_applications"
@@ -112,6 +188,13 @@
                                  referencedTableName="billing_document_applications"
                                  referencedColumnNames="company_id, id"
                                  constraintName="fk_bda_reversal"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <addForeignKeyConstraint baseTableName="billing_document_applications"
+                                 baseColumnNames="write_off_authorized_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_bda_write_off_author"
                                  onDelete="RESTRICT" onUpdate="RESTRICT"/>
 
         <rollback>

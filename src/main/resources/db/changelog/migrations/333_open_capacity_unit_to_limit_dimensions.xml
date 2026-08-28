@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Capa J, issue #655. El 314 abrio el CONTADOR al catalogo de ejes y dejo a medias la mitad
+         que toca el dinero: el camino por el que un eje SE VENDE seguia cerrado en dos CHECK con la
+         lista literal ('USER','BRANCH','TERMINAL','STORAGE_GB') y en dos enumerados de Java. Con el
+         contador arreglado y el catalogo sin arreglar, "vender un limite nuevo es insertar una fila"
+         se cumplia solo para contar, nunca para cobrar: un paquete de 500 mascotas necesita un
+         `catalog_items` de tipo CAPACITY con capacity_unit = 'ANIMAL', y el CHECK lo rechazaba
+         aunque el 313 ya hubiera sembrado el eje.
+
+         `capacity_unit` CONSERVA SU NOMBRE Y PASA A SER, FORMALMENTE, EL CODIGO DEL EJE. Ya
+         funcionaba asi de hecho: ContractItemJpaRepository cruza subscription_items.capacity_unit
+         contra limit_dimensions.code con un LEFT JOIN desde el 314. Lo unico que faltaba era que el
+         esquema dejara de limitarla a cuatro valores.
+
+         POR QUE NO SE RENOMBRA A limit_dimension_id, que es lo que pedia el issue. Renombrar obliga
+         a una migracion de datos, cambia el nombre del campo JSON `capacityUnit` en
+         CatalogItemResponse y SubscriptionItemResponse, y eso ROMPE EL BUILD DE LOS DOS FRONTS
+         -api/openapi.json es la fuente de verdad de sus tipos-. A cambio de cero capacidad nueva: el
+         codigo del eje lo identifica igual de bien que su id, y aqui no hay atadura compuesta que
+         ganar (R-LIMIT-22) porque estas dos tablas NO guardan measure_kind -no lo necesitan: ninguna
+         de las dos declara periodo de reinicio, excedente ni enfriamiento, que son las tres
+         invariantes por las que catalog_item_limits y company_capacities copian el tipo de medida-.
+         Por esta via el campo JSON conserva su nombre y solo se ensancha su tipo, de enumerado de
+         cuatro literales a cadena.
+
+         LA CLAVE FORANEA ES LA QUE SUSTITUYE A LA LISTA. Retirar el CHECK a secas dejaria la columna
+         validada por nada: se podria vender 'ANIMALES' -en plural, o en minusculas- y el contador
+         que cruza contra limit_dimensions.code no encontraria el eje, con lo que el cliente pagaria
+         un paquete que no le sube ningun techo, sin un solo error en ningun log. Con la FK puesta,
+         vender un eje nuevo es insertar una fila en limit_dimensions, que es la promesa entera de la
+         capa J, y vender uno inventado es un error del motor.
+
+         LA MITAD DEL CHECK QUE SI SE CONSERVA es la estructural, y no es la misma cosa. La FK dice
+         "si hay valor, es un eje real"; el CHECK dice "hay valor exactamente cuando el articulo es
+         de tipo CAPACITY". Sin la segunda mitad se puede vender un MODULE con unidad 'USER', que el
+         configurador interpreta como un contador y suma usuarios que nadie compro; y una CAPACITY
+         sin unidad es una cantidad que no se puede contar. La FK no dice nada de eso porque una
+         columna nula la satisface siempre.
+
+         COLACION, Y NO ES UN DETALLE. MySQL exige juego de caracteres y colacion IDENTICOS en los
+         dos lados de una clave foranea sobre texto: el 332 dejo limit_dimensions.code en
+         ascii/ascii_bin, asi que estas dos columnas tienen que ir igual o el ADD CONSTRAINT falla
+         con un errno 150 que no nombra la colacion. El ancho sube de 30 a 50 por el mismo motivo.
+         Efecto de la comparacion exacta: 'animal' y 'ANIMAL' dejan de ser el mismo eje, que es lo
+         correcto -el codigo es un identificador interno, no texto de usuario- y lo que hace que la
+         validacion del caso de uso falle limpio en vez de insertar algo que despues no cruza.
+
+         LA PRECONDICION NO ES CEREMONIA, misma razon que en el 314. Si una fila ya guarda un
+         capacity_unit sin eje sembrado, el ADD CONSTRAINT muere con "Cannot add or update a child
+         row" sin decir QUE valor sobra ni en que tabla. La precondicion falla antes; el
+         onFailMessage lleva la consulta que enumera los culpables. Los ocho ejes vigentes
+         -ANIMAL, OWNER, APPOINTMENT, INVOICE, USER, BRANCH, TERMINAL, STORAGE_GB- los siembra el
+         313, que corre antes que este, asi que los cuatro valores que el CHECK viejo admitia estan
+         todos cubiertos y en una base limpia la precondicion pasa sin mirar nada.
+
+         LOS INDICES VAN EXPLICITOS Y CON NOMBRE PROPIO. InnoDB crea uno solo por la columna hija si
+         no existe, pero le pone el nombre de la restriccion y el rollback queda a merced de esa
+         convencion. Del lado referenciado sirve uq_limit_dimensions_code, que ya existe desde el
+         300 y es unico sobre `code` a secas: es lo que MySQL exige para poder apuntar ahi.
+
+         limit_dimensions.enabled NO ENTRA EN LA CLAVE. Un eje desactivado en logico sigue
+         satisfaciendo la FK, y tiene que ser asi: retirar un eje de la venta no puede invalidar los
+         contratos ya firmados que lo nombran, igual que dar de baja un modulo no borra la linea que
+         lo vendio. El RESTRICT protege el unico caso que si destruiria informacion -el borrado
+         fisico de la fila del eje-. -->
+    <changeSet id="333_open_capacity_unit_to_limit_dimensions" author="orlando">
+
+        <preConditions onFail="HALT"
+                       onFailMessage="Hay filas con capacity_unit sin fila en limit_dimensions: la clave foranea no se puede crear. Para verlas: SELECT DISTINCT capacity_unit FROM catalog_items WHERE capacity_unit IS NOT NULL AND capacity_unit NOT IN (SELECT code FROM limit_dimensions) UNION SELECT DISTINCT capacity_unit FROM subscription_items WHERE capacity_unit IS NOT NULL AND capacity_unit NOT IN (SELECT code FROM limit_dimensions). Siembra el eje que falte en limit_dimensions y vuelve a correr.">
+            <and>
+                <sqlCheck expectedResult="0"><![CDATA[
+                    SELECT COUNT(*)
+                      FROM catalog_items ci
+                     WHERE ci.capacity_unit IS NOT NULL
+                       AND NOT EXISTS (SELECT 1 FROM limit_dimensions ld
+                                        WHERE ld.code = ci.capacity_unit)
+                ]]></sqlCheck>
+                <sqlCheck expectedResult="0"><![CDATA[
+                    SELECT COUNT(*)
+                      FROM subscription_items si
+                     WHERE si.capacity_unit IS NOT NULL
+                       AND NOT EXISTS (SELECT 1 FROM limit_dimensions ld
+                                        WHERE ld.code = si.capacity_unit)
+                ]]></sqlCheck>
+            </and>
+        </preConditions>
+
+        <!-- 1. El tipo, igualado al del eje. Va ANTES de retirar el CHECK viejo a proposito: el
+                MODIFY no afecta a la restriccion -los cuatro literales caben de sobra en 50- y
+                dejarlo primero significa que si el MODIFY falla por un valor no ASCII, la tabla se
+                queda con su validacion intacta en vez de a medio abrir. -->
+        <sql><![CDATA[
+            ALTER TABLE catalog_items
+                MODIFY COLUMN capacity_unit VARCHAR(50)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL
+        ]]></sql>
+        <sql><![CDATA[
+            ALTER TABLE subscription_items
+                MODIFY COLUMN capacity_unit VARCHAR(50)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL
+        ]]></sql>
+
+        <!-- 2. Fuera la lista literal, y en su lugar la mitad estructural sola. El nombre de la
+                restriccion se conserva -chk_..._capacity_unit- porque es el que nombran los
+                comentarios del dominio y el que un DBA busca; lo que cambia es lo que comprueba. -->
+        <sql><![CDATA[
+            ALTER TABLE catalog_items
+                DROP CONSTRAINT chk_catalog_items_capacity_unit
+        ]]></sql>
+        <sql><![CDATA[
+            ALTER TABLE catalog_items
+                ADD CONSTRAINT chk_catalog_items_capacity_unit
+                    CHECK ((item_type =  'CAPACITY' AND capacity_unit IS NOT NULL)
+                        OR (item_type <> 'CAPACITY' AND capacity_unit IS NULL))
+        ]]></sql>
+        <sql><![CDATA[
+            ALTER TABLE subscription_items
+                DROP CONSTRAINT chk_subscription_items_capacity_unit
+        ]]></sql>
+        <sql><![CDATA[
+            ALTER TABLE subscription_items
+                ADD CONSTRAINT chk_subscription_items_capacity_unit
+                    CHECK ((item_type =  'CAPACITY' AND capacity_unit IS NOT NULL)
+                        OR (item_type <> 'CAPACITY' AND capacity_unit IS NULL))
+        ]]></sql>
+
+        <!-- 3. El indice de la columna hija, con nombre nuestro. Ademas de servir a la FK, es el que
+                responde "que se ha vendido de este eje", que es la pregunta del recalculo de
+                techos. -->
+        <createIndex tableName="catalog_items" indexName="ix_catalog_items_capacity_unit">
+            <column name="capacity_unit"/>
+        </createIndex>
+        <createIndex tableName="subscription_items" indexName="ix_subscription_items_capacity_unit">
+            <column name="capacity_unit"/>
+        </createIndex>
+
+        <!-- 4. Y la clave que sustituye a la lista. RESTRICT en los dos sentidos: borrar un eje con
+                articulos o contratos colgando es un error, y cambiarle el codigo tambien -el codigo
+                es inmutable por definicion y una cascada lo reescribiria en contratos ya firmados,
+                que es reescribir el pasado-. -->
+        <addForeignKeyConstraint baseTableName="catalog_items" baseColumnNames="capacity_unit"
+                                 referencedTableName="limit_dimensions" referencedColumnNames="code"
+                                 constraintName="fk_catalog_items_capacity_unit"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="subscription_items" baseColumnNames="capacity_unit"
+                                 referencedTableName="limit_dimensions" referencedColumnNames="code"
+                                 constraintName="fk_subscription_items_capacity_unit"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="subscription_items"
+                                      constraintName="fk_subscription_items_capacity_unit"/>
+            <dropForeignKeyConstraint baseTableName="catalog_items"
+                                      constraintName="fk_catalog_items_capacity_unit"/>
+            <dropIndex tableName="subscription_items"
+                       indexName="ix_subscription_items_capacity_unit"/>
+            <dropIndex tableName="catalog_items" indexName="ix_catalog_items_capacity_unit"/>
+            <sql><![CDATA[
+                ALTER TABLE subscription_items
+                    DROP CONSTRAINT chk_subscription_items_capacity_unit
+            ]]></sql>
+            <sql><![CDATA[
+                ALTER TABLE subscription_items
+                    ADD CONSTRAINT chk_subscription_items_capacity_unit
+                        CHECK ((item_type = 'CAPACITY' AND capacity_unit IN ('USER','BRANCH','TERMINAL','STORAGE_GB'))
+                               OR (item_type <> 'CAPACITY' AND capacity_unit IS NULL))
+            ]]></sql>
+            <sql><![CDATA[
+                ALTER TABLE catalog_items
+                    DROP CONSTRAINT chk_catalog_items_capacity_unit
+            ]]></sql>
+            <sql><![CDATA[
+                ALTER TABLE catalog_items
+                    ADD CONSTRAINT chk_catalog_items_capacity_unit
+                        CHECK ((item_type = 'CAPACITY' AND capacity_unit IN ('USER','BRANCH','TERMINAL','STORAGE_GB'))
+                               OR (item_type <> 'CAPACITY' AND capacity_unit IS NULL))
+            ]]></sql>
+            <sql><![CDATA[
+                ALTER TABLE subscription_items MODIFY COLUMN capacity_unit VARCHAR(30) NULL
+            ]]></sql>
+            <sql><![CDATA[
+                ALTER TABLE catalog_items MODIFY COLUMN capacity_unit VARCHAR(30) NULL
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

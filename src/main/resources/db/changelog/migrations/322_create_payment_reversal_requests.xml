@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha payment_reversal_requests). LA REVERSION, QUE NO ES UNA DEVOLUCION.
+         payment_refunds (320) registra el dinero que salio; esta registra EL DERECHO QUE OBLIGO A
+         SACARLO, que es lo que hay que poder ensenar. Son dos hechos distintos y el documento no
+         mencionaba este ni una vez: lo encontro la revision de cierre.
+
+         Y HAY UN EFECTO QUE ROMPE EL MODELO SI NADIE LO PREVE: hoy una reversion entraria como pago
+         fallido, el saldo volveria a subir y el reloj de la mora arrancaria CONTRA ALGUIEN QUE
+         EJERCIO UN DERECHO. La regla -una reversion no dispara mora- vale para LAS DOS ramas de
+         origin, y esta tabla existe para que el proceso de cobranza pueda distinguirlas.
+
+         origin: CONSUMER_CLAIM es el cliente reclamando; GATEWAY_CHARGEBACK lo notifica la pasarela
+         SIN QUEJA PREVIA -con una sola via de cobro va a ser el caso frecuente- y a veces llega sin
+         causal legible. Por eso causal es obligatoria en la primera rama y admite vacio en la
+         segunda: exigirla siempre habria obligado a inventarse una.
+
+         TRES FECHAS, NO UNA. El reloj del cliente arranca cuando EL tuvo conocimiento, no cuando
+         llega la queja; y ademas debe notificar al emisor de su medio de pago. Sin las dos primeras
+         no se puede alegar que reclamo fuera de plazo, que es una de las pocas defensas que hay.
+
+         EL LADO PROPIO DEL EXPEDIENTE, que a la ficha original le faltaba entero: a una reversion
+         uno se puede oponer por tres motivos tasados -que la operacion no existio, que no habia
+         fondos, o que no se reporto la causal- y oponerse EXIGE CONSTANCIA. El CHECK exige los tres
+         datos juntos o ninguno: una oposicion sin constancia no es una oposicion.
+
+         deadline_at COMO DATO Y NO COMO CALCULO, para que se pueda LISTAR lo que esta a punto de
+         vencer. Un plazo que solo existe como formula no se puede consultar, y el indice
+         (deadline_at, outcome) es el barrido que encuentra las que vencen sin resolver.
+
+         acknowledgement_ref y acknowledged_at nulables: la constancia que hay que entregarle al
+         cliente es OBLIGATORIA, pero es un hecho posterior al nacimiento de la fila. La regla de
+         nulabilidad del documento es exactamente esa -admite vacio el hecho que aun no ha
+         ocurrido-, y lo que vigila que llegue es el barrido, no un NOT NULL que impediria abrir el
+         expediente.
+
+         uq (company_id, payment_id): una reversion por pago. La empresa va delante para que la
+         unicidad y el indice de la clave foranea sean el mismo objeto y el motor no cree uno que
+         nadie eligio.
+
+         Y UNA TRAMPA DEL MOTOR QUE VALE PARA TODO ESTE MODELO, escrita aqui porque aqui es donde
+         mordio: MySQL rechaza una fila cuando el CHECK evalua a FALSE. SI EVALUA A NULL, LA ACEPTA.
+         Y `NULL IN ('A','B')` no vale FALSE: vale NULL. La primera redaccion de chk_prr_causal era
+
+             CHECK ((causal IS NULL AND origin = 'GATEWAY_CHARGEBACK')
+                    OR causal IN ('FRAUD', ...))
+
+         y con origin = 'CONSUMER_CLAIM' y causal vacia daba FALSE OR NULL = NULL, o sea PASABA. La
+         regla se lee perfecta, el DDL se aplica sin una queja, y no restringe absolutamente nada:
+         una reclamacion de consumidor sin causal -que la ley exige tasada- entraba sin ruido.
+         No lo habria visto ninguna revision ni ninguna compilacion; lo destapo aplicar el changelog
+         contra un motor real e intentar escribir la fila prohibida.
+         El remedio es partir la regla en dos: una que valida el VALOR cuando lo hay (arrancando por
+         `causal IS NULL OR`, que es TRUE de verdad y no NULL) y otra que exige su PRESENCIA sobre
+         una columna obligatoria (`origin`), que nunca puede dar NULL. Mismo tratamiento en
+         chk_prr_opposition y chk_prr_applied_amount, y en las de 328 y 330. Regla general para lo
+         que venga: si una columna NULABLE entra en una comparacion dentro de un CHECK, delante va
+         su IS NOT NULL. -->
+    <changeSet id="322_create_payment_reversal_requests" author="orlando">
+        <createTable tableName="payment_reversal_requests">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="payment_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="origin" type="VARCHAR(25)"><constraints nullable="false"/></column>
+            <column name="causal" type="VARCHAR(25)"/>
+            <column name="consumer_determination" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="consumer_became_aware_at" type="DATETIME(6)"/>
+            <column name="claim_received_at" type="DATETIME(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="issuer_notified_at" type="DATETIME(6)"/>
+            <column name="claim_evidence_ref" type="VARCHAR(255)"/>
+            <column name="acknowledgement_ref" type="VARCHAR(255)"/>
+            <column name="acknowledged_at" type="DATETIME(6)"/>
+            <column name="opposition_ground" type="VARCHAR(30)"/>
+            <column name="opposition_evidence_ref" type="VARCHAR(255)"/>
+            <column name="opposed_at" type="DATETIME(6)"/>
+            <column name="deadline_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="applied_amount" type="DECIMAL(19,2)"/>
+            <column name="outcome" type="VARCHAR(20)"/>
+            <column name="resulting_refund_id" type="BIGINT"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="payment_reversal_requests"
+                             columnNames="company_id, payment_id"
+                             constraintName="uq_payment_reversal_requests_payment"/>
+
+        <sql><![CDATA[
+            ALTER TABLE payment_reversal_requests
+                ADD CONSTRAINT chk_prr_origin
+                    CHECK (origin IN ('CONSUMER_CLAIM','GATEWAY_CHARGEBACK')),
+                ADD CONSTRAINT chk_prr_causal_value
+                    CHECK (causal IS NULL
+                           OR causal IN ('FRAUD','UNSOLICITED_OPERATION','PRODUCT_NOT_RECEIVED',
+                                         'NOT_AS_ORDERED','DEFECTIVE')),
+                ADD CONSTRAINT chk_prr_causal_required
+                    CHECK (origin = 'GATEWAY_CHARGEBACK' OR causal IS NOT NULL),
+                ADD CONSTRAINT chk_prr_consumer_determination
+                    CHECK (consumer_determination IN ('CONSUMER','NOT_CONSUMER','UNDETERMINED')),
+                ADD CONSTRAINT chk_prr_claim_evidence
+                    CHECK (origin = 'GATEWAY_CHARGEBACK' OR claim_evidence_ref IS NOT NULL),
+                ADD CONSTRAINT chk_prr_acknowledgement
+                    CHECK ((acknowledgement_ref IS NULL AND acknowledged_at IS NULL)
+                           OR (acknowledgement_ref IS NOT NULL AND acknowledged_at IS NOT NULL)),
+                ADD CONSTRAINT chk_prr_opposition
+                    CHECK ((opposition_ground IS NULL AND opposition_evidence_ref IS NULL
+                            AND opposed_at IS NULL)
+                           OR (opposition_ground IS NOT NULL
+                            AND opposition_ground IN ('OPERATION_DID_NOT_EXIST',
+                                                      'INSUFFICIENT_FUNDS','CAUSAL_NOT_REPORTED')
+                            AND opposition_evidence_ref IS NOT NULL AND opposed_at IS NOT NULL)),
+                ADD CONSTRAINT chk_prr_outcome
+                    CHECK (outcome IS NULL
+                           OR outcome IN ('ACCEPTED','PARTIALLY_ACCEPTED','REJECTED','WITHDRAWN')),
+                ADD CONSTRAINT chk_prr_applied_amount
+                    CHECK ((outcome IS NULL AND applied_amount IS NULL
+                            AND resulting_refund_id IS NULL)
+                           OR (outcome IS NOT NULL
+                            AND ((outcome IN ('REJECTED','WITHDRAWN') AND applied_amount IS NULL
+                                  AND resulting_refund_id IS NULL)
+                                 OR (outcome IN ('ACCEPTED','PARTIALLY_ACCEPTED')
+                                  AND applied_amount IS NOT NULL AND applied_amount > 0)))),
+                ADD CONSTRAINT chk_prr_awareness_order
+                    CHECK (consumer_became_aware_at IS NULL
+                           OR consumer_became_aware_at <= claim_received_at),
+                ADD CONSTRAINT chk_prr_deadline
+                    CHECK (deadline_at > claim_received_at)
+        ]]></sql>
+
+        <createIndex tableName="payment_reversal_requests"
+                     indexName="ix_payment_reversal_requests_deadline">
+            <column name="deadline_at"/>
+            <column name="outcome"/>
+        </createIndex>
+        <createIndex tableName="payment_reversal_requests"
+                     indexName="ix_payment_reversal_requests_refund">
+            <column name="company_id"/>
+            <column name="resulting_refund_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="payment_reversal_requests"
+                                 baseColumnNames="company_id, payment_id"
+                                 referencedTableName="subscription_payments"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_prr_payment"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="payment_reversal_requests"
+                                 baseColumnNames="company_id, resulting_refund_id"
+                                 referencedTableName="payment_refunds"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_prr_refund"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="payment_reversal_requests"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

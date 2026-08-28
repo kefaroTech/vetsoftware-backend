@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ====================================================================================
+         LOS OCHO EJES DE LÍMITE Y LOS OCHO TECHOS DE FÁBRICA.
+         Sin `context`: todos los entornos. Continúa 312. Capa J, bloques 1 y 3.
+
+         POR QUÉ CADA ASIGNACIÓN DE SUBMÓDULO, que es donde el modelo se corrige a sí mismo:
+
+         · ANIMAL y OWNER cuelgan de OWNERS_ANIMALS, NO de historia clínica. El documento decía que
+           «Mascotas cuelga de Historia clínica: si Ana no lo tiene, ese contador ni siquiera existe
+           para ella», y contra el producto construido eso es falso Y PELIGROSO: Ana es un spa, baña
+           mascotas, y las mascotas viven en la feature `animal`, que gobierna OWNERS_ANIMALS y que
+           CORE abre a todo el mundo. Si el eje colgara de CLINICAL_HISTORY, el escalón gratuito no
+           tendría ningún tope sobre el dato que más crece.
+         · INVOICE cuelga de CASH, no de BILLING. Los tres caminos que consumen cupo (D-16: emisión
+           directa, venta de mostrador y factura automática al cerrar cuenta) pasan todos por caja, y
+           ELECTRONIC_INVOICING lleva REQUIRES CASH_REGISTER, así que una sola fila cubre las dos
+           poblaciones.
+         · USER cuelga de EMPLOYEES, que es donde se dan de alta, y EMPLOYEES está dentro de CORE:
+           el eje existe siempre.
+         · STORAGE_GB cuelga de LABORATORY, donde nacen los ficheros, y LAB_IMAGING abre LABORATORY
+           y DIAGNOSTIC_IMAGING a la vez, así que no hay caso partido.
+
+         release_delay_days SON LOS TREINTA DÍAS DE ENFRIAMIENTO DE D-61 y solo caben en los dos
+         acumulativos: chk_limit_dimensions_release_delay exige la columna NULA en STOCK y FLOW, así
+         que donde la especificación escribe «0» aquí va NULL. La asimetría hay que decirla en la
+         interfaz y no en la letra pequeña: dar de baja un empleado libera su plaza EN EL ACTO;
+         borrar una mascota la libera A LOS TREINTA DÍAS. Y el contador de pantalla se llama
+         «mascotas registradas históricamente», nunca «mascotas activas».
+
+         >>> ADVERTENCIA QUE VIAJA CON ESTA SIEMBRA: EL ENFRIAMIENTO NO SE PUEDE CALCULAR HOY <<<
+         Exige saber CUÁNDO se borró cada registro, y hoy es imposible: el borrado es lógico y
+         ninguna tabla clínica guarda esa fecha. La columna queda sembrada con su valor correcto y
+         el cálculo que la usa no existe. Es un cambio en tablas de fuera del bloque de
+         suscripciones y hay que dimensionarlo aparte.
+
+         available_from = 2026-09-01, la misma fecha en que entra en vigor la tarifa (310). Responde
+         a D-74, que distingue dos ausencias con respuestas OPUESTAS: «sin fila porque no se vendió»
+         es techo cero; «sin fila porque el eje no existía cuando se firmó» es SIN TECHO. Poniendo
+         la fecha en la entrada en vigor de la tarifa comercial, ningún contrato anterior -todos los
+         de desarrollo, que son de prueba- se queda bloqueado retroactivamente por un eje que no
+         existía cuando se firmó, y todos los posteriores lo respetan.
+
+         >>> LOS OCHO EJES SON CONDICIÓN NECESARIA Y NO SUFICIENTE <<<
+         Verificado operación por operación contra el código: de los ocho, SOLO TRES consultan el
+         cupo hoy -usuarios en sus cinco caminos, sedes en sus cuatro, terminales en sus dos-.
+         Mascotas, propietarios, citas, facturas y almacenamiento NO lo consultan en ninguno.
+         Sembrar el eje no lo hace cumplirse.
+         ==================================================================================== -->
+
+    <changeSet id="313_seed_limit_dimensions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO limit_dimensions
+                    (code, name, measure_kind, sub_module_id, release_delay_days, available_from)
+            SELECT seed.code, seed.name, seed.measure_kind, sm.id, seed.release_delay_days,
+                   '2026-09-01'
+              FROM (
+                SELECT 'ANIMAL' AS code, 'Mascotas registradas históricamente' AS name,
+                       'CUMULATIVE' AS measure_kind, 'OWNERS_ANIMALS' AS sub_module_code,
+                       30 AS release_delay_days
+                UNION ALL SELECT 'OWNER', 'Propietarios registrados históricamente',
+                       'CUMULATIVE', 'OWNERS_ANIMALS', 30
+                UNION ALL SELECT 'APPOINTMENT', 'Citas del periodo', 'FLOW', 'AGENDA', NULL
+                UNION ALL SELECT 'INVOICE', 'Facturas emitidas en el periodo', 'FLOW', 'CASH', NULL
+                UNION ALL SELECT 'USER', 'Usuarios activos', 'STOCK', 'EMPLOYEES', NULL
+                UNION ALL SELECT 'BRANCH', 'Sedes activas', 'STOCK', 'BRANCH', NULL
+                UNION ALL SELECT 'TERMINAL', 'Terminales de caja activas', 'STOCK', 'CASH', NULL
+                UNION ALL SELECT 'STORAGE_GB', 'Almacenamiento usado', 'STOCK', 'LABORATORY', NULL
+              ) seed
+              JOIN sub_modules sm ON sm.code = seed.sub_module_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM limit_dimensions x WHERE x.code = seed.code);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM limit_dimensions
+                 WHERE code IN ('ANIMAL','OWNER','APPOINTMENT','INVOICE','USER','BRANCH',
+                                'TERMINAL','STORAGE_GB');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- LOS TECHOS DE FÁBRICA. Regla de resolución que la siembra necesita y que no cabe en el
+         esquema: cada eje declara su techo en UN ÚNICO ARTÍCULO -el que lo origina- y la
+         precedencia entre artículos es EL MÁXIMO, NUNCA LA SUMA. El escalón gratuito es un suelo,
+         no un sumando (D-14): quien compra tres usuarios tiene tres, no cuatro. Si se sumaran,
+         activar varios módulos gratuitos inflaría el mismo cupo sin pagar.
+
+         EL ESCALÓN GRATUITO COMPLETO, LEÍDO DEL DERECHO. Una clínica que agota su prueba y no paga
+         se queda con CORE + CAPACITY_USER + CAPACITY_BRANCH + SCHEDULING + CLINICAL_HISTORY +
+         SERVICES + GROOMING, con 100 mascotas, 80 propietarios, 40 citas al mes, 1 usuario y 1
+         sede. Todo lo demás cae a solo lectura. Es deliberadamente estrecho: con un mercado
+         pequeño, un escalón gratuito ancho no es adquisición, es sustitución del producto de pago.
+         El segundo empleado es la conversión más frecuente y más barata de vender; cuarenta citas
+         al mes son dos al día laborable; y CERO FACTURACIÓN, porque el momento en que el negocio
+         cobra dinero es el momento en que paga —que es justo lo que evita tener que bloquear la
+         emisión fiscal de nadie (S-06)—.
+
+         >>> HUECO DE ESQUEMA QUE ESTA SIEMBRA DESTAPA, Y HAY QUE SABERLO ANTES DE LEER LOS DATOS <<<
+         catalog_item_limits tiene UN SOLO par (mode, limit_quantity) más su par de prueba
+         (trial_mode, trial_limit_quantity), y uq_catalog_item_limits admite UNA fila por (artículo,
+         eje). El modelo comercial, en cambio, distingue TRES estados: contratado, gratuito con
+         techo y en prueba. El par gratuito NO TIENE DÓNDE VIVIR.
+         Lo que se siembra aquí es EL TECHO DEL ESCALÓN GRATUITO, que es como lo lee el propio
+         comentario de 304 -«si mañana se baja el modo limitado de 100 a 80 mascotas para los
+         clientes nuevos, Ana debe seguir en 100»- y lo que D-14 presupone al decir que frente al
+         techo gratuito MANDA EL CONTRATADO, que sale de la aritmética de capacidad
+         (included_quantity + quantity) y no de esta tabla.
+         EL RIESGO, ESCRITO PARA QUE NO SE DESCUBRA EN PRODUCCIÓN: si el resolutor que se construya
+         aplica estas filas TAMBIÉN a una línea de pago, una clínica que paga quedará bloqueada en
+         la mascota 101. Hace falta un par de columnas gratuito -o que el resolutor condicione por
+         charge_mode- antes de que nadie lea esta tabla. Hoy no la lee nadie: no hay una sola clase
+         Java que la nombre.
+
+         reset_period va 'MONTH' y NO 'MONTHLY': chk_catalog_item_limits_reset_period fija
+         MONTH/QUARTER/SEMESTER, y solo en los ejes de FLUJO -en los demás la exige NULA-.
+
+         EL EXCEDENTE ES LA EXCEPCIÓN, NO LA REGLA. Solo INVOICE lo lleva, a 500 COP la unidad.
+         Mascotas, propietarios y citas se BLOQUEAN, y tiene que ser así: ahí el tope es la palanca
+         que hace que el cliente pase a pagar, y si todo tuviera excedente nadie tendría motivo para
+         contratar. Además el excedente no cabe sobre un eje acumulativo -lo prohíbe
+         chk_catalog_item_limits_overage- porque cobrar por unidad sobre un contador que no libera
+         al borrar es cobrar para siempre por registros ya suprimidos.
+
+         trial_mode = 'FULL' EN LOS OCHO, SIN EXCEPCIÓN (D-06). La prueba va sin techo porque para
+         lo que sirve una prueba es para migrar los datos que ya se tienen: si Ana llega con 400
+         mascotas y se le aplica el cupo de 100 desde el día cero, la prueba no sirve de nada y no
+         convierte. Se puede endurecer artículo por artículo sin desplegar código.
+
+         warn_threshold = 60 en los ejes de crecimiento y 80 en los de existencias. La columna es UN
+         SOLO TINYINT y la práctica documentada (D-59) exige avisar al 60, al 80 y al 90 %: se
+         siembra el primero y los otros dos son regla de código. Si se quieren los tres como dato,
+         hacen falta tres columnas o una tabla de umbrales (S-07).
+         CAPACITY_TERMINAL/TERMINAL va con umbral 100 y no 80 porque su techo gratuito es CERO: con
+         cualquier otro valor el aviso saltaría antes de que exista nada que avisar. -->
+    <changeSet id="313_seed_catalog_item_limits" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_limits
+                    (catalog_item_id, limit_dimension_id, measure_kind, mode, limit_quantity,
+                     reset_period, enforcement, overage_unit_amount, warn_threshold,
+                     trial_mode, trial_limit_quantity)
+            SELECT ci.id, ld.id, ld.measure_kind, seed.mode, seed.limit_quantity,
+                   seed.reset_period, seed.enforcement, seed.overage_unit_amount,
+                   seed.warn_threshold, 'FULL', NULL
+              FROM (
+                SELECT 'CORE' AS item_code, 'ANIMAL' AS dimension_code, 'LIMITED' AS mode,
+                       100 AS limit_quantity, CAST(NULL AS CHAR(10)) AS reset_period,
+                       'BLOCK' AS enforcement,
+                       CAST(NULL AS DECIMAL(19,2)) AS overage_unit_amount,
+                       60 AS warn_threshold
+                UNION ALL SELECT 'CORE','OWNER','LIMITED',80,NULL,'BLOCK',NULL,60
+                UNION ALL SELECT 'SCHEDULING','APPOINTMENT','LIMITED',40,'MONTH','BLOCK',NULL,60
+                UNION ALL SELECT 'CASH_REGISTER','INVOICE','LIMITED',1000,'MONTH','OVERAGE',500.00,80
+                UNION ALL SELECT 'CAPACITY_USER','USER','LIMITED',1,NULL,'BLOCK',NULL,80
+                UNION ALL SELECT 'CAPACITY_BRANCH','BRANCH','LIMITED',1,NULL,'BLOCK',NULL,80
+                UNION ALL SELECT 'CAPACITY_TERMINAL','TERMINAL','LIMITED',0,NULL,'BLOCK',NULL,100
+                UNION ALL SELECT 'LAB_IMAGING','STORAGE_GB','LIMITED',5,NULL,'BLOCK',NULL,80
+              ) seed
+              JOIN catalog_items ci ON ci.code = seed.item_code
+              JOIN limit_dimensions ld ON ld.code = seed.dimension_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM catalog_item_limits x
+                  WHERE x.catalog_item_id = ci.id AND x.limit_dimension_id = ld.id);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE cil FROM catalog_item_limits cil
+                  JOIN catalog_items ci ON ci.id = cil.catalog_item_id
+                 WHERE ci.code IN ('CORE','SCHEDULING','CASH_REGISTER','CAPACITY_USER',
+                                   'CAPACITY_BRANCH','CAPACITY_TERMINAL','LAB_IMAGING');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

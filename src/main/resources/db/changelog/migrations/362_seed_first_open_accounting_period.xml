@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- LA SEMILLA QUE 331 Y 360 DEJARON PENDIENTE, A PROPOSITO EN SU MOMENTO Y YA NO.
+         331 creo accounting_periods y cerro la FK de external_invoice_reconciliations contra
+         ella, pero la tabla nacio VACIA. 360 lo dejo escrito sin rodeos: "NO se siembra
+         accounting_periods (quien abre el primer periodo y con que mes es una decision de
+         negocio que sigue sin tomarse)". Esa decision seguia sin tomarse y el costo ya no es
+         teorico: revenue_recognition_lines.posting_period (344) y accounting_exports.period_key
+         (345) son NOT NULL con FK contra esta tabla -no nullable como
+         external_invoice_reconciliations.posting_period (330)-, asi que con la tabla vacia
+         NINGUN reconocimiento de ingreso ni NINGUNA exportacion contable puede insertar una fila,
+         nunca, y una conciliacion externa que se resuelve tampoco: las tres fallan con error de
+         clave foranea (1452) contra una tabla sin filas. El documento maestro
+         (models/modelo-datos-suscripciones.html) es tajante: "Tiene que existir siempre al menos
+         un periodo abierto, o un hecho tardio no tiene donde escribirse". Sin esta fila, hoy no
+         hay ninguno.
+
+         QUE MES SE SIEMBRA, Y POR QUE ES UNA DECISION TOMADA SIN EL DUENO. Elegir "desde cuando
+         factura este software" -enero de 2026, cuando se publico price_list_2026 (310/311)? el
+         primer mes con actividad real de facturacion?- es una decision de negocio de contabilidad,
+         no una decision de esquema, y este changeset no la toma. Sembrar meses PASADOS como
+         abiertos ademas contradice el propio documento citado arriba: "un hecho tardio se
+         reconoce en el primer periodo abierto, nunca hacia atras", que es exactamente la regla
+         que hace que NO haga falta reconstruir el historico para que el sistema funcione hoy -un
+         cargo de marzo que se reconoce en agosto se imputa a agosto (chk_rrl_not_backwards en 344:
+         posting_period >= period_key), sin que marzo necesite existir como fila propia-. Por eso
+         esta siembra es MINIMA Y NO RETROACTIVA: un unico periodo OPEN, el mes calendario en el
+         que se escribe este changeset (2026-08), que es lo minimo que deja el sistema funcionando
+         sin inventar una fecha de arranque de negocio que no corresponde decidir aqui. Abrir los
+         meses siguientes -y decidir si alguna vez se abren o se cierran los anteriores- es trabajo
+         de OpenAccountingPeriodUseCase / SoftCloseAccountingPeriodUseCase
+         (accountingperiod/application/usecase), que ya existen y son la via prevista para que un
+         administrador lo haga mes a mes: este changeset no sustituye ese flujo, solo evita que
+         arranque con la tabla vacia.
+
+         COMO CONVIVE CON LOS TRES DISPARADORES DE 346:
+         - trg_accounting_periods_bu_guard (S6.2) exige que quede al menos un OPEN tras un UPDATE
+           que cierre uno: con exactamente un OPEN sembrado aqui, el propio disparador impedira
+           cerrarlo hasta que exista un segundo periodo abierto -que es la funcion para la que se
+           escribio, verificada en la propia sesion de 346-. Esta siembra es justo el primer OPEN
+           que ese disparador necesita para tener algo que proteger.
+         - trg_accounting_periods_bu_guard tambien impide reabrir un LOCKED: no aplica todavia,
+           porque el unico periodo sembrado nace OPEN y nunca fue LOCKED.
+         - Los BEFORE INSERT/UPDATE de revenue_recognition_lines, accounting_exports y
+           external_invoice_reconciliations (trg_rrl_*, trg_accounting_exports_*, trg_eir_*) exigen
+           status = 'OPEN' para el period_key/posting_period referenciado: con esta fila, cualquier
+           insercion contra '2026-08' pasa, y cualquier insercion contra un mes que no exista sigue
+           fallando -ya no en silencio por FK (accounting_periods vacia), sino con el SIGNAL
+           explicito "periodo contable no abierto", que es el mensaje que un caller puede
+           interpretar y corregir-.
+
+         SIN enabled: accounting_periods no lo tiene (331). SIN version explicita en el INSERT:
+         la columna tiene defaultValueNumeric 0 y esta fila nace en su primera version. -->
+    <changeSet id="362_seed_first_open_accounting_period" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM accounting_periods</sqlCheck>
+        </preConditions>
+
+        <insert tableName="accounting_periods">
+            <column name="period_key" value="2026-08"/>
+            <column name="status" value="OPEN"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="accounting_periods">
+                <where>period_key = '2026-08'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

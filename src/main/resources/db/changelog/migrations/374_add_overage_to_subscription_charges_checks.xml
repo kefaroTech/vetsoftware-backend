@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ADMITE ChargeType.OVERAGE (el excedente facturable) EN LAS DOS RESTRICCIONES DE
+         subscription_charges QUE ENUMERAN charge_type. Bloqueante: sin este changeset, insertar
+         un cargo OVERAGE muere en el motor -ChargeType.OVERAGE ya existe en Java, pero el esquema
+         todavía no lo admite (ver el javadoc del propio enum, punto 1)-, y eso es justo lo que
+         AdjustCompanyCapacityUsageService necesita hacer ahora que bifurca hacia un cargo en vez
+         de negar incondicionalmente el consumo cuando la suscripción compró el modo de excedente.
+
+         SON DOS RESTRICCIONES, NO UNA -el detalle que hace este changeset menos trivial de lo que
+         parece a primera vista-:
+           - chk_subscription_charges_type (251) enumera los tipos válidos uno a uno; sin OVERAGE
+             en la lista, el INSERT muere aquí primero.
+           - chk_subscription_charges_sign (251) es la convención de signos hecha esquema, y NO
+             enumera los tipos por categoría sino literal por literal dentro de cada rama. Ampliar
+             solo chk_subscription_charges_type habría dejado el INSERT muriendo igual, pero contra
+             chk_subscription_charges_sign -mensaje de error apuntando a la restricción equivocada,
+             el síntoma que motivó escribir este párrafo tan explícito-.
+
+         Las dos definiciones de abajo se releyeron literales contra su changeset de origen (251,
+         nunca tocado desde entonces: 365 tocó accounting_periods, no esta tabla; 372 solo añadió
+         chk_subscription_charges_recurring_item, aparte) antes de escribir el DROP, precisamente
+         para no borrar a ciegas una rama que la propuesta hubiera dejado fuera. Coinciden carácter
+         a carácter con lo que hay en producción hoy.
+
+         POR QUÉ OVERAGE VA EN LA RAMA >= 0 Y NO EN UNA RAMA NUEVA: ChargeType.OVERAGE.javadoc lo
+         dice explícito -"Siempre suma: es servicio prestado de más, no una devolución"-, y
+         exigeSubtotalNoNegativo() ya lo declara en código (RECURRING || ONE_TIME || OVERAGE). Es
+         la misma familia que RECURRING/ONE_TIME: un cargo que se cobra de más, nunca un abono. Si
+         el dominio permitiera acreditar un excedente, sería un CREDIT que anula el OVERAGE
+         original -exactamente el mecanismo que ya existe para todo lo demás, vía voidingOf()-, no
+         un OVERAGE negativo.
+
+         NO HAY MÁS SITIOS QUE ENUMEREN charge_type Y NECESITEN AMPLIARSE:
+           - recurring_charge_key (372, columna GENERATED) y chk_subscription_charges_recurring_item
+             solo miran charge_type = 'RECURRING'; un cargo que no es RECURRING -incluido OVERAGE-
+             ya cae en su rama ELSE NULL/verdadera por diseño, documentado explícito en el javadoc
+             de ChargeType.OVERAGE punto 2: la llave antiduplicados del excedente es uq_cue_fact
+             sobre company_usage_events, no esta tabla.
+           - account_mappings.charge_type (343) es una columna libre, sin CHECK que enumere sus
+             valores -solo mapping_kind tiene chk_account_mappings_kind-, así que no requiere
+             cambio; queda fuera del alcance de este changeset.
+           - chk_subscription_item_limits_overage (no en esta tabla) exige measure_kind <>
+             'CUMULATIVE' para el eje que habilita el excedente; es una restricción de otra tabla,
+             ajena a subscription_charges, y ChargeType ya documenta que no la repite.
+
+         ADD/DROP CONSTRAINT CHECK ES IN PLACE Y NO RECONSTRUYE LA TABLA (MySQL 8.0.16+: ambas
+         cláusulas son ALGORITHM=INSTANT/INPLACE con Rebuilds Table: No -a diferencia de la columna
+         GENERATED STORED de 372, que sí reconstruye-, y una ALTER TABLE con varias cláusulas usa
+         el algoritmo más restrictivo de todas ellas; como las dos únicas cláusulas de aquí son
+         DROP CHECK/ADD CONSTRAINT CHECK, el ALTER combinado sigue sin tocar una sola fila
+         existente). Confirmado con datos reales: ver el informe de esta sesión para la salida
+         literal de aplicar -> deshacer -> reaplicar sobre un contenedor MySQL 8.0.45 desechable
+         con las filas de subscription_charges que ya hubiera en cada entorno -el ALTER no
+         reescribe filas, así que el tiempo de bloqueo es independiente del volumen de la tabla-.
+
+         NULL Y LA TRAMPA DEL CHECK: subtotal_amount es NOT NULL desde 251 y charge_type también,
+         así que ninguna rama de chk_subscription_charges_sign puede colapsar a NULL por una
+         columna ausente -a diferencia de voids_charge_id, que sí es nullable pero ya estaba
+         cubierto en la redacción original y no cambia aquí-. -->
+    <changeSet id="374_add_overage_to_subscription_charges_checks" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE subscription_charges
+                DROP CHECK chk_subscription_charges_type,
+                DROP CHECK chk_subscription_charges_sign,
+                ADD CONSTRAINT chk_subscription_charges_type
+                    CHECK (charge_type IN
+                        ('RECURRING','PRORATION','ONE_TIME','CREDIT','DISCOUNT','OVERAGE')),
+                ADD CONSTRAINT chk_subscription_charges_sign
+                    CHECK ((charge_type IN ('CREDIT','DISCOUNT') AND voids_charge_id IS NULL
+                            AND subtotal_amount <= 0)
+                           OR (charge_type IN ('RECURRING','ONE_TIME','OVERAGE')
+                            AND subtotal_amount >= 0)
+                           OR charge_type = 'PRORATION'
+                           OR (charge_type = 'CREDIT' AND voids_charge_id IS NOT NULL))
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE subscription_charges
+                    DROP CHECK chk_subscription_charges_sign,
+                    DROP CHECK chk_subscription_charges_type,
+                    ADD CONSTRAINT chk_subscription_charges_type
+                        CHECK (charge_type IN
+                            ('RECURRING','PRORATION','ONE_TIME','CREDIT','DISCOUNT')),
+                    ADD CONSTRAINT chk_subscription_charges_sign
+                        CHECK ((charge_type IN ('CREDIT','DISCOUNT') AND voids_charge_id IS NULL
+                                AND subtotal_amount <= 0)
+                               OR (charge_type IN ('RECURRING','ONE_TIME') AND subtotal_amount >= 0)
+                               OR charge_type = 'PRORATION'
+                               OR (charge_type = 'CREDIT' AND voids_charge_id IS NOT NULL))
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

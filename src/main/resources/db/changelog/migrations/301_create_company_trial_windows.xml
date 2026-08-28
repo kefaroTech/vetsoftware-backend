@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Capa I (modelo-datos-suscripciones.html, ficha company_trial_windows). El reloj de la
+         empresa: una fila por ventana de prueba concedida. Es el techo con el que todo lo demás
+         tiene que casar.
+
+         Vive FUERA del contrato a propósito (D-01). Si viviera dentro, cancelar el contrato y
+         firmar otro abriría ventana nueva: el mismo abuso con un rodeo de dos clics.
+
+         end_date ES EL ÚLTIMO DÍA EN PRUEBA, INCLUIDO, y chk_company_trial_windows_end lo comprueba
+         en la propia fila: fin = inicio + días - 1. El documento de diseño cayó en su propia trampa
+         aquí (decía que catorce días desde el día cero vencen el catorce, que son quince), y el
+         código actual suma los días sin restar uno. Con la clave foránea triple que cuelga de
+         company_trial_grants, ese desfase de un día deja de ser un informe raro y pasa a ser un
+         error del motor a mitad de un alta comercial.
+
+         open_window_marker: el patrón de la casa -columna generada + índice único- porque MySQL no
+         tiene unicidad condicional. Solo mira closed_at y NO una marca de activo: esta tabla no
+         lleva enabled (una ventana cerrada y una desactivada son cosas distintas). Impide dos
+         ventanas ABIERTAS por empresa; no impide dos en la vida, que es lo correcto: una campaña de
+         recuperación puede abrir otra años después y seguirá sin poder regalar dos veces el mismo
+         artículo, porque de eso se ocupa la unicidad de company_trial_grants.
+
+         uq_company_trial_windows_company_id_end no es un índice de búsqueda: es el destino de la
+         clave foránea TRIPLE de las concesiones. Es lo que hace que la copia congelada del fin de
+         ventana sea verificable por clave y no por convenio.
+
+         source_quote_id va NOT NULL por D-55: todo cliente nace con su ventana, la use o no, y el
+         único camino de alta es cotizar, firmar y abrir la ventana. La FK es plana y no compuesta
+         porque quotes.company_id admite vacío a propósito -se cotiza a prospectos-, así que no hay
+         clave auxiliar con empresa contra la que atarla.
+
+         R-TRIAL-23 / SEGUNDO AJUSTE DE ESTA SESIÓN (ciclo apply→rollback total→reapply, nunca
+         verificado hasta hoy). El primer ajuste (ver más abajo, en el rollback) resolvía la mitad
+         del problema: soltaba las FK salientes para que un rollback total pudiera llegar hasta
+         companies/quotes. Pero dejaba la otra mitad rota, y solo se ve al REAPLICAR después de ese
+         rollback: la tabla nunca se borra (R-TRIAL-23), así que Liquibase la encuentra ya creada y
+         el CREATE TABLE de este changeset revienta con "Table already exists". El ciclo completo
+         era, hasta ahora, imposible sin borrar las tablas a mano.
+
+         LA PREMISA QUE LO HABILITA: esta base de datos está vacía en todo entorno real -el dueño lo
+         dijo explícitamente y es el fundamento de D-53-, así que NINGÚN changeset de esta cadena se
+         ha aplicado nunca fuera de un contenedor de prueba. Tocar getChanges() aquí no rompe ningún
+         checksum desplegado; la prohibición general de este documento tiene sentido en un sistema
+         en producción, y aquí no hay ninguno.
+
+         LA SOLUCIÓN: partir el changeset en dos. Este -el original, mismo id, MISMOS getChanges()
+         salvo por retirar las dos addForeignKeyConstraint que se movieron al segundo- lleva la
+         PRECONDICIÓN que hacía falta: si la tabla ya existe, se marca ejecutado sin tocar nada
+         (MARK_RAN). El segundo changeset, 301_link_company_trial_windows_fk, es SOLO las dos claves
+         foráneas: esas sí hay que volver a añadirlas después de un rollback total, porque su
+         rollback las suelta (revertir la parte que de verdad cambió, no la tabla que sobrevive). -->
+    <changeSet id="301_create_company_trial_windows" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="company_trial_windows"/>
+            </not>
+        </preConditions>
+        <createTable tableName="company_trial_windows">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="start_date" type="DATE"><constraints nullable="false"/></column>
+            <column name="end_date" type="DATE"><constraints nullable="false"/></column>
+            <column name="window_days" type="INT"><constraints nullable="false"/></column>
+            <column name="source_quote_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="closed_at" type="DATETIME(6)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="company_trial_windows" columnNames="company_id, id, end_date"
+                             constraintName="uq_company_trial_windows_company_id_end"/>
+
+        <sql><![CDATA[
+            ALTER TABLE company_trial_windows
+                ADD COLUMN open_window_marker BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE WHEN closed_at IS NULL THEN company_id ELSE NULL END
+                    ) STORED,
+                ADD CONSTRAINT uq_company_trial_windows_open UNIQUE (open_window_marker),
+                ADD CONSTRAINT chk_company_trial_windows_days
+                    CHECK (window_days > 0),
+                ADD CONSTRAINT chk_company_trial_windows_end
+                    CHECK (end_date = DATE_ADD(start_date, INTERVAL (window_days - 1) DAY)),
+                ADD CONSTRAINT chk_company_trial_windows_closed
+                    CHECK (closed_at IS NULL OR closed_at >= start_date)
+        ]]></sql>
+
+        <createIndex tableName="company_trial_windows" indexName="ix_company_trial_windows_quote">
+            <column name="source_quote_id"/>
+        </createIndex>
+
+        <!-- R-TRIAL-23: la marcha atrás del despliegue NO borra company_trial_windows -es el
+             reloj de la empresa; borrarlo devolvería a todo el mundo el derecho a probarlo todo
+             otra vez-, así que este changeset no tiene nada que revertir: ni la tabla, ni sus
+             índices, ni sus columnas. Las dos FK salientes que sí hacía falta soltar viven ahora
+             en 301_link_company_trial_windows_fk, con su propio rollback. Vacío y explícito a
+             propósito: sin esta línea, Liquibase auto-generaría dropTable para deshacer el
+             createTable de arriba, que es exactamente lo que R-TRIAL-23 prohíbe. -->
+        <rollback/>
+    </changeSet>
+
+    <!-- Segundo changeset, deliberadamente separado del anterior: SOLO las dos claves foráneas
+         salientes de company_trial_windows. Se añaden siempre -no llevan precondición- porque solo
+         se ejecutan en dos escenarios y en los dos hace falta que corran: el alta desde cero (la
+         tabla se acaba de crear arriba, las FK no existen todavía) y el reaplique tras un rollback
+         total (la tabla sobrevivió pero estas dos FK se soltaron en su propio rollback, más abajo,
+         precisamente para que ese rollback pudiera llegar hasta companies/quotes). -->
+    <changeSet id="301_link_company_trial_windows_fk" author="orlando">
+        <addForeignKeyConstraint baseTableName="company_trial_windows"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_trial_windows_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_trial_windows"
+                                 baseColumnNames="source_quote_id"
+                                 referencedTableName="quotes"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_trial_windows_quote"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <!-- AJUSTE (ciclo apply→rollback total→reapply, nunca verificado hasta hoy): "no borrar
+             la tabla" no puede significar "companies y quotes quedan clavadas para siempre" -eso
+             es lo que pasaba antes de partir este changeset: sus dos FK salientes sobrevivían con
+             la tabla y bloqueaban el DROP TABLE de companies/quotes en cualquier rollback que
+             llegara tan atrás, sin ninguna forma de arreglarlo desde el lado de companies/quotes
+             -son changesets anteriores en la cadena y no conocen esta tabla-. Se sueltan aquí,
+             dejando la ventana con sus filas intactas pero sin la FK: un rollback hasta el vacío
+             ya no puede reconstruir companies/quotes de todas formas, así que la integridad
+             referencial de un dato que sobrevive junto a tablas que no sobreviven no es exigible.
+             Y por eso este changeset SÍ necesita volver a correr en el reaplique: sin él, las dos
+             FK quedarían perdidas para siempre tras el primer rollback total. -->
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="company_trial_windows"
+                                      constraintName="fk_company_trial_windows_quote"/>
+            <dropForeignKeyConstraint baseTableName="company_trial_windows"
+                                      constraintName="fk_company_trial_windows_company"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

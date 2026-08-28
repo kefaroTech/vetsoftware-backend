@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA DE REFERENCIA CON VIGENCIA (ficha smmlv_values). EL SALARIO MINIMO, POR ANO, SIN
+         EMPRESA. Gemela de uvt_values (347) con una diferencia que hoy mismo importa: su estado
+         es un dato. status IN ('IN_FORCE','SUSPENDED','SUPERSEDED') -decision propia, S8- porque
+         el decreto que fija el salario puede quedar suspendido judicialmente sin que la fila deje
+         de existir: chk_smmlv_values_status con las dos ramas exige status_reference y
+         status_changed_on exactamente cuando el estado no es IN_FORCE. SI lleva version: la
+         suspension judicial se anota sobre la fila que ya existia, mutacion declarada.
+         Se mantiene UNIQUE (fiscal_year) a secas, sin marcador de vigencia (decision documentada,
+         coste bajo de ampliarla si el fondo del litigio obligara a guardar dos vigentes). -->
+    <changeSet id="348_create_smmlv_values" author="orlando">
+        <createTable tableName="smmlv_values">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fiscal_year" type="SMALLINT"><constraints nullable="false"/></column>
+            <column name="value_amount" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="legal_reference" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="IN_FORCE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status_reference" type="VARCHAR(255)"/>
+            <column name="status_changed_on" type="DATE"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE smmlv_values
+                ADD CONSTRAINT uq_smmlv_values_year UNIQUE (fiscal_year),
+                ADD CONSTRAINT chk_smmlv_values_year
+                    CHECK (fiscal_year BETWEEN 2020 AND 2100),
+                ADD CONSTRAINT chk_smmlv_values_amount
+                    CHECK (value_amount > 0),
+                ADD CONSTRAINT chk_smmlv_values_status
+                    CHECK ((status = 'IN_FORCE' AND status_reference IS NULL
+                                                 AND status_changed_on IS NULL)
+                           OR (status <> 'IN_FORCE' AND status_reference IS NOT NULL
+                                                    AND status_changed_on IS NOT NULL))
+        ]]></sql>
+
+        <rollback>
+            <dropTable tableName="smmlv_values"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -10,7 +10,30 @@
          excepción de borrado físico del modelo-, por eso NO lleva enabled ni @Version
          (E6_YA_PROTEGIDO). uq_company_entitlements es el acceso caliente: point lookup por
          (company_id, sub_module_id) y listado "qué puede usar esta empresa" por company_id.
-         FK compuesta fk_company_entitlements_item (par P6, suscripciones-modelo.md §4.5). -->
+         FK compuesta fk_company_entitlements_item (par P6, suscripciones-modelo.md §4.5).
+
+         REESCRITO PARA LAS CAPAS I Y J (D-53). La tabla no necesita columnas nuevas, pero sí UNA
+         CLAVE ÚNICA DISTINTA y dos valores más en la lista de orígenes.
+
+         La clave pasa a incluir valid_from. Con (company_id, sub_module_id) solo cabía una fila por
+         empresa y módulo, y hacen falta DOS: la de la prueba y LA QUE LA SUCEDE, escrita el mismo
+         día y esperando su fecha. Sin esa segunda fila, al vencer la prueba el acceso no baja:
+         DESAPARECE. Y valid_until ya hace lo que hace falta -es lo que hace que la prueba caduque
+         sola a la fecha, sin depender de ningún proceso nocturno-; solo hay que rellenarlo con el
+         fin de prueba de cada línea.
+
+         Los dos orígenes nuevos:
+         · FREE_LIMITED: "lo usa gratis, con techo, porque se le acabó la prueba". Sin este valor no
+           se distingue de "lo paga", y esa es literalmente la pregunta de auditoría.
+         · EXPIRED_TRIAL: la prueba venció con desenlace READ_ONLY y el módulo quedó en consulta
+           (D-57). Con la lista corta, la fila sucesora que hace que el acceso BAJE en vez de
+           desaparecer era inescribible, y es el mecanismo central de la capa de prueba.
+
+         Y el defecto de código que hay que vigilar y que ningún esquema atrapa: las consultas de
+         acceso pasan a exigir que el permiso YA HAYA EMPEZADO, no solo que no haya caducado. Con
+         dos filas por módulo, mirar solo valid_until deja entrar hoy a la fila sucesora que empieza
+         el mes que viene. -->
+
     <changeSet id="246_create_company_entitlements" author="orlando">
         <createTable tableName="company_entitlements">
             <column name="id" type="BIGINT" autoIncrement="true">
@@ -36,7 +59,8 @@
             </column>
         </createTable>
 
-        <addUniqueConstraint tableName="company_entitlements" columnNames="company_id, sub_module_id"
+        <addUniqueConstraint tableName="company_entitlements"
+                             columnNames="company_id, sub_module_id, valid_from"
                              constraintName="uq_company_entitlements"/>
 
         <sql><![CDATA[
@@ -44,11 +68,13 @@
                 ADD CONSTRAINT chk_company_entitlements_access_level
                     CHECK (access_level IN ('FULL','READ_ONLY','NONE')),
                 ADD CONSTRAINT chk_company_entitlements_source
-                    CHECK (source IN ('SUBSCRIPTION','TRIAL','CORE','MANUAL_GRANT')),
+                    CHECK (source IN ('SUBSCRIPTION','TRIAL','CORE','MANUAL_GRANT',
+                                      'FREE_LIMITED','EXPIRED_TRIAL')),
                 ADD CONSTRAINT chk_company_entitlements_validity
                     CHECK (valid_until IS NULL OR valid_until > valid_from),
                 ADD CONSTRAINT chk_company_entitlements_origin
-                    CHECK (source NOT IN ('SUBSCRIPTION','TRIAL') OR subscription_id IS NOT NULL)
+                    CHECK (source NOT IN ('SUBSCRIPTION','TRIAL','FREE_LIMITED','EXPIRED_TRIAL')
+                           OR subscription_id IS NOT NULL)
         ]]></sql>
 
         <createIndex tableName="company_entitlements" indexName="ix_company_entitlements_stale">

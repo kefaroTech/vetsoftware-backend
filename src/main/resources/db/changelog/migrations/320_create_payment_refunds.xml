@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha payment_refunds). LA PLATA QUE SE DEVUELVE.
+         Hoy devolver dinero es cambiarle el estado a un pago: un UPDATE sobre una tabla que el
+         modelo declara inmutable, y que ademas BORRA cuando, cuanto y por que medio se devolvio.
+         Esa fecha importa dos veces -es la que cuenta para la ventana de arrepentimiento y la que
+         fija el periodo en que se corrige el impuesto- y hoy no se guarda en ninguna parte. Es la
+         operacion mas delicada del negocio y la unica sin documento propio.
+
+         PARCIAL Y VARIAS VECES sobre el mismo pago. Por eso no hay unicidad por payment_id.
+         El tope -que la suma de devoluciones no supere el pago original- NO SE PUEDE EXPRESAR EN
+         UN CHECK: MySQL prohibe subconsultas ahi. Queda como regla de aplicacion y con vigilancia,
+         y se declara aqui para que quien lea el changeset no crea que la base lo esta cuidando.
+
+         SACAR PLATA EXIGE FIRMA. authorized_by_system_user_id es obligatorio, y no es burocracia:
+         el modelo ya pedia firma para subirle el techo a un cliente y no la pedia para devolverle
+         dinero. Con reason_code -lista cerrada, para poder agrupar- y reason -texto libre, para
+         poder explicar-: la convencion de la casa para los motivos son siempre dos columnas.
+
+         client_request_id: llave de idempotencia, misma barandilla que en subscription_payments y
+         billing_document_applications. Toda peticion que mueva dinero la lleva, y devolver mueve
+         dinero; sin ella un doble clic devuelve dos veces. Acotada por empresa, porque la consulta
+         que deduplica tambien lo esta.
+
+         Sin enabled ni version: documento de dinero, solo se agrega. Una devolucion mal registrada
+         no se edita ni se oculta, se compensa con otra fila. -->
+    <changeSet id="320_create_payment_refunds" author="orlando">
+        <createTable tableName="payment_refunds">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="payment_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="source_document_id" type="BIGINT"/>
+            <column name="amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="method" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="destination_reference" type="VARCHAR(120)"/>
+            <column name="refunded_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="value_date" type="DATE"><constraints nullable="false"/></column>
+            <column name="reason_code" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="reason" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="authorized_by_system_user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="client_request_id" type="VARCHAR(64)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="payment_refunds" columnNames="company_id, id"
+                             constraintName="uq_payment_refunds_company_id"/>
+        <addUniqueConstraint tableName="payment_refunds"
+                             columnNames="company_id, client_request_id"
+                             constraintName="uq_payment_refunds_client_request"/>
+
+        <sql><![CDATA[
+            ALTER TABLE payment_refunds
+                MODIFY COLUMN destination_reference VARCHAR(120)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN client_request_id VARCHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD CONSTRAINT chk_payment_refunds_amount CHECK (amount > 0),
+                ADD CONSTRAINT chk_payment_refunds_method
+                    CHECK (method IN ('CARD','PSE','BANK_TRANSFER','CUSTOMER_CREDIT')),
+                ADD CONSTRAINT chk_payment_refunds_reason_code
+                    CHECK (reason_code IN ('WITHDRAWAL','BILLING_ERROR','CANCELLATION_CREDIT',
+                                           'REVERSAL','DUPLICATE_PAYMENT','OTHER')),
+                ADD CONSTRAINT chk_payment_refunds_destination
+                    CHECK ((method = 'CUSTOMER_CREDIT' AND destination_reference IS NULL)
+                           OR (method <> 'CUSTOMER_CREDIT' AND destination_reference IS NOT NULL))
+        ]]></sql>
+
+        <createIndex tableName="payment_refunds" indexName="ix_payment_refunds_company_date">
+            <column name="company_id"/>
+            <column name="refunded_at"/>
+        </createIndex>
+        <createIndex tableName="payment_refunds" indexName="ix_payment_refunds_payment">
+            <column name="company_id"/>
+            <column name="payment_id"/>
+        </createIndex>
+        <createIndex tableName="payment_refunds" indexName="ix_payment_refunds_source_document">
+            <column name="company_id"/>
+            <column name="source_document_id"/>
+        </createIndex>
+        <createIndex tableName="payment_refunds" indexName="ix_payment_refunds_authorized_by">
+            <column name="authorized_by_system_user_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="payment_refunds"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_payment_refunds_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="payment_refunds"
+                                 baseColumnNames="company_id, payment_id"
+                                 referencedTableName="subscription_payments"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_payment_refunds_payment"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="payment_refunds"
+                                 baseColumnNames="company_id, source_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_payment_refunds_source_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="payment_refunds"
+                                 baseColumnNames="authorized_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_payment_refunds_authorized_by"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="payment_refunds"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha external_invoice_reconciliations). LO QUE TU CALCULASTE CONTRA LO QUE SE
+         EMITIO. La factura de la suscripcion NO se emite con este software: la emite el contador o
+         un sistema de facturacion, y aqui solo se registra su referencia. Eso deja una rotura de
+         trazabilidad que el documento declara y no cose: se guarda el identificador de la factura
+         fiscal, pero nunca LA COMPARACION entre lo que dice el documento de cobro y lo que dice la
+         factura que emitio el tercero. NINGUNA CLAVE FORANEA PUEDE IMPONERLA -la otra mitad vive en
+         otro sistema-, asi que o se registra la conciliacion o no existe.
+
+         CUATRO NUMEROS ENFRENTADOS, y el impuesto aparte a proposito: el total propio se calcula
+         UNA VEZ SOBRE LA BASE AGREGADA y el emisor externo probablemente lo calcule linea a linea.
+         Ahi es donde nace la diferencia de dos pesos, y sin separar impuesto de total no se puede
+         saber si el descuadre es de base o de calculo.
+
+         Y LA CONSULTA QUE IMPORTA NO ES LA DE LAS DIFERENCIAS: es MISSING_EXTERNAL -documentos de
+         cobro sin factura externa pasados X dias-. Eso es dinero devengado que NADIE FACTURO, y
+         hoy no lo ve nadie. Es el peor de los cuatro estados y el mas facil de no ver, porque no
+         produce ninguna diferencia que llame la atencion. Por eso es el estado inicial de la
+         maquina y no un valor mas.
+
+         La resolucion de numeracion con su rango y su vigencia es lo primero que pide un
+         requerimiento sobre facturacion propia, y hoy no se guarda en ninguna parte. Con ella se
+         puede ademas avisar ANTES de que se agote el rango o venza la resolucion, en vez de
+         descubrirlo el dia que una factura no sale.
+
+         posting_period SIN CLAVE FORANEA, Y ES UNA CARENCIA DECLARADA, NO UN OLVIDO: la ficha lo
+         define como CHAR(7) apuntando a accounting_periods, que es de la capa M y NO EXISTE en
+         ningun changeset del arbol. Se deja como clave de periodo con formato comprobado; atarla
+         es trabajo del changeset que cree los periodos contables, y va con issue.
+
+         Con version -el estado y la resolucion mutan, y el documento la lista entre las tablas que
+         mutan-. Sin enabled: una conciliacion no se desactiva, se resuelve. -->
+    <changeSet id="330_create_external_invoice_reconciliations" author="orlando">
+        <createTable tableName="external_invoice_reconciliations">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="billing_document_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="external_resolution_number" type="VARCHAR(60)"/>
+            <column name="external_range_from" type="INT"/>
+            <column name="external_range_to" type="INT"/>
+            <column name="resolution_valid_until" type="DATE"/>
+            <column name="external_invoice_id" type="VARCHAR(60)"/>
+            <column name="external_cufe" type="VARCHAR(100)"/>
+            <column name="computed_total" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="computed_tax" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="external_total" type="DECIMAL(19,2)"/>
+            <column name="external_tax" type="DECIMAL(19,2)"/>
+            <column name="difference" type="DECIMAL(19,2)"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="MISSING_EXTERNAL">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resolved_by_system_user_id" type="BIGINT"/>
+            <column name="resolved_at" type="DATETIME(6)"/>
+            <column name="resolution_note" type="VARCHAR(255)"/>
+            <column name="posting_period" type="CHAR(7)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="external_invoice_reconciliations"
+                             columnNames="company_id, billing_document_id"
+                             constraintName="uq_eir_document"/>
+
+        <sql><![CDATA[
+            ALTER TABLE external_invoice_reconciliations
+                MODIFY COLUMN external_resolution_number VARCHAR(60)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN external_invoice_id VARCHAR(60)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN external_cufe VARCHAR(100)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN posting_period CHAR(7)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD CONSTRAINT chk_eir_status
+                    CHECK (status IN ('MATCHED','WITHIN_TOLERANCE','MISMATCH','MISSING_EXTERNAL')),
+                ADD CONSTRAINT chk_eir_external_pair
+                    CHECK ((status = 'MISSING_EXTERNAL'
+                            AND external_invoice_id IS NULL AND external_total IS NULL
+                            AND external_tax IS NULL AND difference IS NULL)
+                           OR (status <> 'MISSING_EXTERNAL'
+                            AND external_invoice_id IS NOT NULL AND external_total IS NOT NULL
+                            AND external_tax IS NOT NULL AND difference IS NOT NULL)),
+                ADD CONSTRAINT chk_eir_difference
+                    CHECK (difference IS NULL
+                           OR (external_total IS NOT NULL
+                               AND difference = computed_total - external_total)),
+                ADD CONSTRAINT chk_eir_amounts
+                    CHECK (computed_total >= 0 AND computed_tax >= 0
+                           AND (external_total IS NULL OR external_total >= 0)
+                           AND (external_tax IS NULL OR external_tax >= 0)),
+                ADD CONSTRAINT chk_eir_resolution_range
+                    CHECK ((external_resolution_number IS NULL AND external_range_from IS NULL
+                            AND external_range_to IS NULL AND resolution_valid_until IS NULL)
+                           OR (external_resolution_number IS NOT NULL
+                            AND external_range_from IS NOT NULL AND external_range_to IS NOT NULL
+                            AND external_range_to >= external_range_from
+                            AND resolution_valid_until IS NOT NULL)),
+                ADD CONSTRAINT chk_eir_resolved
+                    CHECK ((resolved_at IS NULL AND resolved_by_system_user_id IS NULL
+                            AND resolution_note IS NULL AND posting_period IS NULL)
+                           OR (resolved_at IS NOT NULL AND resolved_by_system_user_id IS NOT NULL
+                            AND resolution_note IS NOT NULL AND posting_period IS NOT NULL
+                            AND posting_period REGEXP '^[0-9]{4}-(0[1-9]|1[0-2])$'))
+        ]]></sql>
+
+        <createIndex tableName="external_invoice_reconciliations" indexName="ix_eir_status_period">
+            <column name="status"/>
+            <column name="posting_period"/>
+        </createIndex>
+        <createIndex tableName="external_invoice_reconciliations" indexName="ix_eir_pending">
+            <column name="status"/>
+            <column name="created_date"/>
+        </createIndex>
+        <createIndex tableName="external_invoice_reconciliations" indexName="ix_eir_resolved_by">
+            <column name="resolved_by_system_user_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="external_invoice_reconciliations"
+                                 baseColumnNames="company_id, billing_document_id"
+                                 referencedTableName="subscription_billing_documents"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_eir_document"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="external_invoice_reconciliations"
+                                 baseColumnNames="resolved_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_eir_resolved_by"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="external_invoice_reconciliations"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

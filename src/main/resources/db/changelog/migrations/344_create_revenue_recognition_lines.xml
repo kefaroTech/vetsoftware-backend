@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA M/N (ficha revenue_recognition_lines). CUANTO SE GANO DE VERDAD, POR EMPRESA.
+         period_key: el mes al que se IMPUTA. posting_period: el periodo contable en que se
+         REGISTRA -FK contra accounting_periods(period_key), ya CHAR(7) ascii_bin desde 331-.
+
+         chk_rrl_not_backwards (posting_period >= period_key) es la UNICA de las cuatro reglas de
+         periodo del encargo que la base puede imponer sola: con formato AAAA-MM y colacion
+         ascii_bin la comparacion lexicografica ES la cronologica. Las otras tres van con
+         disparador (346).
+
+         SIN enabled (documento de dinero) y SIN version: exenta E1_APPEND_ONLY -un reconocimiento
+         mal calculado se corrige con otra fila de signo contrario, nunca encima-.
+
+         LA UNICIDAD, CORREGIDA CONTRA EL DOCUMENTO: (charge_id, period_key) a secas hace
+         INESCRIBIBLE la fila que compensa (mismo cargo, mismo mes). uq_rrl_recognition lleva
+         company_id y posting_period: dos filas del mismo cargo y mes solo caben en periodos
+         contables DISTINTOS -la regla de negocio literal-, y sirve ademas de indice de
+         fk_rrl_charge y fk_rrl_company por prefijo izquierdo. -->
+    <changeSet id="344_create_revenue_recognition_lines" author="orlando">
+        <createTable tableName="revenue_recognition_lines">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="charge_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="period_key" type="CHAR(7)"><constraints nullable="false"/></column>
+            <column name="posting_period" type="CHAR(7)"><constraints nullable="false"/></column>
+            <column name="recognized_amount" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="method" type="VARCHAR(25)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE revenue_recognition_lines
+                MODIFY COLUMN period_key CHAR(7)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN posting_period CHAR(7)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                ADD CONSTRAINT uq_rrl_recognition
+                    UNIQUE (company_id, charge_id, period_key, posting_period),
+                ADD CONSTRAINT chk_rrl_period_key
+                    CHECK (period_key REGEXP '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+                ADD CONSTRAINT chk_rrl_amount
+                    CHECK (recognized_amount <> 0),
+                ADD CONSTRAINT chk_rrl_method
+                    CHECK (method IN ('STRAIGHT_LINE_DAYS','POINT_IN_TIME','OVER_CUSTOMER_LIFE')),
+                ADD CONSTRAINT chk_rrl_not_backwards
+                    CHECK (posting_period >= period_key)
+        ]]></sql>
+
+        <createIndex tableName="revenue_recognition_lines" indexName="ix_rrl_posting">
+            <column name="company_id"/>
+            <column name="posting_period"/>
+        </createIndex>
+        <createIndex tableName="revenue_recognition_lines" indexName="ix_rrl_posting_fk">
+            <column name="posting_period"/>
+        </createIndex>
+        <!-- Barrido de plataforma: el cierre mensual de todas las clinicas. No lleva la empresa
+             delante a proposito -acotarlo la haria inutil para ese caso de uso-; el caso que lo
+             consulta va cerrado a hasRole('SYSTEM'), con su hermano acotado por empresa aparte. -->
+        <createIndex tableName="revenue_recognition_lines" indexName="ix_rrl_period">
+            <column name="posting_period"/>
+            <column name="period_key"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="revenue_recognition_lines"
+                                 baseColumnNames="company_id, charge_id"
+                                 referencedTableName="subscription_charges"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_rrl_charge"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="revenue_recognition_lines"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_rrl_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="revenue_recognition_lines"
+                                 baseColumnNames="posting_period"
+                                 referencedTableName="accounting_periods"
+                                 referencedColumnNames="period_key"
+                                 constraintName="fk_rrl_posting_period"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="revenue_recognition_lines"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

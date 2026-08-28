@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CIERRA EL HUECO ENTRE chk_cam_active_days (355, BETWEEN 0 AND 31) Y
+         CompanyActivityMonth.validateActiveDays (dominio), QUE MIRA EL MES REAL DE
+         periodKey.lengthOfMonth(). El propio javadoc de la constante MAX_ACTIVE_DAYS
+         (CompanyActivityMonth.java) ya lo admite: "31 es el techo que vale para los doce
+         meses SIN DEPENDER DE LA FUNCION DE CALENDARIO" -es decir, el 355 eligio a
+         proposito la version floja porque en ese momento no hizo falta la fina, no
+         porque el motor no pudiera expresarla-.
+
+         LA CONSECUENCIA DE LA VERSION FLOJA: una fila escrita por CUALQUIER VIA QUE NO
+         PASE POR JAVA (INSERT manual, carga masiva, correccion en produccion) con, por
+         ejemplo, period_key='2025-02' y active_days=30 pasa el 355 sin problema -30 esta
+         en [0,31]-, pero CompanyActivityMonthJpaMapper.toDomain() la revalida al leerla
+         y CompanyActivityMonth.validateActiveDays() lanza IllegalArgumentException
+         porque 30 > YearMonth.of(2025,2).lengthOfMonth() = 28. A partir de ahi ese mes de
+         esa empresa deja de poder leerse por el adaptador, PARA SIEMPRE: quien escribio
+         la fila no se entera nunca -su INSERT tuvo exito-, y el 500 lo sufre quien
+         consulta, capas y meses despues.
+
+         POR QUE UN CHECK Y NO UN DISPARADOR (patron 346, trg_rrl_bi_period_open /
+         trg_accounting_exports_bi_period_open): esos disparadores existen porque su
+         regla mira OTRA fila o otra tabla -el periodo contable abierto en
+         accounting_periods-, que es precisamente lo que un CHECK de MySQL no puede
+         consultar. Esta regla no: active_days y period_key son las DOS columnas DE LA
+         MISMA FILA, y MySQL sí permite un CHECK que combine columnas de la fila que
+         valida (no una subquery, no otra tabla). No hay ninguna razon para pagar el
+         coste real y conocido de un disparador en este proyecto -log_bin_trust_function_
+         creators=1, que ya obligo a relajar un parametro de RDS- cuando el CHECK
+         declarativo basta y es mas barato.
+
+         LA EXPRESION: DAY(LAST_DAY(STR_TO_DATE(CONCAT(period_key, '-01'), '%Y-%m-%d')))
+         calcula el numero de dias del mes de period_key -el mismo lengthOfMonth() de
+         ActivityPeriodKey, pero en SQL-. Probado en un contenedor MySQL 8.0.45
+         desechable: STR_TO_DATE/LAST_DAY/DAY/CONCAT son deterministas y MySQL los admite
+         dentro de un CHECK (a diferencia de NOW(), RAND(), CONNECTION_ID()...); el
+         ADD CONSTRAINT de mas abajo se aplico sin error contra una tabla de prueba.
+
+         LA TRAMPA DEL NULL, REVISADA: si period_key o active_days fueran NULL, la
+         expresion completa evaluaria a NULL y "active_days <= NULL" ACEPTARIA la fila
+         -NULL IN/comparaciones no es FALSE-. No aplica aqui: las dos columnas son
+         NOT NULL desde el 355 y eso no cambia en este changeset. Y si alguna vez
+         chk_cam_period_key desapareciera, STR_TO_DATE podria fallar su parseo con un
+         period_key mal formado y colar la fila por la misma rendija -otra razon para no
+         tocar esa restriccion aparte de esta migracion-.
+
+         chk_cam_active_days (355, BETWEEN 0 AND 31) NO SE TOCA: sigue siendo el unico
+         que impone el suelo (>= 0); un changeset ya aplicado no se edita, y esta
+         restriccion nueva es un techo ADICIONAL y mas fino, no un reemplazo.
+
+         ADD CONSTRAINT CHECK ES IN PLACE Y NO RECONSTRUYE (MySQL 8.0.16+, igual que
+         372/373/374/375): no reescribe filas existentes, asi que el tiempo de bloqueo no
+         depende del volumen de company_activity_months -hoy, en cualquier entorno, es la
+         tabla mas barata del bloque S8: 500 clinicas x 12 meses/ano-. Lo que SI depende
+         de los datos es si el ADD CONSTRAINT tiene exito: valida las filas existentes y
+         aborta el despliegue si alguna ya viola la regla nueva -exactamente el mismo
+         mecanismo de 372/373/374/375, y la razon de la consulta de deteccion de abajo-.
+
+         DETECCION, A EJECUTAR ANTES DE DESPLEGAR ESTO EN CUALQUIER ENTORNO CON DATOS:
+         `SELECT id, company_id, period_key, active_days,
+                 DAY(LAST_DAY(STR_TO_DATE(CONCAT(period_key, '-01'), '%Y-%m-%d')))
+                     AS calendar_days
+          FROM company_activity_months
+          WHERE active_days > DAY(LAST_DAY(STR_TO_DATE(CONCAT(period_key, '-01'),
+                                                         '%Y-%m-%d')));`
+         Si devuelve filas, son EXACTAMENTE las que hoy ya son ilegibles por el
+         adaptador -el 500 de toDomain()-, y el ADD CONSTRAINT de este changeset fallara
+         con "Check constraint ... is violated" hasta que se saneen.
+
+         SANEAMIENTO: no se puede corregir desde la aplicacion -la fila no se puede leer,
+         asi que ningun caso de uso puede tocarla-, y el numero real de dias activos de
+         ese mes SE PERDIO: nadie puede reconstruirlo con certeza a partir de lo que
+         quedo en la fila. Recortar al techo del mes es una correccion MECANICA que
+         desbloquea el despliegue, no una correccion de negocio -sustituye un numero
+         invalido por el maximo plausible, no por el numero real-:
+         `UPDATE company_activity_months
+          SET active_days = DAY(LAST_DAY(STR_TO_DATE(CONCAT(period_key, '-01'),
+                                                       '%Y-%m-%d')))
+          WHERE active_days > DAY(LAST_DAY(STR_TO_DATE(CONCAT(period_key, '-01'),
+                                                         '%Y-%m-%d')));`
+         Antes de correr ese UPDATE en un entorno real: ES DECISION DE NEGOCIO, no de
+         esta migracion. Cada fila que aparezca en la deteccion es un mes de una empresa
+         cuyo active_days de verdad no se sabe cual es; recortar al techo es la unica
+         opcion mecanica, pero quien la apruebe debe saber que estara sustituyendo un
+         dato incorrecto por un techo, no reconstruyendo el dato real.
+
+         EL ROLLBACK NO DEPENDE DE LOS DATOS: a diferencia del caso del 374 -un rollback
+         que REINSTALA algo mas estricto y puede fallar si ya hay filas que lo violan-,
+         este rollback solo hace DROP CHECK, que nunca falla por el contenido de la
+         tabla: vuelve al estado exacto de antes de este changeset, sin reintroducir
+         ninguna restriccion. -->
+    <changeSet id="376_add_calendar_check_to_company_activity_months" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE company_activity_months
+                ADD CONSTRAINT chk_cam_active_days_calendar
+                    CHECK (active_days <=
+                        DAY(LAST_DAY(STR_TO_DATE(CONCAT(period_key, '-01'), '%Y-%m-%d'))))
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE company_activity_months
+                    DROP CHECK chk_cam_active_days_calendar
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

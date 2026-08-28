@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CORRIGE LA CONTRADICCION ENTRE chk_accounting_periods_closure Y
+         chk_accounting_periods_reopening (331, YA APLICADO — no se toca, se corrige aparte).
+
+         AccountingPeriod.reopen(...) (domain/AccountingPeriod.java:191) deja, sobre un periodo
+         SOFT_CLOSED, la fila en: status=OPEN, closed_at/closed_by_system_user_id SIN TOCAR
+         -conservan el cierre original, ver el Javadoc de isReopened(): "un periodo reabierto
+         conserva su cierre"- y reopened_at/reopened_by/reopened_reason recien escritos.
+
+         chk_accounting_periods_closure (331) exige, para status='OPEN', que closed_at y
+         closed_by_system_user_id sean AMBOS NULL. chk_accounting_periods_reopening (331) exige,
+         cuando hay reapertura, que closed_at sea NOT NULL. NINGUNA fila reabierta satisface las
+         dos: reabrir es inexpresable en el esquema de hoy, aunque el dominio ya lo implemente
+         entero y su prueba de integracion lo documente por nombre
+         (AccountingPeriodPersistenceIT: el_motor_rechaza_hoy_un_periodo_reabierto).
+
+         EL ARREGLO ES UN ESPEJO LITERAL de AccountingPeriod.validateClosure(...)
+         (domain/AccountingPeriod.java:267-276), que YA distingue el caso "OPEN reabierto" del
+         caso "OPEN nunca cerrado" mirando reopened_at — la unica diferencia es que la base
+         todavia no sabe hacer esa misma distincion:
+
+           - OPEN sin reapertura: closed_at y closed_by_system_user_id NULL (fresh open, igual
+             que antes).
+           - OPEN CON reapertura: closed_at y closed_by_system_user_id NOT NULL (el cierre que se
+             reabrio, preservado) — caso NUEVO que 331 no admitia.
+           - SOFT_CLOSED/LOCKED: closed_at y closed_by_system_user_id NOT NULL — sin cambios.
+
+         chk_accounting_periods_reopening NO se toca: ya codifica correctamente "los tres campos
+         de reapertura van los tres o ninguno, y si van, closed_at tiene que existir y no ser
+         posterior a reopened_at" — esa mitad nunca fue el problema.
+
+         CONVIVE CON LOS SIETE DISPARADORES DE 346 (comprobado leyendo su cuerpo, ver 346):
+         trg_accounting_periods_bu_guard bloquea LOCKED -> algo-distinto-de-LOCKED (reopen() ya
+         lanza LockedAccountingPeriodCannotBeReopenedException antes de llegar a persistencia, y
+         el propio disparador lo blindaria igual) y bloquea vaciar el ultimo periodo OPEN — ninguna
+         de las dos ramas mira closed_at/reopened_at, así que esta correccion no las toca. Los
+         otros seis disparadores (trg_rrl_*, trg_accounting_exports_*, trg_eir_*) solo leen
+         accounting_periods.status para el periodo de imputacion de OTRA tabla y son ajenos a esta
+         columna por completo. NO impone la regla legitima "un periodo declarado no se reabre":
+         esa la sostiene solo el disparador de 346 y sigue intacta. -->
+    <changeSet id="365_fix_accounting_periods_reopening_persistence" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE accounting_periods
+                DROP CONSTRAINT chk_accounting_periods_closure,
+                ADD CONSTRAINT chk_accounting_periods_closure
+                    CHECK ((status = 'OPEN' AND reopened_at IS NULL AND closed_at IS NULL
+                            AND closed_by_system_user_id IS NULL)
+                           OR (status = 'OPEN' AND reopened_at IS NOT NULL
+                            AND closed_at IS NOT NULL AND closed_by_system_user_id IS NOT NULL)
+                           OR (status IN ('SOFT_CLOSED','LOCKED') AND closed_at IS NOT NULL
+                            AND closed_by_system_user_id IS NOT NULL))
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE accounting_periods
+                    DROP CONSTRAINT chk_accounting_periods_closure,
+                    ADD CONSTRAINT chk_accounting_periods_closure
+                        CHECK ((status = 'OPEN' AND closed_at IS NULL
+                                AND closed_by_system_user_id IS NULL)
+                               OR (status IN ('SOFT_CLOSED','LOCKED') AND closed_at IS NOT NULL
+                                AND closed_by_system_user_id IS NOT NULL))
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

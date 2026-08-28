@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CUMPLIR Y MEDIR - CAPA O (ficha external_invoicing_outage_companies). LA SEGUNDA PUENTE,
+         POR EMPRESA. Exenta E2_TABLA_PUENTE, mismo motivo literal que 357: sin created_date, sin
+         enabled, sin version, sin operacion de borrado.
+
+         resolved_by IN ('RETRIED','MANUAL','CONTINGENCY_NUMBERING') -el tercero es el que hay
+         que poder demostrar ante la autoridad: la numeracion de contingencia usada mientras el
+         proveedor externo estaba caido-.
+
+         uq_eioc_pair (outage_id, company_id) SIN ambito, al contrario que 357: aqui una caida
+         alcanza a una clinica de una sola forma, no hay ambito que multiplique. -->
+    <changeSet id="359_create_external_invoicing_outage_companies" author="orlando">
+        <createTable tableName="external_invoicing_outage_companies">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="outage_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="failed_document_count" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resolved_by" type="VARCHAR(25)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE external_invoicing_outage_companies
+                ADD CONSTRAINT uq_eioc_pair UNIQUE (outage_id, company_id),
+                ADD CONSTRAINT chk_eioc_count
+                    CHECK (failed_document_count >= 0),
+                ADD CONSTRAINT chk_eioc_resolved
+                    CHECK (resolved_by IN ('RETRIED','MANUAL','CONTINGENCY_NUMBERING'))
+        ]]></sql>
+
+        <createIndex tableName="external_invoicing_outage_companies" indexName="ix_eioc_company">
+            <column name="company_id"/>
+            <column name="outage_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="external_invoicing_outage_companies"
+                                 baseColumnNames="outage_id"
+                                 referencedTableName="external_invoicing_outages"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_eioc_outage"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="external_invoicing_outage_companies"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_eioc_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="external_invoicing_outage_companies"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

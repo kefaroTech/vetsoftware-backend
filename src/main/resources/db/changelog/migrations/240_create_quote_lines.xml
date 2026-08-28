@@ -18,7 +18,40 @@
          un tramo de la tarifa no puede cambiar retroactivamente cuántas unidades le sobran a quien
          firmó hace un año (la causa número uno de sobrefacturación, tal como ya lo dice esta misma
          especificación para subscription_items). Este changeset todavía no se había aplicado en
-         ningún entorno, así que se corrige in situ en vez de con un ALTER aparte. -->
+         ningún entorno, así que se corrige in situ en vez de con un ALTER aparte.
+
+         REESCRITO PARA LA CAPA I (D-53). La oferta congela la política de prueba igual que ya
+         congela el precio: si mañana se marca Caja como "no se regala", la cotización que Ana ya
+         recibió sigue diciendo la verdad de lo que se le ofreció.
+
+         · trial_days son los días de prueba DE ESTE MÓDULO EN ESTA OFERTA: 30 en Agenda, 0 en
+           Facturación DIAN. Es el campo que resuelve el requisito de que la prueba sea por módulo.
+         · max_trial_days es el tope, COPIADO. El catálogo dice que Historia clínica se prueba 30
+           días como máximo, pero eso vive en otra tabla y UNA RESTRICCIÓN NO PUEDE MIRAR OTRA TABLA:
+           sin esta copia, nada impide una oferta de 3.650 días de prueba por un error de tecleo o
+           por alguien que quiere hacer un favor. Con ella, pasarse es imposible.
+         · trial_eligibility y trial_outcome son la copia congelada de la política del catálogo el
+           día de la oferta. Permiten imprimirle al cliente, en la propia cotización, qué le pasará
+           el día 31.
+         · discount_is_conditional resuelve D-86: el descuento por permanencia NO REDUCE LA BASE DEL
+           IVA, porque la norma excluye de la base solo los descuentos "no sujetos a ninguna
+           condición", y un veinte por ciento a cambio de quedarse doce meses está condicionado por
+           definición. Sin esta marca el impuesto se liquida sobre el precio rebajado y son 816.240
+           de IVA sin liquidar en un semestre con veinte clientes rebajados. Aquí NACE la marca; que
+           llegue a la línea del contrato y al cargo es trabajo de las capas E y M.
+
+         · tier_min / tier_max (D-66 / R-PRICE-04 / R-QUOTE-09): los tramos son acumulativos, así
+           que quince usuarios contratados son trece unidades extra que se parten en dos renglones
+           -ocho a 12.000 y cinco a 9.000, 141.000-, y sin estas dos columnas el cliente ve dos
+           renglones idénticos del mismo artículo a precios distintos sin nada que explique por qué.
+           tier_min NACE EN 1 Y NUNCA VACÍO: una unicidad no restringe filas con un vacío en
+           cualquiera de sus columnas.
+         · uq_quote_lines_item_tier sustituye a "un artículo, un renglón por cotización" -que es
+           justo lo que la aritmética acumulativa tiene que romper- por "un tramo, un renglón": deja
+           pasar la partición legítima y sigue impidiendo duplicar el MISMO tramo del MISMO artículo,
+           que sí sería un cobro doble. REESCRITO PARA LA CAPA I (D-53): esta tabla nace ya con la
+           unicidad correcta, nunca existió con la vieja regla que lo prohibía. -->
+
     <changeSet id="240_create_quote_lines" author="orlando">
         <createTable tableName="quote_lines">
             <column name="id" type="BIGINT" autoIncrement="true">
@@ -42,12 +75,25 @@
                 <constraints nullable="false"/>
             </column>
             <column name="unit_amount" type="DECIMAL(19,2)"><constraints nullable="false"/></column>
+            <column name="tier_min" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tier_max" type="INT"/>
             <column name="discount_percent" type="DECIMAL(5,2)" defaultValueNumeric="0.00">
                 <constraints nullable="false"/>
             </column>
             <column name="discount_amount" type="DECIMAL(19,2)" defaultValueNumeric="0.00">
                 <constraints nullable="false"/>
             </column>
+            <column name="discount_is_conditional" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="trial_eligibility" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="trial_outcome" type="VARCHAR(20)"/>
+            <column name="trial_days" type="INT"><constraints nullable="false"/></column>
+            <column name="max_trial_days" type="INT"><constraints nullable="false"/></column>
             <column name="tax_rate" type="DECIMAL(5,2)" defaultValueNumeric="0.00">
                 <constraints nullable="false"/>
             </column>
@@ -66,8 +112,9 @@
 
         <addUniqueConstraint tableName="quote_lines" columnNames="quote_id, line_number"
                              constraintName="uq_quote_lines_number"/>
-        <addUniqueConstraint tableName="quote_lines" columnNames="quote_id, catalog_item_id"
-                             constraintName="uq_quote_lines_item"/>
+        <addUniqueConstraint tableName="quote_lines"
+                             columnNames="quote_id, catalog_item_id, tier_min"
+                             constraintName="uq_quote_lines_item_tier"/>
 
         <sql><![CDATA[
             ALTER TABLE quote_lines
@@ -84,7 +131,23 @@
                 ADD CONSTRAINT chk_quote_lines_item_type
                     CHECK (item_type IN ('MODULE','CAPACITY','ONE_TIME','BUNDLE')),
                 ADD CONSTRAINT chk_quote_lines_tax_treatment
-                    CHECK (tax_treatment IN ('TAXED','EXEMPT','EXCLUDED'))
+                    CHECK (tax_treatment IN ('TAXED','EXEMPT','EXCLUDED')),
+                ADD CONSTRAINT chk_quote_lines_trial_eligibility
+                    CHECK (trial_eligibility IN ('ELIGIBLE','NEVER_FREE')),
+                ADD CONSTRAINT chk_quote_lines_trial_policy
+                    CHECK ((trial_eligibility = 'ELIGIBLE'
+                            AND trial_outcome IS NOT NULL
+                            AND trial_outcome IN ('CONVERT_TO_PAID','LIMITED','READ_ONLY')
+                            AND max_trial_days > 0)
+                           OR (trial_eligibility = 'NEVER_FREE'
+                               AND trial_outcome IS NULL
+                               AND max_trial_days = 0 AND trial_days = 0)),
+                ADD CONSTRAINT chk_quote_lines_trial_days
+                    CHECK (trial_days >= 0 AND trial_days <= max_trial_days),
+                ADD CONSTRAINT chk_quote_lines_bundle_not_trialable
+                    CHECK (item_type <> 'BUNDLE' OR trial_eligibility = 'NEVER_FREE'),
+                ADD CONSTRAINT chk_quote_lines_tier
+                    CHECK (tier_min >= 1 AND (tier_max IS NULL OR tier_max >= tier_min))
         ]]></sql>
 
         <rollback>

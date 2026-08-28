@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- FISCAL PROPIO (ficha tax_returns). LO QUE SE DECLARO, Y HASTA CUANDO PUEDEN REVISARLO.
+         Sin company_id: son declaraciones de VetSoftware, no de la clinica.
+
+         chk_tax_returns_period impone la forma de fiscal_period_key SEGUN EL TIPO: '2026-A' para
+         renta, '2026-M03' para retencion en la fuente (mensual), '2026-B03' para ICA y para IVA
+         segun su periodicidad, cruzada por FK contra vat_filing_periods. Mezclar fiscal_period_key
+         (ascii_bin) con CONCAT(fiscal_year, ...) dentro del CHECK no da error 1267 -el resultado de
+         la funcion es mas coercible que la columna, gana ascii_bin-; 329 ya escribe exactamente esa
+         comparacion y esta aplicado.
+
+         fk_tax_returns_vat_frequency (vat_frequency_year, vat_frequency) -> vat_filing_periods
+         (fiscal_year, frequency) convierte la periodicidad del IVA en un DATO, no en una formula
+         -mismo mecanismo que fk_company_capacities_dimension (314)-. vat_frequency_year es
+         generada: NULL cuando tax_kind no es VAT, y con NULL InnoDB no comprueba la clave.
+
+         chk_tax_returns_filed hace que firmeza_until EXISTA SIEMPRE que la declaracion este
+         presentada: es la columna de la que cuelga la politica de conservacion de
+         company_usage_events (354, S7.3).
+
+         NO SE PUEDE ESCRIBIR CHECK (corrects_return_id <> id): el manual prohibe referenciar una
+         columna AUTO_INCREMENT dentro de un CHECK. Queda declarada como invariante NO garantizada
+         por la base -la sostiene el caso de uso, con su prueba de rodaja-.
+
+         uq_tax_returns_case lleva sequence_number (sin el una correccion no cabe) y
+         municipality_key -centinela, mismo motivo que withholding_rate_rules (317)-.
+         uq_tax_returns_current, via current_return_marker, es la que garantiza una sola
+         declaracion vigente por impuesto/periodo/municipio: al corregir, la anterior pasa a
+         CORRECTED y libera el hueco. -->
+    <changeSet id="351_create_tax_returns" author="orlando">
+        <createTable tableName="tax_returns">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="tax_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="fiscal_year" type="SMALLINT"><constraints nullable="false"/></column>
+            <column name="fiscal_period_key" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sequence_number" type="INT"><constraints nullable="false"/></column>
+            <column name="municipality_code" type="VARCHAR(5)"/>
+            <column name="vat_frequency" type="VARCHAR(15)"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="filed_at" type="DATETIME(6)"/>
+            <column name="filed_by_system_user_id" type="BIGINT"/>
+            <column name="receipt_ref" type="VARCHAR(100)"/>
+            <column name="file_ref" type="VARCHAR(255)"/>
+            <column name="total_generated" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_deductible" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="balance_payable" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="balance_credit" type="DECIMAL(19,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="firmeza_until" type="DATE"/>
+            <column name="corrects_return_id" type="BIGINT"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE tax_returns
+                MODIFY COLUMN fiscal_period_key VARCHAR(10)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN municipality_code VARCHAR(5)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD COLUMN municipality_key VARCHAR(5)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (COALESCE(municipality_code, '-')) STORED,
+                ADD COLUMN vat_frequency_year SMALLINT
+                    GENERATED ALWAYS AS (
+                        CASE WHEN tax_kind = 'VAT' THEN fiscal_year ELSE NULL END) STORED,
+                ADD COLUMN current_return_marker VARCHAR(45)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (
+                        CASE WHEN status IN ('DRAFT','FILED')
+                             THEN CONCAT(tax_kind, '|', fiscal_period_key, '|', municipality_key)
+                             ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_tax_returns_case
+                    UNIQUE (tax_kind, fiscal_period_key, municipality_key, sequence_number),
+                ADD CONSTRAINT uq_tax_returns_current
+                    UNIQUE (current_return_marker),
+                ADD CONSTRAINT chk_tax_returns_kind
+                    CHECK (tax_kind IN ('INCOME_TAX','VAT','ICA','WITHHOLDING')),
+                ADD CONSTRAINT chk_tax_returns_year
+                    CHECK (fiscal_year BETWEEN 2020 AND 2100),
+                ADD CONSTRAINT chk_tax_returns_sequence
+                    CHECK (sequence_number >= 1),
+                ADD CONSTRAINT chk_tax_returns_period
+                    CHECK (
+                         (tax_kind = 'INCOME_TAX'  AND fiscal_period_key = CONCAT(fiscal_year, '-A'))
+                      OR (tax_kind = 'WITHHOLDING' AND fiscal_period_key
+                              REGEXP '^[0-9]{4}-M(0[1-9]|1[0-2])$'
+                              AND LEFT(fiscal_period_key, 4) = CAST(fiscal_year AS CHAR))
+                      OR (tax_kind = 'ICA'         AND fiscal_period_key REGEXP '^[0-9]{4}-B0[1-6]$'
+                              AND LEFT(fiscal_period_key, 4) = CAST(fiscal_year AS CHAR))
+                      OR (tax_kind = 'VAT'         AND LEFT(fiscal_period_key, 4)
+                              = CAST(fiscal_year AS CHAR)
+                              AND ((vat_frequency = 'BIMONTHLY'
+                                    AND fiscal_period_key REGEXP '^[0-9]{4}-B0[1-6]$')
+                                OR (vat_frequency = 'FOURMONTHLY'
+                                    AND fiscal_period_key REGEXP '^[0-9]{4}-C0[1-3]$')
+                                OR (vat_frequency = 'ANNUAL'
+                                    AND fiscal_period_key = CONCAT(fiscal_year, '-A'))))),
+                ADD CONSTRAINT chk_tax_returns_municipality
+                    CHECK ((tax_kind =  'ICA' AND municipality_code IS NOT NULL)
+                           OR (tax_kind <> 'ICA' AND municipality_code IS NULL)),
+                ADD CONSTRAINT chk_tax_returns_vat_freq
+                    CHECK ((tax_kind =  'VAT' AND vat_frequency IS NOT NULL
+                                             AND vat_frequency IN ('BIMONTHLY','FOURMONTHLY',
+                                                                    'ANNUAL'))
+                           OR (tax_kind <> 'VAT' AND vat_frequency IS NULL)),
+                ADD CONSTRAINT chk_tax_returns_filed
+                    CHECK ((status IN ('DRAFT','ANNULLED')
+                                AND filed_at IS NULL AND filed_by_system_user_id IS NULL
+                                AND receipt_ref IS NULL AND firmeza_until IS NULL)
+                           OR (status IN ('FILED','CORRECTED')
+                                AND filed_at IS NOT NULL
+                                AND filed_by_system_user_id IS NOT NULL
+                                AND receipt_ref IS NOT NULL
+                                AND file_ref IS NOT NULL
+                                AND firmeza_until IS NOT NULL
+                                AND firmeza_until > DATE(filed_at))),
+                ADD CONSTRAINT chk_tax_returns_amounts
+                    CHECK (total_generated >= 0 AND total_deductible >= 0
+                           AND balance_payable >= 0 AND balance_credit >= 0),
+                ADD CONSTRAINT chk_tax_returns_balance
+                    CHECK (balance_payable = 0 OR balance_credit = 0),
+                ADD CONSTRAINT chk_tax_returns_correction
+                    CHECK ((sequence_number = 1 AND corrects_return_id IS NULL)
+                           OR (sequence_number > 1 AND corrects_return_id IS NOT NULL))
+        ]]></sql>
+
+        <!-- Barrido de plataforma: las que estan a punto de quedar en firme, y con ellas la
+             ventana de conservacion de company_usage_events (354). -->
+        <createIndex tableName="tax_returns" indexName="ix_tax_returns_firmeza">
+            <column name="firmeza_until"/>
+        </createIndex>
+        <createIndex tableName="tax_returns" indexName="ix_tax_returns_period">
+            <column name="fiscal_period_key"/>
+            <column name="tax_kind"/>
+        </createIndex>
+        <createIndex tableName="tax_returns" indexName="ix_tax_returns_vat_frequency">
+            <column name="vat_frequency_year"/>
+            <column name="vat_frequency"/>
+        </createIndex>
+        <createIndex tableName="tax_returns" indexName="ix_tax_returns_municipality">
+            <column name="municipality_code"/>
+        </createIndex>
+        <createIndex tableName="tax_returns" indexName="ix_tax_returns_corrects">
+            <column name="corrects_return_id"/>
+        </createIndex>
+        <createIndex tableName="tax_returns" indexName="ix_tax_returns_filed_by">
+            <column name="filed_by_system_user_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="tax_returns"
+                                 baseColumnNames="vat_frequency_year, vat_frequency"
+                                 referencedTableName="vat_filing_periods"
+                                 referencedColumnNames="fiscal_year, frequency"
+                                 constraintName="fk_tax_returns_vat_frequency"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="tax_returns"
+                                 baseColumnNames="municipality_code"
+                                 referencedTableName="cities"
+                                 referencedColumnNames="dane_code"
+                                 constraintName="fk_tax_returns_municipality"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="tax_returns"
+                                 baseColumnNames="corrects_return_id"
+                                 referencedTableName="tax_returns"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_tax_returns_corrects"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="tax_returns"
+                                 baseColumnNames="filed_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_tax_returns_filed_by"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="tax_returns"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

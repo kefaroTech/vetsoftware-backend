@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- El barrido de facturación recurrente nocturna (RunSubscriptionBillingCycleService) nace sin
+         ninguna barandilla de motor: recorre las clínicas una a una y puede morir a mitad de lote;
+         al reiniciar vuelve a pasar por las ya cobradas y las devenga otra vez, indistinguible de
+         un cargo legítimo. La única defensa hoy es RecurringChargeKey.existsRecurringCharge, un
+         SELECT justo antes del INSERT -sin nada que serialice las dos operaciones- y una consulta
+         que cualquier otra vía de escritura puede saltarse enteramente. Esta migración le da
+         respaldo de motor a esa llave, ya escrita en RecurringChargeKey.java (company_id,
+         subscription_id, subscription_item_id, service_period_start, service_period_end).
+
+         LA LLAVE LLEVA LA LÍNEA, NO EL ARTÍCULO, Y ESO YA SE CORRIGIÓ UNA VEZ (ver el javadoc de
+         RecurringChargeKey): con tramos acumulativos (subscription_items.tier_min/tier_max) un
+         mismo catalog_item_id tiene dos subscription_item_id vivos en el mismo periodo -los
+         primeros N a una tarifa y el resto a otra-. subscription_item_id entra tal cual en la
+         columna generada; agrupar por artículo en vez de por línea volvería a colapsar los dos
+         tramos y dejaría de cobrar el segundo, la mitad del recibo en silencio.
+
+         SOLO LOS CARGOS RECURRING LLEVAN ESTA LLAVE: un excedente (PRORATION), una implantación
+         (ONE_TIME) o una nota (CREDIT/DISCOUNT) no tienen esa forma, y MySQL no tiene índices
+         únicos parciales. Se emula con el mismo patrón que ya usan 106/133/144/151/152/153/154/
+         226/354: una columna GENERATED ALWAYS ... STORED que vale la concatenación de la línea y
+         el periodo solo cuando charge_type = 'RECURRING', y NULL en cualquier otro caso -MySQL
+         permite múltiples NULL en un índice único, así que los cargos no recurrentes quedan libres
+         de la restricción-. subscription_id entra en la columna aunque subscription_item_id ya lo
+         implica (fk_subscription_charges_item liga la línea a un solo contrato): es la forma
+         exacta de RecurringChargeKey y el coste de la redundancia es un puñado de bytes.
+
+         chk_subscription_charges_recurring_item es nueva y no la pidió el encargo, pero cierra un
+         agujero real en la propia llave: CONCAT(...) devuelve NULL si cualquiera de sus argumentos
+         es NULL, así que un cargo RECURRING sin subscription_item_id -hoy imposible solo porque
+         RunSubscriptionBillingCycleService y RecurringChargeKey lo exigen en código, nunca en el
+         esquema- generaría una columna NULL y se colaría por la misma rendija de "MySQL permite
+         múltiples NULL" que protege a los tipos que no llevan llave. El CHECK lo cierra sin
+         reconstruir la tabla (MySQL 8.0.16+: ADD CONSTRAINT CHECK valida en el sitio, no reescribe
+         filas -In Place: Yes, Rebuilds Table: No-, al revés que la columna generada de arriba).
+
+         COSTE DE LA RECONSTRUCCIÓN: ADD COLUMN ... GENERATED ... STORED es ALGORITHM=INPLACE con
+         Rebuilds Table: Yes -MySQL 8.0 reescribe la tabla entera para materializar el valor
+         calculado de cada fila existente-, a diferencia de un ADD COLUMN normal al final de la
+         tabla, que desde 8.0.12 es INSTANT y no toca una sola fila. INPLACE sí permite DML
+         concurrente mientras dura -no es una tabla bloqueada de punta a punta-, pero el tiempo
+         escala con el volumen: sobre las filas que hoy tenga subscription_charges en cada entorno,
+         no sobre las que tenía en 251. No se pudo medir el tamaño real de dev -este changeset no
+         consulta bases de datos vivas, por diseño-, así que la medida que sí se deja escrita es la
+         de mi contenedor MySQL desechable, que arranca vacío y aplica el changelog completo: ahí
+         el ALTER corre en milisegundos porque no hay filas que reescribir, y precisamente por eso
+         NO sirve de proxy del coste en un entorno con datos. Antes de aplicar esto en cualquier
+         entorno con subscription_charges no vacía: 1) medir con
+         `SELECT COUNT(*) FROM subscription_charges;` y con
+         `SELECT information_schema.tables.data_length, information_schema.tables.index_length
+          FROM information_schema.tables WHERE table_name = 'subscription_charges';`
+         para saber si el rebuild es de segundos o de minutos; 2) el requisito real que puede
+         bloquear el despliegue, más que el tamaño: si el bug que este changeset viene a cerrar ya
+         produjo duplicados reales antes de existir la barandilla, el propio ADD CONSTRAINT UNIQUE
+         falla con duplicate entry. Se comprueba ANTES de desplegar con
+         `SELECT company_id, subscription_id, subscription_item_id, service_period_start,
+                 service_period_end, COUNT(*)
+          FROM subscription_charges
+          WHERE charge_type = 'RECURRING'
+          GROUP BY 1, 2, 3, 4, 5
+          HAVING COUNT(*) > 1;`
+         -si devuelve filas, hay que anular (CREDIT, voidingOf) los duplicados antes de que este
+         changeset pueda aplicar, exactamente el mismo caso que documentan 106/133/144 para sus
+         propias tablas-. -->
+    <changeSet id="372_add_unique_recurring_charge_to_subscription_charges" author="orlando">
+        <sql>
+            ALTER TABLE subscription_charges
+                ADD COLUMN recurring_charge_key VARCHAR(80)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (
+                        CASE WHEN charge_type = 'RECURRING' THEN
+                            CONCAT(subscription_id, '|', subscription_item_id, '|',
+                                   service_period_start, '|', service_period_end)
+                        ELSE NULL END
+                    ) STORED,
+                ADD CONSTRAINT uq_subscription_charges_recurring
+                    UNIQUE (company_id, recurring_charge_key),
+                ADD CONSTRAINT chk_subscription_charges_recurring_item
+                    CHECK (charge_type &lt;&gt; 'RECURRING' OR subscription_item_id IS NOT NULL)
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE subscription_charges
+                    DROP CHECK chk_subscription_charges_recurring_item,
+                    DROP INDEX uq_subscription_charges_recurring,
+                    DROP COLUMN recurring_charge_key
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

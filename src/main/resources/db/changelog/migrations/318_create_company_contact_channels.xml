@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha company_contact_channels). POR DONDE SE LE PUEDE ESCRIBIR.
+         La ley solo permite contactar por los canales que el cliente autorizo, y una sola vez al
+         dia. Sin esta tabla, la cobranza no puede demostrar que uso un canal permitido, y ese
+         incumplimiento tiene sancion propia. Es la gemela de dunning_events (254): alli queda que
+         se aviso, aqui que se podia avisar.
+
+         AUTORIZAR UN PROPOSITO NO AUTORIZA LOS DEMAS. Por eso purpose es columna y no un comentario:
+         BILLING facturas y cobros, DUNNING mora, OPERATIONAL avisos del servicio, MARKETING. Cuando
+         la finalidad es comercial mandan las dos cosas a la vez -canal autorizado Y finalidad
+         autorizada-, y mezclarlas es la forma mas rapida de convertir un aviso util en una queja.
+
+         REVOCAR CIERRA LA FILA, NO LA BORRA. Hay que poder demostrar que el contacto de marzo SI
+         estaba permitido en marzo; una fila borrada demuestra lo contrario de lo que hace falta.
+
+         SIN enabled, y es una decision con motivo escrito: esto es una bitacora probatoria, y una
+         prueba que se puede desactivar no prueba nada. El cierre se escribe en revoked_at, que
+         ademas queda auditado. CON version: la fila recibe una segunda escritura declarada -la
+         revocacion-, y declararla exenta seria una exencion que miente.
+
+         primary_marker: un solo canal PRIMARIO por empresa Y PROPOSITO. Las dos columnas en el
+         indice unico, no solo la generada: con la generada sola habria un unico canal primario por
+         empresa EN TOTAL, y un correo de facturacion y un movil de mora -que son propositos
+         distintos y conviven- fallarian el segundo. Un canal revocado libera el hueco. -->
+    <changeSet id="318_create_company_contact_channels" author="orlando">
+        <createTable tableName="company_contact_channels">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="channel_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="address" type="VARCHAR(160)"><constraints nullable="false"/></column>
+            <column name="purpose" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="authorized_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="authorization_evidence" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revoked_at" type="DATETIME(6)"/>
+            <column name="revoked_reason" type="VARCHAR(255)"/>
+            <column name="is_primary" type="BOOLEAN"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="company_contact_channels" columnNames="company_id, id"
+                             constraintName="uq_company_contact_channels_company_id"/>
+
+        <sql><![CDATA[
+            ALTER TABLE company_contact_channels
+                ADD COLUMN primary_marker BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN is_primary = TRUE AND revoked_at IS NULL
+                            THEN company_id
+                            ELSE NULL
+                        END
+                    ) STORED,
+                ADD CONSTRAINT uq_company_contact_channels_primary
+                    UNIQUE (primary_marker, purpose),
+                ADD CONSTRAINT chk_company_contact_channels_type
+                    CHECK (channel_type IN ('EMAIL','SMS','WHATSAPP','PHONE','IN_APP')),
+                ADD CONSTRAINT chk_company_contact_channels_purpose
+                    CHECK (purpose IN ('BILLING','DUNNING','OPERATIONAL','MARKETING')),
+                ADD CONSTRAINT chk_company_contact_channels_revocation
+                    CHECK ((revoked_at IS NULL AND revoked_reason IS NULL)
+                           OR (revoked_at IS NOT NULL AND revoked_reason IS NOT NULL)),
+                ADD CONSTRAINT chk_company_contact_channels_revoked_after
+                    CHECK (revoked_at IS NULL OR revoked_at >= authorized_at)
+        ]]></sql>
+
+        <createIndex tableName="company_contact_channels"
+                     indexName="ix_company_contact_channels_usable">
+            <column name="company_id"/>
+            <column name="purpose"/>
+            <column name="revoked_at"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="company_contact_channels"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_company_contact_channels_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="company_contact_channels"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

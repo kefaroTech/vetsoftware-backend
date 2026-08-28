@@ -35,30 +35,45 @@
          is_sellable-, asi que esta eleccion es válida y documentada, no una
          necesidad del codigo. -->
 
+    <!-- Política de prueba de laboratorio, añadida al reescribir 229 para la capa I. Los valores
+         siguen los ejemplos del propio modelo -Historia clínica 30 días, Caja 14, Facturación DIAN
+         de pago obligatorio, y el paquete sin prueba porque un BUNDLE no se prueba como paquete
+         (D-05)-. NO SON LOS VALORES COMERCIALES REALES: el catálogo de verdad lo decide negocio y
+         sigue pendiente (D-96). Sirven para que el laboratorio ejercite las dos ramas. -->
     <changeSet id="263_seed_local_e2e_catalog_items" author="orlando" context="local,e2e">
         <sql><![CDATA[
             INSERT INTO catalog_items
                     (code, name, short_description, item_type, is_core, min_quantity,
-                     max_quantity, sort_order, status)
+                     max_quantity, sort_order, status,
+                     trial_eligibility, default_trial_days, trial_outcome, service_nature)
             SELECT seed.code, seed.name, seed.short_description, seed.item_type,
                    seed.is_core, seed.min_quantity, seed.max_quantity, seed.sort_order,
-                   'ACTIVE'
+                   'ACTIVE',
+                   seed.trial_eligibility, seed.default_trial_days, seed.trial_outcome,
+                   'SOFTWARE_LICENSING'
               FROM (
                 SELECT 'CORE' AS code, 'Nucleo: clientes y mascotas' AS name,
                        'Gestion de clientes y sus mascotas (laboratorio)' AS short_description,
                        'MODULE' AS item_type, TRUE AS is_core, 1 AS min_quantity,
-                       1 AS max_quantity, 10 AS sort_order
+                       1 AS max_quantity, 10 AS sort_order,
+                       'ELIGIBLE' AS trial_eligibility, 30 AS default_trial_days,
+                       'LIMITED' AS trial_outcome
                 UNION ALL SELECT 'SCHEDULING', 'Agenda de citas',
-                       'Agenda y citas (laboratorio)', 'MODULE', FALSE, 1, 1, 20
+                       'Agenda y citas (laboratorio)', 'MODULE', FALSE, 1, 1, 20,
+                       'ELIGIBLE', 30, 'LIMITED'
                 UNION ALL SELECT 'CLINICAL_HISTORY', 'Historia clinica y consultas',
-                       'Historia clinica (laboratorio)', 'MODULE', FALSE, 1, 1, 30
+                       'Historia clinica (laboratorio)', 'MODULE', FALSE, 1, 1, 30,
+                       'ELIGIBLE', 30, 'LIMITED'
                 UNION ALL SELECT 'CASH_REGISTER', 'Caja y punto de venta',
-                       'Caja (laboratorio)', 'MODULE', FALSE, 1, 1, 50
+                       'Caja (laboratorio)', 'MODULE', FALSE, 1, 1, 50,
+                       'ELIGIBLE', 14, 'READ_ONLY'
                 UNION ALL SELECT 'ELECTRONIC_INVOICING', 'Facturacion electronica DIAN',
-                       'Facturacion electronica (laboratorio)', 'MODULE', FALSE, 1, 1, 80
+                       'Facturacion electronica (laboratorio)', 'MODULE', FALSE, 1, 1, 80,
+                       'NEVER_FREE', NULL, NULL
                 UNION ALL SELECT 'PACK_CLINIC', 'Pack Clinica',
                        'Nucleo + agenda + historia clinica + caja (laboratorio)',
-                       'BUNDLE', FALSE, 1, 1, 320
+                       'BUNDLE', FALSE, 1, 1, 320,
+                       'NEVER_FREE', NULL, NULL
               ) seed
              WHERE NOT EXISTS (SELECT 1 FROM catalog_items x WHERE x.code = seed.code);
         ]]></sql>

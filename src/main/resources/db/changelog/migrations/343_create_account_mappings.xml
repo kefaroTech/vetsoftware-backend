@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA M/N (ficha account_mappings). QUE CUENTA MUEVE CADA COSA, GLOBAL Y SIN EMPRESA.
+         mapping_key NUNCA NULA: donde no hay subclave la siembra escribe '-'. Una columna
+         nulable dentro de una unicidad no restringe nada.
+
+         mapping_kind usa la lista de DOCE valores de "los codigos de cada lista cerrada" del
+         documento maestro, no la de nueve de la prosa de la capa N: las dos son incompatibles y
+         la segunda es la que corrigio la falta de cartera.
+
+         TRES CENTINELAS Y DOS MARCADORES, NINGUNO EN EL DOCUMENTO ORIGINAL. La unicidad propuesta
+         (mapping_kind, mapping_key, catalog_item_id, charge_type, tax_treatment, valid_from)
+         tiene tres columnas nulables dentro: en un indice unico dos vacios no chocan, asi que esa
+         clave no restringe nada para nueve de las doce clases. catalog_item_key, charge_type_key
+         y tax_treatment_key son el centinela (COALESCE a 0 o '-') que la hace real.
+         current_mapping_marker es el segundo marcador -no estaba en el documento- y es lo que
+         impide dos mapeos vigentes para el mismo supuesto: sin el, la consulta devuelve dos
+         cuentas y el asiento toma la primera que llegue.
+
+         deferred_account_code SI es clave foranea de verdad -sus dos hermanas ya lo eran-.
+         chk_account_mappings_refine impide que un impuesto, una comision o un banco -que no
+         tienen articulo- lleven catalog_item_id, charge_type o tax_treatment. -->
+    <changeSet id="343_create_account_mappings" author="orlando">
+        <createTable tableName="account_mappings">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="mapping_kind" type="VARCHAR(25)"><constraints nullable="false"/></column>
+            <column name="mapping_key" type="VARCHAR(60)"><constraints nullable="false"/></column>
+            <column name="catalog_item_id" type="BIGINT"/>
+            <column name="charge_type" type="VARCHAR(20)"/>
+            <column name="tax_treatment" type="VARCHAR(20)"/>
+            <column name="debit_account_code" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="credit_account_code" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deferred_account_code" type="VARCHAR(10)"/>
+            <column name="valid_from" type="DATE"><constraints nullable="false"/></column>
+            <column name="valid_to" type="DATE"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE account_mappings
+                MODIFY COLUMN mapping_key VARCHAR(60)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN debit_account_code VARCHAR(10)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN credit_account_code VARCHAR(10)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN deferred_account_code VARCHAR(10)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD COLUMN catalog_item_key BIGINT
+                    GENERATED ALWAYS AS (COALESCE(catalog_item_id, 0)) STORED,
+                ADD COLUMN charge_type_key VARCHAR(20)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (COALESCE(charge_type, '-')) STORED,
+                ADD COLUMN tax_treatment_key VARCHAR(20)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (COALESCE(tax_treatment, '-')) STORED,
+                ADD COLUMN current_mapping_marker VARCHAR(150)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (
+                        CASE WHEN valid_to IS NULL
+                             THEN CONCAT(mapping_kind, '|', mapping_key, '|',
+                                         COALESCE(catalog_item_id, 0), '|',
+                                         COALESCE(charge_type, '-'), '|',
+                                         COALESCE(tax_treatment, '-'))
+                             ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_account_mappings_case
+                    UNIQUE (mapping_kind, mapping_key, catalog_item_key,
+                            charge_type_key, tax_treatment_key, valid_from),
+                ADD CONSTRAINT uq_account_mappings_current
+                    UNIQUE (current_mapping_marker),
+                ADD CONSTRAINT chk_account_mappings_kind
+                    CHECK (mapping_kind IN (
+                        'RECEIVABLE','DEFERRED_REVENUE','REVENUE','VAT_PAYABLE','VAT_CREDITABLE',
+                        'CASH_IN_TRANSIT','BANK','GATEWAY_FEE','WITHHOLDING_ASSET',
+                        'FINANCIAL_TAX','PENALTY_REVENUE','CUSTOMER_CREDIT')),
+                ADD CONSTRAINT chk_account_mappings_key
+                    CHECK (mapping_key <> ''),
+                ADD CONSTRAINT chk_account_mappings_refine
+                    CHECK (mapping_kind IN ('REVENUE','DEFERRED_REVENUE')
+                           OR (catalog_item_id IS NULL AND charge_type IS NULL
+                               AND tax_treatment IS NULL)),
+                ADD CONSTRAINT chk_account_mappings_deferred
+                    CHECK (deferred_account_code IS NULL
+                           OR mapping_kind IN ('REVENUE','DEFERRED_REVENUE')),
+                ADD CONSTRAINT chk_account_mappings_validity
+                    CHECK (valid_to IS NULL OR valid_to > valid_from)
+        ]]></sql>
+
+        <createIndex tableName="account_mappings" indexName="ix_account_mappings_current">
+            <column name="mapping_kind"/>
+            <column name="valid_to"/>
+        </createIndex>
+        <createIndex tableName="account_mappings" indexName="ix_account_mappings_item">
+            <column name="catalog_item_id"/>
+        </createIndex>
+        <createIndex tableName="account_mappings" indexName="ix_account_mappings_debit">
+            <column name="debit_account_code"/>
+        </createIndex>
+        <createIndex tableName="account_mappings" indexName="ix_account_mappings_credit">
+            <column name="credit_account_code"/>
+        </createIndex>
+        <createIndex tableName="account_mappings" indexName="ix_account_mappings_deferred">
+            <column name="deferred_account_code"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="account_mappings"
+                                 baseColumnNames="catalog_item_id"
+                                 referencedTableName="catalog_items"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_account_mappings_item"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="account_mappings"
+                                 baseColumnNames="debit_account_code"
+                                 referencedTableName="accounting_accounts"
+                                 referencedColumnNames="code"
+                                 constraintName="fk_account_mappings_debit"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="account_mappings"
+                                 baseColumnNames="credit_account_code"
+                                 referencedTableName="accounting_accounts"
+                                 referencedColumnNames="code"
+                                 constraintName="fk_account_mappings_credit"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="account_mappings"
+                                 baseColumnNames="deferred_account_code"
+                                 referencedTableName="accounting_accounts"
+                                 referencedColumnNames="code"
+                                 constraintName="fk_account_mappings_deferred"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="account_mappings"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

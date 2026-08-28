@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CIERRA EL HUECO QUE 361 DEJO ESCRITO A PROPOSITO: "NO se siembra INCOME_TAX para
+         TECHNICAL_SERVICE ni CONSULTING (...) no se pidio y no hay cifra de base minima
+         confirmada para esos dos supuestos". Sin estas dos filas,
+         ResolveWithholdingRateRuleService.resolve(INCOME_TAX, TECHNICAL_SERVICE, ...) y
+         resolve(INCOME_TAX, CONSULTING, ...) lanzan NoEffectiveWithholdingRateRuleException para
+         CUALQUIER factura de servicio tecnico o de consultoria: hoy solo se puede calcular la
+         retencion de renta esperada de una factura de licenciamiento de software.
+
+         LA CIFRA SI SE PUDO CONFIRMAR ESTA SESION, CON INTERNET POR CURL, contra el texto
+         oficial: DUR 1625 de 2016, compilacion juridica de la DIAN publicada en
+         suin-juriscol.gov.co (Sistema Unico de Informacion Normativa - Funcion Publica),
+         consultada por HTTP en esta misma sesion
+         (viewDocument.asp?ruta=Decretos/30033678, articulo 1.2.4.3.1). El PARRAFO completo del
+         articulo 1.2.4.3.1 ("RETENCION EN LA FUENTE POR HONORARIOS Y COMISIONES PARA
+         DECLARANTES") dice, literal: "Los pagos o abonos en cuenta que se realicen a
+         contribuyentes con residencia o domicilio en Colombia obligados a presentar declaracion
+         del Impuesto sobre la renta y complementario en el pais, por actividades de analisis,
+         diseno, desarrollo, implementacion, mantenimiento, ajustes, pruebas, suministro y
+         documentacion, fases necesarias en la elaboracion de programas de informatica, sean o no
+         personalizados, asi como el diseno de paginas web y consultoria en programas de
+         informatica, estan sometidos a retencion en la fuente a la tarifa del tres punto cinco
+         por ciento (3.5%) del respectivo pago o abono en cuenta. En las mismas condiciones, se
+         aplicara dicha tarifa en los servicios de licenciamiento y derecho de uso del software."
+
+         UN SOLO PARRAFO, LAS TRES NATURALEZAS DE SERVICIO DE ESTE CATALOGO -y es lo que 361 no
+         tenia confirmado y este changeset si-: "servicios de licenciamiento y derecho de uso del
+         software" es SOFTWARE_LICENSING, ya sembrado en 361 con esta misma tarifa (3,5%, la
+         cifra ya coincidia y queda confirmada por la misma fuente). "Consultoria en programas de
+         informatica" es exactamente CONSULTING -mismo verbo que 361 uso para asignar la tarifa de
+         ICA de "consultoria informatica" a este valor del enum-. "Desarrollo (...) asi como el
+         diseno de paginas web" es TECHNICAL_SERVICE -361 lo asigno a "desarrollo de sistemas
+         informaticos, alojamiento y portales web" para ICA; el parrafo nombra literalmente
+         "desarrollo" y "diseno de paginas web", que es la mayor parte de esa definicion. La unica
+         palabra de la definicion de 361 que el parrafo NO nombra es "alojamiento" (hosting): se
+         asume incluido en el mismo supuesto por ser parte indivisible del mismo servicio de
+         desarrollo/portal web que si esta nombrado, no porque haya una cita textual para
+         "alojamiento" en particular -queda dicho aqui para que quede claro que es la unica
+         palabra sin cita literal directa-.
+
+         SIN CUANTIA MINIMA, POR LA MISMA RAZON QUE 361 SUSTENTO PARA SOFTWARE_LICENSING: el
+         parrafo del art. 1.2.4.3.1 no remite a ninguna base minima -a diferencia del regimen
+         general de "servicios" (4 UVT, art. 392 ET y la doctrina de la DIAN sobre cuantias
+         minimas), este parrafo especifico no la menciona en ningun punto-, asi que se retiene
+         desde el primer peso: minimum_base_uvt = 0, valor explicitamente valido segun
+         WithholdingRateRule.validateMinimumBase (acepta cero, no lo trata como ausencia).
+
+         MISMA valid_from QUE 361 (2026-01-01): no es una tarifa nueva ni un cambio de vigencia,
+         es la misma norma sembrada tarde para dos naturalezas de servicio que ya estaban
+         vigentes desde entonces. -->
+    <changeSet id="363_seed_income_tax_technical_service_consulting" author="orlando">
+        <insert tableName="withholding_rate_rules">
+            <column name="withholding_type" value="INCOME_TAX"/>
+            <column name="service_nature" value="TECHNICAL_SERVICE"/>
+            <column name="rate_percent" valueNumeric="3.500000"/>
+            <column name="minimum_base_uvt" valueNumeric="0.00"/>
+            <column name="legal_reference"
+                    value="Art. 1.2.4.3.1 DUR 1625/2016, paragrafo (compilacion DIAN, suin-juriscol.gov.co): desarrollo de programas de informatica y diseno de paginas web, 3,5%, SIN cuantia minima."/>
+            <column name="valid_from" valueDate="2026-01-01"/>
+        </insert>
+        <insert tableName="withholding_rate_rules">
+            <column name="withholding_type" value="INCOME_TAX"/>
+            <column name="service_nature" value="CONSULTING"/>
+            <column name="rate_percent" valueNumeric="3.500000"/>
+            <column name="minimum_base_uvt" valueNumeric="0.00"/>
+            <column name="legal_reference"
+                    value="Art. 1.2.4.3.1 DUR 1625/2016, paragrafo (compilacion DIAN, suin-juriscol.gov.co): consultoria en programas de informatica, 3,5%, SIN cuantia minima."/>
+            <column name="valid_from" valueDate="2026-01-01"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="withholding_rate_rules">
+                <where>withholding_type = 'INCOME_TAX' AND service_nature = 'TECHNICAL_SERVICE'
+                       AND municipality_code IS NULL AND valid_from = '2026-01-01'</where>
+            </delete>
+            <delete tableName="withholding_rate_rules">
+                <where>withholding_type = 'INCOME_TAX' AND service_nature = 'CONSULTING'
+                       AND municipality_code IS NULL AND valid_from = '2026-01-01'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

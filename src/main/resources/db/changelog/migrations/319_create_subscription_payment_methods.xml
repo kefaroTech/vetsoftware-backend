@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- CAPA K (ficha subscription_payment_methods). LA AUTORIZACION PARA COBRARLE.
+         El modelo registra pagos que YA OCURRIERON, pero no guarda con que se cobra ni si el
+         cliente sigue autorizando que se le cobre. La consecuencia es doble y las dos son caras:
+         una tarjeta vencida y una domiciliacion que el cliente revoco en su banco se ven
+         EXACTAMENTE IGUAL que un impago voluntario, y las dos arrancan la cobranza contra alguien
+         que no ha hecho nada mal.
+
+         NUNCA EL NUMERO DE LA TARJETA. Solo el testigo que devuelve la pasarela. Y last_four y
+         brand, que es lo justo para que el cliente reconozca cual es y para avisarle ANTES de que
+         se venza, en vez de descubrirlo con el cobro rechazado.
+
+         EL MANDATO ES LO QUE HACE FALTA PROBAR. La ley exige autorizacion expresa -el silencio no
+         vale- y permite revocar el debito automatico en cualquier momento y sin justificar. Una
+         revocacion NO ES UNA MORA: es el fin del mandato, y el esquema tiene que distinguirlas o
+         el proceso de cobranza no puede. Por eso mandate_evidence es obligatorio: sin constancia,
+         la autorizacion es una afirmacion propia.
+
+         method_kind cerrado a CARD y PSE. La lista de la ficha enumeraba tambien transferencia y
+         efectivo, que D-48 prohibe EXPRESAMENTE; un valor que la propia decision prohibe es una
+         puerta abierta esperando a que alguien la use. Aqui si se puede cerrar -la tabla nace hoy-
+         a diferencia de chk_subscription_payments_method, donde estrechar la lista habria roto los
+         enums del dominio.
+         expires_on solo tiene sentido en tarjeta: un debito PSE no caduca. El CHECK lo impone en
+         vez de dejar una columna que unos rellenan y otros no.
+
+         default_marker: un solo medio por defecto y por empresa, Y SOLO SI SU MANDATO SIGUE VIVO.
+         Un medio revocado libera el hueco automaticamente, que es justo lo que hace falta el dia
+         que el cliente cambia de tarjeta. -->
+    <changeSet id="319_create_subscription_payment_methods" author="orlando">
+        <createTable tableName="subscription_payment_methods">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="method_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="gateway" type="VARCHAR(40)"><constraints nullable="false"/></column>
+            <column name="token" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="brand" type="VARCHAR(30)"/>
+            <column name="last_four" type="VARCHAR(4)"/>
+            <column name="expires_on" type="DATE"/>
+            <column name="mandate_status" type="VARCHAR(20)" defaultValue="ACTIVE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mandate_evidence" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="authorized_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="revoked_at" type="DATETIME(6)"/>
+            <column name="revoked_reason" type="VARCHAR(255)"/>
+            <column name="is_default" type="BOOLEAN"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="subscription_payment_methods" columnNames="company_id, id"
+                             constraintName="uq_subscription_payment_methods_company_id"/>
+
+        <sql><![CDATA[
+            ALTER TABLE subscription_payment_methods
+                MODIFY COLUMN gateway VARCHAR(40)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN token VARCHAR(255)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN last_four VARCHAR(4)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD COLUMN default_marker BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN is_default = TRUE AND mandate_status = 'ACTIVE'
+                            THEN company_id
+                            ELSE NULL
+                        END
+                    ) STORED,
+                ADD CONSTRAINT uq_subscription_payment_methods_default
+                    UNIQUE (default_marker),
+                ADD CONSTRAINT uq_subscription_payment_methods_token
+                    UNIQUE (gateway, token),
+                ADD CONSTRAINT chk_subscription_payment_methods_kind
+                    CHECK (method_kind IN ('CARD','PSE')),
+                ADD CONSTRAINT chk_subscription_payment_methods_mandate_status
+                    CHECK (mandate_status IN ('ACTIVE','REVOKED','EXPIRED')),
+                ADD CONSTRAINT chk_subscription_payment_methods_card_shape
+                    CHECK ((method_kind = 'CARD'
+                            AND brand IS NOT NULL AND last_four IS NOT NULL
+                            AND expires_on IS NOT NULL)
+                           OR (method_kind = 'PSE'
+                            AND brand IS NULL AND last_four IS NULL AND expires_on IS NULL)),
+                ADD CONSTRAINT chk_subscription_payment_methods_last_four
+                    CHECK (last_four IS NULL OR last_four REGEXP '^[0-9]{4}$'),
+                ADD CONSTRAINT chk_subscription_payment_methods_revocation
+                    CHECK ((mandate_status <> 'REVOKED'
+                            AND revoked_at IS NULL AND revoked_reason IS NULL)
+                           OR (mandate_status = 'REVOKED'
+                            AND revoked_at IS NOT NULL AND revoked_reason IS NOT NULL
+                            AND revoked_at >= authorized_at))
+        ]]></sql>
+
+        <createIndex tableName="subscription_payment_methods"
+                     indexName="ix_subscription_payment_methods_mandate">
+            <column name="company_id"/>
+            <column name="mandate_status"/>
+        </createIndex>
+        <createIndex tableName="subscription_payment_methods"
+                     indexName="ix_subscription_payment_methods_expiring">
+            <column name="expires_on"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="subscription_payment_methods"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_subscription_payment_methods_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="subscription_payment_methods"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

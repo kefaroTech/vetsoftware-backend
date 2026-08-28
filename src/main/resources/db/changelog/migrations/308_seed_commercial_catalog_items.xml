@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ====================================================================================
+         SIEMBRA DEL CATÁLOGO COMERCIAL REAL — 26 artículos. Cierra D-96.
+         SIN `context`, Y ESO ES LA RAZÓN DE SER DE ESTE CHANGESET.
+
+         Los tres changesets que hoy siembran catálogo comercial -263, 264 y 265- llevan
+         context="local,e2e" y por lo tanto NUNCA se aplican en desarrollo ni en producción
+         (application.yml fija `contexts: production`). La consecuencia medida es que el catálogo
+         real hay que teclearlo artículo por artículo desde la consola de plataforma, en cada
+         entorno, sin exportar ni importar: los entornos divergen y NO HAY NADA QUE LO DETECTE
+         -la lista de comprobación de la consola son siete consultas desde el navegador del
+         operador, no una sonda de servidor, así que un despliegue arranca sano con el catálogo
+         vacío y nadie se entera hasta que alguien abre esa pantalla-.
+
+         Este changeset y los cinco siguientes (309-313) se aplican en TODOS los entornos.
+
+         CÓMO SE RECONCILIA CON EL LABORATORIO. En local y e2e ya existen ocho de estos códigos,
+         sembrados con valores de laboratorio por 263 (CORE, SCHEDULING, CLINICAL_HISTORY,
+         CASH_REGISTER, ELECTRONIC_INVOICING, PACK_CLINIC) y por 265 (CAPACITY_BRANCH,
+         CAPACITY_USER). No se borran ni se duplican: el INSERT inserta lo que falta y el UPDATE
+         posterior SOBRESCRIBE los valores de laboratorio con los comerciales, conservando el `id`
+         -y con él todas las claves foráneas que ya apuntan a esas filas desde catalog_prices,
+         quote_lines y subscription_items-. A partir de aquí local, e2e, desarrollo y producción
+         tienen el MISMO catálogo, que es exactamente lo que 263/264/265 no podían dar.
+
+         El UPDATE corre siempre, también sobre las filas recién insertadas: es un único paso de
+         convergencia, no un bucle, y mover `version` en un UPDATE masivo es la disciplina de la
+         casa. La alternativa -comparar columna a columna para no tocar lo que ya coincide- son
+         doce comparaciones por fila que no compran nada y que se olvidan al añadir una columna.
+
+         LO QUE NO SE PUEDE COMPROBAR AQUÍ Y BAJA A PRUEBA (R-CAT-09): que las dependencias de 309
+         no formen ciclos. Verificado a mano sobre las 13 filas: las cadenas más largas son
+         EXTRA_STORAGE -> LAB_IMAGING -> CLINICAL_HISTORY y PURCHASES -> INVENTORY, y
+         CASH_REGISTER, CLINICAL_HISTORY e INVENTORY no tienen ningún REQUIRES de salida.
+
+         TRES ARTÍCULOS LLEVAN is_core = TRUE, NO UNO. CORE, CAPACITY_USER y CAPACITY_BRANCH. No es
+         una elección comercial: PlatformCatalogTemplateJpaRepository.findInitialCapacityTemplates
+         (líneas 104-140) usa `is_core` como PREDICADO DE CONJUNTO -«forma parte del mínimo
+         estructural»- y exige artículos CAPACITY con is_core = TRUE, capacity_unit no nula, status
+         ACTIVE y enabled TRUE, con tramo publicado para el ciclo pedido. Si falta cualquiera de las
+         dos capacidades, CreateInitialSubscriptionService no firma y POST /api/v1/register
+         devuelve PLATFORM_CATALOG_NOT_CONFIGURED: el alta de la empresa falla ENTERA, no la
+         funcionalidad de suscripción. Es el arreglo de #490 y la corrección más importante frente
+         al documento de semillas, que solo marcaba CORE.
+
+         CAPACITY_TERMINAL existe y el documento no lo tenía. Sin él, una clínica que contrata Caja
+         tiene techo cero de terminales y no puede crear ni la primera: CapacityGrantLine.ceiling()
+         = included_quantity + quantity y no hay ninguna otra fila que aporte. Va a precio 0 y con
+         REQUIRES CASH_REGISTER (309), no is_core: no es mínimo estructural, es la unidad incluida
+         del módulo de caja.
+
+         POLÍTICA DE PRUEBA. chk_catalog_items_trial_policy es un arco exclusivo: ELIGIBLE exige
+         default_trial_days > 0 y trial_outcome; NEVER_FREE exige los DOS en NULL. Por eso donde la
+         especificación escribe «NEVER_FREE / 0 días / CONVERT_TO_PAID» aquí van NULL y NULL: el
+         desenlace de una prueba que no existe no es un dato, es una contradicción que el motor
+         rechaza. Los cuatro EXTRA_* y los tres paquetes son NEVER_FREE -la capacidad extra es la
+         palanca de monetización entera, y un paquete probable regalaría la facturación electrónica
+         que lleva dentro (D-05)-.
+
+         service_nature va 'SOFTWARE_LICENSING' y NO 'LICENSING': chk_catalog_items_service_nature
+         (229) fija la lista cerrada en SOFTWARE_LICENSING / TECHNICAL_SERVICE / CONSULTING, y esa
+         lista tiene que coincidir al carácter con la de la tarifa de retención -si divergen, la
+         búsqueda devuelve vacío, la retención esperada sale cero y NO HAY ERROR-.
+         ==================================================================================== -->
+
+    <changeSet id="308_seed_commercial_catalog_items" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO catalog_items
+                    (code, name, short_description, item_type, capacity_unit, is_core,
+                     min_quantity, max_quantity, sort_order, status,
+                     trial_eligibility, default_trial_days, trial_outcome, service_nature)
+            SELECT seed.code, seed.name, seed.short_description, seed.item_type,
+                   seed.capacity_unit, seed.is_core, seed.min_quantity, seed.max_quantity,
+                   seed.sort_order, 'ACTIVE',
+                   seed.trial_eligibility, seed.default_trial_days, seed.trial_outcome,
+                   seed.service_nature
+              FROM (
+                SELECT 'CORE' AS code,
+                       'Núcleo: clientes y mascotas' AS name,
+                       'Clientes, mascotas y administración de la propia cuenta' AS short_description,
+                       'MODULE' AS item_type, CAST(NULL AS CHAR(30)) AS capacity_unit,
+                       TRUE AS is_core, 1 AS min_quantity, 1 AS max_quantity, 10 AS sort_order,
+                       'ELIGIBLE' AS trial_eligibility, 30 AS default_trial_days,
+                       'LIMITED' AS trial_outcome, 'SOFTWARE_LICENSING' AS service_nature
+                UNION ALL SELECT 'SCHEDULING', 'Agenda de citas',
+                       'Agenda, citas y recordatorios', 'MODULE', NULL,
+                       FALSE, 1, 1, 20, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'Historia clínica y consultas',
+                       'Historia clínica del paciente y catálogo de medicamentos', 'MODULE', NULL,
+                       FALSE, 1, 1, 30, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'VACCINATION_DEWORMING', 'Vacunación y desparasitación',
+                       'Esquemas de vacunación y desparasitación con sus refuerzos', 'MODULE', NULL,
+                       FALSE, 1, 1, 35, 'ELIGIBLE', 30, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'HOSPITALIZATION', 'Hospitalización',
+                       'Ingreso, evolución y alta del paciente hospitalizado', 'MODULE', NULL,
+                       FALSE, 1, 1, 40, 'ELIGIBLE', 30, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'SURGERY', 'Cirugía',
+                       'Programación y registro de procedimientos quirúrgicos', 'MODULE', NULL,
+                       FALSE, 1, 1, 45, 'ELIGIBLE', 30, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'LAB_IMAGING', 'Laboratorio e imagen diagnóstica',
+                       'Órdenes, resultados y archivos de laboratorio e imagen', 'MODULE', NULL,
+                       FALSE, 1, 1, 50, 'ELIGIBLE', 30, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'GROOMING', 'Spa, estética y guardería',
+                       'Baños, estética y guardería por días', 'MODULE', NULL,
+                       FALSE, 1, 1, 55, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'SERVICES', 'Servicios, tarifas y promociones',
+                       'Catálogo de servicios con sus tarifas y promociones', 'MODULE', NULL,
+                       FALSE, 1, 1, 60, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'CASH_REGISTER', 'Caja y punto de venta',
+                       'Punto de venta, arqueo de caja e impuestos', 'MODULE', NULL,
+                       FALSE, 1, 1, 65, 'ELIGIBLE', 14, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'INVENTORY', 'Inventario y kardex',
+                       'Existencias, kardex y movimientos de mercancía', 'MODULE', NULL,
+                       FALSE, 1, 1, 70, 'ELIGIBLE', 14, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'PURCHASES', 'Compras y proveedores',
+                       'Órdenes de compra, proveedores y recepción de mercancía', 'MODULE', NULL,
+                       FALSE, 1, 1, 75, 'ELIGIBLE', 14, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'OPEN_ACCOUNTS', 'Cuentas abiertas y cartera',
+                       'Cuentas abiertas por cliente y cartera pendiente', 'MODULE', NULL,
+                       FALSE, 1, 1, 80, 'ELIGIBLE', 14, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'ELECTRONIC_INVOICING', 'Facturación electrónica DIAN',
+                       'Emisión y transmisión de la factura electrónica de venta', 'MODULE', NULL,
+                       FALSE, 1, 1, 85, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'CAPACITY_USER', 'Usuario incluido',
+                       'Los usuarios que trae el núcleo sin coste', 'CAPACITY', 'USER',
+                       TRUE, 1, 1, 110, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'CAPACITY_BRANCH', 'Sede incluida',
+                       'La sede que trae el núcleo sin coste', 'CAPACITY', 'BRANCH',
+                       TRUE, 1, 1, 111, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'CAPACITY_TERMINAL', 'Terminal de caja incluida',
+                       'La terminal de caja que trae el módulo de Caja sin coste',
+                       'CAPACITY', 'TERMINAL',
+                       FALSE, 1, 1, 112, 'ELIGIBLE', 14, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'EXTRA_USER', 'Usuario adicional',
+                       'Cada usuario por encima de los incluidos', 'CAPACITY', 'USER',
+                       FALSE, 0, 200, 120, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'EXTRA_BRANCH', 'Sede adicional',
+                       'Cada sede por encima de la incluida', 'CAPACITY', 'BRANCH',
+                       FALSE, 0, 50, 125, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'EXTRA_TERMINAL', 'Terminal de caja adicional',
+                       'Cada punto de cobro simultáneo por encima del incluido',
+                       'CAPACITY', 'TERMINAL',
+                       FALSE, 0, 100, 130, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'EXTRA_STORAGE', 'Almacenamiento adicional (GB)',
+                       'Cada gigabyte de archivos por encima del incluido',
+                       'CAPACITY', 'STORAGE_GB',
+                       FALSE, 0, 5000, 135, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'ONBOARDING', 'Implantación y capacitación',
+                       'Puesta en marcha y capacitación del equipo', 'ONE_TIME', NULL,
+                       FALSE, 1, 1, 210, 'NEVER_FREE', NULL, NULL, 'TECHNICAL_SERVICE'
+                UNION ALL SELECT 'DATA_MIGRATION', 'Migración de datos desde otro sistema',
+                       'Traslado de clientes, mascotas e historia desde otro sistema',
+                       'ONE_TIME', NULL,
+                       FALSE, 1, 1, 220, 'NEVER_FREE', NULL, NULL, 'TECHNICAL_SERVICE'
+                UNION ALL SELECT 'PACK_SPA', 'Pack Spa',
+                       'Núcleo, agenda, servicios, spa y caja', 'BUNDLE', NULL,
+                       FALSE, 1, 1, 310, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'PACK_CLINIC', 'Pack Clínica',
+                       'Núcleo, agenda, historia clínica, vacunación y caja', 'BUNDLE', NULL,
+                       FALSE, 1, 1, 320, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'PACK_FULL', 'Pack Clínica completa',
+                       'Todo el producto: quince piezas enumeradas, sin anidar paquetes',
+                       'BUNDLE', NULL,
+                       FALSE, 1, 1, 330, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+              ) seed
+             WHERE NOT EXISTS (SELECT 1 FROM catalog_items x WHERE x.code = seed.code);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM catalog_items
+                 WHERE code IN ('CORE','SCHEDULING','CLINICAL_HISTORY','VACCINATION_DEWORMING',
+                                'HOSPITALIZATION','SURGERY','LAB_IMAGING','GROOMING','SERVICES',
+                                'CASH_REGISTER','INVENTORY','PURCHASES','OPEN_ACCOUNTS',
+                                'ELECTRONIC_INVOICING','CAPACITY_USER','CAPACITY_BRANCH',
+                                'CAPACITY_TERMINAL','EXTRA_USER','EXTRA_BRANCH','EXTRA_TERMINAL',
+                                'EXTRA_STORAGE','ONBOARDING','DATA_MIGRATION','PACK_SPA',
+                                'PACK_CLINIC','PACK_FULL');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Convergencia: sobrescribe con los valores comerciales los ocho códigos que 263 y 265
+         sembraron con valores de laboratorio en local/e2e. En desarrollo y en producción, donde
+         esos changesets nunca corrieron, este UPDATE toca las 26 filas recién insertadas y las deja
+         idénticas -es idempotente por construcción-, salvo `version`, que sube una vez.
+
+         `status` y `enabled` se fijan también aquí a propósito: una fila de laboratorio dejada en
+         DEPRECATED o en enabled = FALSE por un experimento local rompería las dos consultas del
+         mínimo estructural, que exigen ACTIVE y enabled = TRUE, y el síntoma sería un
+         PLATFORM_CATALOG_NOT_CONFIGURED que nadie relacionaría con esto.
+
+         OJO AL ORDEN DE LAS COLUMNAS EN EL SET: `capacity_unit` se asigna a la vez que `item_type`,
+         y chk_catalog_items_capacity_unit los ata (CAPACITY exige unidad, el resto la prohíbe).
+         MySQL evalúa el CHECK sobre la fila COMPLETA ya modificada, no columna a columna, así que
+         convertir CAPACITY_USER de laboratorio -que ya era CAPACITY- no puede pasar por un estado
+         intermedio inválido. -->
+    <changeSet id="308_converge_commercial_catalog_items" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_items ci
+              JOIN (
+                SELECT 'CORE' AS code, 'Núcleo: clientes y mascotas' AS name,
+                       'MODULE' AS item_type, CAST(NULL AS CHAR(30)) AS capacity_unit,
+                       TRUE AS is_core, 1 AS min_quantity, 1 AS max_quantity, 10 AS sort_order,
+                       'ELIGIBLE' AS trial_eligibility, 30 AS default_trial_days,
+                       'LIMITED' AS trial_outcome, 'SOFTWARE_LICENSING' AS service_nature
+                UNION ALL SELECT 'SCHEDULING', 'Agenda de citas', 'MODULE', NULL,
+                       FALSE, 1, 1, 20, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'Historia clínica y consultas', 'MODULE', NULL,
+                       FALSE, 1, 1, 30, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'VACCINATION_DEWORMING', 'Vacunación y desparasitación',
+                       'MODULE', NULL,
+                       FALSE, 1, 1, 35, 'ELIGIBLE', 30, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'HOSPITALIZATION', 'Hospitalización', 'MODULE', NULL,
+                       FALSE, 1, 1, 40, 'ELIGIBLE', 30, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'SURGERY', 'Cirugía', 'MODULE', NULL,
+                       FALSE, 1, 1, 45, 'ELIGIBLE', 30, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'LAB_IMAGING', 'Laboratorio e imagen diagnóstica', 'MODULE', NULL,
+                       FALSE, 1, 1, 50, 'ELIGIBLE', 30, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'GROOMING', 'Spa, estética y guardería', 'MODULE', NULL,
+                       FALSE, 1, 1, 55, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'SERVICES', 'Servicios, tarifas y promociones', 'MODULE', NULL,
+                       FALSE, 1, 1, 60, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'CASH_REGISTER', 'Caja y punto de venta', 'MODULE', NULL,
+                       FALSE, 1, 1, 65, 'ELIGIBLE', 14, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'INVENTORY', 'Inventario y kardex', 'MODULE', NULL,
+                       FALSE, 1, 1, 70, 'ELIGIBLE', 14, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'PURCHASES', 'Compras y proveedores', 'MODULE', NULL,
+                       FALSE, 1, 1, 75, 'ELIGIBLE', 14, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'OPEN_ACCOUNTS', 'Cuentas abiertas y cartera', 'MODULE', NULL,
+                       FALSE, 1, 1, 80, 'ELIGIBLE', 14, 'READ_ONLY', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'ELECTRONIC_INVOICING', 'Facturación electrónica DIAN',
+                       'MODULE', NULL,
+                       FALSE, 1, 1, 85, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'CAPACITY_USER', 'Usuario incluido', 'CAPACITY', 'USER',
+                       TRUE, 1, 1, 110, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'CAPACITY_BRANCH', 'Sede incluida', 'CAPACITY', 'BRANCH',
+                       TRUE, 1, 1, 111, 'ELIGIBLE', 30, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'CAPACITY_TERMINAL', 'Terminal de caja incluida',
+                       'CAPACITY', 'TERMINAL',
+                       FALSE, 1, 1, 112, 'ELIGIBLE', 14, 'LIMITED', 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'EXTRA_USER', 'Usuario adicional', 'CAPACITY', 'USER',
+                       FALSE, 0, 200, 120, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'EXTRA_BRANCH', 'Sede adicional', 'CAPACITY', 'BRANCH',
+                       FALSE, 0, 50, 125, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'EXTRA_TERMINAL', 'Terminal de caja adicional',
+                       'CAPACITY', 'TERMINAL',
+                       FALSE, 0, 100, 130, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'EXTRA_STORAGE', 'Almacenamiento adicional (GB)',
+                       'CAPACITY', 'STORAGE_GB',
+                       FALSE, 0, 5000, 135, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'ONBOARDING', 'Implantación y capacitación', 'ONE_TIME', NULL,
+                       FALSE, 1, 1, 210, 'NEVER_FREE', NULL, NULL, 'TECHNICAL_SERVICE'
+                UNION ALL SELECT 'DATA_MIGRATION', 'Migración de datos desde otro sistema',
+                       'ONE_TIME', NULL,
+                       FALSE, 1, 1, 220, 'NEVER_FREE', NULL, NULL, 'TECHNICAL_SERVICE'
+                UNION ALL SELECT 'PACK_SPA', 'Pack Spa', 'BUNDLE', NULL,
+                       FALSE, 1, 1, 310, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'PACK_CLINIC', 'Pack Clínica', 'BUNDLE', NULL,
+                       FALSE, 1, 1, 320, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+                UNION ALL SELECT 'PACK_FULL', 'Pack Clínica completa', 'BUNDLE', NULL,
+                       FALSE, 1, 1, 330, 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+              ) seed ON seed.code = ci.code
+               SET ci.name               = seed.name,
+                   ci.item_type          = seed.item_type,
+                   ci.capacity_unit      = seed.capacity_unit,
+                   ci.is_core            = seed.is_core,
+                   ci.min_quantity       = seed.min_quantity,
+                   ci.max_quantity       = seed.max_quantity,
+                   ci.sort_order         = seed.sort_order,
+                   ci.status             = 'ACTIVE',
+                   ci.trial_eligibility  = seed.trial_eligibility,
+                   ci.default_trial_days = seed.default_trial_days,
+                   ci.trial_outcome      = seed.trial_outcome,
+                   ci.service_nature     = seed.service_nature,
+                   ci.enabled            = TRUE,
+                   ci.version            = ci.version + 1;
+        ]]></sql>
+        <rollback>
+            <comment>
+                No hay marcha atrás posible: los valores de laboratorio que este changeSet
+                sobrescribe no se guardaron en ninguna parte, y reponerlos a ciegas dejaría el
+                catálogo peor que antes. La vuelta atrás real es el rollback del changeSet
+                anterior, que borra las 26 filas, seguido de una nueva ejecución de 263 y 265.
+            </comment>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
