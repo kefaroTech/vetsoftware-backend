@@ -30,9 +30,13 @@ class CatalogItemDependencyPersistenceIT extends AbstractDataJpaTest {
     @PersistenceContext
     private EntityManager entityManager;
 
+    /** Resuelto, no sembrado: el articulo CORE llega del changeset 308. */
+    private Long nucleo;
+
     @BeforeEach
     void seed() {
         SchemaSeed.seed(entityManager);
+        nucleo = SchemaSeed.catalogItemId(entityManager, "CORE");
     }
 
     @Test
@@ -41,8 +45,8 @@ class CatalogItemDependencyPersistenceIT extends AbstractDataJpaTest {
         CatalogItem dependiente = catalogItems.save(
                 CatalogItem.create("TEST_DEPENDENT", "Dependiente", null, null, ItemType.MODULE,
                         null, false, 1, 1, 90, CatalogItemStatus.ACTIVE, CatalogItemMother.RELOJ));
-        CatalogItemDependency guardada = repository.save(
-                CatalogItemDependency.create(dependiente.getId(), SchemaSeed.CATALOG_ITEM_CORE_ID,
+        CatalogItemDependency guardada = repository
+                .save(CatalogItemDependency.create(dependiente.getId(), nucleo,
                         RelationType.REQUIRES, "Necesario", CatalogItemMother.RELOJ));
         entityManager.flush();
         entityManager.clear();
@@ -54,7 +58,7 @@ class CatalogItemDependencyPersistenceIT extends AbstractDataJpaTest {
                 });
         assertThat(repository.findAllRequiresEdges()).anySatisfy(edge -> {
             assertThat(edge.catalogItemId()).isEqualTo(dependiente.getId());
-            assertThat(edge.relatedItemId()).isEqualTo(SchemaSeed.CATALOG_ITEM_CORE_ID);
+            assertThat(edge.relatedItemId()).isEqualTo(nucleo);
         });
     }
 
@@ -70,8 +74,8 @@ class CatalogItemDependencyPersistenceIT extends AbstractDataJpaTest {
         CatalogItem dependiente = catalogItems.save(CatalogItem.create("TEST_DEP_REVIVE",
                 "Dependiente revivible", null, null, ItemType.MODULE, null, false, 1, 1, 91,
                 CatalogItemStatus.ACTIVE, CatalogItemMother.RELOJ));
-        CatalogItemDependency guardada = repository.save(
-                CatalogItemDependency.create(dependiente.getId(), SchemaSeed.CATALOG_ITEM_CORE_ID,
+        CatalogItemDependency guardada = repository
+                .save(CatalogItemDependency.create(dependiente.getId(), nucleo,
                         RelationType.REQUIRES, "Necesario", CatalogItemMother.RELOJ));
         entityManager.flush();
 
@@ -80,8 +84,8 @@ class CatalogItemDependencyPersistenceIT extends AbstractDataJpaTest {
         entityManager.clear();
 
         assertThat(repository.findById(guardada.getId())).isEmpty();
-        assertThat(repository.findAnyByTriple(dependiente.getId(), SchemaSeed.CATALOG_ITEM_CORE_ID,
-                RelationType.REQUIRES)).get().satisfies(estado -> {
+        assertThat(repository.findAnyByTriple(dependiente.getId(), nucleo, RelationType.REQUIRES))
+                .get().satisfies(estado -> {
                     assertThat(estado.id()).isEqualTo(guardada.getId());
                     assertThat(estado.enabled()).isFalse();
                 });
@@ -103,8 +107,8 @@ class CatalogItemDependencyPersistenceIT extends AbstractDataJpaTest {
         CatalogItem dependiente = catalogItems.save(CatalogItem.create("TEST_DEP_GRAFO",
                 "Dependiente grafo", null, null, ItemType.MODULE, null, false, 1, 1, 92,
                 CatalogItemStatus.ACTIVE, CatalogItemMother.RELOJ));
-        CatalogItemDependency guardada = repository.save(
-                CatalogItemDependency.create(dependiente.getId(), SchemaSeed.CATALOG_ITEM_CORE_ID,
+        CatalogItemDependency guardada = repository
+                .save(CatalogItemDependency.create(dependiente.getId(), nucleo,
                         RelationType.REQUIRES, "Necesario", CatalogItemMother.RELOJ));
         entityManager.flush();
         entityManager.clear();
@@ -131,16 +135,15 @@ class CatalogItemDependencyPersistenceIT extends AbstractDataJpaTest {
         CatalogItem dependiente = catalogItems.save(
                 CatalogItem.create("TEST_DEP_TIPO", "Dependiente tipo", null, null, ItemType.MODULE,
                         null, false, 1, 1, 93, CatalogItemStatus.ACTIVE, CatalogItemMother.RELOJ));
-        repository.save(
-                CatalogItemDependency.create(dependiente.getId(), SchemaSeed.CATALOG_ITEM_CORE_ID,
-                        RelationType.REQUIRES, "Necesario", CatalogItemMother.RELOJ));
+        repository.save(CatalogItemDependency.create(dependiente.getId(), nucleo,
+                RelationType.REQUIRES, "Necesario", CatalogItemMother.RELOJ));
         entityManager.flush();
         entityManager.clear();
 
-        assertThat(repository.findAnyByTriple(dependiente.getId(), SchemaSeed.CATALOG_ITEM_CORE_ID,
-                RelationType.REQUIRES)).isPresent();
-        assertThat(repository.findAnyByTriple(dependiente.getId(), SchemaSeed.CATALOG_ITEM_CORE_ID,
-                RelationType.EXCLUDES)).isEmpty();
+        assertThat(repository.findAnyByTriple(dependiente.getId(), nucleo, RelationType.REQUIRES))
+                .isPresent();
+        assertThat(repository.findAnyByTriple(dependiente.getId(), nucleo, RelationType.EXCLUDES))
+                .isEmpty();
     }
 
     @Test

@@ -29,7 +29,7 @@ class FindCompanyTaxProfileServiceTest {
     @Test
     @DisplayName("devuelve el DTO del perfil encontrado")
     void devuelve_el_dto_del_perfil_encontrado() {
-        when(repository.findByCompanyId(CompanyTaxProfileMother.COMPANY_ID))
+        when(repository.findCurrentByCompanyId(CompanyTaxProfileMother.COMPANY_ID))
                 .thenReturn(Optional.of(CompanyTaxProfileMother.perfilNit()));
 
         CompanyTaxProfileDto dto = service.findByCompanyId(CompanyTaxProfileMother.COMPANY_ID);
@@ -41,7 +41,7 @@ class FindCompanyTaxProfileServiceTest {
     @Test
     @DisplayName("perfil inexistente lanza CompanyTaxProfileNotFoundException")
     void perfil_inexistente_lanza_not_found() {
-        when(repository.findByCompanyId(CompanyTaxProfileMother.COMPANY_ID))
+        when(repository.findCurrentByCompanyId(CompanyTaxProfileMother.COMPANY_ID))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findByCompanyId(CompanyTaxProfileMother.COMPANY_ID))

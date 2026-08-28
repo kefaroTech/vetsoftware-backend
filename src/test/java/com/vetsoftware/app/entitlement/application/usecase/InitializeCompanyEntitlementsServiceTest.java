@@ -16,6 +16,7 @@ import com.vetsoftware.app.entitlement.application.dto.EntitlementRecalculationD
 import com.vetsoftware.app.entitlement.application.port.out.AdminPermissionReconciliationPort;
 import com.vetsoftware.app.entitlement.application.port.out.CompanyCapacityRepository;
 import com.vetsoftware.app.entitlement.application.port.out.CompanyEntitlementRepository;
+import com.vetsoftware.app.entitlement.application.port.out.EntitlementSnapshotPort;
 import com.vetsoftware.app.entitlement.application.port.out.SubscriptionQueryPort;
 import com.vetsoftware.app.entitlement.domain.AccessLevel;
 import com.vetsoftware.app.entitlement.domain.CompanyEntitlement;
@@ -47,14 +48,16 @@ class InitializeCompanyEntitlementsServiceTest {
     private CompanyCapacityRepository capacityRepository;
     @Mock
     private AdminPermissionReconciliationPort adminPermissionReconciliationPort;
+    @Mock
+    private EntitlementSnapshotPort snapshotPort;
 
     private InitializeCompanyEntitlementsService service;
 
     @BeforeEach
     void setUp() {
-        service = new InitializeCompanyEntitlementsService(
-                new CompanyEntitlementRecalculator(subscriptionQueryPort, entitlementRepository,
-                        capacityRepository, adminPermissionReconciliationPort, relojFijo()));
+        service = new InitializeCompanyEntitlementsService(new CompanyEntitlementRecalculator(
+                subscriptionQueryPort, entitlementRepository, capacityRepository,
+                adminPermissionReconciliationPort, snapshotPort, relojFijo()));
     }
 
     private static InitializeCompanyEntitlementsCommand comando() {

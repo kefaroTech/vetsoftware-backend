@@ -98,6 +98,7 @@ class CompanyTaxProfileJpaMapperTest {
         entity.setTaxRegime(TaxRegime.RESPONSABLE_IVA);
         entity.setFiscalEmail(CompanyTaxProfileMother.EMAIL_FISCAL);
         entity.setEconomicActivity(economicActivity);
+        entity.setValidFrom(CompanyTaxProfileMother.CREADO.toLocalDate());
         entity.setCreatedDate(CompanyTaxProfileMother.CREADO);
         entity.setEnabled(true);
         entity.getResponsibilities().add(vigente);

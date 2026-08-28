@@ -10,7 +10,11 @@ import com.vetsoftware.app.auth.application.dto.EmployeeContext;
 import com.vetsoftware.app.auth.infrastructure.security.SystemAuthRunner;
 import com.vetsoftware.app.entitlement.application.command.InitializeCompanyEntitlementsCommand;
 import com.vetsoftware.app.entitlement.application.port.in.InitializeCompanyEntitlementsUseCase;
+import com.vetsoftware.app.infrastructure.logging.MdcKeys;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionChangedEvent;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionEntitlementMetrics;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionEntitlementMetrics.Trigger;
 import com.vetsoftware.app.subscription.domain.SubscriptionChangeKind;
 import java.time.LocalDate;
 import java.util.List;
@@ -47,6 +51,10 @@ class EntitlementRecalculationAdapterTest {
 
     @Mock
     private InitializeCompanyEntitlementsUseCase initializeCompanyEntitlementsUseCase;
+    @Mock
+    private SubscriptionEntitlementMetrics metrics;
+    @Mock
+    private SubscriptionAuditPort audit;
 
     /**
      * El runner va REAL y no mockeado: lo que hay que comprobar es el intercambio
@@ -59,12 +67,63 @@ class EntitlementRecalculationAdapterTest {
     @BeforeEach
     void crearAdaptador() {
         adapter = new EntitlementRecalculationAdapter(initializeCompanyEntitlementsUseCase,
-                systemAuthRunner);
+                systemAuthRunner, metrics, audit);
     }
 
     @AfterEach
     void limpiarContextoDeSeguridad() {
         SecurityContextHolder.clearContext();
+        org.slf4j.MDC.clear();
+    }
+
+    /**
+     * El disparador se lee del MDC porque es una propiedad del CONTEXTO DE
+     * EJECUCION, no del evento: el mismo SubscriptionChangedEvent lo emite un
+     * controller y lo emite el barrido nocturno. Separarlos importa porque son dos
+     * poblaciones con dueno distinto — un pico a las tres de la manana es el
+     * barrido haciendo su trabajo; el mismo pico al mediodia son clientes esperando
+     * frente a una pantalla.
+     */
+    @Test
+    @DisplayName("sin barrido en el MDC el disparador es el cambio de contrato")
+    void sinBarridoElDisparadorEsElCambioDeContrato() {
+        adapter.subscriptionChanged(new SubscriptionChangedEvent(EMPRESA, CONTRATO,
+                SubscriptionChangeKind.ITEM_ADDED, LocalDate.of(2026, 5, 1)));
+
+        verify(metrics).recalculated(Trigger.SUBSCRIPTION_CHANGED);
+        verify(audit).entitlementsRecalculated(EMPRESA, Trigger.SUBSCRIPTION_CHANGED.value());
+    }
+
+    @Test
+    @DisplayName("con un barrido en el MDC el disparador es el barrido programado")
+    void conBarridoElDisparadorEsElBarrido() {
+        org.slf4j.MDC.put(MdcKeys.JOB_NAME, "subscription.dunning");
+
+        adapter.subscriptionChanged(new SubscriptionChangedEvent(EMPRESA, CONTRATO,
+                SubscriptionChangeKind.STATUS_CHANGED, LocalDate.of(2026, 5, 1)));
+
+        verify(metrics).recalculated(Trigger.SCHEDULED_SWEEP);
+        verify(audit).entitlementsRecalculated(EMPRESA, Trigger.SCHEDULED_SWEEP.value());
+    }
+
+    /**
+     * El fallo se cuenta ANTES de relanzar. Es la unica ruta que deja a una empresa
+     * entera sin permisos, y corre dentro de la transaccion del cambio de contrato:
+     * si no se contara aqui, el sintoma que llegaria es «varias clinicas dicen que
+     * no pueden entrar» sin ninguna serie que apunte al recalculo.
+     */
+    @Test
+    @DisplayName("un recalculo fallido se cuenta antes de relanzar, y no se audita como exito")
+    void unRecalculoFallidoSeCuentaAntesDeRelanzar() {
+        when(initializeCompanyEntitlementsUseCase.execute(any()))
+                .thenThrow(new IllegalStateException("boom"));
+
+        assertThatThrownBy(() -> adapter.subscriptionChanged(new SubscriptionChangedEvent(EMPRESA,
+                CONTRATO, SubscriptionChangeKind.ITEM_ADDED, LocalDate.of(2026, 5, 1))))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(metrics).recalculationFailed(Trigger.SUBSCRIPTION_CHANGED);
+        org.mockito.Mockito.verifyNoInteractions(audit);
     }
 
     /**

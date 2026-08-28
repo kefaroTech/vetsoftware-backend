@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -17,6 +18,7 @@ import com.vetsoftware.app.subscription.domain.SubscriptionChangeKind;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionChangedEvent;
 import com.vetsoftware.app.subscription.application.port.out.EmployeeQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionAmendmentRepository;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
@@ -24,7 +26,6 @@ import com.vetsoftware.app.subscription.application.port.out.SubscriptionReposit
 import com.vetsoftware.app.subscription.application.port.out.SystemUserValidationPort;
 import com.vetsoftware.app.subscription.domain.AmendmentType;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.EffectivePeriod;
 import com.vetsoftware.app.subscription.domain.ItemOrigin;
 import com.vetsoftware.app.subscription.domain.Subscription;
@@ -58,7 +59,20 @@ class ChangeSubscriptionItemQuantityServiceTest {
     private static final Long ARTICULO = 100L;
     private static final String LLAVE = "req-cantidad-1";
     private static final LocalDate ENERO_1 = LocalDate.of(2026, 1, 1);
-    private static final LocalDate JUNIO_30 = LocalDate.of(2026, 6, 30);
+    /**
+     * Fecha efectiva del cambio, <b>dentro del periodo en curso</b> del contrato de
+     * prueba (1..31 de enero de 2026).
+     *
+     * <p>
+     * <b>Antes era el 30 de junio, y ese fixture afirmaba un defecto.</b> Un cambio
+     * efectivo fuera del periodo en curso solo puede darse si el periodo se quedo
+     * congelado -que es justo lo que pasaba, porque nada llamaba a
+     * {@code Subscription.renewPeriod}-. El prorrateo salia cero y se guardaba en
+     * el otrosi como si fuera un importe: firmado, inmutable y con toda la pinta de
+     * estar bien. Hoy {@code ProrationCalculator} rechaza el prorrateo de cero
+     * dias, asi que la fecha efectiva vuelve a caer donde la produce el negocio.
+     */
+    private static final LocalDate ENERO_17 = LocalDate.of(2026, 1, 17);
     private static final BigDecimal PRECIO_FIRMADO = new BigDecimal("15000.00");
 
     @Mock
@@ -75,6 +89,8 @@ class ChangeSubscriptionItemQuantityServiceTest {
     private SubscriptionNumberPort subscriptionNumberPort;
     @Mock
     private SubscriptionChangedPort subscriptionChangedPort;
+    @Mock
+    private SubscriptionAuditPort audit;
 
     @InjectMocks
     private ChangeSubscriptionItemQuantityService service;
@@ -91,19 +107,19 @@ class ChangeSubscriptionItemQuantityServiceTest {
      */
     private static SubscriptionItem lineaFirmadaHaceUnAno() {
         return new SubscriptionItem(LINEA, EMPRESA, CONTRATO, ARTICULO, "EXTRA_USER",
-                "Usuario adicional", SubscriptionItemType.CAPACITY, CapacityUnit.USER, 2,
-                TaxTreatment.TAXED, 5, PRECIO_FIRMADO, new BigDecimal("19.00"),
-                EffectivePeriod.openFrom(ENERO_1), ItemOrigin.INITIAL, 11L, null, null, 0L, true);
+                "Usuario adicional", SubscriptionItemType.CAPACITY, "USER", 2, TaxTreatment.TAXED,
+                5, PRECIO_FIRMADO, new BigDecimal("19.00"), EffectivePeriod.openFrom(ENERO_1),
+                ItemOrigin.INITIAL, 11L, null, null, 0L, true);
     }
 
     private static ChangeSubscriptionItemQuantityCommand comando(int nuevaCantidad) {
         return new ChangeSubscriptionItemQuantityCommand(CONTRATO, EMPRESA, LINEA, nuevaCantidad,
-                LLAVE, JUNIO_30, "Contrataron dos personas mas", null, 900L);
+                LLAVE, ENERO_17, "Contrataron dos personas mas", null, 900L);
     }
 
     private static SubscriptionAmendment otrosiGuardado() {
         return new SubscriptionAmendment(902L, EMPRESA, CONTRATO, "AMD-2026-0003",
-                AmendmentType.CHANGE_QUANTITY, JUNIO_30, null, null, 900L, BigDecimal.ZERO,
+                AmendmentType.CHANGE_QUANTITY, ENERO_17, null, null, 900L, BigDecimal.ZERO,
                 BigDecimal.ZERO, null, LLAVE, null);
     }
 
@@ -176,13 +192,35 @@ class ChangeSubscriptionItemQuantityServiceTest {
 
             assertThat(original.getId()).isEqualTo(LINEA);
             assertThat(original.getQuantity()).isEqualTo(5);
-            assertThat(original.getPeriod().to()).isEqualTo(JUNIO_30);
+            assertThat(original.getPeriod().to()).isEqualTo(ENERO_17);
             assertThat(original.getEndedAmendmentId()).isEqualTo(902L);
 
             assertThat(sucesora.getId()).isNull();
             assertThat(sucesora.getQuantity()).isEqualTo(7);
             assertThat(sucesora.getOrigin()).isEqualTo(ItemOrigin.QUANTITY_CHANGE);
             assertThat(sucesora.getCreatedAmendmentId()).isEqualTo(902L);
+        }
+
+        @Test
+        @DisplayName("audita de cuanto venia, a cuanto va y cuanto sube la cuota")
+        void auditaDeCuantoAcuantoYelDelta() {
+            escenarioFeliz();
+            when(itemRepository.findOverlapping(anyLong(), anyLong(), anyLong(), any(), any(),
+                    any())).thenReturn(List.of());
+
+            service.execute(comando(7));
+
+            // «Paso a 7» no es auditable sin el 5 de donde venia. Y el delta que se
+            // audita es el de CICLO -lo que sube la cuota mensual: dos usuarios
+            // facturables mas a 15.000-, no el prorrateo del periodo en curso: es el
+            // importe que el cliente vio antes de aceptar.
+            // El id de la sucesora va como any() a proposito: la fila todavia no
+            // existe cuando se construye, y el repositorio simulado devuelve el
+            // argumento sin asignarle uno.
+            ArgumentCaptor<BigDecimal> delta = ArgumentCaptor.forClass(BigDecimal.class);
+            verify(audit).itemQuantityChanged(eq(CONTRATO), any(), eq(5), eq(7), delta.capture(),
+                    eq(902L));
+            assertThat(delta.getValue()).isEqualByComparingTo("30000.00");
         }
 
         @Test
@@ -195,7 +233,7 @@ class ChangeSubscriptionItemQuantityServiceTest {
             service.execute(comando(7));
 
             verify(subscriptionChangedPort).subscriptionChanged(new SubscriptionChangedEvent(
-                    EMPRESA, CONTRATO, SubscriptionChangeKind.QUANTITY_CHANGED, JUNIO_30));
+                    EMPRESA, CONTRATO, SubscriptionChangeKind.QUANTITY_CHANGED, ENERO_17));
         }
 
         @Test
@@ -214,8 +252,8 @@ class ChangeSubscriptionItemQuantityServiceTest {
             SubscriptionItem sucesora = captor.getAllValues().get(1);
 
             assertThat(original.overlaps(sucesora.getPeriod())).isFalse();
-            assertThat(original.isCurrentOn(JUNIO_30.minusDays(1))).isTrue();
-            assertThat(sucesora.isCurrentOn(JUNIO_30)).isTrue();
+            assertThat(original.isCurrentOn(ENERO_17.minusDays(1))).isTrue();
+            assertThat(sucesora.isCurrentOn(ENERO_17)).isTrue();
         }
     }
 
@@ -228,11 +266,11 @@ class ChangeSubscriptionItemQuantityServiceTest {
         void tramoFuturoQueSePisa() {
             escenarioFeliz();
             SubscriptionItem tramoFuturo = SubscriptionItem.open(EMPRESA, CONTRATO, ARTICULO,
-                    "EXTRA_USER", "Usuario adicional", SubscriptionItemType.CAPACITY,
-                    CapacityUnit.USER, 2, TaxTreatment.TAXED, 3, PRECIO_FIRMADO, BigDecimal.ZERO,
+                    "EXTRA_USER", "Usuario adicional", SubscriptionItemType.CAPACITY, "USER", 2,
+                    TaxTreatment.TAXED, 3, PRECIO_FIRMADO, BigDecimal.ZERO,
                     new EffectivePeriod(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 12, 31)),
                     ItemOrigin.ADDON, null);
-            when(itemRepository.findOverlapping(EMPRESA, CONTRATO, ARTICULO, JUNIO_30, null, LINEA))
+            when(itemRepository.findOverlapping(EMPRESA, CONTRATO, ARTICULO, ENERO_17, null, LINEA))
                     .thenReturn(List.of(tramoFuturo));
 
             assertThatThrownBy(() -> service.execute(comando(7)))
@@ -244,8 +282,8 @@ class ChangeSubscriptionItemQuantityServiceTest {
         void reintentoNoDuplica() {
             SubscriptionItem sucesoraYaCreada = new SubscriptionItem(501L, EMPRESA, CONTRATO,
                     ARTICULO, "EXTRA_USER", "Usuario adicional", SubscriptionItemType.CAPACITY,
-                    CapacityUnit.USER, 2, TaxTreatment.TAXED, 7, PRECIO_FIRMADO, BigDecimal.ZERO,
-                    EffectivePeriod.openFrom(JUNIO_30), ItemOrigin.QUANTITY_CHANGE, 902L, null,
+                    "USER", 2, TaxTreatment.TAXED, 7, PRECIO_FIRMADO, BigDecimal.ZERO,
+                    EffectivePeriod.openFrom(ENERO_17), ItemOrigin.QUANTITY_CHANGE, 902L, null,
                     null, 0L, true);
             when(amendmentRepository.findByClientRequestIdAndCompanyId(LLAVE, EMPRESA))
                     .thenReturn(Optional.of(otrosiGuardado()));

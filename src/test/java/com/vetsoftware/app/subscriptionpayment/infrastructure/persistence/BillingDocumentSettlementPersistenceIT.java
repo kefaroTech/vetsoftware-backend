@@ -300,10 +300,10 @@ class BillingDocumentSettlementPersistenceIT extends AbstractDataJpaTest {
                 INSERT INTO billing_document_applications (id, company_id, target_document_id,
                                                            source_kind, payment_id,
                                                            source_document_id, applied_amount,
-                                                           reversal_of_id, applied_at,
+                                                           reversal_of_id, applied_at, value_date,
                                                            client_request_id, created_date)
                 VALUES (:id, :companyId, :target, :sourceKind, :pagoId, :origen, :importe,
-                        :reversaDe, '2026-02-05 09:30:00', NULL, NOW())
+                        :reversaDe, '2026-02-05 09:30:00', '2026-02-05', NULL, NOW())
                 """).setParameter("id", id).setParameter("companyId", SchemaSeed.COMPANY_ID)
                 .setParameter("target", FACTURA_ID).setParameter("sourceKind", sourceKind)
                 .setParameter("pagoId", pagoId).setParameter("origen", documentoOrigenId)

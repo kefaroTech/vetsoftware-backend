@@ -485,17 +485,33 @@ class HexagonalArchitectureTest {
      *
      * <p>
      * <b>La cuenta cierra al dígito, y esa es la prueba de que la lista es
-     * exhaustiva y no una muestra</b>: 130 clases {@code @Entity} = 83 versionadas
-     * + estas 47 exentas. El modelo de suscripciones movió las dos mitades a la
-     * vez: se fueron {@code memberships} y {@code membership_sub_modules} —una
-     * versionada y otra exenta— y entraron las 26 tablas nuevas, 12 versionadas y
-     * 14 exentas. El alta de superadministradores de plataforma sumó después una a
-     * cada lado, y ese reparto es en sí mismo la decisión: la solicitud se versiona
-     * porque su fila se reescribe hasta seis veces —cinco intentos de código más la
-     * decisión—, y la invitación queda exenta porque se emite, se consume una vez y
-     * caduca. Que las restas y las sumas cuadren es lo que prueba que ninguna
-     * entidad se coló sin decidir su bloqueo. Cualquier entidad nueva desequilibra
-     * la suma y {@link #ENTIDADES_CON_BLOQUEO_OPTIMISTA} la caza el mismo día.
+     * exhaustiva y no una muestra</b>: 154 clases {@code @Entity} = 102 versionadas
+     * + estas 52 exentas. Las cuatro rodajas sobre esquema ya existente
+     * —{@code accounting_periods}, {@code company_billing_profiles},
+     * {@code company_contact_channels} y {@code billing_document_status_history}—
+     * sumaron cuatro tablas, y el reparto es en si mismo la decision: tres se
+     * versionan porque su fila se reescribe —el periodo se cierra y se reabre, la
+     * ficha de facturacion se cierra al suceder, el canal se revoca y cede el
+     * marcador de primario— y la cuarta queda exenta porque solo se agrega. Las
+     * cinco rodajas del circuito de cobro (capa K) sumaron seis tablas y el reparto
+     * vuelve a ser la decisión: cuatro se versionan porque su fila se reescribe —el
+     * intento se reprograma, el mandato se revoca, el expediente de reversión se
+     * acusa y se resuelve, la proyección del saldo muta en cada aplicación— y las
+     * dos de solo añadir quedan exentas. Las capas I y J del modelo de
+     * suscripciones sumaron ocho tablas y el reparto es en sí mismo la decisión:
+     * seis se versionan porque su fila se reescribe —la ventana se cierra, la
+     * concesión escribe su desenlace, el techo congelado recibe las mejoras de
+     * fábrica—, y las dos bitácoras probatorias quedan exentas porque solo se
+     * agregan. El modelo de suscripciones movió las dos mitades a la vez: se fueron
+     * {@code memberships} y {@code membership_sub_modules} —una versionada y otra
+     * exenta— y entraron las 26 tablas nuevas, 12 versionadas y 14 exentas. El alta
+     * de superadministradores de plataforma sumó después una a cada lado, y ese
+     * reparto es en sí mismo la decisión: la solicitud se versiona porque su fila
+     * se reescribe hasta seis veces —cinco intentos de código más la decisión—, y
+     * la invitación queda exenta porque se emite, se consume una vez y caduca. Que
+     * las restas y las sumas cuadren es lo que prueba que ninguna entidad se coló
+     * sin decidir su bloqueo. Cualquier entidad nueva desequilibra la suma y
+     * {@link #ENTIDADES_CON_BLOQUEO_OPTIMISTA} la caza el mismo día.
      *
      * <p>
      * <b>Cómo se añade una entrada.</b> Nunca «para que pase el test». El código
@@ -591,6 +607,14 @@ class HexagonalArchitectureTest {
                     "composición de un paquete: se reescribe en bloque desde el editor del"
                             + " bundle; par único en BD"),
 
+            // --- cumplir y medir (capa O) ---
+            exenta("SecurityIncidentCompanyJpaEntity", E2_TABLA_PUENTE,
+                    "puente escrita una sola vez al cerrar el incidente; no lleva fecha de"
+                            + " creacion ni marca de activo y ningun caso de uso la reescribe"),
+            exenta("ExternalInvoicingOutageCompanyJpaEntity", E2_TABLA_PUENTE,
+                    "puente escrita una sola vez al repartir la caida; no lleva fecha de"
+                            + " creacion ni marca de activo y ningun caso de uso la reescribe"),
+
             // E3 — un solo uso o vida corta: se emite, se consume y caduca.
             exenta("RefreshTokenJpaEntity", E3_TOKEN,
                     "token de sesión: se emite, se rota y se revoca; nadie lo edita"),
@@ -657,7 +681,84 @@ class HexagonalArchitectureTest {
             exenta("BillingDocumentSequenceJpaEntity", E6_YA_PROTEGIDO,
                     "contador de numeración: se serializa con SELECT … FOR UPDATE antes de"
                             + " incrementarse, igual que numbering_resolutions; @Version lo"
-                            + " convertiría en un 409 en mitad de una emisión"));
+                            + " convertiría en un 409 en mitad de una emisión"),
+
+            // --- capas I y J: prueba gratuita y límites ---
+            exenta("CompanyLimitEventJpaEntity", E1_APPEND_ONLY,
+                    "bitácora probatoria del cupo: su repositorio solo declara append y el"
+                            + " agregado no tiene un solo mutador. No hay dos ediciones"
+                            + " simultáneas que puedan pisarse porque no hay ninguna edición, y"
+                            + " la tabla tampoco lleva enabled: una prueba que se puede"
+                            + " reescribir o desactivar no prueba nada"),
+            exenta("CompanyEntitlementSnapshotJpaEntity", E1_APPEND_ONLY,
+                    "foto de un recálculo de permisos: se inserta una por recálculo y ahí"
+                            + " acaba. Existe precisamente porque la tabla de permisos se borra"
+                            + " y se reescribe entera, así que retocarla destruiría la única"
+                            + " evidencia de qué veía el cliente aquel día"),
+
+            // --- capa K: cobro y saldos ---
+            exenta("PaymentRefundJpaEntity", E1_APPEND_ONLY,
+                    "documento de dinero: la devolución se registra cuando el dinero YA salió,"
+                            + " así que no hay nada que reeditar. Una devolución mal registrada"
+                            + " no se corrige encima ni se oculta —la tabla tampoco lleva"
+                            + " enabled—, se compensa con otra fila; y su fecha es la que fija"
+                            + " la ventana de arrepentimiento y el periodo del impuesto,"
+                            + " precisamente lo que un UPDATE borraría"),
+            exenta("CustomerCreditEntryJpaEntity", E1_APPEND_ONLY,
+                    "libro de asientos del saldo a favor: el saldo NO se guarda, se suma, que es"
+                            + " justo la clase de defecto —leer, sumar y guardar un contador— que"
+                            + " esta tabla existe para eliminar. Cada movimiento es una fila que"
+                            + " no se toca y corregir un asiento es escribir otro que lo compensa."
+                            + " Lo que sí muta es su proyección, customer_credit_balances, y esa"
+                            + " sí lleva @Version"),
+
+            // --- capa K: la película del documento de cobro ---
+            exenta("BillingDocumentStatusHistoryJpaEntity", E1_APPEND_ONLY,
+                    "bitácora de estados del documento de cobro: cada cambio es una fila nueva y"
+                            + " ningún caso de uso reescribe una existente —su puerto de salida no"
+                            + " declara una sola escritura sobre fila viva, ni update ni baja"
+                            + " lógica—, así que no hay ciclo leer-modificar-guardar que @Version"
+                            + " pudiera proteger. Y es una de las tablas irreemplazables del"
+                            + " modelo: una fila corregible no probaría en qué estado estuvo el"
+                            + " documento el 31 de marzo, que es la pregunta para la que existe"),
+
+            // --- referencia fiscal con vigencia: tres exentas y una versionada ---
+            // El reparto es en sí mismo la decisión. Las tres de aquí publican una fila
+            // por año y no la vuelven a mirar; smmlv_values NO está en esta lista porque
+            // su estado sí se reescribe sobre la fila viva —la suspensión judicial— y
+            // lleva @Version, igual que legal_document_versions por su superseded_at.
+            exenta("UvtValueJpaEntity", E1_APPEND_ONLY,
+                    "la UVT de un año se publica una vez y no se corrige encima: corregirla"
+                            + " sería reescribir la cifra con la que ya se liquidaron"
+                            + " declaraciones firmadas de ese año. Su puerto de salida no declara"
+                            + " ningún update ni baja lógica, así que no hay ciclo"
+                            + " leer-modificar-guardar que @Version pudiera proteger"),
+            exenta("VatFilingPeriodJpaEntity", E1_APPEND_ONLY,
+                    "la periodicidad de IVA de un año es un dato con vigencia, no un ajuste:"
+                            + " cambiar la de un año cerrado movería los meses en los que se debió"
+                            + " declarar y convertiría en extemporáneas declaraciones que se"
+                            + " presentaron a tiempo. Se publica por año y no se reescribe"),
+            exenta("PublicHolidayJpaEntity", E1_APPEND_ONLY,
+                    "el calendario se siembra por año completo y un festivo publicado no se"
+                            + " edita: si falta uno, la corrección es publicar la fila que falta,"
+                            + " no reescribir otra. Además es la fila con menos superficie de"
+                            + " escritura del bloque —un alta y nada más— y de ella dependen los"
+                            + " vencimientos ya calculados y comunicados a clientes"),
+
+            // --- contabilidad (capa M/N): una exenta y tres versionadas ---
+            // El reparto vuelve a ser la decisión. accounting_accounts,
+            // account_mappings y accounting_exports SÍ llevan @Version porque su fila
+            // se reescribe —el nombre de la cuenta se corrige, la vigencia se cierra,
+            // la exportación recibe su desenlace—; el libro de reconocimiento no,
+            // porque no se reescribe nunca.
+            exenta("RevenueRecognitionLineJpaEntity", E1_APPEND_ONLY,
+                    "solo se agrega: un reconocimiento mal calculado se corrige con otra fila de"
+                            + " signo contrario, nunca encima; ningún caso de uso reescribe el"
+                            + " importe. Su puerto de salida no declara update ni delete, y la"
+                            + " unicidad uq_rrl_recognition (company_id, charge_id, period_key,"
+                            + " posting_period) está diseñada precisamente para que la fila que"
+                            + " compensa quepa —en otro periodo contable— y el reintento del"
+                            + " proceso nocturno no"));
 
     private static ExencionDeVersion exenta(String entidad, CodigoDeExencion codigo,
             String motivo) {

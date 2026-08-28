@@ -29,9 +29,13 @@ class BundleComponentPersistenceIT extends AbstractDataJpaTest {
     @PersistenceContext
     private EntityManager entityManager;
 
+    /** Resuelto, no sembrado: el articulo CORE llega del changeset 308. */
+    private Long nucleo;
+
     @BeforeEach
     void seed() {
         SchemaSeed.seed(entityManager);
+        nucleo = SchemaSeed.catalogItemId(entityManager, "CORE");
     }
 
     @Test
@@ -41,19 +45,18 @@ class BundleComponentPersistenceIT extends AbstractDataJpaTest {
                 .save(CatalogItem.create("TEST_BUNDLE", "Paquete test", null, null, ItemType.BUNDLE,
                         null, false, 1, 1, 80, CatalogItemStatus.ACTIVE, CatalogItemMother.RELOJ));
 
-        BundleComponent guardado = repository.save(BundleComponent.create(bundle.getId(),
-                SchemaSeed.CATALOG_ITEM_CORE_ID, 3, CatalogItemMother.RELOJ));
+        BundleComponent guardado = repository
+                .save(BundleComponent.create(bundle.getId(), nucleo, 3, CatalogItemMother.RELOJ));
         entityManager.flush();
         entityManager.clear();
 
         assertThat(repository.findAllByBundleItemId(bundle.getId())).singleElement()
                 .satisfies(componente -> {
                     assertThat(componente.getId()).isEqualTo(guardado.getId());
-                    assertThat(componente.getComponentItemId())
-                            .isEqualTo(SchemaSeed.CATALOG_ITEM_CORE_ID);
+                    assertThat(componente.getComponentItemId()).isEqualTo(nucleo);
                     assertThat(componente.getQuantity()).isEqualTo(3);
                 });
-        assertThat(repository.findAnyByPair(bundle.getId(), SchemaSeed.CATALOG_ITEM_CORE_ID)).get()
+        assertThat(repository.findAnyByPair(bundle.getId(), nucleo)).get()
                 .extracting(state -> state.enabled()).isEqualTo(true);
     }
 
@@ -70,8 +73,8 @@ class BundleComponentPersistenceIT extends AbstractDataJpaTest {
         CatalogItem bundle = catalogItems.save(CatalogItem.create("TEST_BUNDLE_REVIVE",
                 "Paquete revivible", null, null, ItemType.BUNDLE, null, false, 1, 1, 81,
                 CatalogItemStatus.ACTIVE, CatalogItemMother.RELOJ));
-        BundleComponent guardado = repository.save(BundleComponent.create(bundle.getId(),
-                SchemaSeed.CATALOG_ITEM_CORE_ID, 3, CatalogItemMother.RELOJ));
+        BundleComponent guardado = repository
+                .save(BundleComponent.create(bundle.getId(), nucleo, 3, CatalogItemMother.RELOJ));
         entityManager.flush();
 
         repository.delete(guardado.getId());
@@ -82,18 +85,17 @@ class BundleComponentPersistenceIT extends AbstractDataJpaTest {
         assertThat(repository.findById(guardado.getId())).isEmpty();
         assertThat(repository.findAllByBundleItemId(bundle.getId())).isEmpty();
         assertThat(repository.existsActiveInvolving(bundle.getId())).isFalse();
-        assertThat(repository.findAnyByPair(bundle.getId(), SchemaSeed.CATALOG_ITEM_CORE_ID)).get()
-                .satisfies(estado -> {
-                    assertThat(estado.id()).isEqualTo(guardado.getId());
-                    assertThat(estado.enabled()).isFalse();
-                });
+        assertThat(repository.findAnyByPair(bundle.getId(), nucleo)).get().satisfies(estado -> {
+            assertThat(estado.id()).isEqualTo(guardado.getId());
+            assertThat(estado.enabled()).isFalse();
+        });
 
         assertThat(repository.reactivate(guardado.getId())).isEqualTo(1);
         entityManager.clear();
 
         assertThat(repository.findById(guardado.getId())).get()
                 .satisfies(revivido -> assertThat(revivido.getQuantity()).isEqualTo(3));
-        assertThat(repository.existsActiveInvolving(SchemaSeed.CATALOG_ITEM_CORE_ID)).isTrue();
+        assertThat(repository.existsActiveInvolving(nucleo)).isTrue();
     }
 
     @Test

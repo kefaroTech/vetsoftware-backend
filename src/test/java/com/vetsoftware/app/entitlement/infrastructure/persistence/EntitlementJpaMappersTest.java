@@ -1,10 +1,12 @@
 package com.vetsoftware.app.entitlement.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.entitlement.domain.AccessLevel;
-import com.vetsoftware.app.entitlement.domain.CapacityUnit;
+import com.vetsoftware.app.entitlement.domain.MeasureKind;
+import com.vetsoftware.app.entitlement.domain.PeriodKey;
 import com.vetsoftware.app.entitlement.domain.CompanyCapacity;
 import com.vetsoftware.app.entitlement.domain.CompanyEntitlement;
 import com.vetsoftware.app.entitlement.domain.EntitlementSource;
@@ -197,80 +199,126 @@ class EntitlementJpaMappersTest {
     @DisplayName("contadores de capacidad")
     class Contadores {
 
-        private CompanyCapacity contadorConConsumo() {
-            return new CompanyCapacity(55L, COMPANY_ID, CapacityUnit.USER, 3, 5,
-                    EntitlementMother.SUBSCRIPTION_ID, AHORA.minusDays(2), AHORA.minusDays(90));
+        /**
+         * La fecha en que nacio el eje. No vive en la fila del contador --que solo
+         * copia el id y el tipo de medida-- sino en {@code limit_dimensions}, asi que
+         * la pone quien lee. Es lo que permite responder a D-74 sin volver a consultar.
+         */
+        private static final java.time.LocalDate NACIMIENTO = AHORA.toLocalDate().minusYears(1);
+
+        /**
+         * El mapper es de una sola direccion. No hay {@code toJpa} que probar: el techo
+         * se escribe con la sentencia de {@code upsertCeiling}, que no nombra la
+         * columna del consumo (#648). Ofrecer una conversion de vuelta seria ofrecer
+         * justo el camino que hay que evitar, asi que estas pruebas construyen la fila
+         * a mano --misma package, constructor accesible-- y afirman sobre la lectura.
+         */
+        private CompanyCapacityJpaEntity fila(String measureKind, String periodKey, int techo,
+                int usado, LocalDateTime selloDelConsumo) {
+            CompanyCapacityJpaEntity entity = new CompanyCapacityJpaEntity();
+            entity.setId(55L);
+            entity.setLimitDimensionId(41L);
+            entity.setMeasureKind(measureKind);
+            entity.setPeriodKey(periodKey);
+            entity.setLimitQuantity(techo);
+            entity.setUsedQuantity(usado);
+            entity.setSubscriptionId(EntitlementMother.SUBSCRIPTION_ID);
+            entity.setLimitRecalculatedAt(AHORA.minusDays(2));
+            entity.setUsageReconciledAt(selloDelConsumo);
+            entity.setCreatedDate(AHORA.minusDays(90));
+            return entity;
         }
 
         @Test
-        @DisplayName("la ida al JPA no pierde ningun campo del contador")
-        void la_ida_no_pierde_ningun_campo() {
-            CompanyCapacityJpaEntity fila = capacityMapper.toJpa(contadorConConsumo(), empresa());
+        @DisplayName("la lectura no pierde ningun campo del contador")
+        void la_lectura_no_pierde_ningun_campo() {
+            CompanyCapacity contador = capacityMapper.toDomain(
+                    fila("STOCK", PeriodKey.SENTINEL, 3, 5, null), COMPANY_ID, "USER", NACIMIENTO);
 
-            assertThat(fila.getId()).isEqualTo(55L);
-            assertThat(fila.getCompany().getId()).isEqualTo(COMPANY_ID);
-            assertThat(fila.getCapacityUnit()).isEqualTo("USER");
-            assertThat(fila.getLimitQuantity()).isEqualTo(3);
-            assertThat(fila.getUsedQuantity()).isEqualTo(5);
-            assertThat(fila.getSubscriptionId()).isEqualTo(EntitlementMother.SUBSCRIPTION_ID);
-            assertThat(fila.getRecalculatedAt()).isEqualTo(AHORA.minusDays(2));
-            assertThat(fila.getCreatedDate()).isEqualTo(AHORA.minusDays(90));
+            assertThat(contador.getId()).isEqualTo(55L);
+            assertThat(contador.getCompanyId()).isEqualTo(COMPANY_ID);
+            assertThat(contador.getDimension().id()).isEqualTo(41L);
+            assertThat(contador.getDimension().code()).isEqualTo("USER");
+            assertThat(contador.getDimension().measureKind()).isEqualTo(MeasureKind.STOCK);
+            assertThat(contador.getPeriodKey().value()).isEqualTo(PeriodKey.SENTINEL);
+            assertThat(contador.getLimitQuantity()).isEqualTo(3);
+            assertThat(contador.getUsedQuantity()).isEqualTo(5);
+            assertThat(contador.getSubscriptionId()).isEqualTo(EntitlementMother.SUBSCRIPTION_ID);
+            assertThat(contador.getLimitRecalculatedAt()).isEqualTo(AHORA.minusDays(2));
+            assertThat(contador.getCreatedDate()).isEqualTo(AHORA.minusDays(90));
         }
 
         @Test
         @DisplayName("el consumo por encima del techo sobrevive: es un estado admitido")
         void el_consumo_por_encima_del_techo_sobrevive() {
-            CompanyCapacity vuelta = capacityMapper
-                    .toDomain(capacityMapper.toJpa(contadorConConsumo(), empresa()));
+            CompanyCapacity contador = capacityMapper.toDomain(
+                    fila("STOCK", PeriodKey.SENTINEL, 3, 5, null), COMPANY_ID, "USER", NACIMIENTO);
 
             // "5 usuarios con un techo de 3" es el estado que el modelo admite a
-            // proposito tras una bajada de plan. Un mapeo que recortara el consumo al
-            // techo le regalaria dos usuarios gratis a la empresa.
-            assertThat(vuelta.getUsedQuantity()).isEqualTo(5);
-            assertThat(vuelta.getLimitQuantity()).isEqualTo(3);
+            // proposito tras una bajada de plan (R-LIMIT-38). Un mapeo que recortara el
+            // consumo al techo le regalaria dos usuarios gratis a la empresa.
+            assertThat(contador.getUsedQuantity()).isEqualTo(5);
+            assertThat(contador.getLimitQuantity()).isEqualTo(3);
+            assertThat(contador.isExhausted()).isTrue();
+        }
+
+        /**
+         * R-ENT-13. Los dos sellos llegan separados y el del consumo puede venir nulo
+         * --nadie lo ha comprobado nunca-- sin que eso contamine al del techo.
+         */
+        @Test
+        @DisplayName("los dos sellos viajan separados y el del consumo admite no existir")
+        void los_dos_sellos_viajan_separados() {
+            CompanyCapacity sinRecuento = capacityMapper.toDomain(
+                    fila("STOCK", PeriodKey.SENTINEL, 3, 1, null), COMPANY_ID, "USER", NACIMIENTO);
+            CompanyCapacity conRecuento = capacityMapper.toDomain(
+                    fila("STOCK", PeriodKey.SENTINEL, 3, 1, AHORA.minusDays(9)), COMPANY_ID, "USER",
+                    NACIMIENTO);
+
+            assertThat(sinRecuento.getUsageReconciledAt()).isNull();
+            assertThat(sinRecuento.getLimitRecalculatedAt()).isEqualTo(AHORA.minusDays(2));
+            assertThat(conRecuento.getUsageReconciledAt()).isEqualTo(AHORA.minusDays(9));
+        }
+
+        /**
+         * R-LIMIT-05 en la lectura: un contador de flujo trae su periodo real y el
+         * dominio lo acepta; el mismo periodo sobre un eje que no es de flujo lo
+         * rechaza. Las dos direcciones, porque una sola dejaria pasar la mitad.
+         */
+        @Test
+        @DisplayName("un contador de flujo conserva su clave de periodo")
+        void un_contador_de_flujo_conserva_su_clave_de_periodo() {
+            CompanyCapacity contador = capacityMapper.toDomain(
+                    fila("FLOW", "2026-03", 200, 12, null), COMPANY_ID, "APPOINTMENT", NACIMIENTO);
+
+            assertThat(contador.getPeriodKey().value()).isEqualTo("2026-03");
+            assertThat(contador.getPeriodKey().isRealPeriod()).isTrue();
         }
 
         @Test
-        @DisplayName("la vuelta reconstruye el contador identico")
-        void la_vuelta_reconstruye_el_contador_identico() {
-            CompanyCapacity original = contadorConConsumo();
+        @DisplayName("una fila que no es de flujo con periodo real se rechaza al leerla")
+        void una_fila_no_de_flujo_con_periodo_real_se_rechaza() {
+            CompanyCapacityJpaEntity corrupta = fila("STOCK", "2026-03", 3, 1, null);
 
-            CompanyCapacity vuelta = capacityMapper
-                    .toDomain(capacityMapper.toJpa(original, empresa()));
-
-            assertThat(vuelta.getId()).isEqualTo(original.getId());
-            assertThat(vuelta.getCompanyId()).isEqualTo(original.getCompanyId());
-            assertThat(vuelta.getUnit()).isEqualTo(original.getUnit());
-            assertThat(vuelta.getSubscriptionId()).isEqualTo(original.getSubscriptionId());
-            assertThat(vuelta.getRecalculatedAt()).isEqualTo(original.getRecalculatedAt());
-            assertThat(vuelta.getCreatedDate()).isEqualTo(original.getCreatedDate());
-        }
-
-        @Test
-        @DisplayName("el camino de escritura no lee la empresa de la fila")
-        void el_camino_de_escritura_no_lee_la_empresa() {
-            CompanyCapacityJpaEntity fila = capacityMapper.toJpa(contadorConConsumo(), empresa());
-            fila.setCompany(null);
-
-            CompanyCapacity vuelta = capacityMapper.toDomain(fila, COMPANY_ID);
-
-            assertThat(vuelta.getCompanyId()).isEqualTo(COMPANY_ID);
+            assertThatThrownBy(
+                    () -> capacityMapper.toDomain(corrupta, COMPANY_ID, "USER", NACIMIENTO))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("must carry the sentinel period key");
         }
 
         @ParameterizedTest
-        @EnumSource(CapacityUnit.class)
-        @DisplayName("las cuatro unidades sobreviven a la ida y vuelta")
-        void las_cuatro_unidades_sobreviven(CapacityUnit unidad) {
-            CompanyCapacity contador = CompanyCapacity.contracted(COMPANY_ID, unidad, 7,
-                    EntitlementMother.SUBSCRIPTION_ID, AHORA);
+        @EnumSource(MeasureKind.class)
+        @DisplayName("los tres tipos de medida sobreviven a la lectura")
+        void los_tres_tipos_de_medida_sobreviven(MeasureKind medida) {
+            String periodo = medida.requiresPeriodKey() ? "2026-03" : PeriodKey.SENTINEL;
 
-            CompanyCapacity vuelta = capacityMapper
-                    .toDomain(capacityMapper.toJpa(contador, empresa()));
+            CompanyCapacity contador = capacityMapper.toDomain(
+                    fila(medida.name(), periodo, 7, 0, null), COMPANY_ID, "X", NACIMIENTO);
 
-            // @EnumSource y no cuatro tests: una unidad nueva en el enum entra sola en
-            // la matriz y falla aqui si el mapeo por nombre deja de cuadrar.
-            assertThat(vuelta.getUnit()).isEqualTo(unidad);
-            assertThat(vuelta.getLimitQuantity()).isEqualTo(7);
+            // @EnumSource y no tres tests: un tipo de medida nuevo entra solo en la
+            // matriz y falla aqui si el mapeo por nombre deja de cuadrar.
+            assertThat(contador.getDimension().measureKind()).isEqualTo(medida);
+            assertThat(contador.getLimitQuantity()).isEqualTo(7);
         }
     }
 }

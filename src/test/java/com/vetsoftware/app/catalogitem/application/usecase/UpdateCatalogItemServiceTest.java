@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.catalogitem.application.command.UpdateCatalogItemCommand;
 import com.vetsoftware.app.catalogitem.application.dto.CatalogItemDto;
 import com.vetsoftware.app.catalogitem.application.port.out.CatalogItemRepository;
+import com.vetsoftware.app.catalogitem.application.port.out.LimitDimensionQueryPort;
 import com.vetsoftware.app.catalogitem.domain.CatalogItem;
 import com.vetsoftware.app.catalogitem.domain.CatalogItemNotFoundException;
 import com.vetsoftware.app.catalogitem.domain.CatalogItemStatus;
@@ -30,6 +31,8 @@ class UpdateCatalogItemServiceTest {
 
     @Mock
     private CatalogItemRepository repository;
+    @Mock
+    private LimitDimensionQueryPort limitDimensionQueryPort;
     @InjectMocks
     private UpdateCatalogItemService service;
 

@@ -23,7 +23,6 @@ import com.vetsoftware.app.catalogitem.application.port.in.FindCatalogItemUseCas
 import com.vetsoftware.app.catalogitem.application.port.in.ListCatalogItemsUseCase;
 import com.vetsoftware.app.catalogitem.application.port.in.ReactivateCatalogItemUseCase;
 import com.vetsoftware.app.catalogitem.application.port.in.UpdateCatalogItemUseCase;
-import com.vetsoftware.app.catalogitem.domain.CapacityUnit;
 import com.vetsoftware.app.catalogitem.domain.CatalogItemStatus;
 import com.vetsoftware.app.catalogitem.domain.ItemType;
 import com.vetsoftware.app.shared.pagination.PageResult;
@@ -78,7 +77,7 @@ class CatalogItemControllerTest {
 
     private static CatalogItemDto usuarioExtra() {
         return new CatalogItemDto(2L, "EXTRA_USER", "Usuario adicional", "Un usuario más",
-                "Detalle largo", ItemType.CAPACITY, CapacityUnit.USER, false, 1, 50, 7,
+                "Detalle largo", ItemType.CAPACITY, "USER", false, 1, 50, 7,
                 CatalogItemStatus.ACTIVE, LocalDateTime.of(2026, 8, 22, 10, 15, 30), true);
     }
 
@@ -117,7 +116,7 @@ class CatalogItemControllerTest {
         verify(createUseCase).execute(command.capture());
         assertThat(command.getValue().code()).isEqualTo("EXTRA_USER");
         assertThat(command.getValue().itemType()).isEqualTo(ItemType.CAPACITY);
-        assertThat(command.getValue().capacityUnit()).isEqualTo(CapacityUnit.USER);
+        assertThat(command.getValue().capacityUnit()).isEqualTo("USER");
         assertThat(command.getValue().minQuantity()).isEqualTo(1);
         assertThat(command.getValue().maxQuantity()).isEqualTo(50);
         assertThat(command.getValue().sortOrder()).isEqualTo(7);

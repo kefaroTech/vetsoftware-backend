@@ -9,12 +9,14 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.subscription.application.command.CreateRequestedSubscriptionCommand;
 import com.vetsoftware.app.subscription.application.command.CreateSubscriptionCommand;
 import com.vetsoftware.app.subscription.application.command.RequestedSubscriptionItemCommand;
+import com.vetsoftware.app.subscription.application.dto.PublishedCatalogItem;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionItemSnapshot;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionQuoteSnapshot;
 import com.vetsoftware.app.subscription.application.port.out.ResolvedSubscriptionCreationPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionCommercialSnapshotPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionQuoteSnapshotPort;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
+import com.vetsoftware.app.subscription.domain.ContractPriceTier;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemType;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
 import com.vetsoftware.app.subscription.domain.TaxTreatment;
@@ -143,7 +145,7 @@ class CreateRequestedSubscriptionServiceTest {
         @DisplayName("los importes, IVA y cantidades incluidas salen del snapshot publicado")
         void toma_los_valores_comerciales_del_servidor() {
             when(commercialSnapshotPort.findPublishedItem(LISTA, BillingCycle.MONTHLY, ARTICULO, 3,
-                    INICIO)).thenReturn(Optional.of(snapshotComercial()));
+                    INICIO)).thenReturn(Optional.of(catalogoPublicado()));
 
             service.execute(comandoSinCotizacion());
 
@@ -187,5 +189,15 @@ class CreateRequestedSubscriptionServiceTest {
         return new SubscriptionItemSnapshot(ARTICULO, "CORE", "Nucleo comercial",
                 SubscriptionItemType.MODULE, null, 2, TaxTreatment.TAXED, 3,
                 new BigDecimal("179000.00"), new BigDecimal("19.00"));
+    }
+
+    /**
+     * El articulo publicado con TODOS sus tramos (D-66). Aqui es uno solo y
+     * abierto: el nucleo no tiene escalones.
+     */
+    private static PublishedCatalogItem catalogoPublicado() {
+        return new PublishedCatalogItem(ARTICULO, "CORE", "Nucleo comercial",
+                SubscriptionItemType.MODULE, null, List.of(new ContractPriceTier(1, null, 2,
+                        TaxTreatment.TAXED, new BigDecimal("179000.00"), new BigDecimal("19.00"))));
     }
 }

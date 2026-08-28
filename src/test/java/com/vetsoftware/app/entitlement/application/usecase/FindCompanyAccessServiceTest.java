@@ -2,6 +2,8 @@ package com.vetsoftware.app.entitlement.application.usecase;
 
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.AHORA;
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.COMPANY_ID;
+import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.USUARIOS;
+import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.contadorExistente;
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.SUBSCRIPTION_ID;
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.facturacion;
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.historiaClinica;
@@ -14,8 +16,7 @@ import com.vetsoftware.app.entitlement.application.dto.CompanyEntitlementDto;
 import com.vetsoftware.app.entitlement.application.port.out.CompanyCapacityRepository;
 import com.vetsoftware.app.entitlement.application.port.out.CompanyEntitlementRepository;
 import com.vetsoftware.app.entitlement.domain.AccessLevel;
-import com.vetsoftware.app.entitlement.domain.CapacityUnit;
-import com.vetsoftware.app.entitlement.domain.CompanyCapacity;
+import com.vetsoftware.app.entitlement.domain.PeriodKey;
 import com.vetsoftware.app.entitlement.domain.CompanyEntitlement;
 import com.vetsoftware.app.entitlement.domain.EntitlementSource;
 import com.vetsoftware.app.entitlement.domain.SubModuleRef;
@@ -100,12 +101,13 @@ class FindCompanyAccessServiceTest {
     void devuelve_los_contadores_con_su_bandera() {
         when(entitlementRepository.findAllByCompanyId(COMPANY_ID)).thenReturn(List.of());
         when(capacityRepository.findAllByCompanyId(COMPANY_ID))
-                .thenReturn(List.of(new CompanyCapacity(31L, COMPANY_ID, CapacityUnit.USER, 3, 5,
-                        SUBSCRIPTION_ID, AHORA, AHORA.minusDays(90))));
+                .thenReturn(List.of(contadorExistente(31L, USUARIOS, 3, 5)));
 
         assertThat(service.findByCompanyId(COMPANY_ID).capacities()).singleElement()
                 .satisfies(contador -> {
-                    assertThat(contador.capacityUnit()).isEqualTo("USER");
+                    assertThat(contador.dimensionCode()).isEqualTo("USER");
+                    assertThat(contador.measureKind()).isEqualTo("STOCK");
+                    assertThat(contador.periodKey()).isEqualTo(PeriodKey.SENTINEL);
                     assertThat(contador.exhausted()).isTrue();
                 });
     }

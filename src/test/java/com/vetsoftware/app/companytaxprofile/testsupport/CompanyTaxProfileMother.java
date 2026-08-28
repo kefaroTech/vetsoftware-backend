@@ -8,6 +8,7 @@ import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfile;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileResponsibility;
 import com.vetsoftware.app.companytaxprofile.domain.EconomicActivityRef;
 import com.vetsoftware.app.companytaxprofile.domain.TaxRegime;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -73,6 +74,24 @@ public final class CompanyTaxProfileMother {
         return new CompanyTaxProfile(PROFILE_ID, CLINICA, CompanyDocumentType.CEDULA_CIUDADANIA,
                 CEDULA, null, RAZON_SOCIAL, TaxRegime.NO_RESPONSABLE_IVA, EMAIL_FISCAL, null, null,
                 List.of(), CREADO, null, true);
+    }
+
+    /**
+     * Ficha <b>vigente desde el dia indicado</b>: {@code validFrom} explicito y
+     * {@code validTo} nulo.
+     *
+     * <p>
+     * Existe porque los constructores de arriba derivan {@code validFrom} de
+     * {@link #CREADO} (15 de enero), y las invariantes de vigencia necesitan mover
+     * esa fecha: el caso que importa es el de la ficha abierta <b>hoy</b>, que es
+     * la que hace que un segundo cambio el mismo dia no sea representable
+     * ({@code chk_company_tax_profiles_validity} es {@code valid_to > valid_from}
+     * estricto).
+     */
+    public static CompanyTaxProfile perfilVigenteDesde(LocalDate desde) {
+        return new CompanyTaxProfile(PROFILE_ID, CLINICA, CompanyDocumentType.NIT, NIT, NIT_DV,
+                RAZON_SOCIAL, TaxRegime.RESPONSABLE_IVA, EMAIL_FISCAL, NOMBRE_COMERCIAL,
+                VETERINARIA, List.of(O13, O15), desde, null, desde.atStartOfDay(), null, true);
     }
 
     public static CompanyTaxProfile perfilDeshabilitado() {

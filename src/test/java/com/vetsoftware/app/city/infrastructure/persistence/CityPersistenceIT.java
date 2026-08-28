@@ -9,6 +9,7 @@ import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.LocalDateTime;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -85,8 +86,30 @@ class CityPersistenceIT extends AbstractDataJpaTest {
                 .getSingleResult()).longValue();
     }
 
+    /**
+     * Contador de codigos DIVIPOLA libres para esta prueba.
+     *
+     * <p>
+     * Desde el changeset 315 la columna lleva {@code uq_cities_dane_code}: DIVIPOLA
+     * asigna un codigo por municipio y solo uno, asi que dos ciudades no pueden
+     * compartirlo. Antes de ese indice esta prueba reutilizaba {@code "05001"} en
+     * todas sus ciudades y nadie se quejaba; hoy eso choca dos veces, contra las
+     * otras ciudades del mismo caso y contra la geografia real que siembra
+     * {@code 114_backfill_dane_code_colombia} —donde {@code 05001} es Medellin—.
+     *
+     * <p>
+     * El rango {@code 00xxx} es seguro por construccion: no existe departamento
+     * {@code 00} en DIVIPOLA, asi que ninguna migracion lo siembra ni lo sembrara.
+     * Y sigue cumpliendo {@code chk_cities_dane_code}, que exige cinco digitos.
+     */
+    private static final AtomicInteger SIGUIENTE_DANE = new AtomicInteger();
+
+    private static String daneLibre() {
+        return String.format("%05d", SIGUIENTE_DANE.incrementAndGet());
+    }
+
     private City nueva(String nombre, StateRef departamento) {
-        return new City(null, nombre, departamento, "05001", CREADO, true);
+        return new City(null, nombre, departamento, daneLibre(), CREADO, true);
     }
 
     private City guardarEn(StateRef departamento, String nombre) {
@@ -122,12 +145,17 @@ class CityPersistenceIT extends AbstractDataJpaTest {
         @Test
         @DisplayName("guardar y releer conserva cada campo y el departamento hidratado")
         void guardar_y_releer_conserva_cada_campo() {
-            City guardada = guardarEn(antioquia, "Envigado");
+            // El codigo se toma del contador en vez de escribirlo literal para que la
+            // afirmacion siga siendo sobre la ida y vuelta del campo, y no sobre un
+            // valor concreto que hoy pertenece a Medellin en la geografia sembrada.
+            String dane = daneLibre();
+            City guardada = repository
+                    .save(new City(null, "Envigado", antioquia, dane, CREADO, true));
 
             City leida = repository.findById(guardada.getId()).orElseThrow();
 
             assertThat(leida.getName()).isEqualTo("Envigado");
-            assertThat(leida.getDaneCode()).isEqualTo("05001");
+            assertThat(leida.getDaneCode()).isEqualTo(dane);
             assertThat(leida.getCreatedDate()).isEqualTo(CREADO);
             assertThat(leida.isEnabled()).isTrue();
             // El StateRef no se guarda: se reconstruye desde el @ManyToOne al leer, y sus

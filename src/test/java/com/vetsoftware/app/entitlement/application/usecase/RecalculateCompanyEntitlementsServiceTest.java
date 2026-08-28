@@ -4,8 +4,10 @@ import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.AHOR
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.COMPANY_ID;
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.HOY;
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.SUBSCRIPTION_ID;
+import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.USUARIOS;
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.capacidadVigente;
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.contadorExistente;
+import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.contadorRecontado;
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.contrato;
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.contratoActivoConHistoria;
 import static com.vetsoftware.app.entitlement.testsupport.EntitlementMother.contratoEn;
@@ -19,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -29,9 +32,9 @@ import com.vetsoftware.app.entitlement.application.dto.EntitlementRecalculationD
 import com.vetsoftware.app.entitlement.application.port.out.AdminPermissionReconciliationPort;
 import com.vetsoftware.app.entitlement.application.port.out.CompanyCapacityRepository;
 import com.vetsoftware.app.entitlement.application.port.out.CompanyEntitlementRepository;
+import com.vetsoftware.app.entitlement.application.port.out.EntitlementSnapshotPort;
 import com.vetsoftware.app.entitlement.application.port.out.SubscriptionQueryPort;
 import com.vetsoftware.app.entitlement.domain.AccessLevel;
-import com.vetsoftware.app.entitlement.domain.CapacityUnit;
 import com.vetsoftware.app.entitlement.domain.CompanyCapacity;
 import com.vetsoftware.app.entitlement.domain.CompanyEntitlement;
 import com.vetsoftware.app.entitlement.domain.CompanyWithoutContractException;
@@ -63,6 +66,8 @@ class RecalculateCompanyEntitlementsServiceTest {
     private CompanyCapacityRepository capacityRepository;
     @Mock
     private AdminPermissionReconciliationPort adminPermissionReconciliationPort;
+    @Mock
+    private EntitlementSnapshotPort snapshotPort;
 
     private RecalculateCompanyEntitlementsService service;
 
@@ -71,9 +76,9 @@ class RecalculateCompanyEntitlementsServiceTest {
         // El recalculador NO se mockea: no es un puerto, es la mecanica compartida por
         // los dos casos de uso que disparan el recalculo. Mockearlo dejaria el test
         // afirmando sobre nada.
-        service = new RecalculateCompanyEntitlementsService(
-                new CompanyEntitlementRecalculator(subscriptionQueryPort, entitlementRepository,
-                        capacityRepository, adminPermissionReconciliationPort, relojFijo()));
+        service = new RecalculateCompanyEntitlementsService(new CompanyEntitlementRecalculator(
+                subscriptionQueryPort, entitlementRepository, capacityRepository,
+                adminPermissionReconciliationPort, snapshotPort, relojFijo()));
     }
 
     private static RecalculateCompanyEntitlementsCommand comando() {
@@ -147,21 +152,73 @@ class RecalculateCompanyEntitlementsServiceTest {
         @DisplayName("conserva el consumo del contador al recalcular su techo")
         void conserva_el_consumo_del_contador() {
             ContractSnapshot snapshot = contrato(contratoEn(ContractStatus.ACTIVE), List.of(),
-                    List.of(capacidadVigente(910L, CapacityUnit.USER, 1, 2)));
+                    List.of(capacidadVigente(910L, USUARIOS, 1, 2)));
             when(subscriptionQueryPort.findCurrentContractByCompanyId(COMPANY_ID, HOY))
                     .thenReturn(Optional.of(snapshot));
             when(capacityRepository.findAllByCompanyId(COMPANY_ID))
-                    .thenReturn(List.of(contadorExistente(31L, CapacityUnit.USER, 10, 7)));
+                    .thenReturn(List.of(contadorExistente(31L, USUARIOS, 10, 7)));
 
             service.execute(comando());
 
             ArgumentCaptor<List<CompanyCapacity>> guardados = captorDeContadores();
-            verify(capacityRepository).saveAll(guardados.capture());
+            verify(capacityRepository).upsertCeilings(guardados.capture());
             assertThat(guardados.getValue()).singleElement().satisfies(contador -> {
                 assertThat(contador.getId()).isEqualTo(31L);
                 assertThat(contador.getLimitQuantity()).isEqualTo(3);
                 assertThat(contador.getUsedQuantity()).isEqualTo(7);
-                assertThat(contador.getRecalculatedAt()).isEqualTo(AHORA);
+                assertThat(contador.getLimitRecalculatedAt()).isEqualTo(AHORA);
+            });
+        }
+
+        /**
+         * Defecto #648. El recalculo escribe el techo por una via que NO nombra la
+         * columna del consumo. Aqui se comprueba el lado de la aplicacion --que la
+         * unica escritura de contadores es {@code upsertCeilings}--; que esa via
+         * respete de verdad el consumo bajo concurrencia lo comprueba
+         * {@code CompanyCapacityPersistenceIT}, que es donde vive el SQL.
+         */
+        @Test
+        @DisplayName("el recalculo escribe el techo por la vía que no nombra el consumo (#648)")
+        void el_recalculo_escribe_el_techo_sin_nombrar_el_consumo() {
+            ContractSnapshot snapshot = contrato(contratoEn(ContractStatus.ACTIVE), List.of(),
+                    List.of(capacidadVigente(910L, USUARIOS, 1, 2)));
+            when(subscriptionQueryPort.findCurrentContractByCompanyId(COMPANY_ID, HOY))
+                    .thenReturn(Optional.of(snapshot));
+            when(capacityRepository.findAllByCompanyId(COMPANY_ID))
+                    .thenReturn(List.of(contadorExistente(31L, USUARIOS, 10, 7)));
+
+            service.execute(comando());
+
+            verify(capacityRepository).upsertCeilings(anyList());
+            verify(capacityRepository, never()).addUsage(org.mockito.ArgumentMatchers.anyLong(),
+                    org.mockito.ArgumentMatchers.anyLong(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyInt());
+        }
+
+        /**
+         * R-ENT-13. El sello del techo y el sello del consumo son dos hechos distintos.
+         * El recalculo no ha contado ni una fila real, asi que no puede dejar el sello
+         * del consumo fresco: un indicador de salud que dice "sano" justo cuando el
+         * dato puede estar mal es peor que no tener indicador.
+         */
+        @Test
+        @DisplayName("un recálculo no refresca el sello del consumo, que no ha mirado")
+        void un_recalculo_no_refresca_el_sello_del_consumo() {
+            ContractSnapshot snapshot = contrato(contratoEn(ContractStatus.ACTIVE), List.of(),
+                    List.of(capacidadVigente(910L, USUARIOS, 1, 2)));
+            when(subscriptionQueryPort.findCurrentContractByCompanyId(COMPANY_ID, HOY))
+                    .thenReturn(Optional.of(snapshot));
+            when(capacityRepository.findAllByCompanyId(COMPANY_ID)).thenReturn(
+                    List.of(contadorRecontado(31L, USUARIOS, 10, 7, AHORA.minusDays(4))));
+
+            service.execute(comando());
+
+            ArgumentCaptor<List<CompanyCapacity>> guardados = captorDeContadores();
+            verify(capacityRepository).upsertCeilings(guardados.capture());
+            assertThat(guardados.getValue()).singleElement().satisfies(contador -> {
+                assertThat(contador.getLimitRecalculatedAt()).isEqualTo(AHORA);
+                assertThat(contador.getUsageReconciledAt()).isEqualTo(AHORA.minusDays(4));
             });
         }
     }

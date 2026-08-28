@@ -36,7 +36,7 @@ class ConfiguratorEffectTest {
         @DisplayName("con los dos disparadores rellenos se rechaza: el articulo entraria dos veces")
         void con_los_dos_disparadores_se_rechaza() {
             assertThatThrownBy(() -> new ConfiguratorEffect(1L, O11_SI_VENDE, Q3_CUANTAS_CAJAS,
-                    ITEM_POS, EffectType.ADD, null, CREADA_EL, 0L, true))
+                    ITEM_POS, EffectType.ADD, null, 0, CREADA_EL, 0L, true))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("exactly one trigger is required");
         }
@@ -45,7 +45,7 @@ class ConfiguratorEffectTest {
         @DisplayName("sin ningun disparador se rechaza: nada lo activaria nunca")
         void sin_ningun_disparador_se_rechaza() {
             assertThatThrownBy(() -> new ConfiguratorEffect(1L, null, null, ITEM_POS,
-                    EffectType.ADD, null, CREADA_EL, 0L, true))
+                    EffectType.ADD, null, 0, CREADA_EL, 0L, true))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("exactly one trigger is required");
         }
@@ -174,6 +174,79 @@ class ConfiguratorEffectTest {
 
             efecto.enable();
             assertThat(efecto.isEnabled()).isTrue();
+        }
+    }
+
+    /**
+     * La columna {@code priority} existió en el esquema desde el changeset 238 sin
+     * estar mapeada en Java, así que la regla que ese changeset declara —«los
+     * efectos se aplican en orden ascendente de prioridad»— no la ejecutaba nadie.
+     * Estos casos son la red de la mitad que vive en el dominio; la otra mitad, que
+     * el resolvedor la respete, la cubre {@code ConfiguratorResolverTest}.
+     */
+    @Nested
+    @DisplayName("la prioridad decide el orden de aplicacion")
+    class Prioridad {
+
+        @Test
+        @DisplayName("create nace en cero: un efecto sin prioridad declarada cae ANTES que los sembrados")
+        void create_nace_en_cero() {
+            // Los sembrados empiezan en 10 y van por decenas. Si un efecto nuevo
+            // cayera en medio, anadir una fila a mano desde la consola se colaria
+            // entre dos decenas y desharia una correccion.
+            ConfiguratorEffect efecto = ConfiguratorEffect.create(O11_SI_VENDE, null, ITEM_POS,
+                    EffectType.ADD, null, RELOJ);
+
+            assertThat(efecto.getPriority()).isZero();
+        }
+
+        @Test
+        @DisplayName("reprioritize mueve el efecto de sitio y no toca disparador, articulo ni tipo")
+        void reprioritize_solo_mueve_la_prioridad() {
+            ConfiguratorEffect efecto = efectoPorOpcion(1L, O11_SI_VENDE, ITEM_POS, EffectType.ADD,
+                    null);
+
+            efecto.reprioritize(35);
+
+            assertThat(efecto.getPriority()).isEqualTo(35);
+            assertThat(efecto.getOptionId()).isEqualTo(O11_SI_VENDE);
+            assertThat(efecto.getCatalogItemId()).isEqualTo(ITEM_POS);
+            assertThat(efecto.getEffect()).isEqualTo(EffectType.ADD);
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {-1, 10000})
+        @DisplayName("reprioritize fuera de 0..9999 se rechaza: espejo de chk_configurator_effects_priority")
+        void reprioritize_fuera_de_rango_se_rechaza(int prioridad) {
+            ConfiguratorEffect efecto = efectoPorOpcion(1L, O11_SI_VENDE, ITEM_POS, EffectType.ADD,
+                    null);
+
+            assertThatThrownBy(() -> efecto.reprioritize(prioridad))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("priority must be between");
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {-1, 10000})
+        @DisplayName("el constructor valida la prioridad igual que reprioritize, no solo el mutador")
+        void el_constructor_tambien_valida_la_prioridad(int prioridad) {
+            // Sin esto, una fila con prioridad imposible entraria por el mapper —que
+            // usa el constructor— y el 400 se convertiria en un Check constraint
+            // violated que no nombra ni la columna ni el valor.
+            assertThatThrownBy(() -> new ConfiguratorEffect(1L, O11_SI_VENDE, null, ITEM_POS,
+                    EffectType.ADD, null, prioridad, CREADA_EL, 0L, true))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("priority must be between");
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {0, 9999})
+        @DisplayName("los dos extremos del rango son validos: el CHECK es BETWEEN, inclusivo")
+        void los_extremos_del_rango_son_validos(int prioridad) {
+            ConfiguratorEffect efecto = efectoPorOpcion(1L, O11_SI_VENDE, ITEM_POS, EffectType.ADD,
+                    null, prioridad);
+
+            assertThat(efecto.getPriority()).isEqualTo(prioridad);
         }
     }
 }

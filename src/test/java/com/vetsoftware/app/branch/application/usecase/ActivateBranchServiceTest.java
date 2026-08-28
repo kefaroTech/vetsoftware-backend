@@ -16,7 +16,6 @@ import com.vetsoftware.app.branch.domain.Branch;
 import com.vetsoftware.app.branch.domain.BranchNotFoundException;
 import com.vetsoftware.app.branch.domain.CityRef;
 import com.vetsoftware.app.branch.domain.CompanyRef;
-import com.vetsoftware.app.entitlement.domain.CapacityUnit;
 import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -84,7 +83,7 @@ class ActivateBranchServiceTest {
     void el_limite_branch_aborta_sin_activar_ni_persistir() {
         Branch inactiva = branch(false);
         when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(inactiva));
-        doThrow(new CompanyCapacityLimitExceededException(9L, CapacityUnit.BRANCH, 2, 2, 1))
+        doThrow(new CompanyCapacityLimitExceededException(9L, "BRANCH", 2, 2, 1))
                 .when(branchCapacityPort).reserve(9L);
 
         assertThatThrownBy(() -> service.execute(3L, 9L))

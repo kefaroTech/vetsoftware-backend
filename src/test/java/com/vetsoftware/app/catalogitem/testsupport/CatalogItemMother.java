@@ -2,7 +2,6 @@ package com.vetsoftware.app.catalogitem.testsupport;
 
 import com.vetsoftware.app.catalogitem.application.command.CreateCatalogItemCommand;
 import com.vetsoftware.app.catalogitem.domain.BundleComponent;
-import com.vetsoftware.app.catalogitem.domain.CapacityUnit;
 import com.vetsoftware.app.catalogitem.domain.CatalogItem;
 import com.vetsoftware.app.catalogitem.domain.CatalogItemDependency;
 import com.vetsoftware.app.catalogitem.domain.CatalogItemStatus;
@@ -42,7 +41,7 @@ public final class CatalogItemMother {
 
     public static CatalogItem usuarioExtra() {
         return new CatalogItem(2L, "EXTRA_USER", "Usuario adicional", null, null, ItemType.CAPACITY,
-                CapacityUnit.USER, false, 0, null, 20, CatalogItemStatus.ACTIVE, CREADO, 0L, true);
+                "USER", false, 0, null, 20, CatalogItemStatus.ACTIVE, CREADO, 0L, true);
     }
 
     public static CatalogItem paqueteBasico() {
@@ -53,7 +52,7 @@ public final class CatalogItemMother {
     /** Artículo genérico con el id y el tipo que pida el caso bajo prueba. */
     public static CatalogItem conIdYTipo(Long id, ItemType itemType) {
         return new CatalogItem(id, "CODE_" + id, "Artículo " + id, null, null, itemType,
-                itemType == ItemType.CAPACITY ? CapacityUnit.USER : null, false, 1, null, 0,
+                itemType == ItemType.CAPACITY ? "USER" : null, false, 1, null, 0,
                 CatalogItemStatus.ACTIVE, CREADO, 0L, true);
     }
 

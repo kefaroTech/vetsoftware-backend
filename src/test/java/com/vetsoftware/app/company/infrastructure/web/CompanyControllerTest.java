@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,8 +23,10 @@ import com.vetsoftware.app.company.application.dto.CitySummaryDto;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.company.application.port.in.DeleteCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.FindCompanyUseCase;
+import com.vetsoftware.app.company.application.port.in.ListDisabledCompaniesUseCase;
 import com.vetsoftware.app.company.application.port.in.ListCompaniesUseCase;
 import com.vetsoftware.app.company.application.port.in.ProvisionCompanyUseCase;
+import com.vetsoftware.app.company.application.port.in.ReactivateCompanyUseCase;
 import com.vetsoftware.app.company.application.port.in.SearchCompaniesUseCase;
 import com.vetsoftware.app.company.application.port.in.UpdateCompanyUseCase;
 import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
@@ -80,9 +83,13 @@ class CompanyControllerTest {
     @MockitoBean
     private ListCompaniesUseCase listUseCase;
     @MockitoBean
+    private ListDisabledCompaniesUseCase listDisabledUseCase;
+    @MockitoBean
     private SearchCompaniesUseCase searchUseCase;
     @MockitoBean
     private DeleteCompanyUseCase deleteUseCase;
+    @MockitoBean
+    private ReactivateCompanyUseCase reactivateUseCase;
 
     private static CompanyDto clinicaNorte() {
         return new CompanyDto(9L, "Clinica Norte", "NIT-900", "Calle 123 #45-67", "3001234567",
@@ -342,6 +349,114 @@ class CompanyControllerTest {
      * cliente dejo de valer cuando el cliente solo tiene la pagina que esta
      * mirando.
      */
+    /**
+     * El archivo de empresas, y el endpoint que le da sentido al
+     * {@code PATCH /{id}/enable} de mas abajo: mientras no existio, la consola no
+     * tenia forma de nombrar una empresa archivada, porque el
+     * {@code @SQLRestriction("enabled = true")} de la entidad la esconde de las
+     * tres lecturas restantes.
+     */
+    @Nested
+    @DisplayName("GET /companies/disabled")
+    class Archivadas {
+
+        /** Pagina de una empresa archivada, tal como la sirve el caso de uso. */
+        private static PageResult<CompanyDto> unaArchivada() {
+            return new PageResult<>(List.of(new CompanyDto(9L, "Clinica Norte", "NIT-900",
+                    "Calle 123 #45-67", "3001234567", new CitySummaryDto(11L, "Bogota"),
+                    LocalDateTime.of(2026, 1, 15, 10, 30), false)), 0, 20, 1L, 1);
+        }
+
+        /**
+         * Misma envoltura de pagina que {@code GET /companies}: el contrato que ven los
+         * dos frontends no cambia de forma por listar el archivo en vez del registro
+         * activo.
+         */
+        @Test
+        @DisplayName("devuelve la envoltura de pagina con enabled=false, no un array desnudo")
+        void devuelve_la_envoltura_de_pagina_con_enabled_false() throws Exception {
+            when(authz.currentCompanyIdOrNull()).thenReturn(null);
+            when(listDisabledUseCase.listDisabled(null, 0, 20)).thenReturn(unaArchivada());
+
+            mockMvc.perform(get("/companies/disabled")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].id").value(9))
+                    .andExpect(jsonPath("$.content[0].enabled").value(false))
+                    .andExpect(jsonPath("$.page").value(0))
+                    .andExpect(jsonPath("$.pageSize").value(20))
+                    .andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.totalPages").value(1))
+                    .andExpect(jsonPath("$[0]").doesNotExist());
+        }
+
+        /**
+         * El alcance no viaja en la peticion. Aqui importa mas que en el listado
+         * activo: la consulta que hay debajo es SQL nativo —para esquivar el
+         * {@code @SQLRestriction}— y su {@code WHERE} es la unica barrera de tenant que
+         * existe en este camino.
+         */
+        @Test
+        @DisplayName("acota al principal: pasa su companyId, nunca null")
+        void acota_al_company_id_del_principal() throws Exception {
+            when(authz.currentCompanyIdOrNull()).thenReturn(9L);
+            when(listDisabledUseCase.listDisabled(9L, 0, 20)).thenReturn(unaArchivada());
+
+            mockMvc.perform(get("/companies/disabled")).andExpect(status().isOk());
+
+            verify(listDisabledUseCase).listDisabled(9L, 0, 20);
+            verify(listDisabledUseCase, never()).listDisabled(isNull(), anyInt(), anyInt());
+        }
+
+        @Test
+        @DisplayName("sin query params usa los defectos del contrato: page=0 y pageSize=20")
+        void sin_query_params_usa_los_defectos_del_contrato() throws Exception {
+            when(authz.currentCompanyIdOrNull()).thenReturn(null);
+            when(listDisabledUseCase.listDisabled(null, 0, 20)).thenReturn(unaArchivada());
+
+            mockMvc.perform(get("/companies/disabled")).andExpect(status().isOk());
+
+            verify(listDisabledUseCase).listDisabled(null, 0, 20);
+        }
+
+        @Test
+        @DisplayName("page y pageSize llegan al caso de uso tal como los pidio el cliente")
+        void page_y_page_size_llegan_tal_cual() throws Exception {
+            when(authz.currentCompanyIdOrNull()).thenReturn(null);
+            when(listDisabledUseCase.listDisabled(null, 2, 50)).thenReturn(PageResult.empty(2, 50));
+
+            mockMvc.perform(get("/companies/disabled").param("page", "2").param("pageSize", "50"))
+                    .andExpect(status().isOk());
+
+            verify(listDisabledUseCase).listDisabled(null, 2, 50);
+        }
+
+        /**
+         * La ruta literal tiene que ganarle a {@code /{id}}: si Spring la emparejara
+         * como {@code findById("disabled")} la respuesta seria un 400 de conversion de
+         * tipo, y el endpoint no existiria en la practica.
+         */
+        @Test
+        @DisplayName("/disabled no se resuelve como findById del literal")
+        void disabled_no_se_resuelve_como_find_by_id() throws Exception {
+            when(authz.currentCompanyIdOrNull()).thenReturn(null);
+            when(listDisabledUseCase.listDisabled(null, 0, 20)).thenReturn(unaArchivada());
+
+            mockMvc.perform(get("/companies/disabled")).andExpect(status().isOk());
+
+            verify(findUseCase, never()).findById(any());
+        }
+
+        @Test
+        @DisplayName("un archivo vacio responde 200 con la pagina vacia, no 404")
+        void archivo_vacio_responde_200() throws Exception {
+            when(authz.currentCompanyIdOrNull()).thenReturn(null);
+            when(listDisabledUseCase.listDisabled(null, 0, 20)).thenReturn(PageResult.empty(0, 20));
+
+            mockMvc.perform(get("/companies/disabled")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content").isEmpty())
+                    .andExpect(jsonPath("$.totalElements").value(0));
+        }
+    }
+
     @Nested
     @DisplayName("GET /companies/search")
     class Busqueda {
@@ -488,6 +603,33 @@ class CompanyControllerTest {
                     .execute(9L);
 
             mockMvc.perform(delete("/companies/9")).andExpect(status().isConflict());
+        }
+
+        /**
+         * El camino de vuelta del DELETE de aqui arriba. Sin el, deshacer un archivado
+         * hecho por error solo se podia con un {@code UPDATE} a mano en produccion.
+         * Misma forma que las otras veintinueve reactivaciones del sistema:
+         * {@code PATCH /{recurso}/{id}/enable}, sin cuerpo.
+         */
+        @Test
+        @DisplayName("PATCH /companies/{id}/enable responde 200 con la empresa restaurada")
+        void patch_enable_responde_200() throws Exception {
+            when(reactivateUseCase.execute(9L)).thenReturn(clinicaNorte());
+
+            mockMvc.perform(patch("/companies/9/enable")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(9))
+                    .andExpect(jsonPath("$.name").value("Clinica Norte"))
+                    .andExpect(jsonPath("$.enabled").value(true));
+
+            verify(reactivateUseCase).execute(9L);
+        }
+
+        @Test
+        @DisplayName("PATCH /companies/{id}/enable de una empresa inexistente responde 404")
+        void patch_enable_inexistente_responde_404() throws Exception {
+            when(reactivateUseCase.execute(99L)).thenThrow(new CompanyNotFoundException(99L));
+
+            mockMvc.perform(patch("/companies/99/enable")).andExpect(status().isNotFound());
         }
     }
 }

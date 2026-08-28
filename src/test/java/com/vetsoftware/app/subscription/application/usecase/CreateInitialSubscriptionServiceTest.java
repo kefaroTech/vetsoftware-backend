@@ -16,7 +16,6 @@ import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
 import com.vetsoftware.app.subscription.application.port.in.CreateSubscriptionUseCase;
 import com.vetsoftware.app.subscription.application.port.out.PlatformCatalogPort;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.PlatformCatalogNotConfiguredForSubscriptionException;
 import com.vetsoftware.app.subscription.domain.Subscription;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemType;
@@ -75,17 +74,16 @@ class CreateInitialSubscriptionServiceTest {
         return captor.getValue();
     }
 
-    private static InitialCapacityTemplate capacidad(Long id, CapacityUnit unidad, int incluidas,
+    private static InitialCapacityTemplate capacidad(Long id, String unidad, int incluidas,
             int minimo) {
-        return new InitialCapacityTemplate(id, "CAP_" + unidad.name(), "Capacidad " + unidad.name(),
-                unidad, incluidas, minimo, new BigDecimal("12000.00"), new BigDecimal("19.00"),
+        return new InitialCapacityTemplate(id, "CAP_" + unidad, "Capacidad " + unidad, unidad,
+                incluidas, minimo, new BigDecimal("12000.00"), new BigDecimal("19.00"),
                 TaxTreatment.TAXED);
     }
 
     /** El minimo operable: una sede y un usuario, que es lo que el alta consume. */
     private static List<InitialCapacityTemplate> capacidadesDelMinimo() {
-        return List.of(capacidad(200L, CapacityUnit.BRANCH, 0, 1),
-                capacidad(201L, CapacityUnit.USER, 0, 1));
+        return List.of(capacidad(200L, "BRANCH", 0, 1), capacidad(201L, "USER", 0, 1));
     }
 
     @Nested
@@ -125,7 +123,7 @@ class CreateInitialSubscriptionServiceTest {
             assertThat(linea.quantity()).isEqualTo(1);
             assertThat(linea.capacityUnit()).isNull();
             assertThat(comando.items()).extracting(SubscriptionItemLineCommand::capacityUnit)
-                    .containsExactly(null, CapacityUnit.BRANCH, CapacityUnit.USER);
+                    .containsExactly(null, "BRANCH", "USER");
             assertThat(comando.items()).extracting(SubscriptionItemLineCommand::itemType)
                     .containsExactly(SubscriptionItemType.MODULE, SubscriptionItemType.CAPACITY,
                             SubscriptionItemType.CAPACITY);
@@ -138,9 +136,8 @@ class CreateInitialSubscriptionServiceTest {
             // Con cantidad cero la fila existiria y seguiria sin dejar crear la sede.
             when(platformCatalogPort.findInitialContractTemplate(BillingCycle.MONTHLY))
                     .thenReturn(Optional.of(plantilla(0)));
-            when(platformCatalogPort.findInitialCapacityTemplates(any()))
-                    .thenReturn(List.of(capacidad(200L, CapacityUnit.BRANCH, 0, 0),
-                            capacidad(201L, CapacityUnit.USER, 0, 0)));
+            when(platformCatalogPort.findInitialCapacityTemplates(any())).thenReturn(
+                    List.of(capacidad(200L, "BRANCH", 0, 0), capacidad(201L, "USER", 0, 0)));
             when(createSubscriptionUseCase.execute(any())).thenReturn(contratoCreado());
 
             service.execute(new CreateInitialSubscriptionCommand(EMPRESA, null, ENERO_1));
@@ -155,9 +152,8 @@ class CreateInitialSubscriptionServiceTest {
         void congelaLaTarifaDeLaCapacidad() {
             when(platformCatalogPort.findInitialContractTemplate(BillingCycle.MONTHLY))
                     .thenReturn(Optional.of(plantilla(0)));
-            when(platformCatalogPort.findInitialCapacityTemplates(any()))
-                    .thenReturn(List.of(capacidad(200L, CapacityUnit.BRANCH, 2, 1),
-                            capacidad(201L, CapacityUnit.USER, 0, 1)));
+            when(platformCatalogPort.findInitialCapacityTemplates(any())).thenReturn(
+                    List.of(capacidad(200L, "BRANCH", 2, 1), capacidad(201L, "USER", 0, 1)));
             when(createSubscriptionUseCase.execute(any())).thenReturn(contratoCreado());
 
             service.execute(new CreateInitialSubscriptionCommand(EMPRESA, null, ENERO_1));
@@ -326,7 +322,7 @@ class CreateInitialSubscriptionServiceTest {
             when(platformCatalogPort.findInitialContractTemplate(BillingCycle.MONTHLY))
                     .thenReturn(Optional.of(plantilla(0)));
             when(platformCatalogPort.findInitialCapacityTemplates(any()))
-                    .thenReturn(List.of(capacidad(200L, CapacityUnit.BRANCH, 0, 1)));
+                    .thenReturn(List.of(capacidad(200L, "BRANCH", 0, 1)));
 
             assertThatThrownBy(() -> service
                     .execute(new CreateInitialSubscriptionCommand(EMPRESA, null, ENERO_1)))
@@ -351,7 +347,7 @@ class CreateInitialSubscriptionServiceTest {
 
             assertThat(capturarComando(createSubscriptionUseCase).items())
                     .extracting(SubscriptionItemLineCommand::capacityUnit)
-                    .doesNotContain(CapacityUnit.TERMINAL, CapacityUnit.STORAGE_GB);
+                    .doesNotContain("TERMINAL", "STORAGE_GB");
         }
     }
 }

@@ -38,8 +38,47 @@ public final class QuoteMother {
         return new CompanyRef(42L, "Clinica Norte", "900123456");
     }
 
+    /** Inicio de vigencia de la tarifa del ejercicio en curso. */
+    public static final LocalDate TARIFA_DESDE = LocalDate.of(2026, 1, 1);
+
+    /** Cierre de vigencia de la tarifa del ejercicio en curso. */
+    public static final LocalDate TARIFA_HASTA = LocalDate.of(2026, 12, 31);
+
+    /**
+     * La tarifa vigente: ventana cerrada que cubre {@link #HOY}. Es el caso normal
+     * y el que usan los caminos felices.
+     */
     public static PriceListRef tarifa() {
-        return new PriceListRef(PRICE_LIST_ID, "LISTA-2026-01", "COP");
+        return tarifa("LISTA-2026-01", TARIFA_DESDE, TARIFA_HASTA);
+    }
+
+    /**
+     * Tarifa vigente <b>sin fecha de fin</b>. No es un caso de laboratorio: es la
+     * lista viva del catalogo, que {@code 311_publish_price_list_2026} deja con
+     * {@code valid_to = NULL}. Un {@code hoy <= validTo} escrito sin pensar en el
+     * nulo la descartaria y dejaria la plataforma sin ninguna tarifa (D-73).
+     */
+    public static PriceListRef tarifaSinCierre() {
+        return tarifa("LISTA-ABIERTA", TARIFA_DESDE, null);
+    }
+
+    /** Publicada, pero su vigencia acabo el ano pasado: el defecto D-73. */
+    public static PriceListRef tarifaCaducada() {
+        return tarifa("LISTA-2025-01", LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31));
+    }
+
+    /** Publicada y firmada, pero todavia no rige: empieza el ano que viene. */
+    public static PriceListRef tarifaFutura() {
+        return tarifa("LISTA-2027-01", LocalDate.of(2027, 1, 1), LocalDate.of(2027, 12, 31));
+    }
+
+    /** Tarifa cuyo ultimo dia de vigencia es {@link #VIGENTE_HASTA}. */
+    public static PriceListRef tarifaQueVenceEl(LocalDate ultimoDia) {
+        return tarifa("LISTA-CIERRE", TARIFA_DESDE, ultimoDia);
+    }
+
+    public static PriceListRef tarifa(String codigo, LocalDate desde, LocalDate hasta) {
+        return new PriceListRef(PRICE_LIST_ID, codigo, "COP", desde, hasta);
     }
 
     public static CatalogItemRef modulo() {

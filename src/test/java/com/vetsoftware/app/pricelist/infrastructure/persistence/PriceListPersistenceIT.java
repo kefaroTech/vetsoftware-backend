@@ -31,7 +31,7 @@ class PriceListPersistenceIT extends AbstractDataJpaTest {
         entityManager.clear();
 
         assertThat(repository.findById(guardada.getId())).get().satisfies(leida -> {
-            assertThat(leida.getCode()).isEqualTo("LISTA-2026-01");
+            assertThat(leida.getCode()).isEqualTo("LISTA-TEST-2026");
             assertThat(leida.getCurrency()).isEqualTo("COP");
             assertThat(leida.getStatus()).isEqualTo(PriceListStatus.DRAFT);
             assertThat(leida.getPublishedAt()).isNull();
@@ -58,7 +58,7 @@ class PriceListPersistenceIT extends AbstractDataJpaTest {
 
         assertThat(repository.lockById(guardada.getId())).get().satisfies(bloqueada -> {
             assertThat(bloqueada.getId()).isEqualTo(guardada.getId());
-            assertThat(bloqueada.getCode()).isEqualTo("LISTA-2026-01");
+            assertThat(bloqueada.getCode()).isEqualTo("LISTA-TEST-2026");
             assertThat(bloqueada.getStatus()).isEqualTo(PriceListStatus.DRAFT);
             assertThat(bloqueada.isDraft()).isTrue();
         });
@@ -98,7 +98,7 @@ class PriceListPersistenceIT extends AbstractDataJpaTest {
         entityManager.clear();
 
         assertThat(repository.findById(guardada.getId())).get().satisfies(revivida -> {
-            assertThat(revivida.getCode()).isEqualTo("LISTA-2026-01");
+            assertThat(revivida.getCode()).isEqualTo("LISTA-TEST-2026");
             assertThat(revivida.getVersion()).isGreaterThan(versionInicial);
         });
     }

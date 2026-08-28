@@ -26,7 +26,7 @@ class SubscriptionItemTest {
 
     private static SubscriptionItem lineaAbierta() {
         return SubscriptionItem.open(EMPRESA, CONTRATO, ARTICULO, "EXTRA_USER", "Usuario adicional",
-                SubscriptionItemType.CAPACITY, CapacityUnit.USER, 2, TaxTreatment.TAXED, 5, PRECIO,
+                SubscriptionItemType.CAPACITY, "USER", 2, TaxTreatment.TAXED, 5, PRECIO,
                 new BigDecimal("19.00"), EffectivePeriod.openFrom(ENERO_1), ItemOrigin.ADDON, 11L);
     }
 
@@ -151,8 +151,8 @@ class SubscriptionItemTest {
             assertThat(cincoUsuariosConDosIncluidos.billableQuantity()).isEqualTo(3);
 
             SubscriptionItem anaTrabajaSola = SubscriptionItem.open(EMPRESA, CONTRATO, ARTICULO,
-                    "EXTRA_USER", "Usuario adicional", SubscriptionItemType.CAPACITY,
-                    CapacityUnit.USER, 2, TaxTreatment.TAXED, 1, PRECIO, BigDecimal.ZERO,
+                    "EXTRA_USER", "Usuario adicional", SubscriptionItemType.CAPACITY, "USER", 2,
+                    TaxTreatment.TAXED, 1, PRECIO, BigDecimal.ZERO,
                     EffectivePeriod.openFrom(ENERO_1), ItemOrigin.INITIAL, null);
 
             // Ana trabaja sola, el nucleo incluye 2 usuarios: se le cobran cero, no uno.
@@ -178,9 +178,9 @@ class SubscriptionItemTest {
         @DisplayName("una unidad colgada de un modulo no significa nada")
         void moduloConUnidad() {
             assertThatThrownBy(() -> SubscriptionItem.open(EMPRESA, CONTRATO, ARTICULO, "CORE",
-                    "Nucleo", SubscriptionItemType.MODULE, CapacityUnit.USER, 0, TaxTreatment.TAXED,
-                    1, PRECIO, BigDecimal.ZERO, EffectivePeriod.openFrom(ENERO_1),
-                    ItemOrigin.INITIAL, null)).isInstanceOf(IllegalArgumentException.class)
+                    "Nucleo", SubscriptionItemType.MODULE, "USER", 0, TaxTreatment.TAXED, 1, PRECIO,
+                    BigDecimal.ZERO, EffectivePeriod.openFrom(ENERO_1), ItemOrigin.INITIAL, null))
+                    .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("capacityUnit");
         }
 
@@ -220,7 +220,7 @@ class SubscriptionItemTest {
      * escribe igual y el que revienta es MySQL, en mitad de un alta a medio hacer.
      */
     private static SubscriptionItem linea(Long companyId, Long catalogItemId, String itemCode,
-            String itemName, SubscriptionItemType itemType, CapacityUnit capacityUnit,
+            String itemName, SubscriptionItemType itemType, String capacityUnit,
             int includedQuantity, TaxTreatment taxTreatment, int quantity, BigDecimal unitAmount,
             BigDecimal taxRate, EffectivePeriod period, ItemOrigin origin) {
         return SubscriptionItem.open(companyId, CONTRATO, catalogItemId, itemCode, itemName,

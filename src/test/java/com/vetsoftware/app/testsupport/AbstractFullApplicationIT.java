@@ -61,8 +61,17 @@ import org.testcontainers.containers.MySQLContainer;
 @ActiveProfiles({"test", "openapi"})
 public abstract class AbstractFullApplicationIT {
 
+    /**
+     * {@code --log-bin-trust-function-creators=1}: los changesets 346 y 353 crean
+     * ocho TRIGGER. Con el binlog activo —lo esta por defecto en mysql:8.4— y un
+     * usuario sin {@code SUPER}, MySQL rechaza el CREATE TRIGGER con «You do not
+     * have the SUPER privilege and binary logging is enabled», Liquibase aborta y
+     * el contexto de Spring no arranca: ningun IT de esta jerarquia corre. Es el
+     * mismo flag, y por el mismo motivo, que ya lleva {@code AbstractDataJpaTest}.
+     */
     @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
+    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4")
+            .withCommand("--log-bin-trust-function-creators=1");
 
     /**
      * El limitador de las rutas publicas guarda sus cubos en Redis y se conecta al

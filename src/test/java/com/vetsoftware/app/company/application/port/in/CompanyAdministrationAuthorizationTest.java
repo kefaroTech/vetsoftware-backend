@@ -39,6 +39,8 @@ class CompanyAdministrationAuthorizationTest {
     private UpdateCompanyUseCase updateCompany;
     @Autowired
     private RecalculateCompanyEntitlementsUseCase recalculateEntitlements;
+    @Autowired
+    private ReactivateCompanyUseCase reactivateCompany;
 
     @AfterEach
     void clearSecurityContext() {
@@ -56,6 +58,11 @@ class CompanyAdministrationAuthorizationTest {
                 .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> recalculateEntitlements
                 .execute(new RecalculateCompanyEntitlementsCommand(COMPANY_ID)))
+                .isInstanceOf(AccessDeniedException.class);
+        // Restaurar es el inverso de archivar y va al mismo regimen: si el tenant
+        // pudiera hacerlo, tendria en la mano el «deshacer» de una decision de
+        // plataforma sobre su propia suspension.
+        assertThatThrownBy(() -> reactivateCompany.execute(COMPANY_ID))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
@@ -82,6 +89,7 @@ class CompanyAdministrationAuthorizationTest {
         assertThatCode(() -> recalculateEntitlements
                 .execute(new RecalculateCompanyEntitlementsCommand(COMPANY_ID)))
                 .doesNotThrowAnyException();
+        assertThatCode(() -> reactivateCompany.execute(COMPANY_ID)).doesNotThrowAnyException();
     }
 
     private static void authenticateTenant(String... authorities) {
@@ -132,6 +140,20 @@ class CompanyAdministrationAuthorizationTest {
         }
     }
 
+    /**
+     * En clase aparte y no dentro de {@link CompanyAdministrationStub}: los dos
+     * puertos declaran {@code execute(Long)} y solo cambia el tipo de retorno
+     * —{@code void} en el borrado, {@code CompanyDto} en la reactivacion—, y Java
+     * no deja implementar dos firmas que solo difieren en eso.
+     */
+    static final class CompanyReactivationStub implements ReactivateCompanyUseCase {
+
+        @Override
+        public CompanyDto execute(Long id) {
+            return null;
+        }
+    }
+
     @TestConfiguration
     @EnableMethodSecurity
     static class Cableado {
@@ -144,6 +166,11 @@ class CompanyAdministrationAuthorizationTest {
         @Bean
         CompanyAdministrationStub companyAdministrationStub() {
             return new CompanyAdministrationStub();
+        }
+
+        @Bean
+        CompanyReactivationStub companyReactivationStub() {
+            return new CompanyReactivationStub();
         }
     }
 }

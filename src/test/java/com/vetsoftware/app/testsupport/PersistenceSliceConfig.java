@@ -352,7 +352,96 @@ import org.springframework.context.annotation.Import;
         com.vetsoftware.app.registration.infrastructure.persistence.JpaEmailVerificationTokenRepository.class,
         com.vetsoftware.app.registration.infrastructure.persistence.EmailVerificationTokenJpaMapper.class,
         com.vetsoftware.app.productchargeopenaccount.infrastructure.persistence.JpaProductChargeOpenAccountRepository.class,
-        com.vetsoftware.app.productchargeopenaccount.infrastructure.persistence.ProductChargeOpenAccountJpaMapper.class})
+        com.vetsoftware.app.productchargeopenaccount.infrastructure.persistence.ProductChargeOpenAccountJpaMapper.class,
+
+        // Capas I y J del modelo de suscripciones: prueba gratuita y limites.
+        com.vetsoftware.app.limitdimension.infrastructure.persistence.JpaLimitDimensionRepository.class,
+        com.vetsoftware.app.limitdimension.infrastructure.persistence.LimitDimensionJpaMapper.class,
+        com.vetsoftware.app.limitdimension.infrastructure.persistence.JpaSubModuleQueryPort.class,
+        com.vetsoftware.app.companytrialwindow.infrastructure.persistence.JpaCompanyTrialWindowRepository.class,
+        com.vetsoftware.app.companytrialwindow.infrastructure.persistence.CompanyTrialWindowJpaMapper.class,
+        com.vetsoftware.app.companytrialgrant.infrastructure.persistence.JpaCompanyTrialGrantRepository.class,
+        com.vetsoftware.app.companytrialgrant.infrastructure.persistence.CompanyTrialGrantJpaMapper.class,
+        com.vetsoftware.app.companytrialgrant.infrastructure.persistence.JpaTrialWindowQueryPort.class,
+        com.vetsoftware.app.catalogitemlimit.infrastructure.persistence.JpaCatalogItemLimitRepository.class,
+        com.vetsoftware.app.catalogitemlimit.infrastructure.persistence.CatalogItemLimitJpaMapper.class,
+        com.vetsoftware.app.catalogitemlimit.infrastructure.persistence.JpaLimitDimensionQueryPort.class,
+        com.vetsoftware.app.subscriptionitemlimit.infrastructure.persistence.JpaSubscriptionItemLimitRepository.class,
+        com.vetsoftware.app.subscriptionitemlimit.infrastructure.persistence.SubscriptionItemLimitJpaMapper.class,
+        com.vetsoftware.app.companylimitoverride.infrastructure.persistence.JpaCompanyLimitOverrideRepository.class,
+        com.vetsoftware.app.companylimitoverride.infrastructure.persistence.CompanyLimitOverrideJpaMapper.class,
+        com.vetsoftware.app.companylimitevent.infrastructure.persistence.JpaCompanyLimitEventRepository.class,
+        com.vetsoftware.app.companylimitevent.infrastructure.persistence.CompanyLimitEventJpaMapper.class,
+        com.vetsoftware.app.companyentitlementsnapshot.infrastructure.persistence.JpaCompanyEntitlementSnapshotRepository.class,
+        com.vetsoftware.app.companyentitlementsnapshot.infrastructure.persistence.CompanyEntitlementSnapshotJpaMapper.class,
+        // Circuito de cobro (changesets 319-324). Los cinco slices resuelven lo
+        // ajeno por companion VO y puerto acotado, asi que aqui solo entran los
+        // seis adaptadores y sus mapper: los ValidationPort/QueryPort los
+        // construye la rodaja que los necesite.
+        com.vetsoftware.app.subscriptionpaymentmethod.infrastructure.persistence.JpaSubscriptionPaymentMethodRepository.class,
+        com.vetsoftware.app.subscriptionpaymentmethod.infrastructure.persistence.SubscriptionPaymentMethodJpaMapper.class,
+        com.vetsoftware.app.paymentrefund.infrastructure.persistence.JpaPaymentRefundRepository.class,
+        com.vetsoftware.app.paymentrefund.infrastructure.persistence.PaymentRefundJpaMapper.class,
+        com.vetsoftware.app.paymentattempt.infrastructure.persistence.JpaPaymentAttemptRepository.class,
+        com.vetsoftware.app.paymentattempt.infrastructure.persistence.PaymentAttemptJpaMapper.class,
+        com.vetsoftware.app.paymentreversal.infrastructure.persistence.JpaPaymentReversalRequestRepository.class,
+        com.vetsoftware.app.paymentreversal.infrastructure.persistence.PaymentReversalRequestJpaMapper.class,
+        com.vetsoftware.app.customercredit.infrastructure.persistence.JpaCustomerCreditBalanceRepository.class,
+        com.vetsoftware.app.customercredit.infrastructure.persistence.CustomerCreditBalanceJpaMapper.class,
+        com.vetsoftware.app.customercredit.infrastructure.persistence.JpaCustomerCreditEntryRepository.class,
+        com.vetsoftware.app.customercredit.infrastructure.persistence.CustomerCreditEntryJpaMapper.class,
+        // Bloque fiscal y de conciliacion. Van aqui y no en el @Import de cada
+        // rodaja por lo que ya explica el javadoc de arriba: un @Import distinto
+        // es una clave distinta de MergedContextConfiguration, o sea un contexto
+        // de Spring nuevo en la cache. Cinco rodajas con @Import propio son cinco
+        // contextos mas, y la cascada del 2026-08-17 —278 errores de integracion
+        // con una sola causa— fue exactamente eso: minimum-idle por contexto
+        // cacheado contra el max_connections del servidor.
+        com.vetsoftware.app.withholdingraterule.infrastructure.persistence.JpaWithholdingRateRuleRepository.class,
+        com.vetsoftware.app.withholdingraterule.infrastructure.persistence.WithholdingRateRuleJpaMapper.class,
+        com.vetsoftware.app.withholdingcertificate.infrastructure.persistence.JpaWithholdingCertificateRepository.class,
+        com.vetsoftware.app.withholdingcertificate.infrastructure.persistence.WithholdingCertificateJpaMapper.class,
+        com.vetsoftware.app.documentwithholding.infrastructure.persistence.JpaDocumentWithholdingRepository.class,
+        com.vetsoftware.app.documentwithholding.infrastructure.persistence.DocumentWithholdingJpaMapper.class,
+        com.vetsoftware.app.externalinvoicereconciliation.infrastructure.persistence.JpaExternalInvoiceReconciliationRepository.class,
+        com.vetsoftware.app.externalinvoicereconciliation.infrastructure.persistence.ExternalInvoiceReconciliationJpaMapper.class,
+        com.vetsoftware.app.bankreceipt.infrastructure.persistence.JpaBankReceiptRepository.class,
+        com.vetsoftware.app.bankreceipt.infrastructure.persistence.BankReceiptJpaMapper.class,
+        com.vetsoftware.app.gatewaysettlement.infrastructure.persistence.JpaGatewaySettlementRepository.class,
+        com.vetsoftware.app.gatewaysettlement.infrastructure.persistence.GatewaySettlementJpaMapper.class,
+        com.vetsoftware.app.billingdocumentstatushistory.infrastructure.persistence.JpaBillingDocumentStatusHistoryRepository.class,
+        com.vetsoftware.app.billingdocumentstatushistory.infrastructure.persistence.BillingDocumentStatusHistoryJpaMapper.class,
+        com.vetsoftware.app.companycontactchannel.infrastructure.persistence.JpaCompanyContactChannelRepository.class,
+        com.vetsoftware.app.companycontactchannel.infrastructure.persistence.CompanyContactChannelJpaMapper.class,
+        com.vetsoftware.app.companybillingprofile.infrastructure.persistence.JpaCompanyBillingProfileRepository.class,
+        com.vetsoftware.app.companybillingprofile.infrastructure.persistence.CompanyBillingProfileJpaMapper.class,
+        com.vetsoftware.app.companybillingprofile.infrastructure.persistence.JpaCityQueryPort.class,
+        com.vetsoftware.app.accountingperiod.infrastructure.persistence.JpaAccountingPeriodRepository.class,
+        com.vetsoftware.app.accountingperiod.infrastructure.persistence.AccountingPeriodJpaMapper.class,
+        com.vetsoftware.app.uvtvalue.infrastructure.persistence.JpaUvtValueRepository.class,
+        com.vetsoftware.app.uvtvalue.infrastructure.persistence.UvtValueJpaMapper.class,
+        com.vetsoftware.app.smmlvvalue.infrastructure.persistence.JpaSmmlvValueRepository.class,
+        com.vetsoftware.app.smmlvvalue.infrastructure.persistence.SmmlvValueJpaMapper.class,
+        com.vetsoftware.app.vatfilingperiod.infrastructure.persistence.JpaVatFilingPeriodRepository.class,
+        com.vetsoftware.app.vatfilingperiod.infrastructure.persistence.VatFilingPeriodJpaMapper.class,
+        com.vetsoftware.app.publicholiday.infrastructure.persistence.JpaPublicHolidayRepository.class,
+        com.vetsoftware.app.publicholiday.infrastructure.persistence.PublicHolidayJpaMapper.class,
+        com.vetsoftware.app.legaldocumentversion.infrastructure.persistence.JpaLegalDocumentVersionRepository.class,
+        com.vetsoftware.app.legaldocumentversion.infrastructure.persistence.LegalDocumentVersionJpaMapper.class,
+        com.vetsoftware.app.securityincident.infrastructure.persistence.JpaSecurityIncidentRepository.class,
+        com.vetsoftware.app.securityincident.infrastructure.persistence.SecurityIncidentJpaMapper.class,
+        com.vetsoftware.app.securityincident.infrastructure.persistence.JpaSecurityIncidentCompanyRepository.class,
+        com.vetsoftware.app.securityincident.infrastructure.persistence.SecurityIncidentCompanyJpaMapper.class,
+        com.vetsoftware.app.externalinvoicingoutage.infrastructure.persistence.JpaExternalInvoicingOutageRepository.class,
+        com.vetsoftware.app.externalinvoicingoutage.infrastructure.persistence.ExternalInvoicingOutageJpaMapper.class,
+        com.vetsoftware.app.externalinvoicingoutage.infrastructure.persistence.JpaExternalInvoicingOutageCompanyRepository.class,
+        com.vetsoftware.app.externalinvoicingoutage.infrastructure.persistence.ExternalInvoicingOutageCompanyJpaMapper.class,
+        com.vetsoftware.app.companyusageevent.infrastructure.persistence.JpaCompanyUsageEventRepository.class,
+        com.vetsoftware.app.companyusageevent.infrastructure.persistence.CompanyUsageEventJpaMapper.class,
+        com.vetsoftware.app.companyactivitymonth.infrastructure.persistence.JpaCompanyActivityMonthRepository.class,
+        com.vetsoftware.app.companyactivitymonth.infrastructure.persistence.CompanyActivityMonthJpaMapper.class,
+        com.vetsoftware.app.platformtaxprofile.infrastructure.persistence.JpaPlatformTaxProfileRepository.class,
+        com.vetsoftware.app.platformtaxprofile.infrastructure.persistence.PlatformTaxProfileJpaMapper.class})
 public class PersistenceSliceConfig {
 
     /**

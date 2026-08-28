@@ -72,7 +72,7 @@ class DunningEvaluationServiceTest {
             service.evaluate(100L, EMPRESA);
 
             verify(subscriptionPort).changeStatus(eq(11L), eq(EMPRESA),
-                    eq(DunningSubscriptionStatus.PAST_DUE), any(), any());
+                    eq(DunningSubscriptionStatus.PAST_DUE), any());
             DunningEvent event = savedEvent();
             assertThat(event.getEventType()).isEqualTo(DunningEventType.GRACE_STARTED);
             assertThat(event.getBillingDocument().id()).isEqualTo(100L);
@@ -90,7 +90,7 @@ class DunningEvaluationServiceTest {
             service.evaluate(100L, EMPRESA);
 
             verify(subscriptionPort).changeStatus(eq(11L), eq(EMPRESA),
-                    eq(DunningSubscriptionStatus.READ_ONLY), any(), any());
+                    eq(DunningSubscriptionStatus.READ_ONLY), any());
             DunningEvent event = savedEvent();
             assertThat(event.getEventType()).isEqualTo(DunningEventType.READ_ONLY_APPLIED);
             assertThat(event.getBillingDocument()).isNull();
@@ -108,10 +108,10 @@ class DunningEvaluationServiceTest {
 
             InOrder order = inOrder(subscriptionPort, eventRepository);
             order.verify(subscriptionPort).changeStatus(eq(11L), eq(EMPRESA),
-                    eq(DunningSubscriptionStatus.PAST_DUE), any(), any());
+                    eq(DunningSubscriptionStatus.PAST_DUE), any());
             order.verify(eventRepository).save(any());
             order.verify(subscriptionPort).changeStatus(eq(11L), eq(EMPRESA),
-                    eq(DunningSubscriptionStatus.READ_ONLY), any(), any());
+                    eq(DunningSubscriptionStatus.READ_ONLY), any());
             order.verify(eventRepository).save(any());
         }
 
@@ -126,7 +126,7 @@ class DunningEvaluationServiceTest {
 
             verifyNoInteractions(eventRepository);
             verify(subscriptionPort, org.mockito.Mockito.never()).changeStatus(any(), any(), any(),
-                    any(), any());
+                    any());
         }
     }
 
@@ -144,7 +144,7 @@ class DunningEvaluationServiceTest {
             service.evaluate(100L, EMPRESA);
 
             verify(subscriptionPort).changeStatus(eq(11L), eq(EMPRESA),
-                    eq(DunningSubscriptionStatus.ACTIVE), any(), any());
+                    eq(DunningSubscriptionStatus.ACTIVE), any());
             DunningEvent event = savedEvent();
             assertThat(event.getEventType()).isEqualTo(DunningEventType.REACTIVATED);
             assertThat(event.getBillingDocument()).isNull();
@@ -162,7 +162,7 @@ class DunningEvaluationServiceTest {
                     any());
             verifyNoInteractions(eventRepository);
             verify(subscriptionPort, org.mockito.Mockito.never()).changeStatus(any(), any(), any(),
-                    any(), any());
+                    any());
         }
     }
 

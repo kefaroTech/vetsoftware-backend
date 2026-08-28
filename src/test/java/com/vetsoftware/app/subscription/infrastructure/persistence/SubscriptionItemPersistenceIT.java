@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.subscription.application.dto.SubscriptionItemOverlapDto;
-import com.vetsoftware.app.subscription.domain.CapacityUnit;
 import com.vetsoftware.app.subscription.domain.EffectivePeriod;
 import com.vetsoftware.app.subscription.domain.ItemOrigin;
 import com.vetsoftware.app.subscription.domain.SubscriptionItem;
@@ -53,9 +52,13 @@ class SubscriptionItemPersistenceIT extends AbstractDataJpaTest {
     @PersistenceContext
     private EntityManager entityManager;
 
+    /** Resuelto, no sembrado: el articulo CORE llega del changeset 308. */
+    private Long nucleo;
+
     @BeforeEach
     void seed() {
         SchemaSeed.seed(entityManager);
+        nucleo = SchemaSeed.catalogItemId(entityManager, "CORE");
     }
 
     /**
@@ -73,11 +76,17 @@ class SubscriptionItemPersistenceIT extends AbstractDataJpaTest {
                 INSERT INTO subscription_items (id, company_id, subscription_id, catalog_item_id,
                                                 item_code, item_name, item_type, capacity_unit,
                                                 included_quantity, tax_treatment, quantity,
-                                                unit_amount, tax_rate, effective_from,
-                                                effective_to, origin, created_amendment_id,
+                                                unit_amount, tax_rate, tier_min, tier_max,
+                                                months_in_cycle, charge_mode, trial_eligibility,
+                                                max_trial_days, trial_end_date, activation_path,
+                                                billing_effect, effective_from,
+                                                effective_to, origin, succeeds_item_id,
+                                                created_amendment_id,
                                                 ended_amendment_id, created_date, enabled, version)
                 VALUES (:id, :companyId, :subscriptionId, :catalogItemId, 'EXTRA', 'Extra',
-                        'MODULE', NULL, 0, 'TAXED', 1, 50000.00, 19.00, :desde, :hasta, 'ADDON',
+                        'MODULE', NULL, 0, 'TAXED', 1, 50000.00, 19.00, 1, NULL,
+                        1, 'PAID', 'NEVER_FREE', 0, NULL, 'PLATFORM', 'NONE', :desde, :hasta,
+                        'ADDON', NULL,
                         NULL, NULL, '2026-01-01 00:00:00', :habilitada, 0)
                 """).setParameter("id", id).setParameter("companyId", SchemaSeed.COMPANY_ID)
                 .setParameter("subscriptionId", SchemaSeed.SUBSCRIPTION_ID)
@@ -89,20 +98,21 @@ class SubscriptionItemPersistenceIT extends AbstractDataJpaTest {
     private void insertarArticuloExtra() {
         entityManager.createNativeQuery("""
                 INSERT INTO catalog_items (id, code, name, item_type, is_core, min_quantity,
-                                           max_quantity, sort_order, status, created_date, enabled,
-                                           version)
+                                           max_quantity, sort_order, status, trial_eligibility,
+                                           default_trial_days, trial_outcome, service_nature,
+                                           created_date, enabled, version)
                 VALUES (:id, 'EXTRA', 'Modulo extra', 'MODULE', false, 1, 1, 1, 'ACTIVE',
+                        'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
                         '2026-01-01 00:00:00', true, 0)
                 ON DUPLICATE KEY UPDATE id = id
                 """).setParameter("id", ARTICULO_EXTRA).executeUpdate();
     }
 
-    private static SubscriptionItem lineaDeNucleo(EffectivePeriod periodo) {
-        return SubscriptionItem.open(SchemaSeed.COMPANY_ID, SchemaSeed.SUBSCRIPTION_ID,
-                SchemaSeed.CATALOG_ITEM_CORE_ID, "CORE", "Nucleo de prueba",
-                SubscriptionItemType.MODULE, null, 2, TaxTreatment.TAXED, 1,
-                new BigDecimal("100000.00"), new BigDecimal("19.00"), periodo, ItemOrigin.ADDON,
-                null);
+    private SubscriptionItem lineaDeNucleo(EffectivePeriod periodo) {
+        return SubscriptionItem.open(SchemaSeed.COMPANY_ID, SchemaSeed.SUBSCRIPTION_ID, nucleo,
+                "CORE", "Nucleo de prueba", SubscriptionItemType.MODULE, null, 2,
+                TaxTreatment.TAXED, 1, new BigDecimal("100000.00"), new BigDecimal("19.00"),
+                periodo, ItemOrigin.ADDON, null);
     }
 
     @Nested
@@ -224,8 +234,7 @@ class SubscriptionItemPersistenceIT extends AbstractDataJpaTest {
             // El COALESCE a 9999-12-31 de la consulta es lo que hace comparable «sin
             // fecha de fin». Sin el, un NULL en effective_to dejaria pasar el alta.
             assertThat(repository.findOverlapping(SchemaSeed.COMPANY_ID, SchemaSeed.SUBSCRIPTION_ID,
-                    SchemaSeed.CATALOG_ITEM_CORE_ID, DICIEMBRE_31, null, null))
-                    .extracting(SubscriptionItem::getId)
+                    nucleo, DICIEMBRE_31, null, null)).extracting(SubscriptionItem::getId)
                     .containsExactly(SchemaSeed.SUBSCRIPTION_ITEM_ID);
         }
     }
@@ -314,7 +323,7 @@ class SubscriptionItemPersistenceIT extends AbstractDataJpaTest {
             assertThatThrownBy(
                     () -> repository.save(lineaDeNucleo(EffectivePeriod.openFrom(MAYO_1))))
                     .isInstanceOf(SubscriptionItemOverlapException.class)
-                    .hasMessageContaining(SchemaSeed.CATALOG_ITEM_CORE_ID.toString());
+                    .hasMessageContaining(nucleo.toString());
         }
 
         @Test
@@ -328,8 +337,8 @@ class SubscriptionItemPersistenceIT extends AbstractDataJpaTest {
 
             assertThat(historico.getId()).isNotNull();
             assertThat(repository.findOpenByCatalogItemId(SchemaSeed.COMPANY_ID,
-                    SchemaSeed.SUBSCRIPTION_ID, SchemaSeed.CATALOG_ITEM_CORE_ID)).get()
-                    .extracting(SubscriptionItem::getId).isEqualTo(SchemaSeed.SUBSCRIPTION_ITEM_ID);
+                    SchemaSeed.SUBSCRIPTION_ID, nucleo)).get().extracting(SubscriptionItem::getId)
+                    .isEqualTo(SchemaSeed.SUBSCRIPTION_ITEM_ID);
         }
 
         @Test
@@ -362,7 +371,7 @@ class SubscriptionItemPersistenceIT extends AbstractDataJpaTest {
 
             SubscriptionItem guardada = repository.save(SubscriptionItem.open(SchemaSeed.COMPANY_ID,
                     SchemaSeed.SUBSCRIPTION_ID, ARTICULO_EXTRA, "EXTRA", "Usuario adicional",
-                    SubscriptionItemType.CAPACITY, CapacityUnit.USER, 2, TaxTreatment.TAXED, 5,
+                    SubscriptionItemType.CAPACITY, "USER", 2, TaxTreatment.TAXED, 5,
                     new BigDecimal("50000.00"), new BigDecimal("19.00"),
                     EffectivePeriod.openFrom(ENERO_1), ItemOrigin.ADDON, null));
             entityManager.flush();
@@ -370,7 +379,7 @@ class SubscriptionItemPersistenceIT extends AbstractDataJpaTest {
 
             assertThat(repository.findByIdAndCompanyId(guardada.getId(), SchemaSeed.COMPANY_ID))
                     .get().satisfies(linea -> {
-                        assertThat(linea.getCapacityUnit()).isEqualTo(CapacityUnit.USER);
+                        assertThat(linea.getCapacityUnit()).isEqualTo("USER");
                         assertThat(linea.getIncludedQuantity()).isEqualTo(2);
                         assertThat(linea.getQuantity()).isEqualTo(5);
                         assertThat(linea.billableQuantity()).isEqualTo(3);
@@ -390,15 +399,14 @@ class SubscriptionItemPersistenceIT extends AbstractDataJpaTest {
             assertThat(repository.findByIdAndCompanyId(SchemaSeed.SUBSCRIPTION_ITEM_ID,
                     SchemaSeed.OTRA_COMPANY_ID)).isEmpty();
             assertThat(repository.findOpenByCatalogItemId(SchemaSeed.OTRA_COMPANY_ID,
-                    SchemaSeed.SUBSCRIPTION_ID, SchemaSeed.CATALOG_ITEM_CORE_ID)).isEmpty();
+                    SchemaSeed.SUBSCRIPTION_ID, nucleo)).isEmpty();
             assertThat(repository.findCurrentOn(SchemaSeed.SUBSCRIPTION_ID,
                     SchemaSeed.OTRA_COMPANY_ID, LocalDate.of(2026, 1, 15), 0, 20).content())
                     .isEmpty();
             assertThat(repository.findAllBySubscriptionIdAndCompanyId(SchemaSeed.SUBSCRIPTION_ID,
                     SchemaSeed.OTRA_COMPANY_ID, 0, 20).content()).isEmpty();
             assertThat(repository.findOverlapping(SchemaSeed.OTRA_COMPANY_ID,
-                    SchemaSeed.SUBSCRIPTION_ID, SchemaSeed.CATALOG_ITEM_CORE_ID, ENERO_1, null,
-                    null)).isEmpty();
+                    SchemaSeed.SUBSCRIPTION_ID, nucleo, ENERO_1, null, null)).isEmpty();
         }
 
         @Test

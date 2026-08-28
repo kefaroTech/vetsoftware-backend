@@ -33,6 +33,7 @@ import com.vetsoftware.app.subscription.application.port.in.ListSubscriptionsByC
 import com.vetsoftware.app.subscription.application.port.in.RemoveSubscriptionItemUseCase;
 import com.vetsoftware.app.subscription.domain.SubscriptionNotFoundException;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
+import com.vetsoftware.app.subscription.domain.SubscriptionStatusChangeReason;
 import com.vetsoftware.app.subscription.testsupport.SubscriptionMother;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.time.LocalDate;
@@ -315,7 +316,13 @@ class SubscriptionControllerTest {
             assertThat(comando.getValue().companyId()).isEqualTo(WebMvcSliceConfig.COMPANY_ID);
             assertThat(comando.getValue().id()).isEqualTo(CONTRATO);
             assertThat(comando.getValue().clientRequestId()).isEqualTo("req-9");
-            assertThat(comando.getValue().line().unitAmount()).isEqualByComparingTo("179000.00");
+            // R-QUOTE-02: el cuerpo puede traer unitAmount, itemName o includedQuantity
+            // -Jackson ignora lo que el record no declara- y NO llegan a ningun sitio. La
+            // linea que viaja al caso de uso es SELECCION: articulo, cantidad y fechas.
+            assertThat(comando.getValue().line().catalogItemId()).isEqualTo(100L);
+            assertThat(comando.getValue().line().quantity()).isEqualTo(5);
+            assertThat(comando.getValue().line().effectiveFrom())
+                    .isEqualTo(java.time.LocalDate.of(2026, 5, 1));
         }
 
         @Test
@@ -460,7 +467,7 @@ class SubscriptionControllerTest {
 
             mockMvc.perform(patch("/subscriptions/{id}/status", CONTRATO)
                     .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"status": "READ_ONLY", "reason": "Mora de 45 dias",
+                            {"status": "READ_ONLY", "reason": "OVERDUE_BALANCE",
                              "actor": "cobranza"}
                             """)).andExpect(status().isOk());
 
@@ -468,10 +475,27 @@ class SubscriptionControllerTest {
                     .forClass(ChangeSubscriptionStatusCommand.class);
             verify(changeStatusUseCase).execute(comando.capture());
             assertThat(comando.getValue().status()).isEqualTo(SubscriptionStatus.READ_ONLY);
-            assertThat(comando.getValue().reason()).isEqualTo("Mora de 45 dias");
+            assertThat(comando.getValue().reason())
+                    .isEqualTo(SubscriptionStatusChangeReason.OVERDUE_BALANCE);
             assertThat(comando.getValue().actor()).isEqualTo("cobranza");
             assertThat(comando.getValue().companyId()).isEqualTo(WebMvcSliceConfig.COMPANY_ID);
             assertThat(comando.getValue().id()).isEqualTo(CONTRATO);
+        }
+
+        @Test
+        @DisplayName("un motivo en texto libre se rechaza con 400 y no llega al caso de uso")
+        void motivo_en_texto_libre() throws Exception {
+            // Era exactamente lo que se aceptaba antes: el controlador pasaba
+            // request.reason() al canal de auditoria tal cual, saltos de linea
+            // incluidos. Con el vocabulario cerrado el cuerpo ni se deserializa.
+            mockMvc.perform(patch("/subscriptions/{id}/status", CONTRATO)
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                                                        {"status": "READ_ONLY",
+                                                         "reason": "Mora de 45 dias
+                            AUDIT reason=payment_received"}
+                                                        """)).andExpect(status().isBadRequest());
+
+            verifyNoInteractions(changeStatusUseCase);
         }
 
         @Test

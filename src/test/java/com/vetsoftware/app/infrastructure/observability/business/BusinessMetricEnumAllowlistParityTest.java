@@ -11,6 +11,14 @@ import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.inventory.application.port.out.InventoryMetrics;
 import com.vetsoftware.app.inventory.domain.StockMovementType;
 import com.vetsoftware.app.platformaccess.application.port.out.PlatformAccessMetrics;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionEntitlementMetrics;
+import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingMetrics;
+import com.vetsoftware.app.subscriptionbilling.domain.ChargeType;
+import com.vetsoftware.app.subscriptionbilling.domain.IssueStatus;
+import com.vetsoftware.app.subscriptionpayment.domain.ApplicationSourceKind;
+import com.vetsoftware.app.subscriptionpayment.domain.PaymentMethod;
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentStatus;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.config.MeterFilterReply;
@@ -303,6 +311,140 @@ class BusinessMetricEnumAllowlistParityTest {
                             "MicrometerBusinessMetrics.invitation con InvitationResult."
                                     + result.name() + ".value()"))
                     .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+    }
+
+    /**
+     * Dinero de suscripciones (#606). Seis vocabularios nuevos, y todos con la
+     * misma trampa: la lista blanca deniega el MEDIDOR ENTERO ante un valor sin
+     * declarar, no esa serie suelta. Un {@code ChargeType} nuevo -o un
+     * {@code ApplicationSourceKind}, que el modelo todavia puede ampliar- dejaria
+     * el panel del cierre de mes con un hueco indistinguible de "no se facturo
+     * nada".
+     */
+    @Nested
+    @DisplayName("los seis vocabularios del dinero de suscripciones")
+    class EnumsDelDineroDeSuscripciones {
+
+        @ParameterizedTest(name = "ChargeType.{0}")
+        @EnumSource(ChargeType.class)
+        @DisplayName("toda clase de cargo pasa el filtro en el contador y en el histograma")
+        void toda_clase_de_cargo_esta_en_la_lista_blanca(ChargeType chargeType) {
+            String valor = lower(chargeType);
+
+            assertThat(replyFor(BusinessMetricNames.SUBSCRIPTION_CHARGES, "charge.type", valor))
+                    .withFailMessage(
+                            mensajeHuerfano("charge.type", valor,
+                                    "MicrometerBusinessMetrics.chargeAccrued con lower(ChargeType."
+                                            + chargeType.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+            assertThat(
+                    replyFor(BusinessMetricNames.SUBSCRIPTION_CHARGED_AMOUNT, "charge.type", valor))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "IssueStatus.{0}")
+        @EnumSource(IssueStatus.class)
+        @DisplayName("todo estado de emision de una cuenta de cobro esta permitido")
+        void todo_estado_de_emision_esta_en_la_lista_blanca(IssueStatus issueStatus) {
+            String valor = lower(issueStatus);
+
+            assertThat(replyFor(BusinessMetricNames.SUBSCRIPTION_DOCUMENTS, "issue.status", valor))
+                    .withFailMessage(mensajeHuerfano("issue.status", valor,
+                            "MicrometerBusinessMetrics.documentIssued con lower(IssueStatus."
+                                    + issueStatus.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "PaymentMethod.{0}")
+        @EnumSource(PaymentMethod.class)
+        @DisplayName("todo medio de pago esta permitido")
+        void todo_medio_de_pago_esta_en_la_lista_blanca(PaymentMethod method) {
+            String valor = lower(method);
+
+            assertThat(replyFor(BusinessMetricNames.SUBSCRIPTION_PAYMENTS, "payment.method", valor))
+                    .withFailMessage(mensajeHuerfano("payment.method", valor,
+                            "MicrometerBusinessMetrics.paymentRegistered con lower(PaymentMethod."
+                                    + method.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "ApplicationSourceKind.{0}")
+        @EnumSource(ApplicationSourceKind.class)
+        @DisplayName("toda clase de fuente de imputacion esta permitida")
+        void toda_fuente_de_imputacion_esta_en_la_lista_blanca(ApplicationSourceKind sourceKind) {
+            String valor = lower(sourceKind);
+
+            assertThat(
+                    replyFor(BusinessMetricNames.SUBSCRIPTION_APPLICATIONS, "source.kind", valor))
+                    .withFailMessage(mensajeHuerfano("source.kind", valor,
+                            "MicrometerBusinessMetrics.applicationRecorded con"
+                                    + " lower(ApplicationSourceKind." + sourceKind.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "SubscriptionStatus.{0}")
+        @EnumSource(SubscriptionStatus.class)
+        @DisplayName("todo estado de contrato esta permitido como destino de la transicion")
+        void todo_estado_de_contrato_esta_en_la_lista_blanca(SubscriptionStatus status) {
+            String valor = lower(status);
+
+            assertThat(replyFor(BusinessMetricNames.SUBSCRIPTION_STATUS_TRANSITIONS, "to.status",
+                    valor))
+                    .withFailMessage(mensajeHuerfano("to.status", valor,
+                            "MicrometerBusinessMetrics.statusTransitioned con"
+                                    + " lower(SubscriptionStatus." + status.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "Trigger.{0}")
+        @EnumSource(SubscriptionEntitlementMetrics.Trigger.class)
+        @DisplayName("todo disparador del recalculo esta permitido")
+        void todo_disparador_esta_en_la_lista_blanca(
+                SubscriptionEntitlementMetrics.Trigger trigger) {
+            assertThat(
+                    replyFor(BusinessMetricNames.SUBSCRIPTION_ENTITLEMENT_RECALCULATIONS,
+                            "trigger.reason", trigger.value()))
+                    .withFailMessage(mensajeHuerfano("trigger.reason", trigger.value(),
+                            "SubscriptionEntitlementMetrics.Trigger." + trigger.name()
+                                    + ".value()"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "Rejection.{0}")
+        @EnumSource(SubscriptionBillingMetrics.Rejection.class)
+        @DisplayName("todo rechazo de emision reutiliza un valor de result ya declarado")
+        void todo_rechazo_reutiliza_un_result_declarado(
+                SubscriptionBillingMetrics.Rejection rejection) {
+            assertThat(
+                    replyFor(BusinessMetricNames.SUBSCRIPTION_DOCUMENTS, "result",
+                            rejection.value()))
+                    .withFailMessage(mensajeHuerfano("result", rejection.value(),
+                            "SubscriptionBillingMetrics.Rejection." + rejection.name()
+                                    + ".value()"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "SubscriptionPaymentStatus.{0}")
+        @EnumSource(SubscriptionPaymentStatus.class)
+        @DisplayName("el switch de paymentResult cubre el enum entero y su salida pasa el filtro")
+        void el_switch_de_payment_result_cubre_el_enum_entero(SubscriptionPaymentStatus status) {
+            PrometheusMeterRegistry registro = new PrometheusMeterRegistry(
+                    PrometheusConfig.DEFAULT);
+            registro.config().meterFilter(new BusinessMetricCardinalityFilter());
+            MicrometerBusinessMetrics emisor = new MicrometerBusinessMetrics(registro,
+                    new AfterCommitMetricRecorder());
+
+            emisor.paymentRegistered(PaymentMethod.TRANSFER, status);
+
+            assertThat(registro.find(BusinessMetricNames.SUBSCRIPTION_PAYMENTS).counter())
+                    .withFailMessage("SubscriptionPaymentStatus." + status.name()
+                            + " no registro ningun contador. O el switch de"
+                            + " MicrometerBusinessMetrics.paymentResult(...) no tiene rama para"
+                            + " esta constante, o la cadena que devuelve no esta en ALLOWED_VALUES"
+                            + " para el tag <result>. Las dos cosas se tragan la metrica en"
+                            + " silencio, y esta es la del dinero que entra.")
+                    .isNotNull();
         }
     }
 }

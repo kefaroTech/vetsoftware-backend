@@ -21,19 +21,30 @@ import com.vetsoftware.app.companytaxprofile.domain.NitVerificationDigit;
 import com.vetsoftware.app.companytaxprofile.domain.TaxRegime;
 import com.vetsoftware.app.companytaxprofile.testsupport.CompanyTaxProfileMother;
 import java.util.Optional;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CreateCompanyTaxProfileService")
 class CreateCompanyTaxProfileServiceTest {
+
+    private static final LocalDateTime AHORA = LocalDateTime.of(2026, 3, 28, 17, 5, 40);
+
+    /**
+     * El {@code Clock} no es un puerto: se inyecta de verdad y fijo, para que la
+     * vigencia con la que nace el perfil sea comprobable.
+     */
+    private static final Clock RELOJ = Clock.fixed(AHORA.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
 
     @Mock
     private CompanyTaxProfileRepository repository;
@@ -42,8 +53,13 @@ class CreateCompanyTaxProfileServiceTest {
     @Mock
     private EconomicActivityQueryPort economicActivityQueryPort;
 
-    @InjectMocks
     private CreateCompanyTaxProfileService service;
+
+    @BeforeEach
+    void servicio() {
+        service = new CreateCompanyTaxProfileService(repository, companyQueryPort,
+                economicActivityQueryPort, RELOJ);
+    }
 
     @Captor
     private ArgumentCaptor<CompanyTaxProfile> profileCaptor;
@@ -51,7 +67,8 @@ class CreateCompanyTaxProfileServiceTest {
     private void laEmpresaExisteYSinPerfilPrevio() {
         when(companyQueryPort.findById(CompanyTaxProfileMother.COMPANY_ID))
                 .thenReturn(Optional.of(CompanyTaxProfileMother.CLINICA));
-        when(repository.existsByCompanyId(CompanyTaxProfileMother.COMPANY_ID)).thenReturn(false);
+        when(repository.existsCurrentByCompanyId(CompanyTaxProfileMother.COMPANY_ID))
+                .thenReturn(false);
     }
 
     @Nested
@@ -113,7 +130,7 @@ class CreateCompanyTaxProfileServiceTest {
         void persona_natural_sin_dv_ni_actividad() {
             when(companyQueryPort.findById(CompanyTaxProfileMother.COMPANY_ID))
                     .thenReturn(Optional.of(CompanyTaxProfileMother.CLINICA));
-            when(repository.existsByCompanyId(CompanyTaxProfileMother.COMPANY_ID))
+            when(repository.existsCurrentByCompanyId(CompanyTaxProfileMother.COMPANY_ID))
                     .thenReturn(false);
             when(repository.save(any())).thenReturn(CompanyTaxProfileMother.perfilCedula());
 
@@ -175,7 +192,8 @@ class CreateCompanyTaxProfileServiceTest {
         void la_empresa_ya_tiene_perfil() {
             when(companyQueryPort.findById(CompanyTaxProfileMother.COMPANY_ID))
                     .thenReturn(Optional.of(CompanyTaxProfileMother.CLINICA));
-            when(repository.existsByCompanyId(CompanyTaxProfileMother.COMPANY_ID)).thenReturn(true);
+            when(repository.existsCurrentByCompanyId(CompanyTaxProfileMother.COMPANY_ID))
+                    .thenReturn(true);
 
             assertThatThrownBy(() -> service.execute(CompanyTaxProfileMother.comandoCrear()))
                     .isInstanceOf(CompanyTaxProfileAlreadyExistsException.class)

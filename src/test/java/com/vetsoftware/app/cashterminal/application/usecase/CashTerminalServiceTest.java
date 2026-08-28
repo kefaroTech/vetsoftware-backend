@@ -16,7 +16,6 @@ import com.vetsoftware.app.cashterminal.application.port.out.CashTerminalCapacit
 import com.vetsoftware.app.cashterminal.application.port.out.CashTerminalRepository;
 import com.vetsoftware.app.cashterminal.domain.CashTerminal;
 import com.vetsoftware.app.cashterminal.testsupport.CashTerminalMother;
-import com.vetsoftware.app.entitlement.domain.CapacityUnit;
 import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import java.util.List;
 import java.util.Optional;
@@ -217,8 +216,8 @@ class CashTerminalServiceTest {
         void el_limite_terminal_aborta_antes_de_persistir() {
             when(branchQueryPort.existsActiveInCompany(BRANCH_ID, COMPANY_ID)).thenReturn(true);
             when(repository.existsCode(COMPANY_ID, BRANCH_ID, "CAJA-1")).thenReturn(false);
-            doThrow(new CompanyCapacityLimitExceededException(COMPANY_ID, CapacityUnit.TERMINAL, 2,
-                    2, 1)).when(cashTerminalCapacityPort).reserve(COMPANY_ID);
+            doThrow(new CompanyCapacityLimitExceededException(COMPANY_ID, "TERMINAL", 2, 2, 1))
+                    .when(cashTerminalCapacityPort).reserve(COMPANY_ID);
 
             assertThatThrownBy(() -> service.create(COMPANY_ID, BRANCH_ID, "Caja", "CAJA-1"))
                     .isInstanceOf(CompanyCapacityLimitExceededException.class)

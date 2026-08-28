@@ -16,7 +16,7 @@ class CatalogItemTest {
 
     /** Artículo válido salvo por lo que cada test cambie. */
     private static CatalogItem item(String code, String name, ItemType itemType,
-            CapacityUnit capacityUnit, int minQuantity, Integer maxQuantity, int sortOrder,
+            String capacityUnit, int minQuantity, Integer maxQuantity, int sortOrder,
             CatalogItemStatus status) {
         return new CatalogItem(1L, code, name, null, null, itemType, capacityUnit, false,
                 minQuantity, maxQuantity, sortOrder, status, CatalogItemMother.CREADO, 0L, true);
@@ -115,15 +115,16 @@ class CatalogItemTest {
         @EnumSource(value = ItemType.class, names = "CAPACITY", mode = EnumSource.Mode.EXCLUDE)
         @DisplayName("rechaza la unidad de capacidad en cualquier tipo que no sea CAPACITY")
         void rechaza_unidad_fuera_de_capacity(ItemType itemType) {
-            assertThatThrownBy(() -> item("CODE", "Nombre", itemType, CapacityUnit.USER, 1, null, 0,
+            assertThatThrownBy(() -> item("CODE", "Nombre", itemType, "USER", 1, null, 0,
                     CatalogItemStatus.DRAFT)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("only allowed on CAPACITY items");
         }
 
         @ParameterizedTest
-        @EnumSource(CapacityUnit.class)
-        @DisplayName("acepta cualquier unidad del dominio cerrado en un CAPACITY")
-        void acepta_todas_las_unidades_en_capacity(CapacityUnit unit) {
+        @ValueSource(strings = {"ANIMAL", "OWNER", "APPOINTMENT", "INVOICE", "USER", "BRANCH",
+                "TERMINAL", "STORAGE_GB"})
+        @DisplayName("acepta el codigo de cualquier eje del catalogo en un CAPACITY, no solo los cuatro de antes")
+        void acepta_todas_las_unidades_en_capacity(String unit) {
             CatalogItem item = item("CODE", "Nombre", ItemType.CAPACITY, unit, 1, null, 0,
                     CatalogItemStatus.ACTIVE);
 
@@ -212,8 +213,8 @@ class CatalogItemTest {
         void update_aplica_las_mismas_invariantes() {
             CatalogItem item = CatalogItemMother.historiaClinica();
 
-            assertThatThrownBy(() -> item.update("Nombre", null, null, ItemType.MODULE,
-                    CapacityUnit.USER, false, 1, null, 0, CatalogItemStatus.ACTIVE))
+            assertThatThrownBy(() -> item.update("Nombre", null, null, ItemType.MODULE, "USER",
+                    false, 1, null, 0, CatalogItemStatus.ACTIVE))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("only allowed on CAPACITY items");
         }

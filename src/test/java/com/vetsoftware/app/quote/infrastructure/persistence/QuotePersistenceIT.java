@@ -76,16 +76,19 @@ class QuotePersistenceIT extends AbstractDataJpaTest {
     @PersistenceContext
     private EntityManager entityManager;
 
+    /** Resuelto, no sembrado: el articulo CORE llega del changeset 308. */
+    private Long nucleo;
+
     @BeforeEach
     void seed() {
         SchemaSeed.seed(entityManager);
+        nucleo = SchemaSeed.catalogItemId(entityManager, "CORE");
     }
 
     /** Linea de 100.000 gravada al 19 %, sin descuento: total 119.000. */
-    private static QuoteLine lineaNucleo() {
+    private QuoteLine lineaNucleo() {
         return QuoteLine.freeze(1,
-                new CatalogItemRef(SchemaSeed.CATALOG_ITEM_CORE_ID, "CORE", "Núcleo",
-                        QuoteItemType.MODULE),
+                new CatalogItemRef(nucleo, "CORE", "Núcleo", QuoteItemType.MODULE),
                 new CatalogPriceRef(new BigDecimal("100000.00"), new BigDecimal("19.00"),
                         TaxTreatment.TAXED, 2),
                 1, BigDecimal.ZERO, CREADA);
@@ -302,7 +305,13 @@ class QuotePersistenceIT extends AbstractDataJpaTest {
 
             PageResult<QuoteSummary> pagina = repository.findAllByCompanyId(COMPANY, 0, 20);
 
-            assertThat(pagina.content()).singleElement().extracting(QuoteSummary::totalAmount)
+            // El listado del tenant trae ademas la cotizacion aceptada que SchemaSeed
+            // siembra para esta misma empresa (COT-TEST-000900), que es una fila legitima
+            // suya. Se acota a la manipulada en vez de exigir que la pagina tenga una sola
+            // fila: lo que este caso fija es que la proyeccion NO revienta, no cuantas
+            // cotizaciones tiene la clinica.
+            assertThat(pagina.content()).filteredOn(resumen -> resumen.id().equals(saved.getId()))
+                    .singleElement().extracting(QuoteSummary::totalAmount)
                     .isEqualTo(new BigDecimal("500000.00"));
         }
     }
@@ -539,12 +548,16 @@ class QuotePersistenceIT extends AbstractDataJpaTest {
             PageResult<QuoteSummary> pagina0 = repository.findAllByCompanyId(COMPANY, 0, 2);
             PageResult<QuoteSummary> pagina1 = repository.findAllByCompanyId(COMPANY, 1, 2);
 
-            // Mas reciente primero, y a igualdad de fecha el id mayor primero.
+            // Mas reciente primero, y a igualdad de fecha el id mayor primero. La cuarta
+            // fila es la cotizacion aceptada que SchemaSeed siembra para esta empresa: es
+            // suya y tiene que salir, asi que se la nombra en vez de subir el numero a
+            // ciegas. Su created_date es 2026-01-01, anterior al de las tres de arriba, y
+            // por eso cierra la lista sin partir el trio que demuestra el desempate.
             assertThat(pagina0.content()).extracting(QuoteSummary::id)
                     .containsExactly(tercera.getId(), segunda.getId());
             assertThat(pagina1.content()).extracting(QuoteSummary::id)
-                    .containsExactly(primera.getId());
-            assertThat(pagina0.totalElements()).isEqualTo(3);
+                    .containsExactly(primera.getId(), SchemaSeed.QUOTE_ID);
+            assertThat(pagina0.totalElements()).isEqualTo(4);
             assertThat(pagina0.totalPages()).isEqualTo(2);
         }
 
@@ -552,11 +565,18 @@ class QuotePersistenceIT extends AbstractDataJpaTest {
         @DisplayName("el listado del tenant no ve las cotizaciones de otra clínica")
         void el_listado_del_tenant_no_ve_las_de_otra_clinica() {
             Quote mia = guardar("COT-TEST-0053", "req-53", LA_EMPRESA);
-            guardar("COT-TEST-0054", "req-54", LA_EMPRESA_AJENA);
+            Quote ajena = guardar("COT-TEST-0054", "req-54", LA_EMPRESA_AJENA);
             vaciarContexto();
 
+            // Lo que se afirma son las DOS mitades. La de dentro: salen las dos
+            // cotizaciones de esta empresa -la del caso y la que siembra SchemaSeed-. La
+            // de fuera, que es la que da nombre al caso: no se cuela ninguna de la clinica
+            // vecina, ni la que acaba de escribir el test ni la sembrada. Sin el
+            // doesNotContain, subir el numero esperado habria tapado justo la fuga que
+            // este caso existe para cazar.
             assertThat(repository.findAllByCompanyId(COMPANY, 0, 20).content())
-                    .extracting(QuoteSummary::id).containsExactly(mia.getId());
+                    .extracting(QuoteSummary::id).containsExactly(mia.getId(), SchemaSeed.QUOTE_ID)
+                    .doesNotContain(ajena.getId(), SchemaSeed.OTRA_QUOTE_ID);
         }
 
         @Test
@@ -567,17 +587,25 @@ class QuotePersistenceIT extends AbstractDataJpaTest {
             Quote prospecto = guardar("COT-TEST-0057", "req-57", null);
             vaciarContexto();
 
+            // El embudo de plataforma no lleva empresa a proposito, asi que las dos
+            // cotizaciones sembradas -una por clinica- son filas legitimas suyas y entran
+            // en la cuenta. Se nombran una a una: un hasSize(5) diria lo mismo hoy y
+            // dejaria pasar manana una fila de otra procedencia.
             assertThat(repository.findAll(0, 20).content()).extracting(QuoteSummary::id)
-                    .containsExactlyInAnyOrder(mia.getId(), ajena.getId(), prospecto.getId());
+                    .containsExactlyInAnyOrder(mia.getId(), ajena.getId(), prospecto.getId(),
+                            SchemaSeed.QUOTE_ID, SchemaSeed.OTRA_QUOTE_ID);
         }
 
         @Test
         @DisplayName("la proyección de listado no trae las líneas: es lo que permite paginar")
         void la_proyeccion_de_listado_no_trae_las_lineas() {
-            guardar("COT-TEST-0058", "req-58", LA_EMPRESA);
+            Quote saved = guardar("COT-TEST-0058", "req-58", LA_EMPRESA);
             vaciarContexto();
 
-            assertThat(repository.findAllByCompanyId(COMPANY, 0, 20).content()).singleElement()
+            // Acotado a la cotizacion del caso: la empresa tiene ademas la sembrada, y lo
+            // que aqui se mira es la FORMA de un resumen, no cuantos hay.
+            assertThat(repository.findAllByCompanyId(COMPANY, 0, 20).content())
+                    .filteredOn(resumen -> resumen.id().equals(saved.getId())).singleElement()
                     .satisfies(resumen -> {
                         assertThat(resumen.totalAmount()).isEqualTo(new BigDecimal("119000.00"));
                         assertThat(resumen.company().identifier()).isEqualTo("900123456");

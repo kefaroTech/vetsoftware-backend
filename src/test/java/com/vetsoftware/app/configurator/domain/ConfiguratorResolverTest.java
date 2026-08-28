@@ -31,16 +31,31 @@ import org.junit.jupiter.params.provider.CsvSource;
  * <p>
  * Lo que estas pruebas defienden por encima de todo es el
  * <strong>orden</strong>. Los efectos no conmutan, así que el contrato dice que
- * se aplican por id ascendente y no en el orden en que la base los devuelva. Un
- * test que solo comprobase «ADD mete el artículo» pasaría igual con el orden
- * roto, y el defecto solo se vería en una cotización ya firmada.
+ * se aplican por {@code priority} ascendente —con desempate por id— y no en el
+ * orden en que la base los devuelva. Un test que solo comprobase «ADD mete el
+ * artículo» pasaría igual con el orden roto, y el defecto solo se vería en una
+ * cotización ya firmada.
+ *
+ * <p>
+ * <strong>Este javadoc decía «se aplican por id ascendente», y eso era el
+ * defecto escrito como si fuera el contrato.</strong> La columna
+ * {@code priority} existía en el esquema desde el changeset 238 —con su
+ * {@code CHECK}, su índice {@code (priority, id)} y la siembra repartiendo
+ * decenas por pregunta— y no estaba mapeada en Java: el resolvedor ordenaba por
+ * el orden en que alguien insertó las filas. Los casos del bloque
+ * {@link PrioridadSobreId} son los que discriminan de verdad, porque llevan los
+ * ids <em>al revés</em> que las prioridades; los del bloque {@link Orden} usan
+ * todos la misma prioridad y por tanto lo que ejercitan es el desempate.
  */
 @DisplayName("ConfiguratorResolver — de respuestas a carrito")
 class ConfiguratorResolverTest {
 
     @Nested
-    @DisplayName("el orden de aplicacion es el del id, y es parte del contrato")
+    @DisplayName("el orden de aplicacion es (priority, id), y es parte del contrato")
     class Orden {
+        // Todos estos casos usan la prioridad por defecto, asi que lo que
+        // ejercitan es el DESEMPATE por id. Quien anada aqui un caso que crea
+        // estar probando la prioridad tiene que fijarla: ver PrioridadSobreId.
 
         @Test
         @DisplayName("ADD antes que REMOVE sobre el mismo articulo deja el carrito sin el")
@@ -64,7 +79,7 @@ class ConfiguratorResolverTest {
         }
 
         @Test
-        @DisplayName("el orden en que llega la lista es irrelevante: manda el id, no la BD")
+        @DisplayName("el orden en que llega la lista es irrelevante: manda (priority, id), no la BD")
         void el_orden_de_llegada_es_irrelevante() {
             ConfiguratorEffect add = efectoPorOpcion(1L, O11_SI_VENDE, ITEM_POS, EffectType.ADD,
                     null);
@@ -119,7 +134,7 @@ class ConfiguratorResolverTest {
         @DisplayName("un efecto sin id todavia se aplica el ultimo, no en medio")
         void un_efecto_sin_id_se_aplica_el_ultimo() {
             ConfiguratorEffect sinId = new ConfiguratorEffect(null, O11_SI_VENDE, null, ITEM_POS,
-                    EffectType.REMOVE, null,
+                    EffectType.REMOVE, null, 0,
                     com.vetsoftware.app.configurator.testsupport.ConfiguratorMother.CREADA_EL, null,
                     true);
             List<ConfiguratorEffect> efectos = List.of(sinId,
@@ -311,6 +326,150 @@ class ConfiguratorResolverTest {
                     .of(efectoPorOpcion(1L, O11_SI_VENDE, ITEM_POS, EffectType.ADD, null));
 
             assertThat(ConfiguratorResolver.resolve(efectos, null)).isEmpty();
+        }
+    }
+
+    /**
+     * El caso que da nombre al defecto: <em>marcar más servicios produce un carrito
+     * más pequeño</em>.
+     *
+     * <p>
+     * Un efecto añade Inventario por «vendo productos» y otro lo quita por «soy
+     * solo estética». Quien marca las dos cosas debería quedarse con Inventario —la
+     * pregunta posterior corrige a la anterior, nunca al revés—, y con el orden por
+     * {@code id} eso dependía de en qué orden se hubieran insertado las filas.
+     * Nadie lo lee como un error de datos: se lee como que el producto no funciona.
+     *
+     * <p>
+     * Los ids de estos casos van <strong>al revés</strong> que las prioridades a
+     * propósito. Si el resolvedor volviera a ordenar por {@code id}, estos casos se
+     * ponen rojos; con ids alineados pasarían igual con el defecto vivo, que es
+     * exactamente lo que hizo que el defecto sobreviviera.
+     */
+    @Nested
+    @DisplayName("la prioridad manda sobre el id")
+    class PrioridadSobreId {
+
+        @Test
+        @DisplayName("el REMOVE de la pregunta anterior no deshace el ADD de la posterior")
+        void el_remove_anterior_no_deshace_el_add_posterior() {
+            ConfiguratorEffect remove = efectoPorOpcion(99L, O21_SI_MOSTRADOR, ITEM_POS,
+                    EffectType.REMOVE, null, 10);
+            ConfiguratorEffect add = efectoPorOpcion(1L, O11_SI_VENDE, ITEM_POS, EffectType.ADD,
+                    null, 20);
+
+            assertThat(ConfiguratorResolver.resolve(List.of(remove, add),
+                    marcadas(O11_SI_VENDE, O21_SI_MOSTRADOR)))
+                    .containsExactly(new SelectedItem(ITEM_POS, 1));
+        }
+
+        @Test
+        @DisplayName("con las prioridades invertidas el articulo si desaparece: la columna es la que decide")
+        void con_las_prioridades_invertidas_el_articulo_desaparece() {
+            ConfiguratorEffect add = efectoPorOpcion(1L, O11_SI_VENDE, ITEM_POS, EffectType.ADD,
+                    null, 10);
+            ConfiguratorEffect remove = efectoPorOpcion(99L, O21_SI_MOSTRADOR, ITEM_POS,
+                    EffectType.REMOVE, null, 20);
+
+            assertThat(ConfiguratorResolver.resolve(List.of(add, remove),
+                    marcadas(O11_SI_VENDE, O21_SI_MOSTRADOR))).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a igualdad de prioridad desempata el id, para que el orden sea total")
+        void a_igualdad_de_prioridad_desempata_el_id() {
+            ConfiguratorEffect remove = efectoPorOpcion(2L, O11_SI_VENDE, ITEM_POS,
+                    EffectType.REMOVE, null, 30);
+            ConfiguratorEffect add = efectoPorOpcion(1L, O11_SI_VENDE, ITEM_POS, EffectType.ADD,
+                    null, 30);
+
+            assertThat(ConfiguratorResolver.resolve(List.of(remove, add), marcadas(O11_SI_VENDE)))
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("entre dos SET_QUANTITY gana el de prioridad mayor, no el del id mayor")
+        void entre_dos_set_quantity_gana_el_de_prioridad_mayor() {
+            // Discrimina de verdad: por id ganaria el 9 (id 99); por prioridad gana
+            // el 4 (prioridad 50). Los dos ordenes dan resultados distintos, que es
+            // lo que un caso de orden tiene que conseguir para valer algo.
+            // Dos opciones distintas, que es lo unico representable: las dos claves
+            // unicas de la tabla prohiben repetir (option_id, catalog_item_id,
+            // effect), asi que un caso con la misma opcion dos veces probaria algo
+            // que la base no admite.
+            ConfiguratorEffect cuatro = efectoPorOpcion(10L, O21_SI_MOSTRADOR, ITEM_POS,
+                    EffectType.SET_QUANTITY, 4, 50);
+            ConfiguratorEffect nueve = efectoPorOpcion(99L, O11_SI_VENDE, ITEM_POS,
+                    EffectType.SET_QUANTITY, 9, 20);
+
+            assertThat(ConfiguratorResolver.resolve(List.of(cuatro, nueve),
+                    marcadas(O11_SI_VENDE, O21_SI_MOSTRADOR)))
+                    .containsExactly(new SelectedItem(ITEM_POS, 4));
+        }
+    }
+
+    /**
+     * <strong>La invariante de negocio real, que hasta hoy no sostenía
+     * nadie.</strong> Marcar un servicio más nunca puede quitar artículos del
+     * carrito: cada pregunta corrige a las anteriores y ninguna puede corregir a
+     * las siguientes. Es lo que la siembra consigue reservando una decena por
+     * pregunta, y lo que el orden por {@code id} rompía.
+     *
+     * <p>
+     * El síntoma no se lee como un error de datos, se lee como que el producto no
+     * funciona: el prospecto marca «vendo productos» <em>además de</em> «hago
+     * estética» y ve <em>menos</em> módulos en su cotización que si hubiera marcado
+     * solo uno.
+     *
+     * <p>
+     * Los ids van deliberadamente al revés que las prioridades. Si alguien
+     * devolviera el resolvedor a ordenar por {@code id}, estos casos se ponen rojos
+     * — que es exactamente lo que no pasaba antes.
+     */
+    @Nested
+    @DisplayName("marcar mas servicios nunca produce un carrito mas pequeno")
+    class MasServiciosNuncaEsMenosCarrito {
+
+        /**
+         * El {@code REMOVE} lo dispara la pregunta anterior (decena 10) y el
+         * {@code ADD} la posterior (decena 20), que es el reparto que la siembra hace
+         * por construcción. Los ids —50 y 1— dicen lo contrario a propósito.
+         */
+        private final List<ConfiguratorEffect> catalogo = List.of(
+                efectoPorOpcion(50L, O21_SI_MOSTRADOR, ITEM_POS, EffectType.REMOVE, null, 10),
+                efectoPorOpcion(1L, O11_SI_VENDE, ITEM_POS, EffectType.ADD, null, 20));
+
+        @Test
+        @DisplayName("marcar las dos cosas da al menos lo que da marcar solo una")
+        void marcar_las_dos_cosas_da_al_menos_lo_que_da_marcar_una() {
+            List<SelectedItem> soloEstetica = ConfiguratorResolver.resolve(catalogo,
+                    marcadas(O21_SI_MOSTRADOR));
+            List<SelectedItem> soloVende = ConfiguratorResolver.resolve(catalogo,
+                    marcadas(O11_SI_VENDE));
+            List<SelectedItem> lasDos = ConfiguratorResolver.resolve(catalogo,
+                    marcadas(O11_SI_VENDE, O21_SI_MOSTRADOR));
+
+            assertThat(lasDos).containsAll(soloEstetica).containsAll(soloVende);
+            assertThat(lasDos.size()).isGreaterThanOrEqualTo(soloEstetica.size())
+                    .isGreaterThanOrEqualTo(soloVende.size());
+        }
+
+        @Test
+        @DisplayName("y el articulo que se juega la corrección sigue dentro, no fuera")
+        void el_articulo_en_disputa_sigue_dentro() {
+            // La asercion de conjunto de arriba pasaria con los dos carritos vacios.
+            // Esta nombra el articulo: sin ella, «no encoge» se cumpliria encogiendo
+            // los dos a la vez.
+            assertThat(ConfiguratorResolver.resolve(catalogo,
+                    marcadas(O11_SI_VENDE, O21_SI_MOSTRADOR)))
+                    .containsExactly(new SelectedItem(ITEM_POS, 1));
+        }
+
+        @Test
+        @DisplayName("marcar solo la opcion que quita deja el carrito vacio, que es lo correcto")
+        void marcar_solo_la_que_quita_deja_el_carrito_vacio() {
+            assertThat(ConfiguratorResolver.resolve(catalogo, marcadas(O21_SI_MOSTRADOR)))
+                    .isEmpty();
         }
     }
 }

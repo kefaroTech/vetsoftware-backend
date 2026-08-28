@@ -18,6 +18,8 @@ import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocum
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentQueryPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentSettlementPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.DunningReevaluationPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentAuditPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentMetrics;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentRepository;
 import com.vetsoftware.app.subscriptionpayment.domain.InvalidSubscriptionPaymentStatusTransitionException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentHasActiveApplicationsException;
@@ -56,12 +58,17 @@ class ChangeSubscriptionPaymentStatusServiceTest {
     @Mock
     private DunningReevaluationPort dunningReevaluationPort;
 
+    @Mock
+    private SubscriptionPaymentMetrics metrics;
+    @Mock
+    private SubscriptionPaymentAuditPort audit;
+
     private ChangeSubscriptionPaymentStatusService service;
 
     @BeforeEach
     void setUp() {
         service = new ChangeSubscriptionPaymentStatusService(repository, applicationRepository,
-                billingDocumentQueryPort, settlementPort, dunningReevaluationPort);
+                billingDocumentQueryPort, settlementPort, dunningReevaluationPort, metrics, audit);
     }
 
     @Nested

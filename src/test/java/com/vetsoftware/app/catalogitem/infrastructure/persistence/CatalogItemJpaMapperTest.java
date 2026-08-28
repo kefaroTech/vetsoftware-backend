@@ -2,7 +2,6 @@ package com.vetsoftware.app.catalogitem.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.vetsoftware.app.catalogitem.domain.CapacityUnit;
 import com.vetsoftware.app.catalogitem.domain.CatalogItem;
 import com.vetsoftware.app.catalogitem.domain.CatalogItemStatus;
 import com.vetsoftware.app.catalogitem.domain.ItemType;
@@ -26,7 +25,7 @@ class CatalogItemJpaMapperTest {
 
     private static CatalogItem usuarioExtra() {
         return new CatalogItem(2L, "EXTRA_USER", "Usuario adicional", "Un usuario más",
-                "Detalle largo", ItemType.CAPACITY, CapacityUnit.USER, false, 1, 50, 7,
+                "Detalle largo", ItemType.CAPACITY, "USER", false, 1, 50, 7,
                 CatalogItemStatus.ACTIVE, CREADO, 4L, true);
     }
 
@@ -41,7 +40,7 @@ class CatalogItemJpaMapperTest {
         assertThat(entity.getShortDescription()).isEqualTo("Un usuario más");
         assertThat(entity.getLongDescription()).isEqualTo("Detalle largo");
         assertThat(entity.getItemType()).isEqualTo(ItemType.CAPACITY);
-        assertThat(entity.getCapacityUnit()).isEqualTo(CapacityUnit.USER);
+        assertThat(entity.getCapacityUnit()).isEqualTo("USER");
         assertThat(entity.isCore()).isFalse();
         assertThat(entity.getMinQuantity()).isEqualTo(1);
         assertThat(entity.getMaxQuantity()).isEqualTo(50);
