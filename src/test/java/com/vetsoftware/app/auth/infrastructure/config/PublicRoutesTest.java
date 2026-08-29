@@ -53,7 +53,7 @@ class PublicRoutesTest {
                     "GET /countries/{countryId}/states", "GET /states/{stateId}/cities",
                     "GET /species/{specieId}/breeds", "GET /species", "GET /animal-colors",
                     "GET /consultation-types", "GET /modules", "GET /sub-modules", "GET /spa-types",
-                    "GET /configurator/questionnaire", "POST /configurator/resolve",
+                    "GET /configurator/questionnaire", "POST /configurator/resolve", "GET /plans",
                     "POST /platform/access-request", "GET /platform/access-request/validate",
                     "POST /platform/access-request/approve", "POST /platform/access-request/reject",
                     "GET /platform/invitation/validate", "POST /platform/invitation/accept",
