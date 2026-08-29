@@ -31,9 +31,27 @@ import java.math.BigDecimal;
  * elegibilidad ataria la promesa publica a una sola mitad de un arco exclusivo:
  * el dia que el CHECK se relaje, la landing empezaria a prometer pruebas que
  * nadie concedio.
+ *
+ * <p>
+ * <strong>Un importe por ciclo, con el ciclo en el nombre.</strong> Antes habia
+ * uno solo, {@code extraUnitAmount}, y valia siempre el mensual porque el
+ * {@code LEFT JOIN} estaba clavado ahi. Un nombre sin ciclo sobre un dato que
+ * depende del ciclo es la forma exacta en que el defecto sobrevivio a las
+ * revisiones: se leia bien. Los dos nulos son informacion, no ausencia de dato
+ * —«este articulo no se vende suelto en ese ciclo»—, y en un modulo los dos son
+ * irrelevantes: solo un {@code CAPACITY} se compra por unidades.
+ *
+ * @param monthlyExtraUnitAmount
+ *            precio de la unidad adicional en el tramo de entrada del ciclo
+ *            {@code MONTHLY}, o nulo si no esta tarifado ahi.
+ * @param annualExtraUnitAmount
+ *            lo mismo para {@code ANNUAL}. No es el mensual por doce ni por
+ *            diez: es el importe propio de la fila anual, que es contra el que
+ *            cotiza {@code CreateQuoteService}.
  */
 public record PublicPlanComponentRowDto(String planCode, String code, String name,
-        String capacityUnit, int includedQuantity, Integer trialDays, BigDecimal extraUnitAmount) {
+        String capacityUnit, int includedQuantity, Integer trialDays,
+        BigDecimal monthlyExtraUnitAmount, BigDecimal annualExtraUnitAmount) {
 
     /**
      * Un contador que se compra por unidades, frente a un modulo que se enciende.

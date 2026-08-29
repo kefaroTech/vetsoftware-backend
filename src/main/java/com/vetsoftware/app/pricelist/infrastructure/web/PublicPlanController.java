@@ -76,6 +76,6 @@ public class PublicPlanController {
 
     private static PublicPlanCapacityResponse toCapacityResponse(PublicPlanCapacityDto dto) {
         return new PublicPlanCapacityResponse(dto.code(), dto.name(), dto.unit(), dto.included(),
-                dto.extraUnitAmount());
+                dto.monthlyExtraUnitAmount(), dto.annualExtraUnitAmount());
     }
 }

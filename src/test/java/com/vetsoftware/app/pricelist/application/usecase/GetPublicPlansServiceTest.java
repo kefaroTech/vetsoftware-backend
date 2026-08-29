@@ -4,6 +4,7 @@ import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.HOY;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.PLAN;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.TARIFA_VIGENTE_ID;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.contador;
+import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.contadorSoloMensual;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.moduloConPrueba;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.moduloSinPrueba;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.plan;
@@ -199,8 +200,50 @@ class GetPublicPlansServiceTest {
             assertThat(publicado.includes()).containsExactly(
                     new PublicPlanIncludedDto("AGENDA", "Agenda", 30),
                     new PublicPlanIncludedDto("CAJA", "Caja", null));
-            assertThat(publicado.capacities()).containsExactly(new PublicPlanCapacityDto(
-                    "EXTRA_USER", "Usuario adicional", "USER", 3, new BigDecimal("15000.00")));
+            assertThat(publicado.capacities())
+                    .containsExactly(new PublicPlanCapacityDto("EXTRA_USER", "Usuario adicional",
+                            "USER", 3, new BigDecimal("15000.00"), new BigDecimal("145000.00")));
+        }
+
+        /**
+         * El servicio <b>copia</b> los dos importes; no calcula el anual a partir del
+         * mensual. La fixture lo hace comprobable: 150.000 no es 15.000 por doce ni por
+         * diez, asi que cualquier extrapolacion falla aqui en vez de llegar a la
+         * landing como un precio que el servidor no va a cobrar.
+         */
+        @Test
+        @DisplayName("el contador publica el importe de CADA ciclo, leidos de su fila, sin"
+                + " extrapolar el anual desde el mensual")
+        void el_contador_publica_el_importe_de_cada_ciclo() {
+            when(queryPort.findPublishedPriceLists()).thenReturn(List.of(tarifaVigente()));
+            catalogoDe(TARIFA_VIGENTE_ID, List.of(contador(PLAN)));
+
+            PublicPlanCapacityDto contador = servicio(RELOJ).get().plans().get(0).capacities()
+                    .get(0);
+
+            assertThat(contador.monthlyExtraUnitAmount()).isEqualByComparingTo("15000.00");
+            assertThat(contador.annualExtraUnitAmount()).isEqualByComparingTo("145000.00");
+        }
+
+        /**
+         * Nulo no es «no lo sabemos»: es «ese contador no se vende suelto en ese
+         * ciclo», y es la misma respuesta que dara el {@code JOIN} por ciclo de la
+         * contratacion. La linea sigue saliendo porque {@code included} —lo que el plan
+         * trae dentro— es cierto en los dos ciclos.
+         */
+        @Test
+        @DisplayName("un contador sin precio anual sale igual, con el anual nulo: lo incluido es"
+                + " cierto en los dos ciclos")
+        void un_contador_sin_precio_anual_sale_con_el_anual_nulo() {
+            when(queryPort.findPublishedPriceLists()).thenReturn(List.of(tarifaVigente()));
+            catalogoDe(TARIFA_VIGENTE_ID, List.of(contadorSoloMensual(PLAN)));
+
+            PublicPlanCapacityDto contador = servicio(RELOJ).get().plans().get(0).capacities()
+                    .get(0);
+
+            assertThat(contador.included()).isEqualTo(1);
+            assertThat(contador.monthlyExtraUnitAmount()).isEqualByComparingTo("45000.00");
+            assertThat(contador.annualExtraUnitAmount()).isNull();
         }
 
         @Test
@@ -289,11 +332,11 @@ class GetPublicPlansServiceTest {
         }
 
         @Test
-        @DisplayName("el contador publica el rotulo del eje, no su id")
+        @DisplayName("el contador publica el rotulo del eje, no su id, y un importe POR CICLO")
         void el_contador_publica_el_rotulo_del_eje() {
             assertThat(PublicPlanCapacityDto.class.getRecordComponents())
-                    .extracting(RecordComponent::getName)
-                    .containsExactly("code", "name", "unit", "included", "extraUnitAmount");
+                    .extracting(RecordComponent::getName).containsExactly("code", "name", "unit",
+                            "included", "monthlyExtraUnitAmount", "annualExtraUnitAmount");
         }
     }
 }

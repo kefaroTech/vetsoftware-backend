@@ -65,20 +65,36 @@ public final class PublicPlanMother {
 
     /** Modulo que el paquete enciende, con los dias de prueba que concede. */
     public static PublicPlanComponentRowDto moduloConPrueba(String planCode) {
-        return new PublicPlanComponentRowDto(planCode, "AGENDA", "Agenda", null, 1, 30, null);
+        return new PublicPlanComponentRowDto(planCode, "AGENDA", "Agenda", null, 1, 30, null, null);
     }
 
     /** Modulo {@code NEVER_FREE}: {@code trialDays} nulo es «no hay prueba». */
     public static PublicPlanComponentRowDto moduloSinPrueba(String planCode) {
-        return new PublicPlanComponentRowDto(planCode, "CAJA", "Caja", null, 1, null, null);
+        return new PublicPlanComponentRowDto(planCode, "CAJA", "Caja", null, 1, null, null, null);
     }
 
     /**
      * Contador: lo que lo distingue de un modulo es {@code capacityUnit}, no un
      * {@code ItemType} que este slice no importa.
+     *
+     * <p>
+     * Tarifado en los <b>dos</b> ciclos, y el anual <em>no</em> es el mensual por
+     * doce (180.000) ni por diez (150.000): 145.000 no es ningun multiplo de
+     * 15.000. Una fixture donde el anual fuera un multiplo redondo del mensual
+     * dejaria pasar un servicio que extrapolara en vez de leer la columna.
      */
     public static PublicPlanComponentRowDto contador(String planCode) {
         return new PublicPlanComponentRowDto(planCode, "EXTRA_USER", "Usuario adicional", "USER", 3,
-                null, new BigDecimal("15000.00"));
+                null, new BigDecimal("15000.00"), new BigDecimal("145000.00"));
+    }
+
+    /**
+     * Contador que solo se vende suelto al mes: el importe anual es nulo y eso
+     * significa «no se ofrece esa unidad adicional en ciclo anual», que es lo mismo
+     * que la contratacion decidira con su {@code JOIN} por ciclo.
+     */
+    public static PublicPlanComponentRowDto contadorSoloMensual(String planCode) {
+        return new PublicPlanComponentRowDto(planCode, "EXTRA_BRANCH", "Sede adicional", "BRANCH",
+                1, null, new BigDecimal("45000.00"), null);
     }
 }

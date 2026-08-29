@@ -122,6 +122,34 @@ public class JpaPublicPlanQueryPort implements PublicPlanQueryPort {
      * El {@code CASE} sobre {@code trial_eligibility} es lo que impide prometer una
      * prueba que nadie concedio. Proyecta un entero o nulo, nunca un literal
      * booleano ({@code PROYECCION_SIN_LITERAL_BOOLEANO}, incidencia #196).
+     *
+     * <p>
+     * <strong>Los DOS ciclos, como en {@link #SQL_PLANS}, y esa simetria es el
+     * arreglo.</strong> Esta consulta clavaba el {@code LEFT JOIN} en
+     * {@code 'MONTHLY'} y publicaba ese importe como «el precio de la unidad
+     * adicional», sin ciclo en el nombre. La cabecera del plan, dos consultas mas
+     * arriba, si publicaba los dos. De esa asimetria salian dos defectos con el
+     * mismo origen:
+     *
+     * <ul>
+     * <li><b>Un contador tarifado solo en anual se anunciaba sin precio</b> y,
+     * peor, uno tarifado <em>solo en mensual</em> se anunciaba con precio y luego
+     * no se podia contratar en anual: {@code JpaPublishedCatalogItemQueryPort}
+     * exige el precio de entrada <b>en el ciclo pedido</b> con un {@code JOIN}
+     * interno, y su rechazo es —a proposito— indistinguible de «codigo
+     * desconocido». La portada prometia algo que la contratacion negaba con un
+     * error que no explicaba nada.</li>
+     * <li><b>El importe anunciado no era el que se cobra.</b> El front solo podia
+     * extrapolar el mensual —hoy lo multiplica por diez, «dos meses gratis»—
+     * mientras el servidor cotiza contra la escalera {@code ANNUAL} propia del
+     * articulo. Dos numeros sin ninguna razon para coincidir.</li>
+     * </ul>
+     *
+     * <p>
+     * Con los dos importes proyectados, un nulo en el ciclo pedido significa
+     * exactamente lo que el {@code JOIN} de la contratacion va a decidir: ese
+     * contador no se vende suelto en ese ciclo. El contrato y el gate pasan a
+     * evaluar el mismo predicado.
      */
     private static final String SQL_COMPONENTS = """
             SELECT bi.code,
@@ -131,16 +159,23 @@ public class JpaPublicPlanQueryPort implements PublicPlanQueryPort {
                    bc.quantity,
                    CASE WHEN ci.trial_eligibility = 'ELIGIBLE'
                         THEN ci.default_trial_days END,
-                   p.unit_amount
+                   pm.unit_amount,
+                   pa.unit_amount
               FROM bundle_components bc
               JOIN catalog_items bi ON bi.id = bc.bundle_item_id
               JOIN catalog_items ci ON ci.id = bc.component_item_id
-              LEFT JOIN catalog_prices p
-                     ON p.catalog_item_id = ci.id
-                    AND p.price_list_id = :priceListId
-                    AND p.billing_cycle = 'MONTHLY'
-                    AND p.tier_min = 1
-                    AND p.enabled = TRUE
+              LEFT JOIN catalog_prices pm
+                     ON pm.catalog_item_id = ci.id
+                    AND pm.price_list_id = :priceListId
+                    AND pm.billing_cycle = 'MONTHLY'
+                    AND pm.tier_min = 1
+                    AND pm.enabled = TRUE
+              LEFT JOIN catalog_prices pa
+                     ON pa.catalog_item_id = ci.id
+                    AND pa.price_list_id = :priceListId
+                    AND pa.billing_cycle = 'ANNUAL'
+                    AND pa.tier_min = 1
+                    AND pa.enabled = TRUE
              WHERE bc.enabled = TRUE
                AND bi.enabled = TRUE
                AND bi.item_type = 'BUNDLE'
@@ -198,7 +233,7 @@ public class JpaPublicPlanQueryPort implements PublicPlanQueryPort {
             Object[] columns = (Object[]) row;
             lineas.add(new PublicPlanComponentRowDto(asString(columns[0]), asString(columns[1]),
                     asString(columns[2]), asString(columns[3]), asInt(columns[4]),
-                    asInteger(columns[5]), asAmount(columns[6])));
+                    asInteger(columns[5]), asAmount(columns[6]), asAmount(columns[7])));
         }
         return List.copyOf(lineas);
     }

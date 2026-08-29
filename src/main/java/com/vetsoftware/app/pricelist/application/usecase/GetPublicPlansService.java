@@ -101,7 +101,8 @@ public class GetPublicPlansService implements GetPublicPlansUseCase {
         List<PublicPlanCapacityDto> capacities = lineas.stream()
                 .filter(PublicPlanComponentRowDto::esCapacidad)
                 .map(linea -> new PublicPlanCapacityDto(linea.code(), linea.name(),
-                        linea.capacityUnit(), linea.includedQuantity(), linea.extraUnitAmount()))
+                        linea.capacityUnit(), linea.includedQuantity(),
+                        linea.monthlyExtraUnitAmount(), linea.annualExtraUnitAmount()))
                 .toList();
         return new PublicPlanDto(plan.code(), plan.name(), plan.tagline(), plan.monthlyFromAmount(),
                 plan.annualFromAmount(), plan.setupAmount(), plan.taxRate(), plan.taxTreatment(),

@@ -124,6 +124,10 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
     private static final List<Long> ORDEN_ESPERADO = List.of(LISTA_VIGENTE,
             SchemaSeed.PRICE_LIST_ID, LISTA_CADUCADA);
 
+    /** Las dos extrapolaciones que el importe anual NO puede ser. */
+    private static final BigDecimal DOCE = new BigDecimal("12");
+    private static final BigDecimal DIEZ = new BigDecimal("10");
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -188,10 +192,18 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
                 "TAXED", true);
         precio(2665L, LISTA_VIGENTE, PACK_DE_BAJA, "MONTHLY", 1, null, "60000.00", "0.00", "19.00",
                 "TAXED", true);
-        // El contador: tramo de entrada y escalera.
+        // El contador: tramo de entrada y escalera, en los DOS ciclos. El anual NO
+        // es ningun multiplo del mensual: 145.000 no es 15.000 por doce (180.000) ni
+        // por diez (150.000), asi que un adaptador que extrapolara en vez de leer la
+        // fila ANNUAL falla aqui. Elegir 150.000 seria elegir justo el resultado de
+        // la extrapolacion que este caso existe para descartar.
         precio(2666L, LISTA_VIGENTE, CAP_USUARIO, "MONTHLY", 1, 10, "15000.00", "0.00", "19.00",
                 "TAXED", true);
         precio(2667L, LISTA_VIGENTE, CAP_USUARIO, "MONTHLY", 11, null, "12000.00", "0.00", "19.00",
+                "TAXED", true);
+        precio(2671L, LISTA_VIGENTE, CAP_USUARIO, "ANNUAL", 1, 10, "145000.00", "0.00", "19.00",
+                "TAXED", true);
+        precio(2672L, LISTA_VIGENTE, CAP_USUARIO, "ANNUAL", 11, null, "120000.00", "0.00", "19.00",
                 "TAXED", true);
         // Caja: tiene precio suelto, pero dado de baja.
         precio(2668L, LISTA_VIGENTE, MOD_CAJA, "MONTHLY", 1, null, "25000.00", "0.00", "19.00",
@@ -342,16 +354,17 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
                     .usingRecursiveComparison()
                     .withEqualsForType((a, b) -> a.compareTo(b) == 0, BigDecimal.class)
                     .isEqualTo(List.of(
-                            // Tarifado solo en anual: el LEFT JOIN es MONTHLY, asi que no hay
-                            // precio suelto que publicar.
+                            // Tarifado solo en anual: el mensual viene nulo y el anual con su
+                            // importe. Antes los dos JOIN eran uno solo clavado en MONTHLY y
+                            // esta linea salia sin ningun precio.
                             new PublicPlanComponentRowDto(CODIGO_PACK, "TEST_MOD_AGENDA", "Agenda",
-                                    null, 1, 30, null),
-                            // Su unico precio suelto esta dado de baja.
+                                    null, 1, 30, null, new BigDecimal("300000.00")),
+                            // Su unico precio suelto esta dado de baja: nulo en los dos.
                             new PublicPlanComponentRowDto(CODIGO_PACK, "TEST_MOD_CAJA", "Caja",
-                                    null, 1, null, null),
+                                    null, 1, null, null, null),
                             new PublicPlanComponentRowDto(CODIGO_PACK, "TEST_CAP_USUARIO",
                                     "Usuario adicional", "USER", 3, null,
-                                    new BigDecimal("15000.00"))));
+                                    new BigDecimal("15000.00"), new BigDecimal("145000.00"))));
         }
 
         /**
@@ -360,13 +373,43 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
          * linea y el caso de arriba cae; este lo nombra.
          */
         @Test
-        @DisplayName("del contador sale el precio del tramo de entrada, no el de volumen")
+        @DisplayName("del contador sale el precio del tramo de entrada, no el de volumen, en los"
+                + " dos ciclos")
         void del_contador_sale_el_tramo_de_entrada() {
-            assertThat(port.findPlanComponents(LISTA_VIGENTE))
-                    .filteredOn(linea -> "TEST_CAP_USUARIO".equals(linea.code())
+            assertThat(contadorDelPack())
+                    .extracting(PublicPlanComponentRowDto::monthlyExtraUnitAmount,
+                            PublicPlanComponentRowDto::annualExtraUnitAmount)
+                    .containsExactly(new BigDecimal("15000.00"), new BigDecimal("145000.00"));
+        }
+
+        /**
+         * <b>El importe anual se LEE de la fila {@code ANNUAL}; no se calcula.</b> Es
+         * el defecto entero de esta consulta: con un solo {@code LEFT JOIN} clavado en
+         * {@code MONTHLY}, el unico precio publicado era el mensual y quien pintaba un
+         * plan anual no tenia mas remedio que extrapolarlo —el front lo multiplica por
+         * diez—, mientras {@code CreateQuoteService} cotiza contra la escalera
+         * {@code ANNUAL} del articulo. La fixture usa 145.000 justamente porque no es
+         * 15.000 por doce (180.000) ni por diez (150.000): cualquiera de las dos
+         * extrapolaciones falla. La primera version de este caso usaba 150.000 y el
+         * propio aserto la tumbo, que es exactamente para lo que esta.
+         */
+        @Test
+        @DisplayName("el importe anual sale de su propia fila, no de multiplicar el mensual")
+        void el_importe_anual_sale_de_su_propia_fila() {
+            PublicPlanComponentRowDto contador = contadorDelPack();
+
+            assertThat(contador.annualExtraUnitAmount()).isEqualByComparingTo("145000.00");
+            assertThat(contador.annualExtraUnitAmount())
+                    .isNotEqualByComparingTo(contador.monthlyExtraUnitAmount().multiply(DOCE));
+            assertThat(contador.annualExtraUnitAmount())
+                    .isNotEqualByComparingTo(contador.monthlyExtraUnitAmount().multiply(DIEZ));
+        }
+
+        private PublicPlanComponentRowDto contadorDelPack() {
+            return port.findPlanComponents(LISTA_VIGENTE).stream()
+                    .filter(linea -> "TEST_CAP_USUARIO".equals(linea.code())
                             && CODIGO_PACK.equals(linea.planCode()))
-                    .singleElement().extracting(PublicPlanComponentRowDto::extraUnitAmount)
-                    .isEqualTo(new BigDecimal("15000.00"));
+                    .findFirst().orElseThrow();
         }
 
         @Test
@@ -381,13 +424,15 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
         }
 
         @Test
-        @DisplayName("el precio suelto de otra tarifa no se cuela por el LEFT JOIN")
+        @DisplayName("el precio suelto de otra tarifa no se cuela por ninguno de los dos LEFT JOIN")
         void el_precio_suelto_de_otra_tarifa_no_se_cuela() {
             assertThat(port.findPlanComponents(LISTA_BORRADOR))
                     .filteredOn(linea -> "TEST_CAP_USUARIO".equals(linea.code())
                             && CODIGO_PACK.equals(linea.planCode()))
-                    .singleElement().extracting(PublicPlanComponentRowDto::extraUnitAmount)
-                    .isNull();
+                    .singleElement()
+                    .extracting(PublicPlanComponentRowDto::monthlyExtraUnitAmount,
+                            PublicPlanComponentRowDto::annualExtraUnitAmount)
+                    .containsExactly(null, null);
         }
 
         @Test
@@ -479,13 +524,13 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
         }
 
         @Test
-        @DisplayName("la linea proyecta siete campos: ni id, ni tierMax, ni el resto de la"
-                + " escalera")
-        void la_linea_proyecta_siete_campos() {
+        @DisplayName("la linea proyecta ocho campos —un importe por ciclo—: ni id, ni tierMax, ni"
+                + " el resto de la escalera")
+        void la_linea_proyecta_ocho_campos() {
             assertThat(PublicPlanComponentRowDto.class.getRecordComponents())
                     .extracting(RecordComponent::getName).containsExactly("planCode", "code",
                             "name", "capacityUnit", "includedQuantity", "trialDays",
-                            "extraUnitAmount");
+                            "monthlyExtraUnitAmount", "annualExtraUnitAmount");
         }
 
         /**
