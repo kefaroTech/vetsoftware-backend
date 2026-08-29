@@ -1,7 +1,6 @@
 package com.vetsoftware.app.companytaxprofile.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.companytaxprofile.domain.CompanyDocumentType;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyRef;
@@ -11,6 +10,7 @@ import com.vetsoftware.app.companytaxprofile.domain.EconomicActivityRef;
 import com.vetsoftware.app.companytaxprofile.domain.TaxRegime;
 import com.vetsoftware.app.companytaxprofile.testsupport.CompanyTaxProfileMother;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.EngineConstraint;
 import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
@@ -26,7 +26,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * Rodaja de persistencia del perfil fiscal contra MySQL real.
@@ -142,6 +141,20 @@ class CompanyTaxProfilePersistenceIT extends AbstractDataJpaTest {
                 CompanyTaxProfileMother.RAZON_SOCIAL, regimen, CompanyTaxProfileMother.EMAIL_FISCAL,
                 CompanyTaxProfileMother.NOMBRE_COMERCIAL, actividad, responsabilidades,
                 CREADO.toLocalDate(), null, CREADO, null, true);
+    }
+
+    /**
+     * El mismo perfil de la empresa propia pero abriendo el dia que se le diga. Lo
+     * necesitan los dos casos de {@code Unicidad}: sin poder mover
+     * {@code valid_from}, la segunda ficha viola las <b>dos</b> restricciones
+     * unicas a la vez y no hay forma de saber cual salto.
+     */
+    private CompanyTaxProfile perfilDesde(LocalDate desde) {
+        return new CompanyTaxProfile(null, CLINICA, CompanyDocumentType.NIT,
+                CompanyTaxProfileMother.NIT, CompanyTaxProfileMother.NIT_DV,
+                CompanyTaxProfileMother.RAZON_SOCIAL, TaxRegime.RESPONSABLE_IVA,
+                CompanyTaxProfileMother.EMAIL_FISCAL, CompanyTaxProfileMother.NOMBRE_COMERCIAL,
+                VETERINARIA, List.of(O13, O15), desde, null, CREADO, null, true);
     }
 
     /**
@@ -442,17 +455,62 @@ class CompanyTaxProfilePersistenceIT extends AbstractDataJpaTest {
             assertThat(repository.existsCurrentByCompanyId(OTRA_COMPANY)).isFalse();
         }
 
+        /**
+         * <b>Este caso pasaba por el motivo equivocado.</b> La tabla tiene DOS indices
+         * unicos que la segunda ficha violaba a la vez —{@code
+         * uq_company_tax_profiles_current} sobre la columna generada y {@code
+         * uq_company_tax_profiles_validity (company_id, valid_from)}, porque el
+         * ayudante usaba siempre la misma fecha de apertura—, y la asercion era un
+         * {@code hasMessageContaining("Duplicate entry")} que no distingue cual salto.
+         * Es decir: el nombre del caso anunciaba la barandilla del vigente y podia
+         * estar probando la del calendario, exactamente igual que el precedente del
+         * {@code STR_TO_DATE} que no parseaba.
+         *
+         * <p>
+         * Ahora la segunda ficha <b>abre en otra fecha</b>, asi que la del calendario
+         * no puede saltar y solo queda la que el nombre anuncia — y
+         * {@code EngineConstraint.assertViolates} exige leerla por nombre en la cadena
+         * de causas, como ya hace {@code PlatformTaxProfilePersistenceIT}.
+         *
+         * <p>
+         * <b>Que se rompe si falta.</b> Dos fichas fiscales vigentes de la misma
+         * clinica significan dos identidades ante la DIAN, y el documento que se emita
+         * saldra con la que gane la carrera.
+         */
         @Test
-        @DisplayName("la base rechaza un segundo perfil para la misma empresa")
+        @DisplayName("la base rechaza una segunda ficha VIGENTE aunque abra en otra fecha")
         void la_base_rechaza_un_segundo_perfil() {
-            // uq_company_tax_profiles_current: la empresa puede tener historico, pero una
-            // sola ficha VIGENTE. No lo sostiene un if del caso de uso, lo sostiene el
-            // indice unico sobre la columna generada.
             guardarPerfilPropio();
 
-            assertThatThrownBy(() -> guardarPerfilPropio())
-                    .isInstanceOf(DataIntegrityViolationException.class)
-                    .hasMessageContaining("Duplicate entry");
+            EngineConstraint.assertViolates("uq_company_tax_profiles_current",
+                    () -> repository.save(perfilDesde(CREADO.toLocalDate().plusDays(30))));
+        }
+
+        /**
+         * La otra mitad, aislada: con la ficha anterior <b>ya cerrada</b> el marcador
+         * de vigente queda libre, asi que la unica barandilla que puede saltar es la
+         * del calendario. Sin este caso, {@code uq_company_tax_profiles_validity} no la
+         * ejercitaba nadie por su cuenta.
+         *
+         * <p>
+         * El cierre va por {@code close} y no por {@code save}, por el mismo motivo que
+         * documenta {@code Sucesion}: guardar el agregado entero reinsertaria sus
+         * responsabilidades y chocaria contra
+         * {@code uq_ctp_responsibilities_profile_code} — otra restriccion distinta
+         * saltando antes que la que se quiere probar.
+         */
+        @Test
+        @DisplayName("la base rechaza dos fichas de la misma empresa que abren el mismo dia")
+        void la_base_rechaza_dos_fichas_que_abren_el_mismo_dia() {
+            guardarPerfilPropio();
+            releerDesdeLaBase();
+            CompanyTaxProfile aCerrar = repository.findCurrentByCompanyId(COMPANY).orElseThrow();
+            aCerrar.closeOn(CREADO.toLocalDate().plusDays(1));
+            assertThat(repository.close(aCerrar)).isOne();
+            releerDesdeLaBase();
+
+            EngineConstraint.assertViolates("uq_company_tax_profiles_validity",
+                    () -> repository.save(perfilDesde(CREADO.toLocalDate())));
         }
     }
 

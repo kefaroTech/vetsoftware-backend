@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.vetsoftware.app.legaldocumentversion.domain.LegalDocumentKind;
 import com.vetsoftware.app.legaldocumentversion.domain.LegalDocumentVersion;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
+import com.vetsoftware.app.testsupport.EngineConstraint;
 import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
@@ -74,15 +75,61 @@ class LegalDocumentVersionPersistenceIT extends AbstractDataJpaTest {
             });
         }
 
+        /**
+         * <b>Este caso solo prueba la consulta, y antes decia que probaba la
+         * restriccion.</b> Se llamaba «el mismo texto no se puede publicar dos veces» y
+         * publicaba <em>una sola vez</em>: borrar {@code uq_ldv_content} del esquema lo
+         * dejaba igual de verde. Quien de verdad ejercita la restriccion es
+         * {@link #publicar_el_mismo_texto_otra_vez_lo_rechaza_el_motor}, aqui debajo.
+         */
         @Test
-        @DisplayName("el mismo texto no se puede publicar dos veces bajo el mismo documento")
-        void el_mismo_texto_no_se_publica_dos_veces() {
+        @DisplayName("existsByCodeAndContentHash distingue el texto publicado del que no")
+        void exists_by_code_and_content_hash_distingue_el_texto_publicado() {
             publicar(1, TEXTO_V1, PUBLICADO_EL);
 
             assertThat(repository.existsByCodeAndContentHash(CODE,
                     LegalDocumentVersion.hashOf(TEXTO_V1))).isTrue();
             assertThat(repository.existsByCodeAndContentHash(CODE,
                     LegalDocumentVersion.hashOf(TEXTO_V2))).isFalse();
+        }
+
+        /**
+         * <b>La restriccion de verdad, y disparada por el motivo correcto.</b> La tabla
+         * tiene <em>tres</em> indices unicos y el escenario esta montado para que solo
+         * pueda saltar el que se quiere probar:
+         *
+         * <ul>
+         * <li>{@code uq_ldv_code_version (code, document_version)} no salta porque la
+         * segunda publicacion lleva el numero 2, no el 1. Republicar con el mismo
+         * numero habria chocado <b>antes</b> contra este indice y el caso habria pasado
+         * en verde sin haber tocado nunca el que anuncia — el patron exacto del «verde
+         * por el motivo equivocado».</li>
+         * <li>{@code uq_ldv_current} no salta porque la primera version se cierra con
+         * {@code supersede} antes de publicar la segunda, que es la misma precaucion
+         * que ya documenta {@code la_huella_devuelve_la_version_historica}.</li>
+         * <li>Queda {@code uq_ldv_content (code, content_hash)}, y
+         * {@code EngineConstraint.assertViolates} exige que sea ese el nombre que
+         * aparece en la cadena de causas: si mañana saltara otro, este caso se pone
+         * rojo en vez de aplaudir.</li>
+         * </ul>
+         *
+         * <p>
+         * <b>Que se rompe si falta.</b> El texto legal se identifica ante el cliente
+         * por su huella: dos filas con el mismo {@code content_hash} bajo el mismo
+         * documento hacen que «que version aceptaste» tenga dos respuestas, y esa
+         * pregunta se responde ante un juez.
+         */
+        @Test
+        @DisplayName("republicar el mismo texto bajo el mismo documento lo rechaza el motor")
+        void publicar_el_mismo_texto_otra_vez_lo_rechaza_el_motor() {
+            LegalDocumentVersion primera = publicar(1, TEXTO_V1, PUBLICADO_EL);
+            LegalDocumentVersion cargada = repository.findById(primera.getId()).orElseThrow();
+            cargada.supersede(SUCEDIDO_EL);
+            repository.supersede(cargada);
+            entityManager.flush();
+
+            EngineConstraint.assertViolates("uq_ldv_content",
+                    () -> publicar(2, TEXTO_V1, SUCEDIDO_EL));
         }
     }
 
