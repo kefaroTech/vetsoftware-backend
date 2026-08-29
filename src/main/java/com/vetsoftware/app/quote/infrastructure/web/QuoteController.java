@@ -7,12 +7,15 @@ import com.vetsoftware.app.quote.application.command.CreateQuoteCommand;
 import com.vetsoftware.app.quote.application.command.QuoteAnswerCommand;
 import com.vetsoftware.app.quote.application.command.QuoteLineCommand;
 import com.vetsoftware.app.quote.application.command.RejectQuoteCommand;
+import com.vetsoftware.app.quote.application.command.PreviewQuoteCommand;
 import com.vetsoftware.app.quote.application.command.SelfServeQuoteCommand;
 import com.vetsoftware.app.quote.application.command.SelfServeQuoteLineCommand;
 import com.vetsoftware.app.quote.application.command.SendQuoteCommand;
 import com.vetsoftware.app.quote.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.quote.application.dto.QuoteAnswerDto;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
+import com.vetsoftware.app.quote.application.dto.QuotePreviewDto;
+import com.vetsoftware.app.quote.application.dto.QuotePreviewLineDto;
 import com.vetsoftware.app.quote.application.dto.QuoteLineDto;
 import com.vetsoftware.app.quote.application.dto.QuoteSummaryDto;
 import com.vetsoftware.app.quote.application.dto.QuoteTotalsMismatchDto;
@@ -25,6 +28,7 @@ import com.vetsoftware.app.quote.application.port.in.FindQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.in.ListQuotesByCompanyUseCase;
 import com.vetsoftware.app.quote.application.port.in.ListQuotesUseCase;
 import com.vetsoftware.app.quote.application.port.in.RejectQuoteUseCase;
+import com.vetsoftware.app.quote.application.port.in.PreviewQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.in.SelfServeQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.in.SendQuoteUseCase;
 import com.vetsoftware.app.quote.infrastructure.web.request.AcceptQuoteRequest;
@@ -32,10 +36,13 @@ import com.vetsoftware.app.quote.infrastructure.web.request.CreateQuoteRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.QuoteAnswerRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.QuoteLineRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.SelfServeQuoteLineRequest;
+import com.vetsoftware.app.quote.infrastructure.web.request.PreviewQuoteRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.SelfServeQuoteRequest;
 import com.vetsoftware.app.quote.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.quote.infrastructure.web.response.QuoteAnswerResponse;
 import com.vetsoftware.app.quote.infrastructure.web.response.QuoteLineResponse;
+import com.vetsoftware.app.quote.infrastructure.web.response.QuotePreviewLineResponse;
+import com.vetsoftware.app.quote.infrastructure.web.response.QuotePreviewResponse;
 import com.vetsoftware.app.quote.infrastructure.web.response.QuoteResponse;
 import com.vetsoftware.app.quote.infrastructure.web.response.QuoteSummaryResponse;
 import com.vetsoftware.app.quote.infrastructure.web.response.QuoteTotalsMismatchResponse;
@@ -71,6 +78,7 @@ public class QuoteController {
     private final ListQuotesUseCase listUseCase;
     private final SendQuoteUseCase sendUseCase;
     private final SelfServeQuoteUseCase selfServeUseCase;
+    private final PreviewQuoteUseCase previewUseCase;
     private final AcceptQuoteUseCase acceptUseCase;
     private final RejectQuoteUseCase rejectUseCase;
     private final DeleteQuoteUseCase deleteUseCase;
@@ -81,8 +89,9 @@ public class QuoteController {
     public QuoteController(CreateQuoteUseCase createUseCase, FindQuoteUseCase findUseCase,
             ListQuotesByCompanyUseCase listByCompanyUseCase, ListQuotesUseCase listUseCase,
             SendQuoteUseCase sendUseCase, SelfServeQuoteUseCase selfServeUseCase,
-            AcceptQuoteUseCase acceptUseCase, RejectQuoteUseCase rejectUseCase,
-            DeleteQuoteUseCase deleteUseCase, ExpireOverdueQuotesUseCase expireOverdueUseCase,
+            PreviewQuoteUseCase previewUseCase, AcceptQuoteUseCase acceptUseCase,
+            RejectQuoteUseCase rejectUseCase, DeleteQuoteUseCase deleteUseCase,
+            ExpireOverdueQuotesUseCase expireOverdueUseCase,
             FindQuoteTotalsMismatchesUseCase totalsMismatchesUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.findUseCase = findUseCase;
@@ -90,6 +99,7 @@ public class QuoteController {
         this.listUseCase = listUseCase;
         this.sendUseCase = sendUseCase;
         this.selfServeUseCase = selfServeUseCase;
+        this.previewUseCase = previewUseCase;
         this.acceptUseCase = acceptUseCase;
         this.rejectUseCase = rejectUseCase;
         this.deleteUseCase = deleteUseCase;
@@ -141,6 +151,37 @@ public class QuoteController {
         return toResponse(selfServeUseCase.execute(
                 new SelfServeQuoteCommand(request.clientRequestId(), authz.currentCompanyId(),
                         request.billingCycle(), toSelfServeLineCommands(request.lines()))));
+    }
+
+    /**
+     * <strong>Cuanto costaria esto</strong>, sin crear nada y sin autenticarse.
+     *
+     * <p>
+     * Es la respuesta a que la escalera de tramos no se publique: con solo el tramo
+     * de entrada, un front no puede mas que extrapolar —quince usuarios le salen
+     * 156.000 y la contratacion cobra 141.000—. Aqui el servidor devuelve el
+     * importe ya calculado, con el mismo codigo que congela una oferta real, asi
+     * que <strong>el front no calcula precios: los pide</strong>.
+     *
+     * <p>
+     * Publico y anonimo: declarado en {@code PublicRoutes.BUSINESS}, con
+     * {@code @NoAuthorizationRequired} en el puerto y con su propio limite por IP
+     * en {@code LoginRateLimitFilter} — las tres cosas, porque es un {@code POST}.
+     */
+    @PostMapping("/preview")
+    public QuotePreviewResponse preview(@Valid @RequestBody PreviewQuoteRequest request) {
+        QuotePreviewDto preview = previewUseCase.preview(new PreviewQuoteCommand(
+                request.billingCycle(), toSelfServeLineCommands(request.lines())));
+        return new QuotePreviewResponse(preview.currency(), preview.billingCycle(),
+                preview.lines().stream().map(QuoteController::toPreviewLineResponse).toList(),
+                preview.subtotalAmount(), preview.discountAmount(), preview.taxAmount(),
+                preview.totalAmount());
+    }
+
+    private static QuotePreviewLineResponse toPreviewLineResponse(QuotePreviewLineDto dto) {
+        return new QuotePreviewLineResponse(dto.code(), dto.name(), dto.contractedQuantity(),
+                dto.includedQuantity(), dto.quantity(), dto.unitAmount(), dto.grossAmount(),
+                dto.taxRate(), dto.taxTreatment(), dto.taxAmount(), dto.lineTotal());
     }
 
     @GetMapping("/{id}")

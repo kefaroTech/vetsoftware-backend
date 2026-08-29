@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
 
 /**
  * La cotizacion: el primer documento con valor legal del proceso.
@@ -118,11 +117,12 @@ public class Quote {
             BillingCycle billingCycle, LocalDate validUntil, int trialDays, String clientRequestId,
             List<QuoteLine> lines, List<QuoteAnswer> answers, LocalDateTime createdDate) {
         List<QuoteLine> safeLines = lines == null ? List.of() : List.copyOf(lines);
+        QuoteTotals totales = QuoteTotals.of(safeLines);
         return new Quote(null, quoteNumber, company, prospectName, prospectEmail, prospectDocument,
-                prospectPhone, priceListId, billingCycle, sumGross(safeLines),
-                sumDiscount(safeLines), sumTax(safeLines), sumTotal(safeLines), QuoteStatus.DRAFT,
-                validUntil, trialDays, null, null, null, clientRequestId, createdDate, null, true,
-                safeLines, answers);
+                prospectPhone, priceListId, billingCycle, totales.subtotalAmount(),
+                totales.discountAmount(), totales.taxAmount(), totales.totalAmount(),
+                QuoteStatus.DRAFT, validUntil, trialDays, null, null, null, clientRequestId,
+                createdDate, null, true, safeLines, answers);
     }
 
     /**
@@ -278,10 +278,11 @@ public class Quote {
      * oferta descuadra el total sin borrar nada.
      */
     private void verifyTotals() {
-        compare("subtotalAmount", subtotalAmount, sumGross(lines));
-        compare("discountAmount", discountAmount, sumDiscount(lines));
-        compare("taxAmount", taxAmount, sumTax(lines));
-        compare("totalAmount", totalAmount, sumTotal(lines));
+        QuoteTotals deLasLineas = QuoteTotals.of(lines);
+        compare("subtotalAmount", subtotalAmount, deLasLineas.subtotalAmount());
+        compare("discountAmount", discountAmount, deLasLineas.discountAmount());
+        compare("taxAmount", taxAmount, deLasLineas.taxAmount());
+        compare("totalAmount", totalAmount, deLasLineas.totalAmount());
         BigDecimal fromHeader = subtotalAmount.subtract(discountAmount).add(taxAmount);
         compare("totalAmount", totalAmount, fromHeader);
     }
@@ -289,27 +290,6 @@ public class Quote {
     private static void compare(String concept, BigDecimal stored, BigDecimal fromLines) {
         if (stored.compareTo(fromLines) != 0)
             throw new QuoteTotalsMismatchException(concept, stored, fromLines);
-    }
-
-    private static BigDecimal sumGross(List<QuoteLine> lines) {
-        return sum(lines, QuoteLine::grossAmount);
-    }
-
-    private static BigDecimal sumDiscount(List<QuoteLine> lines) {
-        return sum(lines, QuoteLine::getDiscountAmount);
-    }
-
-    private static BigDecimal sumTax(List<QuoteLine> lines) {
-        return sum(lines, QuoteLine::getTaxAmount);
-    }
-
-    private static BigDecimal sumTotal(List<QuoteLine> lines) {
-        return sum(lines, QuoteLine::getLineTotal);
-    }
-
-    private static BigDecimal sum(List<QuoteLine> lines,
-            Function<QuoteLine, BigDecimal> extractor) {
-        return lines.stream().map(extractor).reduce(Money.zero(), BigDecimal::add);
     }
 
     private static BigDecimal requireAmount(BigDecimal value, String name) {

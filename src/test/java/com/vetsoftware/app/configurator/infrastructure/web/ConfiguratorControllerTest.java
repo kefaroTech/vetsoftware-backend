@@ -3,6 +3,7 @@ package com.vetsoftware.app.configurator.infrastructure.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -72,14 +73,15 @@ class ConfiguratorControllerTest {
     @Test
     @DisplayName("resolver traslada opciones marcadas y respuestas numericas tal como llegan")
     void resolver_traslada_las_respuestas_tal_como_llegan() throws Exception {
-        when(resolveUseCase.resolve(any())).thenReturn(new ConfiguratorSelectionDto(
-                List.of(new SelectedItemDto(100L, 1), new SelectedItemDto(200L, 4))));
+        when(resolveUseCase.resolve(any())).thenReturn(new ConfiguratorSelectionDto(List.of(
+                new SelectedItemDto("SCHEDULING", 1), new SelectedItemDto("EXTRA_TERMINAL", 4))));
 
         mockMvc.perform(post("/configurator/resolve").contentType(APPLICATION_JSON).content("""
-                {"selectedOptionIds":[11,21],"numericAnswers":{"3":4}}
+                {"selectedOptionIds":[11,21],"numericAnswers":{"3":4},"billingCycle":"ANNUAL"}
                 """)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[0].catalogItemId").value(100))
-                .andExpect(jsonPath("$.items[1].catalogItemId").value(200))
+                .andExpect(jsonPath("$.items[0].code").value("SCHEDULING"))
+                .andExpect(jsonPath("$.items[0].catalogItemId").doesNotExist())
+                .andExpect(jsonPath("$.items[1].code").value("EXTRA_TERMINAL"))
                 .andExpect(jsonPath("$.items[1].quantity").value(4));
 
         ArgumentCaptor<ResolveConfiguratorSelectionCommand> comando = ArgumentCaptor
@@ -87,6 +89,7 @@ class ConfiguratorControllerTest {
         verify(resolveUseCase).resolve(comando.capture());
         assertThat(comando.getValue().selectedOptionIds()).containsExactlyInAnyOrder(11L, 21L);
         assertThat(comando.getValue().numericAnswers()).containsEntry(3L, 4);
+        assertThat(comando.getValue().billingCycle()).isEqualTo("ANNUAL");
     }
 
     @Test
@@ -95,8 +98,35 @@ class ConfiguratorControllerTest {
         when(resolveUseCase.resolve(any())).thenReturn(new ConfiguratorSelectionDto(List.of()));
 
         mockMvc.perform(post("/configurator/resolve").contentType(APPLICATION_JSON).content("""
-                {"selectedOptionIds":[],"numericAnswers":{}}
+                {"selectedOptionIds":[],"numericAnswers":{},"billingCycle":"MONTHLY"}
                 """)).andExpect(status().isOk()).andExpect(jsonPath("$.items").isArray())
                 .andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    /**
+     * El {@code @Pattern} del request tiene que evaluarse de verdad. Sin el
+     * {@code @Valid} del controller estaria escrito y no lo dispararia nadie
+     * ({@code CUERPO_CON_RESTRICCIONES_SE_VALIDA}), y un ciclo invalido llegaria
+     * hasta el {@code valueOf} del caso de uso, que responderia 500 en vez de un
+     * error de campo.
+     */
+    @Test
+    @DisplayName("un ciclo fuera de la lista se rechaza en el borde, no en el caso de uso")
+    void un_ciclo_invalido_se_rechaza_en_el_borde() throws Exception {
+        mockMvc.perform(post("/configurator/resolve").contentType(APPLICATION_JSON).content("""
+                {"selectedOptionIds":[11],"numericAnswers":{},"billingCycle":"SEMANAL"}
+                """)).andExpect(status().isBadRequest());
+
+        verifyNoInteractions(resolveUseCase);
+    }
+
+    @Test
+    @DisplayName("sin ciclo tampoco pasa: el campo es obligatorio")
+    void sin_ciclo_no_pasa() throws Exception {
+        mockMvc.perform(post("/configurator/resolve").contentType(APPLICATION_JSON).content("""
+                {"selectedOptionIds":[11],"numericAnswers":{}}
+                """)).andExpect(status().isBadRequest());
+
+        verifyNoInteractions(resolveUseCase);
     }
 }

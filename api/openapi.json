@@ -9533,6 +9533,34 @@
         }
       }
     },
+    "/quotes/preview" : {
+      "post" : {
+        "tags" : [ "quote-controller" ],
+        "operationId" : "preview",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PreviewQuoteRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QuotePreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/quotes/expire-overdue" : {
       "post" : {
         "tags" : [ "quote-controller" ],
@@ -23974,6 +24002,24 @@
         }
       }
     },
+    "/catalog" : {
+      "get" : {
+        "tags" : [ "public-catalog-controller" ],
+        "operationId" : "catalog",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicCatalogResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/cash-sessions" : {
       "get" : {
         "tags" : [ "cash-session-controller" ],
@@ -34922,6 +34968,104 @@
         },
         "required" : [ "billingCycle", "clientRequestId", "lines" ]
       },
+      "PreviewQuoteRequest" : {
+        "type" : "object",
+        "properties" : {
+          "billingCycle" : {
+            "type" : "string",
+            "enum" : [ "MONTHLY", "ANNUAL" ],
+            "minLength" : 1,
+            "pattern" : "MONTHLY|ANNUAL"
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SelfServeQuoteLineRequest"
+            },
+            "minItems" : 1
+          }
+        },
+        "required" : [ "billingCycle", "lines" ]
+      },
+      "QuotePreviewLineResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "contractedQuantity" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Lo que se contrato"
+          },
+          "includedQuantity" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Lo que la tarifa ya incluye y no se cobra"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Las unidades que caen en este tramo"
+          },
+          "unitAmount" : {
+            "type" : "number"
+          },
+          "grossAmount" : {
+            "type" : "number"
+          },
+          "taxRate" : {
+            "type" : "number"
+          },
+          "taxTreatment" : {
+            "type" : "string",
+            "enum" : [ "TAXED", "EXEMPT", "EXCLUDED" ]
+          },
+          "taxAmount" : {
+            "type" : "number"
+          },
+          "lineTotal" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "code", "contractedQuantity", "includedQuantity", "name", "quantity" ]
+      },
+      "QuotePreviewResponse" : {
+        "type" : "object",
+        "properties" : {
+          "currency" : {
+            "type" : "string",
+            "description" : "ISO 4217 de la tarifa vigente"
+          },
+          "billingCycle" : {
+            "type" : "string",
+            "enum" : [ "MONTHLY", "ANNUAL" ]
+          },
+          "lines" : {
+            "type" : "array",
+            "description" : "Un renglon por tramo: el mismo desglose con el que se facturara",
+            "items" : {
+              "$ref" : "#/components/schemas/QuotePreviewLineResponse"
+            }
+          },
+          "subtotalAmount" : {
+            "type" : "number"
+          },
+          "discountAmount" : {
+            "type" : "number"
+          },
+          "taxAmount" : {
+            "type" : "number"
+          },
+          "totalAmount" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "billingCycle", "currency", "discountAmount", "lines", "subtotalAmount", "taxAmount", "totalAmount" ]
+      },
       "CreatePurchaseOrderRequest" : {
         "type" : "object",
         "properties" : {
@@ -37970,8 +38114,15 @@
               "type" : "integer",
               "format" : "int32"
             }
+          },
+          "billingCycle" : {
+            "type" : "string",
+            "enum" : [ "MONTHLY", "ANNUAL" ],
+            "minLength" : 1,
+            "pattern" : "MONTHLY|ANNUAL"
           }
-        }
+        },
+        "required" : [ "billingCycle" ]
       },
       "ConfiguratorSelectionResponse" : {
         "type" : "object",
@@ -37988,16 +38139,16 @@
       "SelectedItemResponse" : {
         "type" : "object",
         "properties" : {
-          "catalogItemId" : {
-            "type" : "integer",
-            "format" : "int64"
+          "code" : {
+            "type" : "string",
+            "description" : "Rotulo del articulo; el mismo que aceptan /catalog y /quotes/self-serve"
           },
           "quantity" : {
             "type" : "integer",
             "format" : "int32"
           }
         },
-        "required" : [ "catalogItemId", "quantity" ]
+        "required" : [ "code", "quantity" ]
       },
       "CreateConfiguratorQuestionRequest" : {
         "type" : "object",
@@ -44080,6 +44231,190 @@
           }
         },
         "required" : [ "animalId", "eventDate", "eventType", "sourceId" ]
+      },
+      "PublicCatalogCapacityResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "Descripcion comercial corta"
+          },
+          "mandatory" : {
+            "type" : "boolean",
+            "description" : "Parte del minimo estructural (catalog_items.is_core)"
+          },
+          "unit" : {
+            "type" : "string",
+            "description" : "Codigo del eje: USER, BRANCH..."
+          },
+          "monthlyIncludedQuantity" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Unidades que trae el tramo de entrada mensual; nulo si no hay tramo mensual"
+          },
+          "annualIncludedQuantity" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Unidades que trae el tramo de entrada anual; nulo si no hay tramo anual"
+          },
+          "monthlyUnitAmount" : {
+            "type" : "number",
+            "description" : "Precio de la unidad al mes; nulo si no se vende suelta en ese ciclo"
+          },
+          "annualUnitAmount" : {
+            "type" : "number",
+            "description" : "Precio de la unidad al ano; nulo si no se vende suelta en ese ciclo"
+          },
+          "taxRate" : {
+            "type" : "number"
+          },
+          "taxTreatment" : {
+            "type" : "string",
+            "enum" : [ "TAXED", "EXEMPT", "EXCLUDED" ]
+          },
+          "selfServiceEligible" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "code", "mandatory", "name", "selfServiceEligible", "unit" ]
+      },
+      "PublicCatalogItemResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "Descripcion comercial corta"
+          },
+          "mandatory" : {
+            "type" : "boolean",
+            "description" : "Parte del minimo estructural (catalog_items.is_core): el alta de toda empresa lo incluye y no se puede desmarcar"
+          },
+          "trialDays" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Dias de prueba del articulo; nulo si su politica no concede prueba"
+          },
+          "monthlyAmount" : {
+            "type" : "number",
+            "description" : "Precio al mes; nulo si no se vende suelto en ese ciclo"
+          },
+          "annualAmount" : {
+            "type" : "number",
+            "description" : "Precio al ano; nulo si no se vende suelto en ese ciclo. No es el mensual por doce"
+          },
+          "setupAmount" : {
+            "type" : "number",
+            "description" : "Cargo unico de puesta en marcha. En un articulo ONE_TIME es TODO su precio: DATA_MIGRATION vale 0.00 por ciclo y 450000.00 aqui"
+          },
+          "taxRate" : {
+            "type" : "number"
+          },
+          "taxTreatment" : {
+            "type" : "string",
+            "enum" : [ "TAXED", "EXEMPT", "EXCLUDED" ]
+          },
+          "selfServiceEligible" : {
+            "type" : "boolean",
+            "description" : "Si la autocontratacion lo aceptaria como linea. Falso en los cargos unicos, que se negocian"
+          }
+        },
+        "required" : [ "code", "mandatory", "name", "selfServiceEligible" ]
+      },
+      "PublicCatalogPackResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "tagline" : {
+            "type" : "string",
+            "description" : "Descripcion comercial corta del paquete"
+          },
+          "monthlyAmount" : {
+            "type" : "number",
+            "description" : "Precio al mes; nulo si el paquete no esta tarifado en ese ciclo"
+          },
+          "annualAmount" : {
+            "type" : "number",
+            "description" : "Precio al ano; nulo si el paquete no esta tarifado en ese ciclo"
+          },
+          "setupAmount" : {
+            "type" : "number"
+          },
+          "taxRate" : {
+            "type" : "number"
+          },
+          "taxTreatment" : {
+            "type" : "string",
+            "enum" : [ "TAXED", "EXEMPT", "EXCLUDED" ]
+          },
+          "componentCodes" : {
+            "type" : "array",
+            "description" : "Rotulos de los articulos que el paquete incluye. Ninguno de ellos se puede comprar ademas del paquete",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "code", "componentCodes", "name" ]
+      },
+      "PublicCatalogResponse" : {
+        "type" : "object",
+        "properties" : {
+          "currency" : {
+            "type" : "string",
+            "description" : "ISO 4217; nulo si no hay tarifa vigente"
+          },
+          "priceValidFrom" : {
+            "type" : "string",
+            "format" : "date",
+            "description" : "Desde cuando rigen estos precios; nulo si no hay tarifa vigente"
+          },
+          "modules" : {
+            "type" : "array",
+            "description" : "Funcionalidades que se encienden, con su precio suelto",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicCatalogItemResponse"
+            }
+          },
+          "capacities" : {
+            "type" : "array",
+            "description" : "Contadores que se compran por unidades",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicCatalogCapacityResponse"
+            }
+          },
+          "oneTimeItems" : {
+            "type" : "array",
+            "description" : "Cargos unicos con precio de lista; se cotizan con un comercial, no por autoservicio",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicCatalogItemResponse"
+            }
+          },
+          "packs" : {
+            "type" : "array",
+            "description" : "Paquetes, con su precio y su composicion",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicCatalogPackResponse"
+            }
+          }
+        },
+        "required" : [ "capacities", "modules", "oneTimeItems", "packs" ]
       },
       "PageResponseCatalogPriceResponse" : {
         "type" : "object",

@@ -99,6 +99,42 @@ public final class PublicRoutes {
             // Es un GET, asi que no le aplica la invariante de
             // toda_ruta_publica_post_esta_limitada.
             new Route(HttpMethod.GET, "/plans"),
+            // El catalogo contratable COMPLETO, que es lo que /plans no puede dar: alli
+            // un modulo sale sin precio a proposito, porque el precio es el del paquete
+            // que lo contiene. El modelo de compra que quiere el negocio es "solo compre
+            // lo que necesite", y para eso el prospecto tiene que ver cuanto cuesta cada
+            // pieza por si misma.
+            //
+            // Ruta aparte y no un campo mas en /plans: PublicPlanCatalogResponse lo
+            // consume la landing del tenant con MatchesContract, cuya comprobacion
+            // UndeclaredFields falla en cuanto la respuesta trae un campo que el front no
+            // declara. Un recurso nuevo es estrictamente aditivo.
+            //
+            // Patron literal y NO /catalog/**, por lo mismo que /plans y /configurator.
+            // Ojo: /catalog-items y /catalog-prices son OTRAS rutas, cerradas a
+            // hasRole('SYSTEM'), y un comodin sobre este prefijo no las alcanzaria por
+            // AntPathMatcher pero si invitaria al proximo a escribirlo.
+            //
+            // Lo sirve GetPublicCatalogUseCase, anotado @NoAuthorizationRequired: las
+            // DOS cosas, como arriba. Es un GET, asi que no le aplica la invariante de
+            // toda_ruta_publica_post_esta_limitada.
+            new Route(HttpMethod.GET, "/catalog"),
+            // La calculadora de la landing: cuanto costaria una seleccion, sin crear
+            // ninguna oferta y sin cuenta. Existe porque la escalera de tramos NO se
+            // publica -es la politica de descuento por volumen, y PublicPlanQueryPortIT
+            // tiene una prueba que se pone roja si alguien la publica-, asi que un front
+            // con solo el tramo de entrada no puede mas que extrapolar: quince usuarios
+            // le salen 156.000 y la contratacion cobra 141.000. El servidor devuelve el
+            // importe ya calculado con el mismo codigo que congela una oferta real.
+            //
+            // Es un POST publico, asi que ademas de la ruta y del
+            // @NoAuthorizationRequired del puerto lleva su propio limite por IP en
+            // LoginRateLimitFilter: toda_ruta_publica_post_esta_limitada recorre esta
+            // lista y rompe el build si falta.
+            //
+            // Patron literal: /quotes/** abriria el embudo comercial entero, que es
+            // territorio de SYSTEM y del tenant autenticado.
+            new Route(HttpMethod.POST, "/quotes/preview"),
             // Alta de superadministradores de plataforma por invitacion (#360). Las seis
             // son anonimas por construccion, no por comodidad: quien solicita el acceso
             // todavia no tiene cuenta, y quien aprueba, rechaza o acepta se acredita con

@@ -17,6 +17,7 @@ import jakarta.persistence.Query;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
@@ -331,6 +332,40 @@ public final class JpaCatalogQueryPorts {
                                            AND b.status = 'ACTIVE')))
                 """;
 
+        /**
+         * <b>La composicion de los paquetes nombrados, por rotulo.</b> Es el mismo
+         * grafo que publica {@code GET /catalog} en
+         * {@code PublicCatalogPackResponse.componentCodes}, con los mismos filtros
+         * —paquete {@code BUNDLE} {@code ACTIVE} y habilitado, componente
+         * {@code ACTIVE} y habilitado, puente habilitado—, para que el front pueda
+         * evitar la cesta que este SQL sirve para rechazar en vez de provocarla.
+         *
+         * <p>
+         * <b>Sin filtro por precio en el componente</b>, y es deliberado: la pregunta
+         * no es «se puede comprar esta pieza suelta» sino «viene dentro de este
+         * paquete». Una pieza sin tarifar suelta sigue estando dentro y seguiria
+         * cobrandose dos veces si se colara; filtrarla dejaria fuera de la comprobacion
+         * justo al caso que nadie mira.
+         *
+         * <p>
+         * {@code DISTINCT} porque dos paquetes de la misma cesta pueden compartir pieza
+         * —{@code CORE} esta en los tres— y al que llama solo le importa el conjunto.
+         */
+        private static final String SQL_COMPONENT_CODES_OF_BUNDLES = """
+                SELECT DISTINCT ci.code
+                  FROM bundle_components bc
+                  JOIN catalog_items b  ON b.id  = bc.bundle_item_id
+                  JOIN catalog_items ci ON ci.id = bc.component_item_id
+                 WHERE b.code IN (:codes)
+                   AND bc.enabled = TRUE
+                   AND b.enabled = TRUE
+                   AND b.item_type = 'BUNDLE'
+                   AND b.status = 'ACTIVE'
+                   AND ci.enabled = TRUE
+                   AND ci.status = 'ACTIVE'
+                 ORDER BY ci.code
+                """;
+
         private final EntityManager entityManager;
 
         public JpaPublishedCatalogItemQueryPort(EntityManager entityManager) {
@@ -353,6 +388,83 @@ public final class JpaCatalogQueryPorts {
                     .setParameter("billingCycle", billingCycle.name());
             List<?> rows = query.setMaxResults(1).getResultList();
             return rows.isEmpty() ? Optional.empty() : Optional.ofNullable(id(rows.get(0)));
+        }
+
+        /**
+         * Una lista vacia no llega a la base: un {@code IN ()} es error de sintaxis en
+         * MySQL, y el resultado seria vacio de todos modos.
+         */
+        @Override
+        public List<String> findComponentCodesOfBundles(Collection<String> codes) {
+            if (codes == null || codes.isEmpty()) {
+                return List.of();
+            }
+            Query query = entityManager.createNativeQuery(SQL_COMPONENT_CODES_OF_BUNDLES)
+                    .setParameter("codes", codes);
+            List<String> componentes = new ArrayList<>();
+            for (Object row : query.getResultList()) {
+                componentes.add(text(row));
+            }
+            return List.copyOf(componentes);
+        }
+
+        /**
+         * <b>Lo que la cesta necesita y no trae.</b>
+         *
+         * <p>
+         * El {@code NOT IN} es el punto: la cobertura es la union de los rotulos
+         * pedidos <em>y</em> los componentes de los paquetes pedidos. Sin esa segunda
+         * mitad, comprar {@code PACK_FULL} —que trae dentro Facturacion Electronica y
+         * Caja— saldria rechazado por no nombrar Caja en la peticion.
+         *
+         * <p>
+         * Los dos extremos del arco tienen que estar vivos: un requisito que apunte a
+         * un articulo retirado no se puede satisfacer, y exigirlo dejaria la cesta
+         * imposible de completar.
+         */
+        private static final String SQL_MISSING_REQUIREMENTS = """
+                SELECT DISTINCT req.code
+                  FROM catalog_items ci
+                  JOIN catalog_item_dependencies d
+                       ON  d.catalog_item_id = ci.id
+                       AND d.relation_type   = 'REQUIRES'
+                       AND d.enabled         = TRUE
+                  JOIN catalog_items req
+                       ON  req.id     = d.related_item_id
+                       AND req.status = 'ACTIVE'
+                       AND req.enabled = TRUE
+                 WHERE ci.code IN (:codes)
+                   AND ci.status = 'ACTIVE'
+                   AND ci.enabled = TRUE
+                   AND req.code NOT IN (
+                         SELECT pedido.code
+                           FROM catalog_items pedido
+                          WHERE pedido.code IN (:codes)
+                          UNION
+                         SELECT comp.code
+                           FROM bundle_components bc
+                           JOIN catalog_items b    ON b.id    = bc.bundle_item_id
+                           JOIN catalog_items comp ON comp.id = bc.component_item_id
+                          WHERE b.code IN (:codes)
+                            AND bc.enabled = TRUE
+                            AND b.enabled = TRUE
+                            AND b.item_type = 'BUNDLE'
+                            AND b.status = 'ACTIVE')
+                 ORDER BY req.code
+                """;
+
+        @Override
+        public List<String> findMissingRequirements(Collection<String> codes) {
+            if (codes == null || codes.isEmpty()) {
+                return List.of();
+            }
+            Query query = entityManager.createNativeQuery(SQL_MISSING_REQUIREMENTS)
+                    .setParameter("codes", codes);
+            List<String> faltantes = new ArrayList<>();
+            for (Object row : query.getResultList()) {
+                faltantes.add(text(row));
+            }
+            return List.copyOf(faltantes);
         }
     }
 
