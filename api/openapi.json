@@ -9505,6 +9505,34 @@
         }
       }
     },
+    "/quotes/self-serve" : {
+      "post" : {
+        "tags" : [ "quote-controller" ],
+        "operationId" : "selfServe",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SelfServeQuoteRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QuoteResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/quotes/expire-overdue" : {
       "post" : {
         "tags" : [ "quote-controller" ],
@@ -20977,6 +21005,24 @@
         }
       }
     },
+    "/plans" : {
+      "get" : {
+        "tags" : [ "public-plan-controller" ],
+        "operationId" : "plans",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicPlanCatalogResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/permissions/by-company" : {
       "get" : {
         "tags" : [ "permission-controller" ],
@@ -29257,6 +29303,11 @@
           },
           "enabled" : {
             "type" : "boolean"
+          },
+          "defaultTrialDays" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Dias de prueba que concede el articulo. Nulo significa SIN prueba, no «no se sabe»: chk_catalog_items_trial_policy obliga a que un NEVER_FREE tenga la columna vacia. La prueba vence por linea, no por contrato."
           }
         },
         "required" : [ "code", "core", "createdDate", "enabled", "id", "itemType", "minQuantity", "name", "sortOrder", "status" ]
@@ -34831,6 +34882,43 @@
           }
         },
         "required" : [ "acceptedByEmail" ]
+      },
+      "SelfServeQuoteLineRequest" : {
+        "type" : "object",
+        "properties" : {
+          "catalogItemId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "catalogItemId" ]
+      },
+      "SelfServeQuoteRequest" : {
+        "type" : "object",
+        "properties" : {
+          "clientRequestId" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 0
+          },
+          "billingCycle" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "MONTHLY|ANNUAL"
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SelfServeQuoteLineRequest"
+            },
+            "minItems" : 1
+          }
+        },
+        "required" : [ "billingCycle", "clientRequestId", "lines" ]
       },
       "CreatePurchaseOrderRequest" : {
         "type" : "object",
@@ -42407,6 +42495,110 @@
             "format" : "date"
           }
         }
+      },
+      "PublicPlanCapacityResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "unit" : {
+            "type" : "string",
+            "description" : "Codigo del eje: USER, BRANCH..."
+          },
+          "included" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "extraUnitAmount" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "code", "included", "name", "unit" ]
+      },
+      "PublicPlanCatalogResponse" : {
+        "type" : "object",
+        "properties" : {
+          "currency" : {
+            "type" : "string",
+            "description" : "ISO 4217; nulo si no hay tarifa vigente"
+          },
+          "priceValidFrom" : {
+            "type" : "string",
+            "format" : "date",
+            "description" : "Desde cuando rigen estos precios; nulo si no hay tarifa vigente"
+          },
+          "plans" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicPlanResponse"
+            }
+          }
+        },
+        "required" : [ "plans" ]
+      },
+      "PublicPlanIncludedResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "trialDays" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "code", "name" ]
+      },
+      "PublicPlanResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "tagline" : {
+            "type" : "string",
+            "description" : "Descripcion comercial corta del paquete"
+          },
+          "monthlyFromAmount" : {
+            "type" : "number"
+          },
+          "annualFromAmount" : {
+            "type" : "number"
+          },
+          "setupAmount" : {
+            "type" : "number"
+          },
+          "taxRate" : {
+            "type" : "number"
+          },
+          "taxTreatment" : {
+            "type" : "string",
+            "enum" : [ "TAXED", "EXEMPT", "EXCLUDED" ]
+          },
+          "includes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicPlanIncludedResponse"
+            }
+          },
+          "capacities" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicPlanCapacityResponse"
+            }
+          }
+        },
+        "required" : [ "capacities", "code", "includes", "name" ]
       },
       "PageResponsePaymentRefundResponse" : {
         "type" : "object",
