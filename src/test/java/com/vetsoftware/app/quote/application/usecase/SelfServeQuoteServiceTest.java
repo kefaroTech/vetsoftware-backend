@@ -8,6 +8,7 @@ import static com.vetsoftware.app.quote.testsupport.QuoteMother.modulo;
 import static com.vetsoftware.app.quote.testsupport.QuoteMother.usuarioExtra;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -21,6 +22,8 @@ import com.vetsoftware.app.quote.application.command.SelfServeQuoteLineCommand;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
 import com.vetsoftware.app.quote.application.port.out.PlatformQuoteIssuerPort;
 import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
+import com.vetsoftware.app.quote.application.port.out.PublishedCatalogItemQueryPort;
+import com.vetsoftware.app.quote.domain.BillingCycle;
 import com.vetsoftware.app.quote.domain.PriceListRef;
 import com.vetsoftware.app.quote.domain.QuoteStatus;
 import com.vetsoftware.app.quote.testsupport.QuoteMother;
@@ -31,6 +34,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -63,6 +67,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * lado.</li>
  * <li><b>El descuento</b> se escribe en cero en el unico sitio del camino donde
  * ese campo llega a existir.</li>
+ * <li><b>Que articulos existen</b> lo decide el servidor y no el cuerpo: ver
+ * {@link ElCatalogoQueElTenantPuedeNombrar}.</li>
  * <li><b>La vigencia</b> son 15 dias desde hoy; del cuerpo saldria una oferta
  * perpetua.</li>
  * <li><b>{@code trialDays = 0} en la cabecera es deliberado</b>: la prueba
@@ -89,16 +95,20 @@ class SelfServeQuoteServiceTest {
 
     private static final Long TARIFA_VIGENTE = 70L;
     private static final Long TARIFA_CADUCADA = 69L;
+    private static final Long TARIFA_GEMELA = 99L;
 
     @Mock
     private PlatformQuoteIssuerPort issuer;
     @Mock
     private PriceListQueryPort priceListQueryPort;
+    @Mock
+    private PublishedCatalogItemQueryPort publishedCatalogItemQueryPort;
     @Captor
     private ArgumentCaptor<CreateQuoteCommand> emitido;
 
     private SelfServeQuoteService servicio(Clock reloj) {
-        return new SelfServeQuoteService(issuer, priceListQueryPort, reloj);
+        return new SelfServeQuoteService(issuer, priceListQueryPort, publishedCatalogItemQueryPort,
+                reloj);
     }
 
     private static PriceListRef vigente() {
@@ -116,14 +126,25 @@ class SelfServeQuoteServiceTest {
     }
 
     private static SelfServeQuoteCommand comando() {
-        return comando(List.of(new SelfServeQuoteLineCommand(modulo().id(), 1),
-                new SelfServeQuoteLineCommand(usuarioExtra().id(), 15)));
+        return comando(List.of(new SelfServeQuoteLineCommand(modulo().code(), 1),
+                new SelfServeQuoteLineCommand(usuarioExtra().code(), 15)));
     }
 
     /** El embudo devuelve la oferta ya emitida; aqui solo hace de espejo. */
     private void elIssuerEmite() {
         when(issuer.issue(any()))
                 .thenReturn(QuoteDto.from(QuoteMother.persistida(1L, QuoteStatus.SENT)));
+    }
+
+    /**
+     * Los dos articulos de {@link #comando()} estan publicados en esa tarifa y en
+     * el ciclo mensual, asi que el traductor devuelve sus ids.
+     */
+    private void elCatalogoPublicaLasDosLineas(Long tarifa) {
+        when(publishedCatalogItemQueryPort.findPublishedIdByCode(modulo().code(), tarifa,
+                BillingCycle.MONTHLY)).thenReturn(Optional.of(modulo().id()));
+        when(publishedCatalogItemQueryPort.findPublishedIdByCode(usuarioExtra().code(), tarifa,
+                BillingCycle.MONTHLY)).thenReturn(Optional.of(usuarioExtra().id()));
     }
 
     @Nested
@@ -134,6 +155,7 @@ class SelfServeQuoteServiceTest {
         @DisplayName("de las publicadas cotiza con la vigente HOY, no con la del ano pasado")
         void cotiza_con_la_vigente_hoy() {
             when(priceListQueryPort.findAllPublished()).thenReturn(List.of(caducada(), vigente()));
+            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
             elIssuerEmite();
 
             servicio(RELOJ).execute(comando());
@@ -150,8 +172,10 @@ class SelfServeQuoteServiceTest {
         @Test
         @DisplayName("con dos vigentes solapadas gana la de validFrom mas reciente")
         void con_dos_vigentes_gana_la_mas_reciente() {
-            when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente(),
-                    new PriceListRef(99L, "LISTA-2026-01", "COP", LocalDate.of(2026, 1, 1), null)));
+            when(priceListQueryPort.findAllPublished())
+                    .thenReturn(List.of(vigente(), new PriceListRef(TARIFA_GEMELA, "LISTA-2026-01",
+                            "COP", LocalDate.of(2026, 1, 1), null)));
+            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
             elIssuerEmite();
 
             servicio(RELOJ).execute(comando());
@@ -163,15 +187,16 @@ class SelfServeQuoteServiceTest {
         @Test
         @DisplayName("a igualdad de validFrom gana el id mayor: la ultima publicada")
         void a_igualdad_de_valid_from_gana_el_id_mayor() {
-            when(priceListQueryPort.findAllPublished()).thenReturn(List.of(
-                    new PriceListRef(99L, "LISTA-GEMELA", "COP", LocalDate.of(2026, 8, 1), null),
-                    vigente()));
+            when(priceListQueryPort.findAllPublished())
+                    .thenReturn(List.of(new PriceListRef(TARIFA_GEMELA, "LISTA-GEMELA", "COP",
+                            LocalDate.of(2026, 8, 1), null), vigente()));
+            elCatalogoPublicaLasDosLineas(TARIFA_GEMELA);
             elIssuerEmite();
 
             servicio(RELOJ).execute(comando());
 
             verify(issuer).issue(emitido.capture());
-            assertThat(emitido.getValue().priceListId()).isEqualTo(99L);
+            assertThat(emitido.getValue().priceListId()).isEqualTo(TARIFA_GEMELA);
         }
 
         @Test
@@ -183,7 +208,7 @@ class SelfServeQuoteServiceTest {
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("No published price list is effective on");
 
-            verifyNoInteractions(issuer);
+            verifyNoInteractions(issuer, publishedCatalogItemQueryPort);
         }
 
         @Test
@@ -195,7 +220,7 @@ class SelfServeQuoteServiceTest {
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("No published price list is effective on");
 
-            verifyNoInteractions(issuer);
+            verifyNoInteractions(issuer, publishedCatalogItemQueryPort);
         }
 
         /**
@@ -212,12 +237,187 @@ class SelfServeQuoteServiceTest {
             when(priceListQueryPort.findAllPublished())
                     .thenReturn(List.of(new PriceListRef(TARIFA_VIGENTE, "LISTA-CIERRE", "COP",
                             LocalDate.of(2026, 8, 1), HOY)));
+            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
             elIssuerEmite();
 
             servicio(alFilo).execute(comando());
 
             verify(issuer).issue(emitido.capture());
             assertThat(emitido.getValue().priceListId()).isEqualTo(TARIFA_VIGENTE);
+        }
+    }
+
+    /**
+     * <b>El endpoint era inalcanzable, y lo arregla este traductor.</b> La linea
+     * pedia {@code catalogItemId}; {@code GET /plans} no publica ningun id a
+     * proposito y {@code GET /catalog-items} es {@code hasRole('SYSTEM')}, asi que
+     * no habia ninguna cadena por la que un empleado del tenant obtuviera esos
+     * numeros: permiso sembrado, ruta publicada, cero llamadores posibles. Ahora la
+     * linea nombra el articulo por {@code code} y el servidor lo resuelve.
+     *
+     * <p>
+     * <b>Lo que estos tests SI garantizan y lo que NO — leelo antes de confiar en
+     * ellos.</b> El puerto esta mockeado, asi que aqui no se comprueba <em>que
+     * conjunto</em> de articulos es resoluble: eso lo decide el {@code WHERE} de
+     * {@code JpaPublishedCatalogItemQueryPort} y solo se puede probar contra MySQL
+     * real, en la rodaja del adaptador. Lo que si se comprueba —y no es poco— es
+     * que <b>el servicio no deshace la indistinguibilidad</b>: dado un puerto que
+     * ya responde {@code empty()} sin decir por que, el caso de uso no puede
+     * inventarse la diferencia en el mensaje. Sin este test, el dia que alguien
+     * escriba un «Catalog item not found: X» mas util para depurar, habra
+     * convertido este endpoint en un enumerador del catalogo interno y nada lo
+     * dira.
+     */
+    @Nested
+    @DisplayName("El catalogo que el tenant puede nombrar lo decide el servidor")
+    class ElCatalogoQueElTenantPuedeNombrar {
+
+        private static final String CODE_INEXISTENTE = "NO_EXISTE_ESTE_ROTULO";
+        private static final String CODE_INTERNO = "IMPLANTACION_ONBOARDING";
+
+        @Test
+        @DisplayName("el rotulo publicado se traduce al id del catalogo, y es el que se cotiza")
+        void el_rotulo_publicado_se_traduce_al_id() {
+            when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
+            elIssuerEmite();
+
+            servicio(RELOJ).execute(comando());
+
+            verify(issuer).issue(emitido.capture());
+            assertThat(emitido.getValue().lines()).extracting(QuoteLineCommand::catalogItemId)
+                    .containsExactly(modulo().id(), usuarioExtra().id());
+        }
+
+        /**
+         * <b>Capacidad extra en ciclo anual, de punta a punta.</b> Era el camino que
+         * nadie ejercitaba: {@code usuarioExtra()} es un {@code CAPACITY} y el ciclo es
+         * {@code ANNUAL}, asi que el traductor tiene que pedirle al catalogo el
+         * articulo <em>en ese ciclo</em> —no en el mensual— y la oferta tiene que salir
+         * con el ciclo anual en la cabecera.
+         *
+         * <p>
+         * Que el precio unitario viaje en cero no es un descuido: en autoservicio el
+         * importe lo pone {@code CreateQuoteService} leyendo la escalera del ciclo, y
+         * el cero es justamente lo que impide que el cliente proponga un precio. Que
+         * esa escalera anual exista y sea la que manda lo prueba
+         * {@code QuoteCatalogQueryPortsIT} contra MySQL real.
+         */
+        @Test
+        @DisplayName("una linea de capacidad extra en ciclo anual se resuelve y se emite con el"
+                + " ciclo anual")
+        void la_capacidad_extra_anual_se_resuelve_y_se_emite() {
+            when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+            when(publishedCatalogItemQueryPort.findPublishedIdByCode(usuarioExtra().code(),
+                    TARIFA_VIGENTE, BillingCycle.ANNUAL))
+                    .thenReturn(Optional.of(usuarioExtra().id()));
+            elIssuerEmite();
+
+            servicio(RELOJ).execute(new SelfServeQuoteCommand(CLIENT_REQUEST_ID, empresa().id(),
+                    "ANNUAL", List.of(new SelfServeQuoteLineCommand(usuarioExtra().code(), 15))));
+
+            verify(publishedCatalogItemQueryPort).findPublishedIdByCode(usuarioExtra().code(),
+                    TARIFA_VIGENTE, BillingCycle.ANNUAL);
+            verify(issuer).issue(emitido.capture());
+            assertThat(emitido.getValue().billingCycle()).isEqualTo("ANNUAL");
+            assertThat(emitido.getValue().lines()).singleElement().satisfies(linea -> {
+                assertThat(linea.catalogItemId()).isEqualTo(usuarioExtra().id());
+                assertThat(linea.quantity()).isEqualTo(15);
+                assertThat(linea.discountPercent()).isEqualByComparingTo(BigDecimal.ZERO);
+            });
+        }
+
+        /**
+         * <b>La prueba del oraculo.</b> Un rotulo que no existe y uno que existe pero
+         * es catalogo interno —un {@code ONE_TIME} de implantacion, que
+         * {@code GET /plans} no anuncia— tienen que salir por el mismo sitio y con el
+         * mismo texto. La comparacion es {@code isEqualTo} sobre el mensaje entero, no
+         * {@code hasMessageContaining}: aqui el punto es justamente que no sobre ni
+         * falte un byte, porque cualquier diferencia —incluido el eco del codigo
+         * recibido— es la que responde «ese existe, ese no».
+         */
+        @Test
+        @DisplayName("un rotulo interno se rechaza igual que uno inexistente, y con el mismo texto")
+        void un_rotulo_interno_es_indistinguible_de_uno_inexistente() {
+            when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+            when(publishedCatalogItemQueryPort.findPublishedIdByCode(CODE_INEXISTENTE,
+                    TARIFA_VIGENTE, BillingCycle.MONTHLY)).thenReturn(Optional.empty());
+            when(publishedCatalogItemQueryPort.findPublishedIdByCode(CODE_INTERNO, TARIFA_VIGENTE,
+                    BillingCycle.MONTHLY)).thenReturn(Optional.empty());
+
+            Throwable porInexistente = catchThrowable(() -> servicio(RELOJ)
+                    .execute(comando(List.of(new SelfServeQuoteLineCommand(CODE_INEXISTENTE, 1)))));
+            Throwable porInterno = catchThrowable(() -> servicio(RELOJ)
+                    .execute(comando(List.of(new SelfServeQuoteLineCommand(CODE_INTERNO, 1)))));
+
+            assertThat(porInexistente).isInstanceOf(IllegalArgumentException.class);
+            assertThat(porInterno).isInstanceOf(IllegalArgumentException.class)
+                    .hasSameClassAs(porInexistente);
+            assertThat(porInterno.getMessage()).isEqualTo(porInexistente.getMessage());
+            assertThat(porInterno.getMessage()).doesNotContain(CODE_INTERNO)
+                    .doesNotContain(CODE_INEXISTENTE);
+        }
+
+        /**
+         * Con una sola linea mala no se emite media oferta: el embudo no llega a
+         * enterarse. Un fallo parcial dejaria al cliente con una cotizacion que no es
+         * la que pidio, firmada igualmente.
+         */
+        @Test
+        @DisplayName("basta que una linea no sea contratable para que no se emita nada")
+        void una_linea_no_contratable_frena_la_oferta_entera() {
+            when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+            when(publishedCatalogItemQueryPort.findPublishedIdByCode(modulo().code(),
+                    TARIFA_VIGENTE, BillingCycle.MONTHLY)).thenReturn(Optional.of(modulo().id()));
+            when(publishedCatalogItemQueryPort.findPublishedIdByCode(CODE_INTERNO, TARIFA_VIGENTE,
+                    BillingCycle.MONTHLY)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> servicio(RELOJ)
+                    .execute(comando(List.of(new SelfServeQuoteLineCommand(modulo().code(), 1),
+                            new SelfServeQuoteLineCommand(CODE_INTERNO, 1)))))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            verifyNoInteractions(issuer);
+        }
+
+        /**
+         * Las tres coordenadas importan. Con el ciclo cableado a {@code MONTHLY} —o con
+         * la tarifa cogida de cualquier otro sitio— un articulo tarifado solo en
+         * mensual se colaria en una cotizacion anual y el precio saldria de una columna
+         * que nadie publico para ese ciclo.
+         */
+        @Test
+        @DisplayName("el traductor recibe la tarifa vigente y el ciclo pedido, no otros")
+        void el_traductor_recibe_la_tarifa_y_el_ciclo_de_la_cotizacion() {
+            when(priceListQueryPort.findAllPublished()).thenReturn(List.of(caducada(), vigente()));
+            when(publishedCatalogItemQueryPort.findPublishedIdByCode(modulo().code(),
+                    TARIFA_VIGENTE, BillingCycle.ANNUAL)).thenReturn(Optional.of(modulo().id()));
+            elIssuerEmite();
+
+            servicio(RELOJ).execute(new SelfServeQuoteCommand(CLIENT_REQUEST_ID, empresa().id(),
+                    "ANNUAL", List.of(new SelfServeQuoteLineCommand(modulo().code(), 1))));
+
+            verify(publishedCatalogItemQueryPort).findPublishedIdByCode(modulo().code(),
+                    TARIFA_VIGENTE, BillingCycle.ANNUAL);
+        }
+
+        /**
+         * El {@code @Pattern} del request ya acota el ciclo en el borde REST, pero
+         * {@code SYSTEM} tambien puede llamar al puerto directamente y ahi no hay
+         * binder que valide. Sale 400 y no un 500 desde el {@code valueOf}.
+         */
+        @Test
+        @DisplayName("un ciclo que no existe se rechaza antes de tocar el catalogo")
+        void un_ciclo_desconocido_se_rechaza() {
+            when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+
+            assertThatThrownBy(() -> servicio(RELOJ).execute(
+                    new SelfServeQuoteCommand(CLIENT_REQUEST_ID, empresa().id(), "SEMESTRAL",
+                            List.of(new SelfServeQuoteLineCommand(modulo().code(), 1)))))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Unknown billingCycle");
+
+            verifyNoInteractions(issuer, publishedCatalogItemQueryPort);
         }
     }
 
@@ -229,6 +429,7 @@ class SelfServeQuoteServiceTest {
         @DisplayName("cada linea sale con descuento CERO, en el unico sitio donde ese campo existe")
         void cada_linea_sale_con_descuento_cero() {
             when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
             elIssuerEmite();
 
             servicio(RELOJ).execute(comando());
@@ -243,6 +444,7 @@ class SelfServeQuoteServiceTest {
         @DisplayName("la oferta vale 15 dias desde hoy, no lo que diga el cuerpo")
         void la_oferta_vale_quince_dias() {
             when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
             elIssuerEmite();
 
             servicio(RELOJ).execute(comando());
@@ -260,6 +462,7 @@ class SelfServeQuoteServiceTest {
         @DisplayName("la cabecera no promete prueba: trialDays cero, a proposito")
         void la_cabecera_no_promete_prueba() {
             when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
             elIssuerEmite();
 
             servicio(RELOJ).execute(comando());
@@ -272,6 +475,7 @@ class SelfServeQuoteServiceTest {
         @DisplayName("la empresa, la llave de idempotencia y el ciclo viajan tal cual")
         void la_empresa_y_la_llave_viajan_tal_cual() {
             when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
             elIssuerEmite();
 
             servicio(RELOJ).execute(comando());
@@ -291,6 +495,7 @@ class SelfServeQuoteServiceTest {
         @DisplayName("no hay prospecto que rellenar: los cuatro campos van nulos")
         void no_hay_prospecto_que_rellenar() {
             when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
             elIssuerEmite();
 
             servicio(RELOJ).execute(comando());
@@ -306,6 +511,7 @@ class SelfServeQuoteServiceTest {
         @DisplayName("no se copia ninguna respuesta del configurador")
         void no_se_copia_ninguna_respuesta_del_configurador() {
             when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
             elIssuerEmite();
 
             servicio(RELOJ).execute(comando());
@@ -324,6 +530,7 @@ class SelfServeQuoteServiceTest {
 
             verify(issuer).issue(emitido.capture());
             assertThat(emitido.getValue().lines()).isEmpty();
+            verifyNoInteractions(publishedCatalogItemQueryPort);
         }
 
         @Test
@@ -331,6 +538,7 @@ class SelfServeQuoteServiceTest {
         void devuelve_tal_cual_la_oferta_emitida() {
             QuoteDto emitida = QuoteDto.from(QuoteMother.persistida(1L, QuoteStatus.SENT));
             when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
+            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
             when(issuer.issue(any())).thenReturn(emitida);
 
             assertThat(servicio(RELOJ).execute(comando())).isSameAs(emitida);
@@ -358,16 +566,23 @@ class SelfServeQuoteServiceTest {
                     .contains("priceListId", "validUntil", "trialDays");
         }
 
+        /**
+         * Dos ausencias, no una. Sigue sin declarar descuento —lo de siempre— y
+         * <b>tampoco declara ya el id del catalogo</b>: nombra el articulo por el mismo
+         * rotulo que publica {@code GET /plans}. El contraste con
+         * {@link QuoteLineCommand}, que si lleva las dos cosas, es lo que separa el
+         * camino del tenant del camino de plataforma.
+         */
         @Test
-        @DisplayName("la linea de autoservicio no declara descuento; la de plataforma si")
+        @DisplayName("la linea de autoservicio nombra por code y no declara descuento;"
+                + " la de plataforma lleva id y descuento")
         void la_linea_de_autoservicio_no_declara_descuento() {
             assertThat(SelfServeQuoteLineCommand.class.getRecordComponents())
-                    .extracting(RecordComponent::getName)
-                    .containsExactly("catalogItemId", "quantity");
+                    .extracting(RecordComponent::getName).containsExactly("code", "quantity");
 
             assertThat(QuoteLineCommand.class.getRecordComponents())
                     .extracting(RecordComponent::getName)
-                    .contains("discountPercent", "discountIsConditional");
+                    .contains("catalogItemId", "discountPercent", "discountIsConditional");
         }
     }
 }

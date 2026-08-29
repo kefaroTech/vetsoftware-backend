@@ -249,13 +249,20 @@ public class QuoteController {
      * Sin descuento que traducir: {@link SelfServeQuoteLineRequest} no lo declara.
      * El cero lo escribe {@code SelfServeQuoteService}, que es donde vive la
      * decision.
+     *
+     * <p>
+     * Y sin id que traducir tampoco: la linea de autoservicio nombra el articulo
+     * por {@code code}, porque es lo unico que {@code GET /plans} publica. La
+     * traduccion {@code code -> id} la hace el caso de uso contra el conjunto
+     * publicado, no este controller: es una decision de que se puede contratar, no
+     * un mapeo de transporte. Compare con {@link #toLineCommands(java.util.List)},
+     * que si copia el id porque el camino de plataforma lo emite {@code SYSTEM}.
      */
     private static List<SelfServeQuoteLineCommand> toSelfServeLineCommands(
             List<SelfServeQuoteLineRequest> lines) {
         return lines == null
                 ? List.of()
-                : lines.stream()
-                        .map(l -> new SelfServeQuoteLineCommand(l.catalogItemId(), l.quantity()))
+                : lines.stream().map(l -> new SelfServeQuoteLineCommand(l.code(), l.quantity()))
                         .toList();
     }
 

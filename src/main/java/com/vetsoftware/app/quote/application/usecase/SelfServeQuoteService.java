@@ -8,12 +8,15 @@ import com.vetsoftware.app.quote.application.dto.QuoteDto;
 import com.vetsoftware.app.quote.application.port.in.SelfServeQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.out.PlatformQuoteIssuerPort;
 import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
+import com.vetsoftware.app.quote.application.port.out.PublishedCatalogItemQueryPort;
+import com.vetsoftware.app.quote.domain.BillingCycle;
 import com.vetsoftware.app.quote.domain.PriceListRef;
 import io.micrometer.observation.annotation.Observed;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +41,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><b>El descuento.</b> Siempre cero, y no por convenio:
  * {@link SelfServeQuoteLineCommand} no tiene donde llevarlo. Un descuento es
  * una negociacion, y nadie negocia consigo mismo.</li>
+ * <li><b>Que articulos son contratables.</b> Ver
+ * {@link #traducirCodigos(SelfServeQuoteCommand, PriceListRef, BillingCycle)}:
+ * el cliente nombra rotulos y el servidor decide si existen. Un rotulo que la
+ * portada no publica no llega ni a mirarse contra el catalogo.</li>
  * <li><b>Los importes, el IVA y los tramos.</b> Los congela
  * {@code CreateQuoteService} contra el catalogo, igual que en el camino de
  * plataforma. No se tocan aqui, ni podrian: el cliente no manda ningun
@@ -85,14 +92,36 @@ public class SelfServeQuoteService implements SelfServeQuoteUseCase {
     /** Ver el javadoc de la clase: la prueba vence por linea, no por contrato. */
     private static final int SIN_PRUEBA_EN_CABECERA = 0;
 
+    /**
+     * <b>Un solo texto para todos los rechazos de un rotulo, y es una decision de
+     * seguridad, no pereza.</b> «No existe», «esta en borrador», «se retiro de la
+     * venta», «es un cargo unico que la portada no anuncia» y «no esta tarifado en
+     * este ciclo» tienen que salir <em>indistinguibles</em>: en cuanto el mensaje
+     * separa el codigo desconocido del codigo interno, este endpoint pasa a
+     * responder la pregunta «¿existe el articulo X?» a cualquiera con
+     * {@code quote.request}, que es exactamente lo que {@code GET /catalog-items}
+     * evita cerrandose a {@code SYSTEM}.
+     *
+     * <p>
+     * <b>Tampoco lleva eco del codigo recibido</b>, para que el texto sea el mismo
+     * byte a byte en todos los casos y la propiedad se pueda comprobar en un test
+     * sin trucos de normalizacion. Quien llama sabe que codigos mando: todos
+     * salieron de {@code GET /plans}, y que uno falle significa «el catalogo
+     * cambio, vuelve a leer los planes».
+     */
+    private static final String ARTICULO_NO_CONTRATABLE = "Unknown or unavailable catalog item code";
+
     private final PlatformQuoteIssuerPort issuer;
     private final PriceListQueryPort priceListQueryPort;
+    private final PublishedCatalogItemQueryPort publishedCatalogItemQueryPort;
     private final Clock clock;
 
     public SelfServeQuoteService(PlatformQuoteIssuerPort issuer,
-            PriceListQueryPort priceListQueryPort, Clock clock) {
+            PriceListQueryPort priceListQueryPort,
+            PublishedCatalogItemQueryPort publishedCatalogItemQueryPort, Clock clock) {
         this.issuer = issuer;
         this.priceListQueryPort = priceListQueryPort;
+        this.publishedCatalogItemQueryPort = publishedCatalogItemQueryPort;
         this.clock = clock;
     }
 
@@ -106,11 +135,12 @@ public class SelfServeQuoteService implements SelfServeQuoteUseCase {
         LocalDate today = LocalDateTime.now(clock).toLocalDate();
         PriceListRef tarifa = tarifaVigente(today).orElseThrow(() -> new IllegalStateException(
                 "No published price list is effective on " + today));
+        BillingCycle ciclo = parseBillingCycle(command.billingCycle());
 
         return issuer.issue(new CreateQuoteCommand(command.clientRequestId(), command.companyId(),
                 null, null, null, null, tarifa.id(), command.billingCycle(),
-                today.plusDays(VIGENCIA_DIAS), SIN_PRUEBA_EN_CABECERA, toLineCommands(command),
-                List.of()));
+                today.plusDays(VIGENCIA_DIAS), SIN_PRUEBA_EN_CABECERA,
+                traducirCodigos(command, tarifa, ciclo), List.of()));
     }
 
     /**
@@ -125,14 +155,62 @@ public class SelfServeQuoteService implements SelfServeQuoteUseCase {
     }
 
     /**
-     * El puente entre el command estrecho y el ancho. Aqui es donde el descuento se
-     * escribe en cero: es el <em>unico</em> sitio del camino de autoservicio donde
-     * ese campo llega a existir, y llega ya sin valor posible desde arriba.
+     * El puente entre el command estrecho y el ancho, y <b>el sitio donde el id del
+     * catalogo llega a existir en este camino</b>.
+     *
+     * <p>
+     * Dos cosas pasan aqui, y las dos son de seguridad:
+     *
+     * <ul>
+     * <li><b>El descuento se escribe en cero.</b> Es el <em>unico</em> punto del
+     * camino de autoservicio donde ese campo llega a existir, y llega ya sin valor
+     * posible desde arriba: {@link SelfServeQuoteLineCommand} no lo declara.</li>
+     * <li><b>El rotulo se traduce a id contra el conjunto publicado.</b> No contra
+     * {@code catalog_items} entero: el puerto resuelve exactamente lo mismo que
+     * devuelve {@code GET /plans} para esta tarifa y este ciclo. Un rotulo de fuera
+     * de ese conjunto —inexistente, en borrador, retirado, o un {@code ONE_TIME}
+     * que la portada no anuncia— se rechaza igual y con el mismo texto,
+     * {@link #ARTICULO_NO_CONTRATABLE}. Sin esa igualdad, el traductor seria el
+     * oraculo que enumera el catalogo interno.</li>
+     * </ul>
+     *
+     * <p>
+     * El {@code code} identifica sin ambiguedad: {@code uq_catalog_items_code}
+     * (changeset 229) es {@code UNIQUE} global sobre la columna, asi que no hay
+     * desempate que decidir ni criterio que documentar. Si algun dia esa constraint
+     * se relajara a «unico por tipo» o «unico por lista», este metodo empezaria a
+     * elegir en silencio y habria que volver aqui.
      */
-    private static List<QuoteLineCommand> toLineCommands(SelfServeQuoteCommand command) {
-        return command.lines() == null
-                ? List.of()
-                : command.lines().stream().map(linea -> new QuoteLineCommand(linea.catalogItemId(),
-                        linea.quantity(), BigDecimal.ZERO)).toList();
+    private List<QuoteLineCommand> traducirCodigos(SelfServeQuoteCommand command,
+            PriceListRef tarifa, BillingCycle ciclo) {
+        if (command.lines() == null) {
+            return List.of();
+        }
+        List<QuoteLineCommand> lineas = new ArrayList<>();
+        for (SelfServeQuoteLineCommand linea : command.lines()) {
+            Long catalogItemId = publishedCatalogItemQueryPort
+                    .findPublishedIdByCode(linea.code(), tarifa.id(), ciclo)
+                    .orElseThrow(() -> new IllegalArgumentException(ARTICULO_NO_CONTRATABLE));
+            lineas.add(new QuoteLineCommand(catalogItemId, linea.quantity(), BigDecimal.ZERO));
+        }
+        return List.copyOf(lineas);
+    }
+
+    /**
+     * El ciclo llega como texto porque {@link SelfServeQuoteCommand} lo comparte
+     * con el camino de plataforma, pero aqui hace falta el enumerado: es una de las
+     * tres coordenadas con las que se busca el precio de entrada del articulo. El
+     * {@code @Pattern} del request ya lo acota en el borde REST; esta comprobacion
+     * cubre la llamada directa al puerto, que {@code SYSTEM} tambien puede hacer.
+     */
+    private static BillingCycle parseBillingCycle(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("billingCycle is required");
+        }
+        try {
+            return BillingCycle.valueOf(raw);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Unknown billingCycle: " + raw);
+        }
     }
 }

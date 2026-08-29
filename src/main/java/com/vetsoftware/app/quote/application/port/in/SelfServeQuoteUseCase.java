@@ -50,6 +50,26 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * {@code CancelSubscriptionUseCase}: rama de plataforma mas rama de tenant con
  * la empresa revalidada. {@code quote.request} es un permiso nuevo y hay que
  * sembrarlo; sin esa fila, ningun empleado alcanza este puerto.
+ *
+ * <p>
+ * <strong>El articulo se pide por {@code code}, y sin eso este puerto era
+ * inalcanzable.</strong> Dos decisiones correctas por separado se anulaban:
+ * {@code PublicPlanResponse} no publica ningun id —«un id es una llave de
+ * escritura y un {@code code} es un rotulo»— y el unico traductor
+ * {@code code -> id}, {@code GET /catalog-items}, esta cerrado a
+ * {@code hasRole('SYSTEM')}. Con el id en la linea, la autocontratacion tenia
+ * ruta, permiso sembrado y <em>ninguna</em> cadena por la que un empleado del
+ * tenant obtuviera los numeros que exigia.
+ *
+ * <p>
+ * La salida no fue publicar los ids en {@code GET /plans} —eso deshace una
+ * decision de seguridad tomada a proposito y expone llaves de escritura en la
+ * superficie anonima—, sino traducir del lado de quien ya esta autenticado:
+ * {@code SelfServeQuoteService} resuelve el rotulo contra
+ * {@code PublishedCatalogItemQueryPort}, que solo conoce el mismo conjunto que
+ * publica la portada. Y responde lo mismo para un codigo inexistente que para
+ * uno interno, o el traductor seria la puerta de atras del listado que
+ * {@code SYSTEM} guarda por delante.
  */
 public interface SelfServeQuoteUseCase {
 
