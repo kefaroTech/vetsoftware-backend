@@ -31,6 +31,7 @@ import com.vetsoftware.app.quote.application.port.in.FindQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.in.ListQuotesByCompanyUseCase;
 import com.vetsoftware.app.quote.application.port.in.ListQuotesUseCase;
 import com.vetsoftware.app.quote.application.port.in.RejectQuoteUseCase;
+import com.vetsoftware.app.quote.application.port.in.SelfServeQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.in.SendQuoteUseCase;
 import com.vetsoftware.app.quote.domain.InvalidQuoteStatusTransitionException;
 import com.vetsoftware.app.quote.domain.QuoteExpiredException;
@@ -170,6 +171,8 @@ class QuoteControllerTest {
     private ListQuotesUseCase listUseCase;
     @MockitoBean
     private SendQuoteUseCase sendUseCase;
+    @MockitoBean
+    private SelfServeQuoteUseCase selfServeUseCase;
     @MockitoBean
     private AcceptQuoteUseCase acceptUseCase;
     @MockitoBean

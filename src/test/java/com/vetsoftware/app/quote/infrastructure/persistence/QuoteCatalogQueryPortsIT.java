@@ -25,10 +25,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 
 /**
- * Rodaja de los cuatro adaptadores de lectura del catálogo, contra MySQL real.
+ * Rodaja de los cinco adaptadores de lectura del catálogo, contra MySQL real.
  *
  * <p>
- * <b>Por qué esta rodaja hacía falta.</b> Los cuatro son <b>SQL nativo con
+ * <b>Por qué esta rodaja hacía falta.</b> Los cinco son <b>SQL nativo con
  * acceso posicional al resultado</b> ({@code row[0]}, {@code row[1]}…). Un
  * {@code SELECT} con las columnas en otro orden, una columna renombrada en una
  * migración o un {@code valueOf} sobre un enum que ya no tiene ese valor no los
@@ -45,7 +45,7 @@ import org.springframework.context.annotation.Import;
  * vender algo que la plataforma no ofrece, a un precio que nadie aprobó.
  *
  * <p>
- * <b>No se declaran como beans.</b> Los cuatro adaptadores solo necesitan un
+ * <b>No se declaran como beans.</b> Los cinco adaptadores solo necesitan un
  * {@code EntityManager}, así que se construyen a mano: añadirlos al
  * {@code @Import} de la rodaja cambiaría la clave del
  * {@code MergedContextConfiguration} y costaría un arranque de contexto entero,
@@ -64,6 +64,25 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
     /** Artículo activo pero deshabilitado por baja lógica. */
     private static final Long ITEM_DESHABILITADO = 1963L;
 
+    /**
+     * Un plan de verdad: paquete ACTIVE con precio de entrada. Sale en
+     * {@code GET /plans}.
+     */
+    private static final Long ITEM_BUNDLE = 1964L;
+    /**
+     * Módulo ACTIVE que cuelga de ese plan: también sale, dentro de
+     * {@code includes}.
+     */
+    private static final Long ITEM_COMPONENTE = 1965L;
+    /**
+     * <b>La pieza clave de esta rodaja.</b> Módulo {@code ACTIVE}, habilitado y con
+     * precio de entrada en la tarifa —o sea, indistinguible de un componente por
+     * todos los filtros «obvios»— que <b>no cuelga de ningún paquete</b>. Es
+     * catálogo interno: {@code GET /plans} no lo anuncia y la autocontratación
+     * tampoco puede nombrarlo.
+     */
+    private static final Long ITEM_INTERNO = 1966L;
+
     /** Lista en borrador: sus precios todavía se pueden cambiar. */
     private static final Long LISTA_BORRADOR = 1970L;
 
@@ -71,6 +90,24 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
     private static final Long PRECIO_TRAMO_ALTO = 1981L;
     private static final Long PRECIO_ANUAL = 1982L;
     private static final Long PRECIO_DESHABILITADO = 1983L;
+    private static final Long PRECIO_BUNDLE = 1984L;
+    private static final Long PRECIO_COMPONENTE = 1985L;
+    private static final Long PRECIO_INTERNO = 1986L;
+    private static final Long PRECIO_BORRADOR = 1987L;
+
+    private static final Long ENLACE_COMPONENTE = 1995L;
+    private static final Long ENLACE_BORRADOR = 1996L;
+    /** Cuelga el contador del paquete: sin esto no es catalogo publicado. */
+    private static final Long ENLACE_CAPACIDAD = 1997L;
+
+    /** Las dos extrapolaciones que el importe anual NO puede ser. */
+    private static final BigDecimal DOCE = new BigDecimal("12");
+    private static final BigDecimal DIEZ = new BigDecimal("10");
+
+    private static final String CODE_BUNDLE = "TEST_PLAN_PUBLICADO";
+    private static final String CODE_COMPONENTE = "TEST_MODULO_DEL_PLAN";
+    private static final String CODE_INTERNO = "TEST_MODULO_INTERNO";
+    private static final String CODE_BORRADOR = "BORRADOR";
 
     private static final Long PREGUNTA = 1990L;
     private static final Long PREGUNTA_DESHABILITADA = 1991L;
@@ -82,6 +119,7 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
     private JpaCatalogQueryPorts.JpaPriceListQueryPort priceListPort;
     private JpaCatalogQueryPorts.JpaCatalogPriceQueryPort pricePort;
     private JpaCatalogQueryPorts.JpaConfiguratorQuestionQueryPort questionPort;
+    private JpaCatalogQueryPorts.JpaPublishedCatalogItemQueryPort publicadoPort;
 
     /** Resuelto, no sembrado: el articulo CORE llega del changeset 308. */
     private Long nucleo;
@@ -94,10 +132,11 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
         priceListPort = new JpaCatalogQueryPorts.JpaPriceListQueryPort(entityManager);
         pricePort = new JpaCatalogQueryPorts.JpaCatalogPriceQueryPort(entityManager);
         questionPort = new JpaCatalogQueryPorts.JpaConfiguratorQuestionQueryPort(entityManager);
+        publicadoPort = new JpaCatalogQueryPorts.JpaPublishedCatalogItemQueryPort(entityManager);
 
         articulo(ITEM_DEPRECATED, "RETIRADO", "Modulo retirado", "MODULE", null, "DEPRECATED",
                 true);
-        articulo(ITEM_DRAFT, "BORRADOR", "Modulo en redaccion", "MODULE", null, "DRAFT", true);
+        articulo(ITEM_DRAFT, CODE_BORRADOR, "Modulo en redaccion", "MODULE", null, "DRAFT", true);
         // TEST_EXTRA_USER y no EXTRA_USER: ese codigo lo ocupa el changeset 308 desde
         // que el catalogo comercial se siembra en todos los entornos. Al chocar contra
         // uq_catalog_items_code el ON DUPLICATE KEY de articulo() lo convertia en un
@@ -126,7 +165,59 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
         // ON DUPLICATE KEY de pregunta() convertia la colision en un no-op.
         pregunta(PREGUNTA, "TEST_SELLS_PRODUCTS", true);
         pregunta(PREGUNTA_DESHABILITADA, "PREGUNTA_VIEJA", false);
+
+        sembrarElCatalogoPublicable();
         entityManager.flush();
+    }
+
+    /**
+     * El escenario de {@link ArticulosPublicados}, montado para que los tres
+     * artículos <b>solo se diferencien en lo que la regla mira</b>.
+     *
+     * <p>
+     * Los tres son {@code MODULE}/{@code BUNDLE}, están habilitados y tienen precio
+     * de entrada ({@code tier_min = 1}) en la misma tarifa y el mismo ciclo. Lo
+     * único que cambia es: el plan y su componente cuelgan de un paquete
+     * {@code ACTIVE}; {@link #ITEM_INTERNO} no cuelga de ninguno; y
+     * {@link #ITEM_DRAFT} cuelga de uno pero está en {@code DRAFT}. Si el escenario
+     * no fuera así de simétrico, un test en verde no probaría cuál de los cinco
+     * predicados hizo el trabajo.
+     */
+    private void sembrarElCatalogoPublicable() {
+        articulo(ITEM_BUNDLE, CODE_BUNDLE, "Plan publicado", "BUNDLE", null, "ACTIVE", true);
+        articulo(ITEM_COMPONENTE, CODE_COMPONENTE, "Modulo del plan", "MODULE", null, "ACTIVE",
+                true);
+        articulo(ITEM_INTERNO, CODE_INTERNO, "Modulo interno", "MODULE", null, "ACTIVE", true);
+
+        componenteDePaquete(ENLACE_COMPONENTE, ITEM_BUNDLE, ITEM_COMPONENTE);
+        // El de borrador SI cuelga del paquete: asi el unico motivo por el que no se
+        // puede contratar es su status, y el test lo demuestra en vez de suponerlo.
+        componenteDePaquete(ENLACE_BORRADOR, ITEM_BUNDLE, ITEM_DRAFT);
+        // Y el contador tambien cuelga del paquete: es lo que GET /plans anuncia
+        // dentro de `capacities`, y lo que la autocontratacion tiene que poder
+        // nombrar. Ya viene tarifado en los DOS ciclos (MONTHLY por tramos, ANNUAL
+        // en una sola fila), asi que es el articulo con el que se prueba que la
+        // capacidad extra anual se resuelve y se cotiza.
+        componenteDePaquete(ENLACE_CAPACIDAD, ITEM_BUNDLE, ITEM_CAPACIDAD);
+
+        precio(PRECIO_BUNDLE, SchemaSeed.PRICE_LIST_ID, ITEM_BUNDLE, "MONTHLY", 1, null, 0,
+                "250000.00", "19.00", "TAXED", true);
+        precio(PRECIO_COMPONENTE, SchemaSeed.PRICE_LIST_ID, ITEM_COMPONENTE, "MONTHLY", 1, null, 0,
+                "30000.00", "19.00", "TAXED", true);
+        precio(PRECIO_INTERNO, SchemaSeed.PRICE_LIST_ID, ITEM_INTERNO, "MONTHLY", 1, null, 0,
+                "40000.00", "19.00", "TAXED", true);
+        precio(PRECIO_BORRADOR, SchemaSeed.PRICE_LIST_ID, ITEM_DRAFT, "MONTHLY", 1, null, 0,
+                "10000.00", "19.00", "TAXED", true);
+    }
+
+    private void componenteDePaquete(Long id, Long bundleId, Long componentId) {
+        entityManager.createNativeQuery("""
+                INSERT INTO bundle_components (id, bundle_item_id, component_item_id, quantity,
+                                               created_date, enabled)
+                VALUES (:id, :paquete, :componente, 1, '2026-01-01 00:00:00', true)
+                ON DUPLICATE KEY UPDATE id = id
+                """).setParameter("id", id).setParameter("paquete", bundleId)
+                .setParameter("componente", componentId).executeUpdate();
     }
 
     private void articulo(Long id, String code, String name, String itemType, String capacityUnit,
@@ -448,6 +539,198 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
         @DisplayName("un id inexistente devuelve vacío")
         void un_id_inexistente_devuelve_vacio() {
             assertThat(questionPort.findById(-1L)).isEmpty();
+        }
+    }
+
+    /**
+     * <b>El traductor {@code code -> id} de la autocontratación, que es también el
+     * gate.</b> Sin él, {@code POST /quotes/self-serve} era inalcanzable —pedía un
+     * {@code catalogItemId} que ninguna respuesta alcanzable por el tenant
+     * publica—; con un traductor descuidado sería la puerta de atrás de
+     * {@code GET /catalog-items}, que está cerrado a {@code SYSTEM}.
+     *
+     * <p>
+     * <b>Esta rodaja es el único sitio donde eso se puede probar.</b> El test
+     * unitario del caso de uso mockea el puerto, así que allí «no publicable» es
+     * una premisa; aquí es el {@code WHERE} ejecutándose contra MySQL con las filas
+     * delante. Y el adaptador queda fuera del alcance de
+     * {@code ADAPTADOR_JPA_CON_RODAJA} —solo mira los {@code Jpa<Algo>Repository}—,
+     * así que nada lo obliga a existir salvo esta decisión.
+     *
+     * <p>
+     * <b>Lo que estos tests NO comprueban</b>, dicho para que nadie lo dé por
+     * hecho: que este conjunto coincida <i>exactamente</i> con el que devuelve
+     * {@code GET /plans}. Son dos consultas distintas —esta y
+     * {@code JpaPublicPlanQueryPort}— escritas para casar, y hoy casan por
+     * revisión, no por construcción. Si {@code SQL_PLANS} o {@code SQL_COMPONENTS}
+     * cambian de criterio y esta no, los tests de aquí seguirán en verde y el
+     * traductor se habrá desalineado del catálogo público en silencio.
+     */
+    @Nested
+    @DisplayName("JpaPublishedCatalogItemQueryPort — el rótulo solo se resuelve si está publicado")
+    class ArticulosPublicados {
+
+        @Test
+        @DisplayName("un paquete ACTIVE con precio de entrada se resuelve a su id")
+        void un_paquete_publicado_se_resuelve() {
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_BUNDLE, SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.MONTHLY)).contains(ITEM_BUNDLE);
+        }
+
+        @Test
+        @DisplayName("un módulo que cuelga de ese paquete también: es lo que la portada anuncia")
+        void un_componente_del_paquete_se_resuelve() {
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_COMPONENTE,
+                    SchemaSeed.PRICE_LIST_ID, BillingCycle.MONTHLY)).contains(ITEM_COMPONENTE);
+        }
+
+        /**
+         * <b>El caso que justifica el puerto entero.</b> {@link #ITEM_INTERNO} es
+         * {@code ACTIVE}, está habilitado y tiene precio en la tarifa: pasa todos los
+         * filtros que un traductor ingenuo comprobaría. Lo único que no tiene es un
+         * paquete del que colgar, y por eso {@code GET /plans} no lo anuncia. Si esta
+         * consulta lo devolviera, bastaría probar rótulos contra
+         * {@code POST /quotes/self-serve} para enumerar el catálogo interno de la
+         * plataforma —justo lo que {@code GET /catalog-items} evita cerrándose a
+         * {@code SYSTEM}—.
+         */
+        @Test
+        @DisplayName("un módulo activo y tarifado que no cuelga de ningún paquete NO se resuelve")
+        void un_modulo_interno_no_se_resuelve() {
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_INTERNO, SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.MONTHLY)).isEmpty();
+        }
+
+        /**
+         * Y aquí el rótulo <b>existe</b> en {@code catalog_items}, cuelga del paquete
+         * publicado y tiene precio: lo único que lo frena es su {@code status}. El
+         * resultado tiene que ser el mismo vacío que da un código que no existe, sin
+         * ningún dato que permita separarlos — ver el test de abajo.
+         */
+        @Test
+        @DisplayName("un módulo en DRAFT no se resuelve aunque cuelgue del paquete y esté tarifado")
+        void un_modulo_en_borrador_no_se_resuelve() {
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_BORRADOR, SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.MONTHLY)).isEmpty();
+        }
+
+        /**
+         * <b>La otra mitad de la prueba del oráculo.</b> El caso de uso ya garantiza
+         * que el mensaje es el mismo ({@code SelfServeQuoteServiceTest}); esto
+         * garantiza que <b>el dato también lo es</b>. Dos {@link java.util.Optional}
+         * vacíos son indistinguibles por construcción: no hay excepción distinta, ni
+         * código de motivo, ni {@code null} contra vacío que el caso de uso pudiera
+         * ramificar aunque quisiera.
+         */
+        @Test
+        @DisplayName("el código interno y el inexistente devuelven el mismo vacío, sin motivo")
+        void el_interno_y_el_inexistente_son_el_mismo_vacio() {
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_INTERNO, SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.MONTHLY))
+                    .isEqualTo(publicadoPort.findPublishedIdByCode("NO_EXISTE_ESTE_ROTULO",
+                            SchemaSeed.PRICE_LIST_ID, BillingCycle.MONTHLY));
+        }
+
+        @Test
+        @DisplayName("un artículo retirado de la venta no se resuelve")
+        void un_articulo_retirado_no_se_resuelve() {
+            assertThat(publicadoPort.findPublishedIdByCode("RETIRADO", SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.MONTHLY)).isEmpty();
+        }
+
+        /**
+         * El paquete está tarifado solo en mensual. Pedirlo en anual no es «el precio
+         * anual sale del mensual»: es que ese plan no se publicó para ese ciclo, y una
+         * cotización anual con precio mensual sería un importe que nadie aprobó.
+         */
+        @Test
+        @DisplayName("un paquete tarifado solo en mensual no se resuelve para el ciclo anual")
+        void un_paquete_sin_precio_en_el_ciclo_no_se_resuelve() {
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_BUNDLE, SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.ANNUAL)).isEmpty();
+        }
+
+        /**
+         * <b>El camino que nunca se habia ejercitado: capacidad extra en ciclo
+         * anual.</b> {@link #ITEM_CAPACIDAD} es un {@code CAPACITY} que cuelga del
+         * paquete publicado y tiene precio de entrada en {@code ANNUAL}, asi que el
+         * {@code JOIN} por ciclo lo deja pasar y la autocontratacion puede nombrarlo.
+         *
+         * <p>
+         * Antes esto era inalcanzable en la practica: {@code GET /plans} publicaba de
+         * cada contador un solo importe —el mensual, y sin decirlo en el nombre—, asi
+         * que quien pintaba un plan anual no tenia forma de saber si el contador
+         * siquiera existia en ese ciclo. Si no existia, el rechazo llegaba en la
+         * contratacion y era —a proposito— indistinguible de «codigo desconocido».
+         */
+        @Test
+        @DisplayName("una capacidad del paquete tarifada en anual SI se resuelve para el ciclo"
+                + " anual")
+        void una_capacidad_tarifada_en_anual_se_resuelve() {
+            assertThat(publicadoPort.findPublishedIdByCode("TEST_EXTRA_USER",
+                    SchemaSeed.PRICE_LIST_ID, BillingCycle.ANNUAL)).contains(ITEM_CAPACIDAD);
+        }
+
+        /**
+         * Resolver no basta: hay que comprobar que lo que se cobra sale de la fila del
+         * ciclo pedido. El contador vale 12.000 al mes en su tramo de entrada y 100.000
+         * al ano; 100.000 no es 12.000 por doce (144.000) ni por diez (120.000), asi
+         * que un precio extrapolado en vez de leido falla aqui.
+         *
+         * <p>
+         * Es exactamente la diferencia que el cliente veia: la portada solo sabia el
+         * mensual y el front lo multiplicaba, mientras esta escalera —la que usa
+         * {@code CreateQuoteService}— dice otra cosa.
+         */
+        @Test
+        @DisplayName("y se cotiza con la escalera ANUAL del articulo, no con el mensual"
+                + " extrapolado")
+        void una_capacidad_anual_se_cotiza_con_su_propia_escalera() {
+            Long resuelto = publicadoPort.findPublishedIdByCode("TEST_EXTRA_USER",
+                    SchemaSeed.PRICE_LIST_ID, BillingCycle.ANNUAL).orElseThrow();
+
+            List<CatalogPriceRef> anual = pricePort.findAllTiers(SchemaSeed.PRICE_LIST_ID, resuelto,
+                    BillingCycle.ANNUAL);
+            List<CatalogPriceRef> mensual = pricePort.findAllTiers(SchemaSeed.PRICE_LIST_ID,
+                    resuelto, BillingCycle.MONTHLY);
+
+            assertThat(anual).singleElement().extracting(CatalogPriceRef::unitAmount)
+                    .isEqualTo(new BigDecimal("100000.00"));
+            assertThat(mensual).first().extracting(CatalogPriceRef::unitAmount)
+                    .isEqualTo(new BigDecimal("12000.00"));
+            assertThat(anual.get(0).unitAmount())
+                    .isNotEqualByComparingTo(mensual.get(0).unitAmount().multiply(DOCE))
+                    .isNotEqualByComparingTo(mensual.get(0).unitAmount().multiply(DIEZ));
+        }
+
+        @Test
+        @DisplayName("el mismo rótulo en otra tarifa, donde no está tarifado, tampoco se resuelve")
+        void el_mismo_rotulo_en_otra_tarifa_no_se_resuelve() {
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_BUNDLE, LISTA_BORRADOR,
+                    BillingCycle.MONTHLY)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("un rótulo que no existe devuelve vacío")
+        void un_rotulo_inexistente_devuelve_vacio() {
+            assertThat(publicadoPort.findPublishedIdByCode("NO_EXISTE_ESTE_ROTULO",
+                    SchemaSeed.PRICE_LIST_ID, BillingCycle.MONTHLY)).isEmpty();
+        }
+
+        /**
+         * Un {@code code} vacío no llega a la base. Es un cliente el que lo elige, y
+         * puede repetirlo a voluntad: la guarda evita gastar una consulta por cada
+         * cadena en blanco que alguien mande.
+         */
+        @Test
+        @DisplayName("un código nulo o en blanco devuelve vacío sin consultar")
+        void un_codigo_en_blanco_devuelve_vacio() {
+            assertThat(publicadoPort.findPublishedIdByCode(null, SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.MONTHLY)).isEmpty();
+            assertThat(publicadoPort.findPublishedIdByCode("   ", SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.MONTHLY)).isEmpty();
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_BUNDLE, null, BillingCycle.MONTHLY))
+                    .isEmpty();
         }
     }
 }

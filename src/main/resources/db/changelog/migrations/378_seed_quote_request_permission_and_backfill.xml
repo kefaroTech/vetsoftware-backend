@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- SelfServeQuoteUseCase (com.vetsoftware.app.quote.application.port.in) acaba de
+         aterrizar con POST /quotes/self-serve y su @PreAuthorize exige
+         hasAuthority('quote.request') en la rama de tenant -su propio javadoc lo dice:
+         "quote.request es un permiso nuevo y hay que sembrarlo; sin esa fila, ningun
+         empleado alcanza este puerto"-. Verificado contra migrations/: la fila no existe.
+         Sin ella el endpoint devuelve 403 A TODO EL MUNDO -incluso hasRole('SYSTEM') pasa
+         por el primer termino del OR y no necesita el permiso, pero ningun empleado tenant
+         puede autocontratar- y el flujo de contratacion propia no puede cerrarse.
+
+         Se copia el modelo de 259 (que sembro quote.read/quote.accept/quote.reject, sus
+         hermanos exactos del mismo sub_module QUOTE) para el permiso base, PERO con la
+         leccion de 377 aplicada desde el primer dia: sembrar solo base_permissions +
+         base_role_permissions deja fuera a las empresas que YA existen -ha pasado cuatro
+         veces: 256, 257, 259 y 371, y 377 tuvo que rellenar nueve permisos a posteriori-.
+         Este changeset hace las dos cosas de una vez: siembra el permiso base (patron 259)
+         Y lo reparte a las empresas existentes con company_entitlements ya materializado
+         (patron 260/339/366/377).
+
+         NIVEL DE ACCESO: quote.request NO termina en ".read" -es una accion, pide una
+         cotizacion propia y la deja emitida (SENT), no es una lectura-, asi que aplica el
+         MISMO criterio que 377 uso para quote.accept/quote.reject: access_level = 'FULL'
+         UNICAMENTE. La razon es la misma que 377 documento y la confirma
+         JpaRolePermissionInitializationPort.grants() (registration/infrastructure/
+         persistence): READ_ONLY solo concede codigos que terminan en ".read"; FULL concede
+         todo. Backfillear quote.request tambien en READ_ONLY dejaria a una empresa en solo
+         lectura por mora -o por plan que solo compro consulta- con permiso escrito para
+         AUTOCONTRATAR NUEVOS MODULOS, que es una escritura con consecuencia comercial mayor
+         que aceptar o rechazar una oferta ya emitida por otro. Ademas SelfServeQuoteService
+         (quote/application/usecase) delega en PlatformQuoteIssuerPort bajo SystemAuthRunner
+         y termina insertando una fila de quotes real: no hay lectura parcial posible que
+         justifique READ_ONLY.
+
+         EL PATRON DE BACKFILL, copiado literal de 377 (que a su vez copia 260/339/366):
+           1) permissions: INSERT ... SELECT FROM company_entitlements ce JOIN sub_modules
+              sm JOIN base_permissions bp, acotado por ce.access_level = 'FULL', con guarda
+              NOT EXISTS por (company_id, code). Nunca INSERT IGNORE.
+           2) role_permissions: INSERT ... SELECT FROM roles r (r.code = 'ADMIN') JOIN
+              permissions p ON p.company_id = r.company_id, con guarda NOT EXISTS por
+              (role_id, permission_id).
+         Todas las tablas afectadas son de configuracion (permissions/role_permissions/
+         base_*), no historial transaccional: volumen esperado de decenas a un par de
+         cientos de filas segun cuantas empresas tengan QUOTE en FULL hoy, y el bloqueo de
+         un INSERT...SELECT sobre esas tablas es del orden de milisegundos incluso en
+         produccion -mismo argumento de impacto que 377-.
+
+         Verificado con datos reales en un contenedor MySQL 8.0.45 desechable (no el
+         compartido): se fabrico una empresa "vieja" con company_entitlements.access_level
+         = 'FULL' para QUOTE pero SIN el permiso materializado, se confirmo que el backfill
+         se lo concedio a ella y a su rol ADMIN, que ejecutarlo dos veces no duplica nada
+         (guardas NOT EXISTS), y el ciclo aplicar -> deshacer -> reaplicar completo. Detalle
+         en el informe de la sesion. -->
+
+    <changeSet id="378_seed_quote_request_permission" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT 'Solicitar cotización de autoservicio', 'quote.request', sm.id, TRUE
+            FROM sub_modules sm
+            LEFT JOIN base_permissions existing ON existing.code = 'quote.request'
+            WHERE sm.code = 'QUOTE'
+              AND existing.id IS NULL;
+
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, TRUE
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code = 'quote.request'
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM base_role_permissions existing
+                  WHERE existing.base_role_id = br.id
+                    AND existing.base_permission_id = bp.id);
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id FROM base_permissions WHERE code = 'quote.request');
+
+                DELETE FROM base_permissions WHERE code = 'quote.request';
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="378_quote_request_backfill_companies" author="orlando">
+        <!-- quote.request NO termina en ".read": solo FULL lo concede, mismo criterio que
+             377 aplico a quote.accept/quote.reject (ver el comentario de cabecera de este
+             fichero y JpaRolePermissionInitializationPort.grants()). -->
+        <sql><![CDATA[
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'QUOTE'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level = 'FULL'
+              AND bp.code = 'quote.request'
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        ]]></sql>
+        <rollback>
+            <sql>DELETE FROM permissions WHERE code = 'quote.request';</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="378_quote_request_role_permissions_backfill_admin" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id AND p.code = 'quote.request'
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM role_permissions
+                WHERE permission_id IN (
+                    SELECT id FROM permissions WHERE code = 'quote.request');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

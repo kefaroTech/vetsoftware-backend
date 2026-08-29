@@ -81,6 +81,24 @@ public final class PublicRoutes {
             // invariante y no una buena intencion.
             new Route(HttpMethod.GET, "/configurator/questionnaire"),
             new Route(HttpMethod.POST, "/configurator/resolve"),
+            // El catalogo comercial con precio, que es lo que la landing publica
+            // necesita para vender. Mismo publico y mismo motivo que el asistente: un
+            // prospecto sin cuenta tiene que poder ver cuanto cuesta antes de dar su
+            // NIT, y hasta ahora no habia ningun endpoint que se lo dijera -los tres
+            // de catalogo estan cerrados a hasRole('SYSTEM')-.
+            //
+            // Patron literal y NO /plans/**, por lo mismo que /configurator: el mismo
+            // prefijo acabara colgando la administracion de planes, y un comodin la
+            // abriria al mundo sin que nadie lo vea en el diff.
+            //
+            // Lo sirve GetPublicPlansUseCase, anotado @NoAuthorizationRequired: son
+            // las DOS cosas que hacen publica una ruta aqui, y hacer solo una deja al
+            // prospecto con un 401 -si falta esta linea- o con un puerto abierto que
+            // nadie puede alcanzar -si falta la anotacion-.
+            //
+            // Es un GET, asi que no le aplica la invariante de
+            // toda_ruta_publica_post_esta_limitada.
+            new Route(HttpMethod.GET, "/plans"),
             // Alta de superadministradores de plataforma por invitacion (#360). Las seis
             // son anonimas por construccion, no por comodidad: quien solicita el acceso
             // todavia no tiene cuenta, y quien aprueba, rechaza o acepta se acredita con

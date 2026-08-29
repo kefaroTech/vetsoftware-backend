@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Cierra el hueco que dejaron 256/257/259: los tres sembraron sub_module +
+         base_permissions + base_role_permissions(ADMIN) para las cinco pantallas nuevas de
+         autoservicio del tenant -su plan, sus cupos, sus cuentas de cobro, sus medios de pago,
+         sus cotizaciones- y dieron por hecho, EN EL COMENTARIO DEL PROPIO CHANGESET, que "no hay
+         empresas existentes que backfillear". Esa frase se cae con la evidencia del propio
+         arbol: 260 (subscription.update/cancel), 339 (paymentRefund/paymentAttempt/
+         paymentReversalRequest.read) y 366 (billingDocumentStatusHistory.read + cinco .read de
+         ENTITLEMENT) SI hacen backfill sobre esos MISMOS sub_modules -SUBSCRIPTION,
+         SUBSCRIPTION_PAYMENT, ENTITLEMENT- meses despues, contra `company_entitlements`, que
+         para entonces YA tenia filas de empresas reales. Eso prueba que 256/257/259 tenian razon
+         el dia que se escribieron y dejaron de tenerla en cuanto 309 ato CORE a los seis
+         sub_modules de autoservicio (SUBSCRIPTION, QUOTE, ENTITLEMENT, SUBSCRIPTION_BILLING,
+         SUBSCRIPTION_PAYMENT, DUNNING) y las empresas existentes empezaron a acumular
+         `company_entitlements` para ellos sin que nadie volviera a sembrar sus permisos
+         ORIGINALES -solo los codigos NUEVOS que se fueron sembrando despues-.
+
+         EL RASTRO EXACTO, verificado changeset a changeset (no de segunda mano):
+           entitlement.read                    sembrado en 256, NUNCA backfilleado (366
+                                                backfillea otros cinco codigos de ENTITLEMENT
+                                                -subscriptionItemLimit.read y hermanos- pero no
+                                                este, que es el original de 256)
+           subscriptionPayment.read             sembrado en 257, NUNCA backfilleado (339
+           billingDocumentApplication.read      backfillea paymentRefund/paymentAttempt/
+                                                paymentReversalRequest.read del MISMO submodulo
+                                                SUBSCRIPTION_PAYMENT, y 366 backfillea
+                                                billingDocumentStatusHistory.read del mismo
+                                                submodulo tambien, pero ninguno de los dos toca
+                                                estos dos codigos originales de 257)
+           dunningEvent.read                    sembrado en 257, NUNCA backfilleado (DUNNING no
+                                                vuelve a aparecer en ningun backfill posterior)
+           subscription.read                    sembrado en 259, NUNCA backfilleado (260
+                                                backfillea subscription.update/subscription.cancel
+                                                del MISMO submodulo SUBSCRIPTION, pero no
+                                                subscription.read, que es el original de 259)
+           quote.read / quote.accept / quote.reject
+                                                sembrados en 259, NUNCA backfilleados (QUOTE no
+                                                vuelve a aparecer en ningun backfill posterior)
+           subscriptionBilling.read             sembrado en 259, NUNCA backfilleado
+                                                (SUBSCRIPTION_BILLING no vuelve a aparecer en
+                                                ningun backfill posterior)
+
+         NUEVE codigos en total, no ocho: el diagnostico que motiva este changeset citaba ocho
+         -se le escapo billingDocumentApplication.read, sembrado en el MISMO changeset 257 que
+         subscriptionPayment.read, con el mismo defecto y la misma ausencia de backfill despues-.
+
+         legaldocument.read (371, submodulo FISCAL_REFERENCE) SE EXCLUYE A PROPOSITO, y no por el
+         mismo motivo que 371 escribio. 371 SI tenia razon el dia que se escribio -FISCAL_REFERENCE
+         nacio en ese changeset, ninguna empresa podia tener ya una fila de company_entitlements
+         que lo referenciara-, pero a diferencia de SUBSCRIPTION/QUOTE/ENTITLEMENT/
+         SUBSCRIPTION_BILLING/SUBSCRIPTION_PAYMENT/DUNNING -que 309 ato a CORE inmediatamente
+         despues de 256/257/259-, FISCAL_REFERENCE NUNCA se ato a ningun catalog_item
+         -comprobado: `grep -rl FISCAL_REFERENCE migrations/` no devuelve nada fuera del propio
+         371-. Consecuencia real: HOY NINGUNA EMPRESA, NI VIEJA NI NUEVA, puede llegar a tener una
+         fila de company_entitlements para FISCAL_REFERENCE, asi que un backfill contra
+         company_entitlements no insertaria una sola fila -no es un hueco de backfill, es un
+         hueco de catalogo comercial, y corregirlo (decidir a que catalog_item cuelga
+         FISCAL_REFERENCE, CORE u otro) es una decision de producto que no es de este changeset.
+         Queda registrado como riesgo en el informe de la sesion; NO se abre issue porque esta
+         sesion tiene la regla de cierre de GitHub suspendida por orden explicita.
+
+         EL PATRON: se copia literal el de 260/339/366 -los tres unicos changesets de esta
+         numeracion que SI resuelven este mismo defecto-, no uno inventado:
+           1) permissions: INSERT ... SELECT FROM company_entitlements ce JOIN sub_modules sm
+              JOIN base_permissions bp, acotado por ce.access_level, con guarda NOT EXISTS por
+              (company_id, code). NUNCA INSERT IGNORE (silencia columnas NOT NULL que falten y
+              deja la fila fuera sin que nadie se entere, ver Testing conventions/anti-patterns).
+           2) role_permissions: INSERT ... SELECT FROM roles r (r.code = 'ADMIN') JOIN
+              permissions p ON p.company_id = r.company_id, con guarda NOT EXISTS por
+              (role_id, permission_id). SIEMPRE al rol ADMIN -es el UNICO base_role que existe
+              (`base_roles` solo tiene ADMIN, ver el comentario de 370) y es adonde 256/257/259
+              ya sembraron base_role_permissions para estos mismos nueve codigos.
+           3) EL FILTRO DE ACCESO NO ES UNIFORME, y hay que respetarlo o el backfill concede mas
+              de lo que JpaRolePermissionInitializationPort.reconcile() concederia el dia que
+              recalculara -grants(): FULL concede TODO, READ_ONLY concede SOLO codigos que
+              terminan en ".read" (JpaRolePermissionInitializationPort.java:277-279)-:
+                - los SIETE ".read" (entitlement.read, subscriptionPayment.read,
+                  billingDocumentApplication.read, dunningEvent.read, subscription.read,
+                  quote.read, subscriptionBilling.read): access_level IN ('FULL','READ_ONLY'),
+                  mismo criterio que 339/366 usaron para sus propios ".read" del mismo tipo de
+                  submodulo tecnico.
+                - quote.accept / quote.reject (NO terminan en ".read", son autoservicio con
+                  consecuencia comercial, igual que subscription.update/subscription.cancel en
+                  260): access_level = 'FULL' UNICAMENTE. Backfillearlos tambien en READ_ONLY
+                  dejaria una empresa en solo lectura por mora con permiso escrito para aceptar o
+                  rechazar una cotizacion propia -contradice el propio guard de reconcile() y la
+                  documentacion de 259 ("el filtro de entitlements solo conserva *.read en
+                  READ_ONLY")-.
+
+         COMPROBACION DE PRE-DESPLIEGUE, patron de 372/373/374/375/376 -alcance antes de aplicar,
+         no autorizacion de nadie-:
+
+         `SELECT sm.code AS sub_module, bp.code AS permission_code, ce.access_level,
+                 COUNT(DISTINCT ce.company_id) AS empresas_afectadas
+          FROM company_entitlements ce
+          JOIN sub_modules sm ON sm.id = ce.sub_module_id
+          JOIN base_permissions bp ON bp.sub_module_id = sm.id
+          WHERE bp.code IN ('entitlement.read','subscriptionPayment.read',
+                            'billingDocumentApplication.read','dunningEvent.read',
+                            'subscription.read','quote.read','subscriptionBilling.read',
+                            'quote.accept','quote.reject')
+            AND ((bp.code IN ('quote.accept','quote.reject') AND ce.access_level = 'FULL')
+                 OR (bp.code NOT IN ('quote.accept','quote.reject')
+                     AND ce.access_level IN ('FULL','READ_ONLY')))
+            AND NOT EXISTS (
+                SELECT 1 FROM permissions p
+                WHERE p.company_id = ce.company_id AND p.code = bp.code)
+          GROUP BY sm.code, bp.code, ce.access_level
+          ORDER BY sm.code, bp.code;`
+
+         Cada fila que devuelva es una combinacion (permiso, nivel de acceso) que hoy le falta a
+         N empresas reales; el numero de `empresas_afectadas` es exactamente lo que este changeset
+         va a insertar en `permissions` (y, salvo que ya tuvieran el rol ADMIN sin ese permiso
+         enlazado por otra via, en `role_permissions`). Todas las tablas afectadas son de
+         configuracion (permissions/role_permissions/base_*), no historial transaccional: el
+         volumen esperado es cientos de filas, no millones, y el bloqueo de un INSERT...SELECT
+         sobre esas tablas es del orden de milisegundos incluso en produccion.
+
+         Todas las sentencias son idempotentes (guardas NOT EXISTS, nunca INSERT IGNORE). -->
+
+    <changeSet id="377_entitlement_read_backfill_companies" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'ENTITLEMENT'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code = 'entitlement.read'
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE code = 'entitlement.read';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="377_subscriptionpayment_read_backfill_companies" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'SUBSCRIPTION_PAYMENT'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code IN ('subscriptionPayment.read', 'billingDocumentApplication.read')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions
+            WHERE code IN ('subscriptionPayment.read', 'billingDocumentApplication.read');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="377_dunning_read_backfill_companies" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'DUNNING'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code = 'dunningEvent.read'
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE code = 'dunningEvent.read';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="377_subscription_read_backfill_companies" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'SUBSCRIPTION'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code = 'subscription.read'
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE code = 'subscription.read';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="377_quote_read_backfill_companies" author="orlando">
+        <!-- quote.read es lectura: valida tambien en READ_ONLY, mismo criterio que el resto de
+             ".read" de este changeset. -->
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'QUOTE'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code = 'quote.read'
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE code = 'quote.read';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="377_quote_mutations_backfill_companies" author="orlando">
+        <!-- quote.accept/quote.reject NO terminan en ".read": solo FULL los concede
+             (JpaRolePermissionInitializationPort.grants()). Backfillearlos tambien en
+             READ_ONLY dejaria una empresa en solo lectura con permiso escrito para
+             aceptar/rechazar su propia cotizacion. -->
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'QUOTE'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level = 'FULL'
+              AND bp.code IN ('quote.accept', 'quote.reject')
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE code IN ('quote.accept', 'quote.reject');
+        </rollback>
+    </changeSet>
+
+    <changeSet id="377_subscriptionbilling_read_backfill_companies" author="orlando">
+        <sql>
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+            FROM company_entitlements ce
+            JOIN sub_modules sm ON sm.id = ce.sub_module_id AND sm.code = 'SUBSCRIPTION_BILLING'
+            CROSS JOIN base_permissions bp
+            WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+              AND bp.code = 'subscriptionBilling.read'
+              AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        </sql>
+        <rollback>
+            DELETE FROM permissions WHERE code = 'subscriptionBilling.read';
+        </rollback>
+    </changeSet>
+
+    <changeSet id="377_selfservice_role_permissions_backfill_admin" author="orlando">
+        <!-- Asigna los nueve permisos al rol ADMIN (code = 'ADMIN') de cada empresa
+             backfillada por los siete changesets anteriores. Un solo changeset: mismo
+             patron que 366_contact_channel_history_limit_role_permissions_backfill_admin,
+             que tambien enlaza de una vez todos los codigos que backfillearon sus propios
+             changesets hermanos. -->
+        <sql>
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+            FROM roles r
+            JOIN permissions p ON p.company_id = r.company_id
+                AND p.code IN (
+                    'entitlement.read', 'subscriptionPayment.read',
+                    'billingDocumentApplication.read', 'dunningEvent.read',
+                    'subscription.read', 'quote.read', 'quote.accept', 'quote.reject',
+                    'subscriptionBilling.read')
+            WHERE r.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM role_permissions rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        </sql>
+        <rollback>
+            DELETE FROM role_permissions
+            WHERE permission_id IN (
+                SELECT id FROM permissions WHERE code IN (
+                    'entitlement.read', 'subscriptionPayment.read',
+                    'billingDocumentApplication.read', 'dunningEvent.read',
+                    'subscription.read', 'quote.read', 'quote.accept', 'quote.reject',
+                    'subscriptionBilling.read'));
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

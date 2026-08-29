@@ -879,4 +879,42 @@
          en el informe de la sesión. -->
     <include file="db/changelog/migrations/376_add_calendar_check_to_company_activity_months.xml"/>
 
+    <!-- 377: backfill del defecto vivo en 256/257/259 (ver el comentario del propio 377). Las
+         cinco pantallas nuevas de autoservicio del tenant (plan, cupos, cuentas de cobro, medios
+         de pago, cotizaciones) le llegan a una empresa NUEVA via base_role_permissions en el
+         alta, pero a una empresa VIEJA -creada antes de que 256/257/259 sembraran estos nueve
+         codigos, o antes de que 309 atara sus sub_modules a CORE- solo le llegarian en la
+         proxima recalculacion de entitlements, que no es espontanea. Mismo criterio que 260/339/
+         366, que ya cerraron este mismo hueco para otros codigos de los mismos sub_modules.
+         legaldocument.read (371, FISCAL_REFERENCE) queda fuera a proposito: ese sub_module nunca
+         se ato a ningun catalog_item, asi que hoy NINGUNA empresa -vieja o nueva- puede tener una
+         fila de company_entitlements que lo referencie; un backfill contra esa tabla no
+         insertaria nada. Detalle completo en el propio 377. -->
+    <include file="db/changelog/migrations/377_backfill_selfservice_read_permissions_existing_companies.xml"/>
+
+    <!-- 378: SelfServeQuoteUseCase (POST /quotes/self-serve) llego con @PreAuthorize
+         exigiendo hasAuthority('quote.request') y la fila no existe -verificado contra
+         migrations/-. Siembra el permiso base (patron 259, mismo sub_module QUOTE que
+         quote.read/quote.accept/quote.reject) Y reparte a las empresas existentes con
+         company_entitlements en FULL (leccion de 377: sembrar solo base_* deja fuera a las
+         empresas viejas). quote.request no termina en ".read": solo se concede en FULL,
+         mismo criterio que 377 aplico a quote.accept/quote.reject. Detalle completo en el
+         propio 378 y en el informe de la sesion. -->
+    <include file="db/changelog/migrations/378_seed_quote_request_permission_and_backfill.xml"/>
+
+    <!-- SUBSCRIPTION_PAYMENT_METHOD, CUSTOMER_CREDIT y FISCAL_REFERENCE (339/371) se sembraron y
+         nunca se ataron a ningun catalog_item: 309 ato 30 pares catalog_item/sub_module y estos
+         tres quedaron fuera, asi que ninguna empresa -vieja ni nueva- pudo tener jamas una fila de
+         company_entitlements para ellos. Los cuelga de CORE (mismo criterio que los otros seis de
+         autoservicio que 309 ya ato: "toda empresa lo necesita, page o no"). Ata en
+         catalog_item_sub_modules (fija el alta de empresas nuevas), backfillea la foto congelada
+         subscription_item_sub_modules de las empresas existentes (D-76/338: sin esto el proximo
+         recalculo de esa empresa por cualquier otro motivo se lo revierte) y clona
+         company_entitlements/permissions/role_permissions de SUBSCRIPTION_PAYMENT, hermano ya atado
+         a CORE. subscriptionPaymentMethod.create/update solo en FULL (no terminan en ".read"), con
+         el riesgo de la empresa en mora documentado en el propio changeset y en el informe de la
+         sesion. -->
+    <include
+            file="db/changelog/migrations/379_attach_orphan_selfservice_submodules_to_core.xml"/>
+
 </databaseChangeLog>

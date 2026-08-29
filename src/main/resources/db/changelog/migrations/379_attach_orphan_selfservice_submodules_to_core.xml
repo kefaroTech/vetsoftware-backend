@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- TRES SUBMODULOS SEMBRADOS Y NUNCA ATADOS A NINGUN catalog_item: SUBSCRIPTION_PAYMENT_METHOD
+         (339:104-115), CUSTOMER_CREDIT (339:92-102) y FISCAL_REFERENCE (371:74-85). 309 ató 30
+         pares catalog_item/sub_module -verificado renglon a renglon contra los 33 codigos que el
+         arbol ha sembrado alguna vez (184/191/196/199/256/257/258/272/339/371): 33 - 30 = 3, y son
+         exactamente estos-. Sin fila en catalog_item_sub_modules, company_entitlements no puede
+         tener NUNCA una fila para ellos -ni empresa vieja ni nueva-, y sin ella `permissions` y
+         `role_permissions` tampoco. SUBSCRIPTION_PAYMENT_METHOD es el unico de los tres con
+         pantalla ya en produccion (VetSoftwarePublicFront MediosPagoView.vue vía
+         medios-pago.api.ts:13): el 403 es el 100% de los casos, no un borde.
+
+         A QUE ARTICULO CUELGA CADA UNO, Y POR QUE: los tres son piezas tecnicas de autoservicio del
+         propio tenant sobre SU PROPIA relacion comercial con la plataforma -como paga, cuanto tiene
+         a favor, que texto legal acepto-, exactamente el mismo criterio que ya uso 309 para los
+         otros seis de autoservicio (SUBSCRIPTION, QUOTE, ENTITLEMENT, SUBSCRIPTION_BILLING,
+         SUBSCRIPTION_PAYMENT, DUNNING): "CORE es lo que hace operable una empresa recien dada de
+         alta". subscriptionPaymentMethod: toda empresa paga su suscripcion, con independencia del
+         plan que compre -no es un modulo clinico, es la relacion de facturacion misma-.
+         customerCredit: el saldo a favor es la contraparte de esa misma relacion de facturacion.
+         legaldocument (FISCAL_REFERENCE): 371 ya lo razono con una fuente propia distinta de las
+         otras cuatro del submodulo -la ley colombiana da a todo cliente el derecho a releer el
+         texto que acepto (FindAcceptedLegalDocumentUseCase.java:21)-, y atarlo a un articulo de
+         pago seria discutible; CORE es el UNICO articulo que toda empresa tiene siempre, pagando o
+         no, y es el que hace ese derecho universal de verdad.
+
+         DESCUBIERTO AL VERIFICAR (Paso 1 del encargo, no dado por bueno): el diagnostico original
+         asumia el modelo de derivacion EN VIVO que 309 describe en su propio comentario
+         (catalog_item_sub_modules cruzado en cada recalculo). ESE MODELO YA NO EXISTE: 338 (D-76,
+         posterior a 309 y anterior a 339/371) lo sustituyo por una FOTO CONGELADA AL FIRMAR
+         -subscription_item_sub_modules-, precisamente porque el modelo en vivo hacia que un cambio
+         de catalogo se propagara a las empresas "de una en una, meses despues, cada una el dia que
+         le tocara recalculo por cualquier otro motivo. Un incidente sin fecha y sin correlacion con
+         su causa" (338:15-18). JpaSubscriptionItemCompositionPort.freeze() (subscription/
+         infrastructure/persistence) solo escribe esa foto UNA VEZ, al firmar la linea
+         (INSERT ... SELECT FROM catalog_item_sub_modules, con INSERT IGNORE).
+
+         CONSECUENCIA QUE CAMBIA EL CHANGESET: atar CORE -> los tres submodulos en
+         catalog_item_sub_modules (bloque 1) resuelve las empresas NUEVAS -su freeze() al firmar lee
+         el catalogo ya corregido- pero NO afecta a ninguna empresa existente, ni siquiera el dia que
+         se le dispare un recalculo por otro motivo: CompanyEntitlementRecalculator.recalculate()
+         deriva de subscription_item_sub_modules (ContractItemJpaRepository.findModuleLines), no de
+         catalog_item_sub_modules, y esa foto de las empresas existentes quedo escrita antes de este
+         changeset y jamas se vuelve a escribir sola. Por eso el bloque 2 backfillea tambien
+         subscription_item_sub_modules -reproduciendo exactamente el INSERT ... SELECT de
+         freeze()-: sin el, un backfill que solo tocara company_entitlements/permissions se vería
+         BORRADO por el propio recalculo la proxima vez que a esa empresa le tocara por cualquier
+         otro motivo (CompanyEntitlementJpaRepository.deleteDerivedByCompanyId: "DELETE FROM
+         company_entitlements WHERE company_id = :companyId AND source <> 'MANUAL_GRANT'", y el
+         INSERT que le sigue solo repone lo que sale de moduleLines) -exactamente el mismo patron de
+         incidente "sin fecha y sin correlacion con su causa" que 338 escribio para justificarse,
+         esta vez en sentido contrario.
+
+         DE DONDE SALE company_entitlements PARA LAS EMPRESAS EXISTENTES (bloque 3): se clona de
+         SUBSCRIPTION_PAYMENT, submodulo hermano ya atado a CORE desde 309. Los dos comparten la
+         MISMA linea de contrato -el mismo subscription_item de CORE, el mismo chargeMode, el mismo
+         flag core=TRUE (EntitlementCalculator.grantFor)-, asi que access_level/source/
+         subscription_id/subscription_item_id/valid_from/valid_until son IDENTICOS a los que
+         produciria una derivacion real. La unica variable submodulo a submodulo es
+         read_only_capable (hiddenIfNotReadOnlyCapable), y SUBSCRIPTION_PAYMENT lo tiene en TRUE
+         desde 258 -igual que los tres nuevos (339/371, read_only_capable=1)-, asi que clonar no
+         cambia el nivel resultante. Se descarto OWNERS_ANIMALS como espejo por ser el UNICO de los
+         once submodulos de CORE que 258 no marco read_only_capable=TRUE.
+
+         NIVEL DE ACCESO DE subscriptionPaymentMethod.create/update, Y LA EMPRESA EN MORA: los dos
+         codigos NO terminan en ".read", asi que JpaRolePermissionInitializationPort.grants()
+         (registration/infrastructure/persistence, linea 277-279) SOLO los concede en FULL -en
+         READ_ONLY, ".endsWith(READ_SUFFIX)" es falso y la fila queda fuera-. Backfillearlos tambien
+         en READ_ONLY no los dejaria vivos: el PROXIMO recalculo de esa empresa por cualquier otro
+         motivo los volveria a quitar (grants() es la unica puerta), asi que seria una correccion
+         que se deshace sola y sin aviso -la misma trampa que 377 ya evito con quote.accept/
+         quote.reject y 378 con quote.request-. La objecion de negocio es real y se queda escrita
+         aqui, no resuelta: una empresa en mora (READ_ONLY) NO puede autoactualizar su tarjeta, que
+         es justo lo que le impediria salir de la mora. El modelo YA tiene el mecanismo para esto
+         -sub_modules.degradation_immune (335), que impide que BILLING se degrade jamas por la misma
+         razon (una clinica en mora tiene que poder seguir facturando)-, pero activarlo para
+         SUBSCRIPTION_PAYMENT_METHOD es una decision de producto nueva y deliberada -335 lo dejo
+         escrito: "No se encontro en el catalogo ningun sub_module... asi que la siembra se limita a
+         ese codigo real"-, no un efecto colateral de destrabar un permiso huerfano. NO se activa en
+         este changeset. Riesgo documentado en el informe de la sesion; no se abre issue por la
+         suspension explicita de esa regla en esta sesion. -->
+
+    <changeSet id="379_attach_orphan_submodules_to_core" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_sub_modules (catalog_item_id, sub_module_id)
+            SELECT ci.id, sm.id
+              FROM catalog_items ci
+              JOIN sub_modules sm ON sm.code IN (
+                  'SUBSCRIPTION_PAYMENT_METHOD', 'CUSTOMER_CREDIT', 'FISCAL_REFERENCE')
+             WHERE ci.code = 'CORE'
+               AND NOT EXISTS (
+                   SELECT 1 FROM catalog_item_sub_modules x
+                    WHERE x.catalog_item_id = ci.id AND x.sub_module_id = sm.id);
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                DELETE cism FROM catalog_item_sub_modules cism
+                  JOIN catalog_items ci ON ci.id = cism.catalog_item_id
+                  JOIN sub_modules sm ON sm.id = cism.sub_module_id
+                 WHERE ci.code = 'CORE'
+                   AND sm.code IN (
+                       'SUBSCRIPTION_PAYMENT_METHOD', 'CUSTOMER_CREDIT', 'FISCAL_REFERENCE');
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="379_backfill_frozen_composition_existing_companies" author="orlando">
+        <!-- Reproduce exactamente el INSERT ... SELECT de
+             JpaSubscriptionItemCompositionPort.freeze() para las lineas de CORE que ya estaban
+             firmadas cuando este changeset corre: sin esto, el bloque 3 se lo llevaria el proximo
+             recalculo de la empresa por cualquier otro motivo. Se backfillea CUALQUIER linea de
+             CORE, vigente o terminada -freeze() no distingue: congela en el instante de firmar, y
+             una linea que hoy esta terminada tambien la firmo alguna vez con este mismo articulo-,
+             filtrando solo por enabled = TRUE igual que ContractItemJpaRepository.findModuleLines. -->
+        <sql><![CDATA[
+            INSERT INTO subscription_item_sub_modules
+                    (company_id, subscription_item_id, sub_module_id, created_date)
+            SELECT si.company_id, si.id, sm.id, NOW()
+              FROM subscription_items si
+              JOIN catalog_items ci ON ci.id = si.catalog_item_id AND ci.code = 'CORE'
+              JOIN sub_modules sm ON sm.code IN (
+                  'SUBSCRIPTION_PAYMENT_METHOD', 'CUSTOMER_CREDIT', 'FISCAL_REFERENCE')
+                  AND sm.enabled = TRUE
+             WHERE si.enabled = TRUE
+               AND NOT EXISTS (
+                   SELECT 1 FROM subscription_item_sub_modules x
+                    WHERE x.subscription_item_id = si.id AND x.sub_module_id = sm.id);
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                DELETE sism FROM subscription_item_sub_modules sism
+                  JOIN sub_modules sm ON sm.id = sism.sub_module_id
+                 WHERE sm.code IN (
+                     'SUBSCRIPTION_PAYMENT_METHOD', 'CUSTOMER_CREDIT', 'FISCAL_REFERENCE');
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="379_backfill_entitlements_existing_companies" author="orlando">
+        <!-- Clona de SUBSCRIPTION_PAYMENT (hermano ya atado a CORE desde 309, misma linea de
+             contrato) para que las empresas existentes tengan HOY la fila, sin esperar a que algo
+             les dispare un recalculo. -->
+        <sql><![CDATA[
+            INSERT INTO company_entitlements
+                    (company_id, sub_module_id, access_level, source, subscription_id,
+                     subscription_item_id, valid_from, valid_until, recalculated_at, created_date)
+            SELECT ce.company_id, sm_new.id, ce.access_level, ce.source, ce.subscription_id,
+                   ce.subscription_item_id, ce.valid_from, ce.valid_until, ce.recalculated_at, NOW()
+              FROM company_entitlements ce
+              JOIN sub_modules sm_ref ON sm_ref.id = ce.sub_module_id
+                  AND sm_ref.code = 'SUBSCRIPTION_PAYMENT'
+              JOIN sub_modules sm_new ON sm_new.code IN (
+                  'SUBSCRIPTION_PAYMENT_METHOD', 'CUSTOMER_CREDIT', 'FISCAL_REFERENCE')
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM company_entitlements x
+                  WHERE x.company_id = ce.company_id AND x.sub_module_id = sm_new.id
+                    AND x.valid_from = ce.valid_from);
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                DELETE ce FROM company_entitlements ce
+                  JOIN sub_modules sm ON sm.id = ce.sub_module_id
+                 WHERE sm.code IN (
+                     'SUBSCRIPTION_PAYMENT_METHOD', 'CUSTOMER_CREDIT', 'FISCAL_REFERENCE');
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="379_backfill_read_permissions_existing_companies" author="orlando">
+        <!-- Los CINCO codigos ".read" de los tres submodulos: validos tambien en READ_ONLY, mismo
+             criterio que 339/371/377. -->
+        <sql><![CDATA[
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+              FROM company_entitlements ce
+              JOIN sub_modules sm ON sm.id = ce.sub_module_id
+                  AND sm.code IN (
+                      'SUBSCRIPTION_PAYMENT_METHOD', 'CUSTOMER_CREDIT', 'FISCAL_REFERENCE')
+              JOIN base_permissions bp ON bp.sub_module_id = sm.id
+             WHERE ce.access_level IN ('FULL', 'READ_ONLY')
+               AND bp.code IN (
+                   'subscriptionPaymentMethod.read', 'customerCredit.read', 'uvt.read',
+                   'smmlv.read', 'vatfiling.read', 'holiday.read', 'legaldocument.read')
+               AND NOT EXISTS (
+                   SELECT 1 FROM permissions p
+                    WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                DELETE FROM permissions
+                WHERE code IN (
+                    'subscriptionPaymentMethod.read', 'customerCredit.read', 'uvt.read',
+                    'smmlv.read', 'vatfiling.read', 'holiday.read', 'legaldocument.read');
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="379_backfill_payment_method_mutations_existing_companies" author="orlando">
+        <!-- subscriptionPaymentMethod.create/update NO terminan en ".read": solo FULL los concede
+             (grants()). Backfillearlos tambien en READ_ONLY se deshace solo en el proximo recalculo
+             -ver el razonamiento de cabecera sobre la empresa en mora-. -->
+        <sql><![CDATA[
+            INSERT INTO permissions (name, code, company_id, sub_module_id, enabled)
+            SELECT bp.name, bp.code, ce.company_id, sm.id, 1
+              FROM company_entitlements ce
+              JOIN sub_modules sm ON sm.id = ce.sub_module_id
+                  AND sm.code = 'SUBSCRIPTION_PAYMENT_METHOD'
+              JOIN base_permissions bp ON bp.sub_module_id = sm.id
+             WHERE ce.access_level = 'FULL'
+               AND bp.code IN ('subscriptionPaymentMethod.create', 'subscriptionPaymentMethod.update')
+               AND NOT EXISTS (
+                   SELECT 1 FROM permissions p
+                    WHERE p.company_id = ce.company_id AND p.code = bp.code);
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                DELETE FROM permissions
+                WHERE code IN ('subscriptionPaymentMethod.create', 'subscriptionPaymentMethod.update');
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="379_backfill_role_permissions_admin" author="orlando">
+        <!-- Enlaza al rol ADMIN de cada empresa backfillada los siete codigos de los tres bloques
+             anteriores, mismo patron de cierre que 377_selfservice_role_permissions_backfill_admin. -->
+        <sql><![CDATA[
+            INSERT INTO role_permissions (role_id, permission_id, enabled)
+            SELECT r.id, p.id, 1
+              FROM roles r
+              JOIN permissions p ON p.company_id = r.company_id
+                  AND p.code IN (
+                      'subscriptionPaymentMethod.read', 'subscriptionPaymentMethod.create',
+                      'subscriptionPaymentMethod.update', 'customerCredit.read', 'uvt.read',
+                      'smmlv.read', 'vatfiling.read', 'holiday.read', 'legaldocument.read')
+             WHERE r.code = 'ADMIN'
+               AND NOT EXISTS (
+                   SELECT 1 FROM role_permissions rp
+                    WHERE rp.role_id = r.id AND rp.permission_id = p.id);
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                DELETE FROM role_permissions
+                WHERE permission_id IN (
+                    SELECT id FROM permissions WHERE code IN (
+                        'subscriptionPaymentMethod.read', 'subscriptionPaymentMethod.create',
+                        'subscriptionPaymentMethod.update', 'customerCredit.read', 'uvt.read',
+                        'smmlv.read', 'vatfiling.read', 'holiday.read', 'legaldocument.read'));
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

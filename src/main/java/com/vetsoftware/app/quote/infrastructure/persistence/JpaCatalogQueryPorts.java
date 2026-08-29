@@ -4,6 +4,7 @@ import com.vetsoftware.app.quote.application.port.out.CatalogItemQueryPort;
 import com.vetsoftware.app.quote.application.port.out.CatalogPriceQueryPort;
 import com.vetsoftware.app.quote.application.port.out.ConfiguratorQuestionQueryPort;
 import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
+import com.vetsoftware.app.quote.application.port.out.PublishedCatalogItemQueryPort;
 import com.vetsoftware.app.quote.domain.BillingCycle;
 import com.vetsoftware.app.quote.domain.CatalogItemRef;
 import com.vetsoftware.app.quote.domain.CatalogPriceRef;
@@ -21,9 +22,9 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /**
- * Los cuatro adaptadores de lectura contra los slices vecinos del catalogo:
- * {@code catalog_items}, {@code price_lists}, {@code catalog_prices} y
- * {@code configurator_questions}.
+ * Los cinco adaptadores de lectura contra los slices vecinos del catalogo:
+ * {@code catalog_items}, {@code price_lists}, {@code catalog_prices},
+ * {@code bundle_components} y {@code configurator_questions}.
  *
  * <p>
  * <b>Por que SQL nativo y no un {@code XxxJpaRepository} de la otra
@@ -45,9 +46,9 @@ import org.springframework.stereotype.Component;
  * tenga que deducirlo.
  *
  * <p>
- * Las cuatro clases viven en un archivo con el mismo nombre que la clase
- * envolvente porque son cuatro adaptadores triviales del mismo vecindario; cada
- * una es un {@code @Component} independiente.
+ * Las cinco clases viven en un archivo con el mismo nombre que la clase
+ * envolvente porque son adaptadores triviales del mismo vecindario; cada una es
+ * un {@code @Component} independiente.
  */
 public final class JpaCatalogQueryPorts {
 
@@ -169,6 +170,34 @@ public final class JpaCatalogQueryPorts {
             return singleRow(query).map(row -> new PriceListRef(id(row[0]), text(row[1]),
                     text(row[2]), date(row[3]), date(row[4])));
         }
+
+        /**
+         * Mismo {@code SELECT} y misma renuncia a filtrar por fecha que el de arriba,
+         * sin el {@code WHERE id}. Lo consume la autocontratacion, que no recibe
+         * {@code priceListId} porque elegir tarifa es elegir precio.
+         *
+         * <p>
+         * El orden lo pone igualmente el caso de uso —de las vigentes gana la de
+         * {@code valid_from} mas reciente—, pero se devuelve ya ordenado para que el
+         * resultado no dependa del plan que elija el motor.
+         */
+        @Override
+        public List<PriceListRef> findAllPublished() {
+            Query query = entityManager.createNativeQuery("""
+                    SELECT id, code, currency, valid_from, valid_to
+                      FROM price_lists
+                     WHERE status = 'PUBLISHED'
+                       AND enabled = TRUE
+                     ORDER BY valid_from DESC, id DESC
+                    """);
+            List<PriceListRef> listas = new ArrayList<>();
+            for (Object row : query.getResultList()) {
+                Object[] columns = (Object[]) row;
+                listas.add(new PriceListRef(id(columns[0]), text(columns[1]), text(columns[2]),
+                        date(columns[3]), date(columns[4])));
+            }
+            return List.copyOf(listas);
+        }
     }
 
     /** Devuelve TODOS los tramos de precio del articulo en esa tarifa y ciclo. */
@@ -224,6 +253,106 @@ public final class JpaCatalogQueryPorts {
                         count(columns[4]), columns[5] == null ? null : count(columns[5])));
             }
             return List.copyOf(tiers);
+        }
+    }
+
+    /**
+     * Traduce el rotulo publico de un articulo a su id, y <b>solo dentro del
+     * conjunto que publica {@code GET /plans}</b>.
+     *
+     * <p>
+     * Es el adaptador mas delicado del archivo, porque es el unico que un tenant
+     * alcanza con un valor que el elige. Los demas reciben ids que ya paso
+     * {@code SYSTEM}.
+     */
+    @Component
+    public static class JpaPublishedCatalogItemQueryPort implements PublishedCatalogItemQueryPort {
+
+        /**
+         * <b>Este WHERE es el gate, y cada rama replica un predicado de
+         * {@code JpaPublicPlanQueryPort}</b> —el que alimenta {@code GET /plans}—, no
+         * uno parecido:
+         *
+         * <ul>
+         * <li><b>La rama del paquete</b> es la de {@code SQL_PLANS}: {@code BUNDLE}
+         * {@code ACTIVE} y habilitado.</li>
+         * <li><b>La rama del componente</b> es la de {@code SQL_COMPONENTS}:
+         * {@code MODULE} o {@code CAPACITY} {@code ACTIVE} y habilitado, colgando por
+         * {@code bundle_components} de un paquete que a su vez esta publicado. Deja
+         * fuera los {@code ONE_TIME} —implantacion, migracion, capacitacion: cargos
+         * negociados que la portada no anuncia— y los articulos activos que no forman
+         * parte de ningun plan, que son catalogo interno.</li>
+         * <li><b>El {@code JOIN} con {@code catalog_prices}</b> exige precio de entrada
+         * ({@code tier_min = 1}) <em>en la tarifa y el ciclo con los que se esta
+         * cotizando</em>. Es lo que {@code SQL_PLANS} exige al paquete, aplicado
+         * tambien al componente, y tiene una segunda utilidad: sin el, un articulo
+         * publicado pero sin tarifar en el ciclo pedido llegaria hasta
+         * {@code CreateQuoteService} y saldria por el error «No price for catalog item
+         * 42 in price list…», <b>que devuelve el id</b> y reintroduce por la puerta de
+         * atras justo lo que este puerto existe para no publicar.</li>
+         * </ul>
+         *
+         * <p>
+         * <b>Sin literales booleanos en la proyeccion</b>
+         * ({@code PROYECCION_SIN_LITERAL_BOOLEANO}, incidencia #196): el {@code SELECT}
+         * devuelve una sola columna, {@code ci.id}. Los {@code = TRUE} viven en el
+         * {@code WHERE} y en los {@code JOIN}, como en los otros cuatro adaptadores de
+         * este archivo.
+         *
+         * <p>
+         * <b>Una fila como mucho, y no por el {@code LIMIT}.</b>
+         * {@code uq_catalog_items_code} (changeset 229) es {@code UNIQUE} global sobre
+         * {@code catalog_items.code}; el {@code setMaxResults(1)} de
+         * {@link JpaCatalogQueryPorts#singleRow(Query)} es la red del patron del
+         * archivo, no el criterio de desempate. No hay criterio de desempate porque no
+         * puede haber empate.
+         */
+        private static final String SQL_PUBLISHED_ID_BY_CODE = """
+                SELECT ci.id
+                  FROM catalog_items ci
+                  JOIN catalog_prices p
+                       ON p.catalog_item_id = ci.id
+                      AND p.price_list_id   = :priceListId
+                      AND p.billing_cycle   = :billingCycle
+                      AND p.tier_min        = 1
+                      AND p.enabled = TRUE
+                 WHERE ci.code = :code
+                   AND ci.status = 'ACTIVE'
+                   AND ci.enabled = TRUE
+                   AND (ci.item_type = 'BUNDLE'
+                        OR (ci.item_type IN ('MODULE', 'CAPACITY')
+                            AND EXISTS (SELECT 1
+                                          FROM bundle_components bc
+                                          JOIN catalog_items b ON b.id = bc.bundle_item_id
+                                         WHERE bc.component_item_id = ci.id
+                                           AND bc.enabled = TRUE
+                                           AND b.enabled = TRUE
+                                           AND b.item_type = 'BUNDLE'
+                                           AND b.status = 'ACTIVE')))
+                """;
+
+        private final EntityManager entityManager;
+
+        public JpaPublishedCatalogItemQueryPort(EntityManager entityManager) {
+            this.entityManager = entityManager;
+        }
+
+        /**
+         * Un {@code code} nulo o en blanco no llega a la base: no puede casar con
+         * ninguna fila y el resultado seria el mismo, pero gastando una consulta que un
+         * cliente puede repetir a voluntad.
+         */
+        @Override
+        public Optional<Long> findPublishedIdByCode(String code, Long priceListId,
+                BillingCycle billingCycle) {
+            if (code == null || code.isBlank() || priceListId == null || billingCycle == null) {
+                return Optional.empty();
+            }
+            Query query = entityManager.createNativeQuery(SQL_PUBLISHED_ID_BY_CODE)
+                    .setParameter("code", code).setParameter("priceListId", priceListId)
+                    .setParameter("billingCycle", billingCycle.name());
+            List<?> rows = query.setMaxResults(1).getResultList();
+            return rows.isEmpty() ? Optional.empty() : Optional.ofNullable(id(rows.get(0)));
         }
     }
 

@@ -15,5 +15,6 @@ public record CatalogItemResponse(@Schema(requiredMode = Schema.RequiredMode.REQ
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int sortOrder,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CatalogItemStatus status,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean enabled,
+        @Schema(description = "Dias de prueba que concede el articulo. Nulo significa SIN prueba, no «no se sabe»: chk_catalog_items_trial_policy obliga a que un NEVER_FREE tenga la columna vacia. La prueba vence por linea, no por contrato.") Integer defaultTrialDays) {
 }

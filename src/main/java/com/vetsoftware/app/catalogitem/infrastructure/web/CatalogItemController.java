@@ -113,6 +113,6 @@ public class CatalogItemController {
         return new CatalogItemResponse(dto.id(), dto.code(), dto.name(), dto.shortDescription(),
                 dto.longDescription(), dto.itemType(), dto.capacityUnit(), dto.core(),
                 dto.minQuantity(), dto.maxQuantity(), dto.sortOrder(), dto.status(),
-                dto.createdDate(), dto.enabled());
+                dto.createdDate(), dto.enabled(), dto.defaultTrialDays());
     }
 }
