@@ -169,6 +169,34 @@ public final class JpaCatalogQueryPorts {
             return singleRow(query).map(row -> new PriceListRef(id(row[0]), text(row[1]),
                     text(row[2]), date(row[3]), date(row[4])));
         }
+
+        /**
+         * Mismo {@code SELECT} y misma renuncia a filtrar por fecha que el de arriba,
+         * sin el {@code WHERE id}. Lo consume la autocontratacion, que no recibe
+         * {@code priceListId} porque elegir tarifa es elegir precio.
+         *
+         * <p>
+         * El orden lo pone igualmente el caso de uso —de las vigentes gana la de
+         * {@code valid_from} mas reciente—, pero se devuelve ya ordenado para que el
+         * resultado no dependa del plan que elija el motor.
+         */
+        @Override
+        public List<PriceListRef> findAllPublished() {
+            Query query = entityManager.createNativeQuery("""
+                    SELECT id, code, currency, valid_from, valid_to
+                      FROM price_lists
+                     WHERE status = 'PUBLISHED'
+                       AND enabled = TRUE
+                     ORDER BY valid_from DESC, id DESC
+                    """);
+            List<PriceListRef> listas = new ArrayList<>();
+            for (Object row : query.getResultList()) {
+                Object[] columns = (Object[]) row;
+                listas.add(new PriceListRef(id(columns[0]), text(columns[1]), text(columns[2]),
+                        date(columns[3]), date(columns[4])));
+            }
+            return List.copyOf(listas);
+        }
     }
 
     /** Devuelve TODOS los tramos de precio del articulo en esa tarifa y ciclo. */

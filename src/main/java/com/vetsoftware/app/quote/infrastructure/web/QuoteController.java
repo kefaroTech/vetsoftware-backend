@@ -7,6 +7,8 @@ import com.vetsoftware.app.quote.application.command.CreateQuoteCommand;
 import com.vetsoftware.app.quote.application.command.QuoteAnswerCommand;
 import com.vetsoftware.app.quote.application.command.QuoteLineCommand;
 import com.vetsoftware.app.quote.application.command.RejectQuoteCommand;
+import com.vetsoftware.app.quote.application.command.SelfServeQuoteCommand;
+import com.vetsoftware.app.quote.application.command.SelfServeQuoteLineCommand;
 import com.vetsoftware.app.quote.application.command.SendQuoteCommand;
 import com.vetsoftware.app.quote.application.dto.CompanySummaryDto;
 import com.vetsoftware.app.quote.application.dto.QuoteAnswerDto;
@@ -23,11 +25,14 @@ import com.vetsoftware.app.quote.application.port.in.FindQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.in.ListQuotesByCompanyUseCase;
 import com.vetsoftware.app.quote.application.port.in.ListQuotesUseCase;
 import com.vetsoftware.app.quote.application.port.in.RejectQuoteUseCase;
+import com.vetsoftware.app.quote.application.port.in.SelfServeQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.in.SendQuoteUseCase;
 import com.vetsoftware.app.quote.infrastructure.web.request.AcceptQuoteRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.CreateQuoteRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.QuoteAnswerRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.QuoteLineRequest;
+import com.vetsoftware.app.quote.infrastructure.web.request.SelfServeQuoteLineRequest;
+import com.vetsoftware.app.quote.infrastructure.web.request.SelfServeQuoteRequest;
 import com.vetsoftware.app.quote.infrastructure.web.response.CompanySummary;
 import com.vetsoftware.app.quote.infrastructure.web.response.QuoteAnswerResponse;
 import com.vetsoftware.app.quote.infrastructure.web.response.QuoteLineResponse;
@@ -65,6 +70,7 @@ public class QuoteController {
     private final ListQuotesByCompanyUseCase listByCompanyUseCase;
     private final ListQuotesUseCase listUseCase;
     private final SendQuoteUseCase sendUseCase;
+    private final SelfServeQuoteUseCase selfServeUseCase;
     private final AcceptQuoteUseCase acceptUseCase;
     private final RejectQuoteUseCase rejectUseCase;
     private final DeleteQuoteUseCase deleteUseCase;
@@ -74,15 +80,16 @@ public class QuoteController {
 
     public QuoteController(CreateQuoteUseCase createUseCase, FindQuoteUseCase findUseCase,
             ListQuotesByCompanyUseCase listByCompanyUseCase, ListQuotesUseCase listUseCase,
-            SendQuoteUseCase sendUseCase, AcceptQuoteUseCase acceptUseCase,
-            RejectQuoteUseCase rejectUseCase, DeleteQuoteUseCase deleteUseCase,
-            ExpireOverdueQuotesUseCase expireOverdueUseCase,
+            SendQuoteUseCase sendUseCase, SelfServeQuoteUseCase selfServeUseCase,
+            AcceptQuoteUseCase acceptUseCase, RejectQuoteUseCase rejectUseCase,
+            DeleteQuoteUseCase deleteUseCase, ExpireOverdueQuotesUseCase expireOverdueUseCase,
             FindQuoteTotalsMismatchesUseCase totalsMismatchesUseCase, Authz authz) {
         this.createUseCase = createUseCase;
         this.findUseCase = findUseCase;
         this.listByCompanyUseCase = listByCompanyUseCase;
         this.listUseCase = listUseCase;
         this.sendUseCase = sendUseCase;
+        this.selfServeUseCase = selfServeUseCase;
         this.acceptUseCase = acceptUseCase;
         this.rejectUseCase = rejectUseCase;
         this.deleteUseCase = deleteUseCase;
@@ -104,6 +111,36 @@ public class QuoteController {
                 request.prospectDocument(), request.prospectPhone(), request.priceListId(),
                 request.billingCycle(), request.validUntil(), request.trialDays(),
                 toLineCommands(request.lines()), toAnswerCommands(request.answers()))));
+    }
+
+    /**
+     * Autocontratacion: la clinica pide su propia oferta y la recibe ya emitida,
+     * lista para aceptar con {@code POST /quotes/&#123;id&#125;/accept}.
+     *
+     * <p>
+     * <strong>Ruta literal, y declarada antes que {@code /&#123;id&#125;}</strong>
+     * para que se lea de un vistazo cual gana, aunque el emparejador prefiera el
+     * segmento literal sobre la plantilla por si mismo (mismo criterio que
+     * {@code /totals-mismatches}, incidencia #428). Ademas es un {@code POST} y
+     * {@code /&#123;id&#125;} no lo tiene, asi que no compiten.
+     *
+     * <p>
+     * <strong>El cuerpo no trae ni empresa ni precio.</strong> La empresa la pone
+     * aqui {@code authz.currentCompanyId()} —no {@code ...OrNull()}: sin empresa no
+     * hay a quien contratar, y un principal SYSTEM que llame aqui debe decir a
+     * nombre de quien— y el puerto la revalida. Todo lo economico lo resuelve
+     * {@code SelfServeQuoteService}.
+     *
+     * <p>
+     * Devuelve 201 tambien en el reintento idempotente, por lo mismo que
+     * {@link #create(CreateQuoteRequest)}.
+     */
+    @PostMapping("/self-serve")
+    @ResponseStatus(HttpStatus.CREATED)
+    public QuoteResponse selfServe(@Valid @RequestBody SelfServeQuoteRequest request) {
+        return toResponse(selfServeUseCase.execute(
+                new SelfServeQuoteCommand(request.clientRequestId(), authz.currentCompanyId(),
+                        request.billingCycle(), toSelfServeLineCommands(request.lines()))));
     }
 
     @GetMapping("/{id}")
@@ -205,6 +242,20 @@ public class QuoteController {
                         .map(l -> new QuoteLineCommand(l.catalogItemId(), l.quantity(),
                                 l.discountPercent(),
                                 Boolean.TRUE.equals(l.discountIsConditional())))
+                        .toList();
+    }
+
+    /**
+     * Sin descuento que traducir: {@link SelfServeQuoteLineRequest} no lo declara.
+     * El cero lo escribe {@code SelfServeQuoteService}, que es donde vive la
+     * decision.
+     */
+    private static List<SelfServeQuoteLineCommand> toSelfServeLineCommands(
+            List<SelfServeQuoteLineRequest> lines) {
+        return lines == null
+                ? List.of()
+                : lines.stream()
+                        .map(l -> new SelfServeQuoteLineCommand(l.catalogItemId(), l.quantity()))
                         .toList();
     }
 
