@@ -20,6 +20,11 @@ public class CatalogItemJpaMapper {
         entity.setMaxQuantity(item.getMaxQuantity());
         entity.setSortOrder(item.getSortOrder());
         entity.setStatus(item.getStatus());
+        // Se copia de vuelta porque toJpa construye una entidad NUEVA en cada save:
+        // sin esta linea, cada actualizacion de un articulo borraba en silencio los
+        // dias de prueba que la capa I habia sembrado. El campo es de solo lectura en
+        // el agregado -update() no lo toca-, asi que esto conserva, no edita.
+        entity.setDefaultTrialDays(item.getDefaultTrialDays());
         entity.setCreatedDate(item.getCreatedDate());
         entity.setVersion(item.getVersion());
         entity.setEnabled(item.isEnabled());
@@ -31,6 +36,7 @@ public class CatalogItemJpaMapper {
                 entity.getShortDescription(), entity.getLongDescription(), entity.getItemType(),
                 entity.getCapacityUnit(), entity.isCore(), entity.getMinQuantity(),
                 entity.getMaxQuantity(), entity.getSortOrder(), entity.getStatus(),
-                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
+                entity.getDefaultTrialDays(), entity.getCreatedDate(), entity.getVersion(),
+                entity.isEnabled());
     }
 }

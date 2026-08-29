@@ -38,14 +38,49 @@ public class CatalogItem {
     private Integer maxQuantity;
     private int sortOrder;
     private CatalogItemStatus status;
+    private final Integer defaultTrialDays;
     private final LocalDateTime createdDate;
     private Long version;
     private boolean enabled;
 
+    /**
+     * Sin politica de prueba. Es la forma que usa todo el camino de escritura de
+     * hoy: {@code default_trial_days} lo edita la capa I, que todavia no esta
+     * cableada, y hasta entonces un articulo nuevo nace sin prueba —que es el lado
+     * seguro (D-04): lo caro es regalar por accidente—.
+     */
     public CatalogItem(Long id, String code, String name, String shortDescription,
             String longDescription, ItemType itemType, String capacityUnit, boolean core,
             int minQuantity, Integer maxQuantity, int sortOrder, CatalogItemStatus status,
             LocalDateTime createdDate, Long version, boolean enabled) {
+        this(id, code, name, shortDescription, longDescription, itemType, capacityUnit, core,
+                minQuantity, maxQuantity, sortOrder, status, null, createdDate, version, enabled);
+    }
+
+    /**
+     * Con los dias de prueba que el articulo concede.
+     *
+     * <p>
+     * <strong>Es de solo lectura y a proposito.</strong> {@code defaultTrialDays}
+     * es {@code final} y {@link #update} no lo toca: quien lo fija es la capa I,
+     * por su propio camino, y dejarlo entrar por el editor de articulos permitiria
+     * cambiar la promesa de prueba de un catalogo global desde la pantalla de
+     * mantenimiento. Lo que este constructor arregla es lo contrario: que el valor
+     * <em>sobreviva</em> a una edicion. Hasta ahora
+     * {@code CatalogItemJpaMapper.toJpa} construia una entidad nueva sin esta
+     * columna, asi que cada {@code PUT /catalog-items/&#123;id&#125;} la borraba en
+     * silencio.
+     *
+     * <p>
+     * No se valida contra {@code chk_catalog_items_trial_policy} —el arco exclusivo
+     * entre {@code trial_eligibility} y estos dias— porque la elegibilidad todavia
+     * no vive en el agregado: comprobar media invariante daria una falsa sensacion
+     * de red. La base sigue siendo la ultima linea de defensa mientras tanto.
+     */
+    public CatalogItem(Long id, String code, String name, String shortDescription,
+            String longDescription, ItemType itemType, String capacityUnit, boolean core,
+            int minQuantity, Integer maxQuantity, int sortOrder, CatalogItemStatus status,
+            Integer defaultTrialDays, LocalDateTime createdDate, Long version, boolean enabled) {
         validateCode(code);
         validateTextos(name, shortDescription);
         validateTipo(itemType, capacityUnit);
@@ -64,6 +99,7 @@ public class CatalogItem {
         this.maxQuantity = maxQuantity;
         this.sortOrder = sortOrder;
         this.status = status;
+        this.defaultTrialDays = defaultTrialDays;
         this.createdDate = createdDate;
         this.version = version;
         this.enabled = enabled;
@@ -239,6 +275,16 @@ public class CatalogItem {
 
     public CatalogItemStatus getStatus() {
         return status;
+    }
+
+    /**
+     * Los dias de prueba que este articulo concede, o {@code null} si no concede
+     * ninguna. Nulo significa «sin prueba», no «no lo sabemos»: la columna es
+     * nulable justamente porque {@code chk_catalog_items_trial_policy} obliga a un
+     * {@code NEVER_FREE} a tenerla vacia.
+     */
+    public Integer getDefaultTrialDays() {
+        return defaultTrialDays;
     }
 
     public LocalDateTime getCreatedDate() {
