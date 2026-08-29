@@ -14,7 +14,7 @@
 
     <groupId>com.vetsoftware</groupId>
     <artifactId>vetsoftware</artifactId>
-    <version>2.6.0-dev.1</version>
+    <version>3.0.0-dev.1</version>
     <name>VetSoftware</name>
 
     <properties>
