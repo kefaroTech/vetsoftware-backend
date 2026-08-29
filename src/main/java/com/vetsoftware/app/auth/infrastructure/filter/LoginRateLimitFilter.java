@@ -83,6 +83,16 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     // y acota lo que cuesta el endpoint, que lee el cuestionario entero dos veces
     // por
     // llamada.
+    // La calculadora publica de precio. Mismo perfil que /configurator/resolve: es
+    // una lectura anonima, cara en CPU pero sin correo ni token que proteger, asi
+    // que
+    // el limite es de higiene -evitar que alguien la use de bomba de consultas- y
+    // no
+    // de fuerza bruta. Sin clave de cuerpo: no hay ningun campo que identifique a
+    // quien pregunta, solo su IP.
+    private static final RouteLimit QUOTE_PREVIEW_LIMIT = new RouteLimit("quote-preview-rl:",
+            "/quotes/preview", 60, Duration.ofMinutes(1), "QUOTE_PREVIEW_RATE_LIMITED",
+            "Too many price preview requests. Try again later.", List.of());
     private static final RouteLimit CONFIGURATOR_RESOLVE_LIMIT = new RouteLimit(
             "configurator-resolve-rl:", "/configurator/resolve", 60, Duration.ofMinutes(1),
             "CONFIGURATOR_RESOLVE_RATE_LIMITED", "Too many configurator requests. Try again later.",
@@ -214,6 +224,11 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             return VERIFY_EMAIL_LIMIT;
         if (uri.equals(CONFIGURATOR_RESOLVE_LIMIT.path()))
             return CONFIGURATOR_RESOLVE_LIMIT;
+        // equals y no startsWith: /quotes es el prefijo del embudo comercial entero,
+        // que
+        // es territorio autenticado. Solo /quotes/preview es publico.
+        if (uri.equals(QUOTE_PREVIEW_LIMIT.path()))
+            return QUOTE_PREVIEW_LIMIT;
         // equals y no startsWith: /platform/access-request es el prefijo textual de
         // /approve, de /reject y del GET /validate. Con startsWith los tres caerian en
         // el

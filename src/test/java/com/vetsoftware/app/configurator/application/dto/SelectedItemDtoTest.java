@@ -1,22 +1,34 @@
 package com.vetsoftware.app.configurator.application.dto;
 
-import static com.vetsoftware.app.configurator.testsupport.ConfiguratorMother.ITEM_POS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.vetsoftware.app.configurator.domain.SelectedItem;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** Una línea de la selección, ya fuera del dominio. */
+/**
+ * Una linea de la seleccion, ya fuera del dominio.
+ *
+ * <p>
+ * Sale por <b>rotulo</b>: el id es una llave de escritura y, secuencial en una
+ * respuesta anonima, un oraculo con el que enumerar el catalogo.
+ */
 @DisplayName("SelectedItemDto — una linea de la seleccion")
 class SelectedItemDtoTest {
 
     @Test
-    @DisplayName("copia articulo y cantidad tal cual salen del resolvedor")
+    @DisplayName("lleva el rotulo del articulo y su cantidad")
     void copia_articulo_y_cantidad() {
-        SelectedItemDto dto = SelectedItemDto.from(new SelectedItem(ITEM_POS, 7));
+        SelectedItemDto dto = new SelectedItemDto("SCHEDULING", 7);
 
-        assertThat(dto.catalogItemId()).isEqualTo(ITEM_POS);
+        assertThat(dto.code()).isEqualTo("SCHEDULING");
         assertThat(dto.quantity()).isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("el rotulo sustituye al id: la linea no publica ninguna llave interna")
+    void el_rotulo_sustituye_al_id() {
+        assertThat(SelectedItemDto.class.getRecordComponents())
+                .extracting(java.lang.reflect.RecordComponent::getName)
+                .containsExactly("code", "quantity").doesNotContain("catalogItemId");
     }
 }

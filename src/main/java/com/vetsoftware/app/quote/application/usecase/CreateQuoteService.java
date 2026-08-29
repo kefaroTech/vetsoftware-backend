@@ -2,7 +2,6 @@ package com.vetsoftware.app.quote.application.usecase;
 
 import com.vetsoftware.app.quote.application.command.CreateQuoteCommand;
 import com.vetsoftware.app.quote.application.command.QuoteAnswerCommand;
-import com.vetsoftware.app.quote.application.command.QuoteLineCommand;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
 import com.vetsoftware.app.quote.application.port.in.CreateQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.out.CatalogItemQueryPort;
@@ -13,15 +12,12 @@ import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteNumberPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteRepository;
 import com.vetsoftware.app.quote.domain.BillingCycle;
-import com.vetsoftware.app.quote.domain.CatalogItemRef;
-import com.vetsoftware.app.quote.domain.CatalogPriceRef;
 import com.vetsoftware.app.quote.domain.CompanyRef;
 import com.vetsoftware.app.quote.domain.ConfiguratorQuestionRef;
 import com.vetsoftware.app.quote.domain.PriceListRef;
 import com.vetsoftware.app.quote.domain.Quote;
 import com.vetsoftware.app.quote.domain.QuoteAnswer;
 import com.vetsoftware.app.quote.domain.QuoteLine;
-import com.vetsoftware.app.quote.domain.TieredPrice;
 import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -139,56 +135,15 @@ public class CreateQuoteService implements CreateQuoteUseCase {
     }
 
     /**
-     * D-66 / R-PRICE-04: la cantidad se parte ACUMULATIVAMENTE entre los tramos, y
-     * cada tramo produce SU PROPIO RENGLON.
-     *
-     * <p>
-     * Quince usuarios con "unidades extra 1 a 8 a 12.000 y de la 9 en adelante a
-     * 9.000" salen como dos renglones -ocho a 12.000 y cinco a 9.000, 141.000- y no
-     * como uno de trece al precio del tramo alto, que daba 117.000. Que sean dos
-     * renglones y no un importe calculado a mano es lo que hace que el cliente vea
-     * en la oferta el mismo desglose con el que se le va a facturar (R-QUOTE-09) y
-     * que los totales sigan siendo la suma de las lineas sin ninguna excepcion.
-     *
-     * <p>
-     * El reparto lo hace {@link TieredPrice} y la cantidad de cada renglon la
-     * recalcula {@link QuoteLine} en su constructor: este servicio no sabe
-     * multiplicar y no puede equivocarse en la cuenta.
+     * Delega en {@link QuoteLineFreezer}, que es el unico sitio del proyecto donde
+     * una cesta se convierte en lineas con precio. Salio de aqui cuando la vista
+     * previa publica necesito la misma cuenta: con dos implementaciones, lo que se
+     * muestra y lo que se cobra volverian a poder discrepar.
      */
     private List<QuoteLine> freezeLines(CreateQuoteCommand command, PriceListRef priceList,
             BillingCycle billingCycle, LocalDateTime now) {
-        if (command.lines() == null || command.lines().isEmpty()) {
-            throw new IllegalArgumentException("quote requires at least one line");
-        }
-        List<QuoteLine> lines = new ArrayList<>();
-        int lineNumber = 1;
-        for (QuoteLineCommand requested : command.lines()) {
-            CatalogItemRef item = catalogItemQueryPort.findActiveById(requested.catalogItemId())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Catalog item not found or not active: " + requested.catalogItemId()));
-            List<CatalogPriceRef> tiers = catalogPriceQueryPort.findAllTiers(priceList.id(),
-                    requested.catalogItemId(), billingCycle);
-            if (tiers.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "No price for catalog item " + requested.catalogItemId() + " in price list "
-                                + priceList.id() + " for cycle " + billingCycle);
-            }
-            // R15: lo incluido en la tarifa se resta antes de repartir por tramos, y la
-            // resta la hace el dominio -TieredPrice- porque es quien resuelve el precio
-            // quien tiene el included_quantity. Si lo contratado no supera a lo incluido
-            // no hay nada que cobrar, el reparto sale vacio y no se emite ninguna linea:
-            // chk_quote_lines_quantity exige quantity > 0. Las tres cifras -contratada,
-            // incluida y cobrada- quedan congeladas en cada renglon que si se emite, para
-            // que la oferta se explique sin volver a la tarifa.
-            TieredPrice tiered = TieredPrice.of(item.itemType(), requested.quantity(), tiers);
-            for (CatalogPriceRef tier : tiered.tiers()) {
-                lines.add(QuoteLine.freeze(lineNumber, item, tier, requested.quantity(),
-                        tiered.includedQuantity(), requested.discountPercent(),
-                        requested.discountIsConditional(), now));
-                lineNumber++;
-            }
-        }
-        return lines;
+        return QuoteLineFreezer.freeze(command.lines(), priceList, billingCycle, now,
+                catalogItemQueryPort, catalogPriceQueryPort);
     }
 
     private List<QuoteAnswer> captureAnswers(List<QuoteAnswerCommand> requested,

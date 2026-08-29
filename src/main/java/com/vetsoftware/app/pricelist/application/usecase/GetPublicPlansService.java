@@ -14,7 +14,6 @@ import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -83,13 +82,16 @@ public class GetPublicPlansService implements GetPublicPlansUseCase {
     /**
      * La ventana la evalua el kernel y no el SQL; ver el javadoc de
      * {@code PublicPlanQueryPort.findPublishedPriceLists()}.
+     *
+     * <p>
+     * El criterio en si vive en {@link PublicPriceListSelector} y no aqui desde que
+     * hay un segundo endpoint publico con precios ({@code GET /catalog}): los dos
+     * tienen que elegir la <em>misma</em> tarifa el mismo dia, y con el criterio
+     * duplicado el dia que uno cambiara la portada y el configurador dirian cifras
+     * distintas sin que nada fallara.
      */
     private Optional<PublicPriceListDto> tarifaVigente(LocalDate today) {
-        return queryPort.findPublishedPriceLists().stream()
-                .filter(lista -> new PriceListValidity(lista.validFrom(), lista.validTo())
-                        .isEffectiveOn(today))
-                .max(Comparator.comparing(PublicPriceListDto::validFrom)
-                        .thenComparing(PublicPriceListDto::id));
+        return PublicPriceListSelector.vigente(queryPort.findPublishedPriceLists(), today);
     }
 
     private static PublicPlanDto toPlan(PublicPlanRowDto plan,

@@ -69,10 +69,9 @@ public class ConfiguratorController {
             @Valid @RequestBody ResolveConfiguratorSelectionRequest request) {
         ConfiguratorSelectionDto selection = resolveUseCase
                 .resolve(new ResolveConfiguratorSelectionCommand(request.selectedOptionIds(),
-                        request.numericAnswers()));
+                        request.numericAnswers(), request.billingCycle()));
         return new ConfiguratorSelectionResponse(selection.items().stream()
-                .map(item -> new SelectedItemResponse(item.catalogItemId(), item.quantity()))
-                .toList());
+                .map(item -> new SelectedItemResponse(item.code(), item.quantity())).toList());
     }
 
     private static QuestionnaireQuestionResponse toResponse(QuestionnaireQuestionDto dto) {

@@ -45,6 +45,11 @@ import org.springframework.transaction.annotation.Transactional;
  * {@link #traducirCodigos(SelfServeQuoteCommand, PriceListRef, BillingCycle)}:
  * el cliente nombra rotulos y el servidor decide si existen. Un rotulo que la
  * portada no publica no llega ni a mirarse contra el catalogo.</li>
+ * <li><b>Que nada se cobre dos veces.</b> Ver {@code SelfServeCartGuard}: un
+ * paquete y una pieza suya en la misma cesta son dos cobros por la misma
+ * funcionalidad. Que hasta hoy no ocurriera era una convencion del front —no
+ * mandaba lineas de modulo—, y una convencion del llamador no es una
+ * proteccion.</li>
  * <li><b>Los importes, el IVA y los tramos.</b> Los congela
  * {@code CreateQuoteService} contra el catalogo, igual que en el camino de
  * plataforma. No se tocan aqui, ni podrian: el cliente no manda ningun
@@ -186,6 +191,10 @@ public class SelfServeQuoteService implements SelfServeQuoteUseCase {
         if (command.lines() == null) {
             return List.of();
         }
+        List<String> codigos = command.lines().stream().map(SelfServeQuoteLineCommand::code)
+                .toList();
+        SelfServeCartGuard.assertContractable(codigos, publishedCatalogItemQueryPort);
+
         List<QuoteLineCommand> lineas = new ArrayList<>();
         for (SelfServeQuoteLineCommand linea : command.lines()) {
             Long catalogItemId = publishedCatalogItemQueryPort
