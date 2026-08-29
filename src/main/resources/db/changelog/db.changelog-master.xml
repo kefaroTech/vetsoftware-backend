@@ -902,4 +902,19 @@
          propio 378 y en el informe de la sesion. -->
     <include file="db/changelog/migrations/378_seed_quote_request_permission_and_backfill.xml"/>
 
+    <!-- SUBSCRIPTION_PAYMENT_METHOD, CUSTOMER_CREDIT y FISCAL_REFERENCE (339/371) se sembraron y
+         nunca se ataron a ningun catalog_item: 309 ato 30 pares catalog_item/sub_module y estos
+         tres quedaron fuera, asi que ninguna empresa -vieja ni nueva- pudo tener jamas una fila de
+         company_entitlements para ellos. Los cuelga de CORE (mismo criterio que los otros seis de
+         autoservicio que 309 ya ato: "toda empresa lo necesita, page o no"). Ata en
+         catalog_item_sub_modules (fija el alta de empresas nuevas), backfillea la foto congelada
+         subscription_item_sub_modules de las empresas existentes (D-76/338: sin esto el proximo
+         recalculo de esa empresa por cualquier otro motivo se lo revierte) y clona
+         company_entitlements/permissions/role_permissions de SUBSCRIPTION_PAYMENT, hermano ya atado
+         a CORE. subscriptionPaymentMethod.create/update solo en FULL (no terminan en ".read"), con
+         el riesgo de la empresa en mora documentado en el propio changeset y en el informe de la
+         sesion. -->
+    <include
+            file="db/changelog/migrations/379_attach_orphan_selfservice_submodules_to_core.xml"/>
+
 </databaseChangeLog>
