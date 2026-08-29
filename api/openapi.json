@@ -34886,16 +34886,17 @@
       "SelfServeQuoteLineRequest" : {
         "type" : "object",
         "properties" : {
-          "catalogItemId" : {
-            "type" : "integer",
-            "format" : "int64"
+          "code" : {
+            "type" : "string",
+            "maxLength" : 50,
+            "minLength" : 1
           },
           "quantity" : {
             "type" : "integer",
             "format" : "int32"
           }
         },
-        "required" : [ "catalogItemId" ]
+        "required" : [ "code" ]
       },
       "SelfServeQuoteRequest" : {
         "type" : "object",
@@ -34903,10 +34904,11 @@
           "clientRequestId" : {
             "type" : "string",
             "maxLength" : 64,
-            "minLength" : 0
+            "minLength" : 1
           },
           "billingCycle" : {
             "type" : "string",
+            "enum" : [ "MONTHLY", "ANNUAL" ],
             "minLength" : 1,
             "pattern" : "MONTHLY|ANNUAL"
           },
@@ -42513,8 +42515,13 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "extraUnitAmount" : {
-            "type" : "number"
+          "monthlyExtraUnitAmount" : {
+            "type" : "number",
+            "description" : "Precio de la unidad adicional al mes; nulo si no se vende suelta en ese ciclo"
+          },
+          "annualExtraUnitAmount" : {
+            "type" : "number",
+            "description" : "Precio de la unidad adicional al ano; nulo si no se vende suelta en ese ciclo"
           }
         },
         "required" : [ "code", "included", "name", "unit" ]
