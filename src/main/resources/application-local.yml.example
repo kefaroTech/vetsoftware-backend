@@ -109,6 +109,24 @@ vetsoftware:
     # Sin default aqui, con EMAIL_ENABLED=true el arranque falla: es una de las ocho claves que
     # ResendPlatformAccessEmailSender exige cuando el correo esta habilitado.
     login-url: ${PLATFORM_ACCESS_LOGIN_URL:http://localhost:5173/login}
+  ai:
+    proposal:
+      # La raiz del front publico, SIN ruta y SIN barra final, a diferencia de
+      # `verification-base-url` y `reset-base-url` de arriba, que SI apuntan a pantallas
+      # concretas. El enlace del correo se arma como `link-base-url` + `/?token=` y quien
+      # recoge el token es la landing en `/`, que lo hidrata y hace `replace` a `/planes`
+      # para sacarlo de la barra de direcciones.
+      #
+      # Sin valor, el remitente escribe un warn y RETORNA SIN ENVIAR: el correo de la
+      # propuesta no sale y nada falla. El defecto de `application.yml` es la cadena vacia,
+      # asi que hasta que se publico este valor ese correo no se enviaba en NINGUN entorno.
+      # En dev y prod lo publica el IaC; en local sale de aqui.
+      link-base-url: ${AI_PROPOSAL_LINK_BASE_URL:http://localhost:5174}
+      # El tope diario de gasto del modelo. En local el invocador real no esta cableado
+      # (ModelAccessNotEnabledInvoker), asi que no llega a aplicarse; se declara igual para
+      # que el arranque local ejercite la MISMA derivacion de limites que dev y prod y no se
+      # descubra alli una division por cero. Ojo: el cero no significa "sin tope".
+      daily-spend-cap-usd: ${AI_PROPOSAL_DAILY_SPEND_CAP_USD:1.00}
   code-recovery:
     login-url: ${CODE_RECOVERY_LOGIN_URL:http://localhost:5174/login}
   employee:

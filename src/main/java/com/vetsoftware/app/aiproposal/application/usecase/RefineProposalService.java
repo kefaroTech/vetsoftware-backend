@@ -9,7 +9,6 @@ import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics;
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics.Operation;
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics.ServedProposal;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalGeneratorPort;
-import com.vetsoftware.app.aiproposal.application.port.out.ResponsePacingPort;
 import com.vetsoftware.app.aiproposal.application.port.out.SellableCatalogQueryPort;
 import com.vetsoftware.app.aiproposal.domain.AiProposal;
 import com.vetsoftware.app.aiproposal.domain.CartResult;
@@ -20,7 +19,6 @@ import com.vetsoftware.app.aiproposal.domain.ProposalTurn;
 import com.vetsoftware.app.aiproposal.domain.ProspectText;
 import com.vetsoftware.app.aiproposal.domain.SellableCatalog;
 import io.micrometer.observation.annotation.Observed;
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -66,11 +64,7 @@ public class RefineProposalService implements RefineProposalUseCase {
 
     private final ProposalReader reader;
 
-    private final ResponsePacingPort pacing;
-
     private final AiProposalMetrics metrics;
-
-    private final Clock clock;
 
     private final String modelId;
 
@@ -79,16 +73,14 @@ public class RefineProposalService implements RefineProposalUseCase {
     @SuppressWarnings("java:S107")
     public RefineProposalService(SellableCatalogQueryPort catalogQueryPort,
             ProposalGeneratorPort generator, ProposalTurnWriter writer, ProposalReader reader,
-            ResponsePacingPort pacing, AiProposalMetrics metrics, Clock clock,
+            AiProposalMetrics metrics,
             @Value("${vetsoftware.ai.proposal.model-id:anthropic.claude-sonnet-5}") String modelId,
             @Value("${vetsoftware.ai.proposal.prompt-version:v1}") String promptVersion) {
         this.catalogQueryPort = catalogQueryPort;
         this.generator = generator;
         this.writer = writer;
         this.reader = reader;
-        this.pacing = pacing;
         this.metrics = metrics;
-        this.clock = clock;
         this.modelId = modelId;
         this.promptVersion = promptVersion;
     }
@@ -114,7 +106,6 @@ public class RefineProposalService implements RefineProposalUseCase {
         List<ProspectText> textos = new ArrayList<>(reader.textosDelCliente(turnos));
         textos.add(texto);
 
-        long empezo = clock.millis();
         ProposalGenerationResult resultado = generator.generate(
                 new ProposalGenerationRequest(textos, reader.codigosAceptados(vigente), catalog));
 
@@ -131,9 +122,9 @@ public class RefineProposalService implements RefineProposalUseCase {
         metrics.proposalServed(ServedProposal.de(Operation.REFINE, resultado.outcome(),
                 presentacion, draft, carrito, texto.length(), guardada.getId()));
 
-        if (resultado.outcome().esDegradacionSinLlamada())
-            pacing.applyDegradedFloor(clock.millis() - empezo);
-
+        // Aqui vivia el suelo de latencia aleatorio de la ruta degradada. Se retiro:
+        // el bit que ocultaba lo publica la respuesta. Ver
+        // ProposalAssembler.presentacion.
         return reader.vista(guardada, carrito, catalog, presentacion, true);
     }
 

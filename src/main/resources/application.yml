@@ -339,6 +339,40 @@ vetsoftware:
     # ResendAppointmentConfirmationEmailSender al construirse. Sin esa red la cita quedaba agendada y el
     # propietario no recibía el único acuse de que la cita existe.
     confirmation-template-id: ${APPOINTMENT_CONFIRMATION_TEMPLATE_ID:}
+  # Asistente comercial de IA: la propuesta que se genera para un prospecto anonimo desde la
+  # landing. Hasta ahora NINGUNA de estas claves estaba escrita en ningun perfil: los valores
+  # efectivos eran los defaults de los @Value, es decir que el tope de gasto de produccion era
+  # un literal escondido en la firma de un constructor y nadie lo habia elegido.
+  #
+  # LAS DOS PRIMERAS CLAVES ESTAN ACOPLADAS Y NO SE TOCAN POR SEPARADO. LoginRateLimitFilter
+  # divide el tope entre el coste por llamada para saber cuantas invocaciones de pago financia
+  # el dia, y de ahi deriva el cupo diario por IP de las dos rutas que pagan. Elegirlos por
+  # separado es como se llego a permitir 20 peticiones por IP contra un tope que financiaba 18:
+  # una sola IP vaciaba el presupuesto de toda la plataforma sin agotar su propio limite.
+  # LoginRateLimitFilterTest fija esa relacion; si cambias una, corre ese test.
+  ai:
+    proposal:
+      # Techo de gasto diario para TODA la plataforma. Es fail-closed: agotado, el asistente
+      # responde por el camino determinista (200, sin lectura del texto libre) hasta manana.
+      # 0,33 USD financian 18 invocaciones al dia; es el minimo con el que la feature funciona
+      # de verdad, no una cifra de produccion. Se sube por entorno, mas abajo.
+      daily-spend-cap-usd: ${AI_PROPOSAL_DAILY_SPEND_CAP_USD:0.33}
+      # Coste estimado de UNA invocacion de pago, en USD. Espejo de
+      # BedrockProposalGenerator.USD_ESTIMADO_POR_LLAMADA (3.800 tokens de entrada a 2 USD/M mas
+      # 1.000 de salida a 10 USD/M). Si cambia la tarifa del modelo o la estimacion de tokens,
+      # este numero se mueve con ellos o el limite por IP se calibra contra un coste que ya no
+      # es el real. El test lo compara contra la constante, no contra un literal copiado.
+      usd-per-paid-call: ${AI_PROPOSAL_USD_PER_PAID_CALL:0.0176}
+      model-id: ${AI_PROPOSAL_MODEL_ID:anthropic.claude-sonnet-5}
+      prompt-version: ${AI_PROPOSAL_PROMPT_VERSION:v1}
+      # Vigencia del enlace de la propuesta. YA SE APLICA: ProposalReader.exigir devuelve 404
+      # cuando expires_at quedo atras, en las tres rutas que leen o mutan. Antes se escribia en
+      # la fila, se renderizaba en el correo ("caduca el DD/MM/YYYY") y no lo comprobaba nadie:
+      # el token era una credencial al portador permanente.
+      validity-days: ${AI_PROPOSAL_VALIDITY_DAYS:14}
+      locale: ${AI_PROPOSAL_LOCALE:es-CO}
+      # Pagina del front del tenant a la que apunta el enlace del correo; recibe ?token=...
+      link-base-url: ${AI_PROPOSAL_LINK_BASE_URL:}
   dian:
     qr-base-url: ${DIAN_QR_BASE_URL:https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=}
     # B6 - Datos operativos del documento equivalente POS (Res. 000165/2023). Parametrizar por despliegue con

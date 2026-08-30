@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,15 +28,21 @@ import org.springframework.stereotype.Component;
  * mucho.
  *
  * <p>
- * ⚠️ <strong>LIMITE CONOCIDO Y DECLARADO: el contador es por proceso.</strong>
- * Con N tareas de ECS el techo efectivo es N veces el configurado, porque cada
- * una lleva su propio acumulador. El plan especifica Valkey con
- * {@code INCRBYFLOAT}, que es lo unico que da un contador global, y esta clase
- * es la implementacion que se puede escribir y probar hoy — no la definitiva.
- * <strong>Se declara aqui y no se calla</strong> porque un techo que se cree
- * global y no lo es es peor que ninguno: da la confianza sin dar la proteccion.
- * Aun asi acota: hoy no hay ningun techo, y con este el peor caso pasa de "sin
- * limite" a "N x el limite", que con la topologia actual es una cota conocida.
+ * ⚠️ <strong>YA NO ES LA IMPLEMENTACION ACTIVA, y el motivo es el limite que
+ * esta clase siempre declaro: el contador es por proceso.</strong> Con N tareas
+ * de ECS el techo efectivo es N veces el configurado, porque cada una lleva su
+ * propio acumulador — y empeora justo cuando mas trafico hay, porque el
+ * autoescalado multiplica el techo. Lo sustituye {@link ValkeyDailySpendGuard},
+ * que cuenta con {@code INCRBYFLOAT} sobre la clave del dia y es lo unico que
+ * da un techo global, tal y como especificaba el plan (S6.3).
+ *
+ * <p>
+ * <strong>Se conserva detras de una propiedad</strong>
+ * ({@code vetsoftware.ai.proposal.spend-guard=in-process}) y no se borra: es la
+ * unica salida si Valkey queda indisponible de forma prolongada, porque el
+ * guardian de Valkey es fail-closed y sin el la feature degradaria al 100 %. Un
+ * techo por proceso es peor que uno global, pero es mejor que apagar la
+ * palanca.
  *
  * <p>
  * <strong>Fail-closed de verdad.</strong> Cualquier camino que no pueda afirmar
@@ -59,6 +66,7 @@ import org.springframework.stereotype.Component;
  * hacer. Son dos preguntas distintas y ninguna de las dos sustituye a la otra.
  */
 @Component
+@ConditionalOnProperty(name = "vetsoftware.ai.proposal.spend-guard", havingValue = "in-process")
 public class InProcessDailySpendGuard implements SpendGuardPort {
 
     private static final Logger log = LoggerFactory.getLogger(InProcessDailySpendGuard.class);
@@ -89,7 +97,8 @@ public class InProcessDailySpendGuard implements SpendGuardPort {
     private LocalDate diaDelAviso;
 
     public InProcessDailySpendGuard(Clock clock, MeterRegistry registry,
-            @Value("${vetsoftware.ai.proposal.daily-spend-cap-usd:0.33}") BigDecimal dailyCapUsd) {
+            @Value("${vetsoftware.ai.proposal.daily-spend-cap-usd:"
+                    + ValkeyDailySpendGuard.DEFECTO_TOPE_DIARIO_USD + "}") BigDecimal dailyCapUsd) {
         this.clock = clock;
         this.dailyCapUsd = dailyCapUsd == null || dailyCapUsd.signum() < 0
                 ? BigDecimal.ZERO

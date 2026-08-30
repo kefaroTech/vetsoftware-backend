@@ -55,12 +55,20 @@ public class RateLimitConfig {
     public LettuceBasedProxyManager<String> loginRateLimitProxyManager(
             StatefulRedisConnection<String, byte[]> rateLimitRedisConnection) {
         // TTL de la clave basado en el tiempo de recarga del bucket → los buckets
-        // ociosos se evictan
-        // solos de Redis (no hay fuga). 1 hora cubre la ventana mas larga del rate
-        // limiter.
+        // ociosos se evictan solos de Redis (no hay fuga).
+        //
+        // ⛔ EL MARGEN ES DE UN DIA, NO DE UNA HORA, Y ES OBLIGATORIO desde que
+        // `/assistant/proposal` declara ventanas diarias (20/dia por IP, 3/dia por
+        // correo, 500/dia globales). El margen se suma al tiempo de recarga del
+        // cubo, y quedarse corto no da un error: la clave del cubo diario expiraria
+        // antes de que su ventana se cierre, el cubo renaceria lleno y el limite
+        // diario dejaria de existir EN SILENCIO — que es exactamente el modo de
+        // fallo que un control de gasto no puede permitirse. El coste de ampliarlo
+        // es que las claves ociosas viven mas en Valkey: unos cientos de bytes por
+        // IP activa, contra un techo de gasto que no se aplica.
         return Bucket4jLettuce.casBasedBuilder(rateLimitRedisConnection)
                 .expirationAfterWrite(ExpirationAfterWriteStrategy
-                        .basedOnTimeForRefillingBucketUpToMax(Duration.ofHours(1)))
+                        .basedOnTimeForRefillingBucketUpToMax(Duration.ofDays(1)))
                 .build();
     }
 }

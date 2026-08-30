@@ -83,6 +83,13 @@ vetsoftware:
     # el que el superadministrador recien creado conoce su `code`, que es su usuario de login: sin
     # ella el correo de bienvenida sale con un enlace vacio y la cuenta queda inaccesible.
     login-url: ${PLATFORM_ACCESS_LOGIN_URL}
+  ai:
+    proposal:
+      # Deliberado y por encima del suelo de 0,33: dev es trafico nuestro y de las pruebas
+      # manuales del embudo, y con 18 invocaciones al dia dos personas probando dejan el
+      # asistente degradado toda la tarde —y entonces lo que se prueba no es el producto—.
+      # 1,00 USD financia 56 invocaciones: 14 por IP al dia (3 propuestas y 11 refinamientos).
+      daily-spend-cap-usd: ${AI_PROPOSAL_DAILY_SPEND_CAP_USD:1.00}
   code-recovery:
     login-url: ${CODE_RECOVERY_LOGIN_URL}
   employee:

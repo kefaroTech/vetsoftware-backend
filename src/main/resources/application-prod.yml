@@ -106,6 +106,19 @@ vetsoftware:
     # el que el superadministrador recien creado conoce su `code`, que es su usuario de login: sin
     # ella el correo de bienvenida sale con un enlace vacio y la cuenta queda inaccesible.
     login-url: ${PLATFORM_ACCESS_LOGIN_URL}
+  ai:
+    proposal:
+      # ⛔ ESTE NUMERO ES DINERO REAL Y ES EL TECHO DIARIO DE TODA LA PLATAFORMA.
+      # 1,00 USD financian 56 invocaciones al dia (~14 sesiones completas de prospecto). Es un
+      # arranque deliberadamente prudente: techo de 30 USD al mes. El limite por IP se DERIVA
+      # de esta cifra (ver LoginRateLimitFilter), asi que subir el tope sube el cupo solo; no
+      # hay dos numeros que mantener a mano y un test fija esa relacion.
+      # Riesgo asumido y vigilado: con trafico real de la landing el tope se agota y todos los
+      # prospectos ven el camino determinista. Agotado el tope el asistente NO se cae: degrada
+      # con 200 y una propuesta valida, solo sin la lectura del texto libre. Si eso empieza a
+      # pasar a diario, la respuesta es subir la variable, no tocar codigo.
+      # Se sube o se baja por variable de entorno sin desplegar codigo.
+      daily-spend-cap-usd: ${AI_PROPOSAL_DAILY_SPEND_CAP_USD:1.00}
   code-recovery:
     login-url: ${CODE_RECOVERY_LOGIN_URL}
   employee:

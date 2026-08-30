@@ -19,7 +19,6 @@ import com.vetsoftware.app.aiproposal.application.port.out.AiProposalRepository;
 import com.vetsoftware.app.aiproposal.application.port.out.LegalConsentPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalGeneratorPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalLinkEmailSender;
-import com.vetsoftware.app.aiproposal.application.port.out.ResponsePacingPort;
 import com.vetsoftware.app.aiproposal.application.port.out.SellableCatalogQueryPort;
 import com.vetsoftware.app.aiproposal.domain.AiProposal;
 import com.vetsoftware.app.aiproposal.domain.AiProposalNotFoundException;
@@ -84,9 +83,6 @@ class RefineProposalServiceTest {
     private ProposalGeneratorPort generator;
 
     @Mock
-    private ResponsePacingPort pacing;
-
-    @Mock
     private ProposalLinkEmailSender enlacePorCorreo;
 
     @Mock
@@ -99,8 +95,30 @@ class RefineProposalServiceTest {
         service = new RefineProposalService(catalogQueryPort, generator,
                 new ProposalTurnWriter(repository, legalConsent, enlacePorCorreo,
                         ProposalMother.RELOJ),
-                new ProposalReader(repository, catalogQueryPort), pacing, metrics,
-                ProposalMother.RELOJ, ProposalMother.MODELO, ProposalMother.PROMPT);
+                new ProposalReader(repository, catalogQueryPort, ProposalMother.RELOJ), metrics,
+                ProposalMother.MODELO, ProposalMother.PROMPT);
+    }
+
+    /** Ver el javadoc del mismo bloque en {@code GetProposalServiceTest}. */
+    @Nested
+    @DisplayName("Caducidad")
+    class Caducidad {
+
+        /**
+         * &#9940; De las tres rutas, esta es la cara: sin la comprobacion, un token
+         * caducado seguia comprando invocaciones de pago al modelo indefinidamente.
+         */
+        @Test
+        @DisplayName("el refinamiento de una propuesta caducada es un 404 y NO llama al modelo")
+        void el_refinamiento_de_una_propuesta_caducada_es_404() {
+            when(repository.findByPublicToken(ProposalMother.TOKEN)).thenReturn(
+                    Optional.of(ProposalMother.propuestaCaducada(ProposalMother.ID_PROPUESTA)));
+
+            assertThatThrownBy(() -> service.refine(comando(null)))
+                    .isInstanceOf(AiProposalNotFoundException.class);
+            verifyNoInteractions(generator);
+            verify(repository, never()).saveTurn(any());
+        }
     }
 
     private RefineProposalCommand comando(Long version) {
@@ -194,7 +212,7 @@ class RefineProposalServiceTest {
             assertThat(vista.recalculated()).isFalse();
             assertThat(vista.refinementsLeft()).isZero();
             assertThat(codigosDeLaVista(vista)).containsExactly("CORE");
-            verifyNoInteractions(generator, pacing);
+            verifyNoInteractions(generator);
             verify(repository, never()).saveTurn(any());
             verify(repository, never()).saveLines(any());
         }
@@ -336,33 +354,37 @@ class RefineProposalServiceTest {
         }
     }
 
+    /** Ver el javadoc del mismo bloque en {@code GenerateProposalServiceTest}. */
     @Nested
-    @DisplayName("Suelo de latencia")
-    class SueloDeLatencia {
+    @DisplayName("Respuesta degradada")
+    class RespuestaDegradada {
 
         @Test
-        @DisplayName("una degradacion sin llamada iguala el tiempo hasta el ultimo byte")
-        void una_degradacion_sin_llamada_iguala_el_tiempo() {
+        @DisplayName("una degradacion responde de inmediato: no hay suelo de latencia que pagar")
+        void una_degradacion_responde_de_inmediato() {
             conPropuestaYaRefinable();
             conEscrituraQueFunciona();
             when(generator.generate(any())).thenReturn(
                     ProposalGenerationResult.degradado(GenerationOutcome.DEGRADED_SPEND_CAP));
 
+            long empezo = System.nanoTime();
             service.refine(comando(null));
+            long transcurrido = (System.nanoTime() - empezo) / 1_000_000;
 
-            verify(pacing).applyDegradedFloor(0L);
+            assertThat(transcurrido).as("ms hasta responder una degradacion").isLessThan(1_000L);
         }
 
         @Test
-        @DisplayName("un fallo del modelo no paga el suelo: ya pago la espera")
-        void un_fallo_del_modelo_no_paga_el_suelo() {
+        @DisplayName("la respuesta publica el estado degradado en presentation: por eso el suelo"
+                + " de latencia no ocultaba nada")
+        void la_respuesta_publica_el_estado_degradado() {
             conPropuestaYaRefinable();
             conEscrituraQueFunciona();
-            when(generator.generate(any())).thenReturn(ProposalMother.falloDelModelo());
+            when(generator.generate(any())).thenReturn(
+                    ProposalGenerationResult.degradado(GenerationOutcome.DEGRADED_SPEND_CAP));
 
-            service.refine(comando(null));
-
-            verifyNoInteractions(pacing);
+            assertThat(service.refine(comando(null)).presentation())
+                    .isEqualTo(ProposalPresentation.DETERMINISTIC);
         }
     }
 }

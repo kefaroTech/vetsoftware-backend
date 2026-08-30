@@ -15,6 +15,8 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -26,6 +28,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -43,6 +48,9 @@ import tools.jackson.databind.ObjectMapper;
 public class LoginRateLimitFilter extends OncePerRequestFilter {
 
     private static final int MAX_ACCOUNT_BODY_BYTES = 16 * 1024;
+
+    /** La ventana larga. Es un dia rodante, no de medianoche a medianoche. */
+    private static final Duration UN_DIA = Duration.ofDays(1);
 
     private static final RouteLimit LOGIN_LIMIT = new RouteLimit("login-rl:", "/auth/login", 5,
             Duration.ofMinutes(1), "LOGIN_RATE_LIMITED",
@@ -133,28 +141,20 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             "Too many invitation attempts. Try again later.", List.of("token"));
 
     // El asistente comercial (propuesta generada por IA). Los cuatro endpoints son
-    // anonimos y el POST inicial es el unico de todo el backend que cuesta dinero
-    // por peticion: cada uno invoca un modelo de pago. Copiar los 60/min de otro
-    // endpoint publico serian 86.400 invocaciones de pago al dia por IP.
+    // anonimos y DOS de ellos cuestan dinero por peticion: el POST inicial y el
+    // POST de refinamiento invocan los dos un modelo de pago, con la misma reserva
+    // y el mismo coste. Copiar los 60/min de otro endpoint publico serian 86.400
+    // invocaciones de pago al dia por IP.
     //
-    // 5/h por IP Y por "email": el correo es lo unico que identifica al solicitante
-    // -no hay cuenta- y sin el bucket por cuenta una botnet reparte el gasto entre
-    // IP y el limite no filtra nada.
+    // La ventana horaria (5/h y 10/h) corta la rafaga y se elige a mano. La DIARIA
+    // -que corta el goteo, la forma barata de vaciar el presupuesto sin disparar
+    // ninguna alarma de rafaga- ya NO se elige a mano: se DERIVA del tope de gasto.
+    // El argumento entero esta en limitesDePago(...).
     //
-    // ⚠️ El plan pide ademas 20/dia por IP y 3/dia por correo, y RouteLimit no sabe
-    // expresar dos ventanas sobre la misma ruta: lo que hay aqui es la ventana
-    // horaria, que es la que corta la rafaga. El techo diario de verdad lo pone el
-    // tope de gasto de SpendGuardPort, que es fail-closed y degrada con 200.
-    private static final RouteLimit AI_PROPOSAL_LIMIT = new RouteLimit("ai-proposal-rl:",
-            "/assistant/proposal", 5, Duration.ofHours(1), "AI_PROPOSAL_RATE_LIMITED",
-            "Too many proposal requests. Try again later.", List.of("email"));
-    // Sin clave de cuerpo, y a proposito: el unico campo que identifica aqui es el
-    // token, y contarlo por bucket lo escribiria como parte de una clave de Redis.
-    // El token ya esta acotado por su propio tope de tres refinamientos.
-    private static final RouteLimit AI_PROPOSAL_REFINE_LIMIT = new RouteLimit(
-            "ai-proposal-refine-rl:", "/assistant/proposal/refine", 10, Duration.ofHours(1),
-            "AI_PROPOSAL_REFINE_RATE_LIMITED", "Too many refinement requests. Try again later.",
-            List.of());
+    // Por eso las dos rutas de pago son campos de instancia y no constantes (mas
+    // abajo, con el resto del estado del filtro): su cupo diario depende de
+    // configuracion.
+    //
     // ⛔ Un PUT anonimo, es decir una escritura publica sin sesion. La invariante
     // toda_ruta_publica_post_esta_limitada solo recorre los POST, asi que este
     // limite no lo exige ningun gate: si desaparece, nada se pone rojo. Se declara
@@ -177,15 +177,155 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
      */
     private static final Set<String> OPAQUE_FIELDS = Set.of("refreshToken", "token");
 
+    /**
+     * Llamadas de pago que consume una sesion completa del asistente: la inicial
+     * mas los tres refinamientos. Es el mismo numero que
+     * {@code ProposalReader.MAX_TURNOS_DE_MODELO}, que vive en otra rodaja y no se
+     * puede importar desde aqui; {@code LoginRateLimitFilterTest} ata los dos.
+     */
+    static final int LLAMADAS_DE_PAGO_POR_SESION = 4;
+
+    /**
+     * Cuantos origenes distintos tienen que confabularse para vaciar el presupuesto
+     * de un dia. Con 1, una sola IP se lo lleva entero -que es lo que pasaba-; con
+     * un numero muy alto, el cupo por IP cae por debajo de una sesion y el
+     * asistente deja de servir para lo que existe.
+     */
+    static final int ORIGENES_PARA_VACIAR_EL_DIA = 4;
+
+    /**
+     * Cuanto por encima del presupuesto del dia esta el cubo global de peticiones.
+     * No sustituye al tope de gasto -aquel cuenta dinero, este cuenta peticiones- y
+     * esta deliberadamente por encima de el: si mordiera antes, seria el limite
+     * efectivo y el control del dinero no llegaria a ejercerse nunca.
+     */
+    static final int FACTOR_DEL_CUBO_GLOBAL = 25;
+
+    /** El cupo diario por correo del POST inicial: un prospecto, tres intentos. */
+    static final int CUPO_DIARIO_POR_CORREO = 3;
+
+    /**
+     * &#9940; <b>El defecto del tope de gasto, escrito aqui para poder atarlo.</b>
+     * Tiene que ser el mismo que declara {@code ValkeyDailySpendGuard}; el test lo
+     * comprueba. Si los dos se separan, este filtro calibra su limite contra un
+     * presupuesto que no es el que se aplica.
+     */
+    static final String DEFECTO_TOPE_DE_GASTO_DIARIO_USD = "0.33";
+
+    /**
+     * Lo que cuesta, estimado, una invocacion de pago. Tiene que ser el mismo
+     * numero que {@code BedrockProposalGenerator.USD_ESTIMADO_POR_LLAMADA}, que
+     * vive en otra rodaja; el test lo comprueba contra la constante real.
+     */
+    static final String DEFECTO_USD_POR_LLAMADA_DE_PAGO = "0.0176";
+
+    /**
+     * &#9940; <b>La clave del cubo diario global NO lleva el prefijo de la
+     * ruta.</b> Con {@code routeLimit.keyPrefix() + "day:global"}, el cubo llamado
+     * "global" era en realidad uno por ruta: la propuesta inicial y el
+     * refinamiento, que gastan del mismo presupuesto, contaban por separado y el
+     * techo efectivo de la plataforma era el doble del declarado. El presupuesto es
+     * uno, asi que el contador tiene que ser uno.
+     */
+    static final String CLAVE_DIARIA_GLOBAL_DE_PAGO = "ai-paid-rl:day:global";
+
+    private static final Logger log = LoggerFactory.getLogger(LoginRateLimitFilter.class);
+
     private final LettuceBasedProxyManager<String> proxyManager;
     private final ObjectMapper objectMapper;
     private final AuditLogger auditLogger;
 
+    private final RouteLimit aiProposalLimit;
+
+    private final RouteLimit aiProposalRefineLimit;
+
+    /** Cuantas invocaciones de pago financia el tope de gasto del dia. */
+    private final int llamadasQueFinanciaElTope;
+
     public LoginRateLimitFilter(LettuceBasedProxyManager<String> loginRateLimitProxyManager,
-            ObjectMapper objectMapper, AuditLogger auditLogger) {
+            ObjectMapper objectMapper, AuditLogger auditLogger,
+            @Value("${vetsoftware.ai.proposal.daily-spend-cap-usd:"
+                    + DEFECTO_TOPE_DE_GASTO_DIARIO_USD + "}") BigDecimal topeDeGastoDiarioUsd,
+            @Value("${vetsoftware.ai.proposal.usd-per-paid-call:" + DEFECTO_USD_POR_LLAMADA_DE_PAGO
+                    + "}") BigDecimal usdPorLlamadaDePago) {
         this.proxyManager = loginRateLimitProxyManager;
         this.objectMapper = objectMapper;
         this.auditLogger = auditLogger;
+        this.llamadasQueFinanciaElTope = llamadasQueFinanciaElTope(topeDeGastoDiarioUsd,
+                usdPorLlamadaDePago);
+        LimitesDePago limites = limitesDePago(this.llamadasQueFinanciaElTope);
+        this.aiProposalLimit = new RouteLimit("ai-proposal-rl:", "/assistant/proposal", 5,
+                Duration.ofHours(1), "AI_PROPOSAL_RATE_LIMITED",
+                "Too many proposal requests. Try again later.", List.of("email"),
+                new DailyLimit(limites.porIpInicial(), CUPO_DIARIO_POR_CORREO, limites.global()));
+        // Sin clave de cuerpo, y a proposito: el unico campo que identifica aqui es
+        // el token, y contarlo por bucket lo escribiria como parte de una clave de
+        // Redis. El token ya esta acotado por su propio tope de tres refinamientos.
+        //
+        // ⛔ Lo que SI le faltaba es el cubo diario, y su ausencia no se veia: sin
+        // DailyLimit, RouteLimit.daily queda a null, dailyGlobal() devuelve 0 y
+        // consumirDiario cortocircuita a true. Es decir, la ruta que paga modelo
+        // exactamente igual que la inicial no contaba NADA contra el presupuesto
+        // del dia, y el codigo que lo dejaba pasar se lee como una guarda correcta.
+        this.aiProposalRefineLimit = new RouteLimit("ai-proposal-refine-rl:",
+                "/assistant/proposal/refine", 10, Duration.ofHours(1),
+                "AI_PROPOSAL_REFINE_RATE_LIMITED", "Too many refinement requests. Try again later.",
+                List.of(), new DailyLimit(limites.porIpRefinamiento(), 0, limites.global()));
+    }
+
+    /**
+     * &#9940; <b>El limite de peticiones se DERIVA del limite de dinero, y esa es
+     * toda la correccion.</b> Los dos numeros se elegian por separado y quedaron
+     * calibrados al reves: 0,0176 USD por llamada contra un tope de 0,33 USD son
+     * <b>dieciocho</b> invocaciones al dia para toda la plataforma, y el cupo por
+     * IP declaraba <b>veinte</b>. Una sola IP, sin agotar su propio limite, vaciaba
+     * el presupuesto de todos los prospectos del dia; y los dos numeros se leian
+     * bien por separado, que es lo que hacia invisible el defecto.
+     *
+     * <p>
+     * <b>Lo que se reparte son llamadas de pago, no peticiones.</b> Las dos rutas
+     * que invocan al modelo -la propuesta inicial y el refinamiento- salen del
+     * mismo presupuesto, asi que sus cupos se reparten juntos y la suma de los dos
+     * <b>nunca supera lo que el tope financia</b>. Esa es la invariante y es lo que
+     * comprueba el test: no "el numero es 20" -eso volveria a fijar el sintoma-
+     * sino la relacion entre los dos.
+     *
+     * <p>
+     * <b>El suelo de una sesion.</b> Un tope tan bajo que no quepa ni una sesion
+     * completa por origen es una configuracion de juguete: quien corta ahi es el
+     * guardian de gasto, que es fail-closed, no este filtro. Se deja el minimo util
+     * y se avisa, en vez de dejar cupos a cero — que en {@link #consumirDiario}
+     * significan «sin limite» y serian justo lo contrario de lo que se quiere.
+     */
+    private LimitesDePago limitesDePago(int financiadas) {
+        int porIp = financiadas / ORIGENES_PARA_VACIAR_EL_DIA;
+        if (porIp < LLAMADAS_DE_PAGO_POR_SESION) {
+            log.warn("El tope de gasto diario del asistente solo financia {} invocaciones, menos"
+                    + " de una sesion para cada uno de los {} origenes que este limite supone."
+                    + " Se deja el minimo de {} llamadas por IP; con este tope quien corta de"
+                    + " verdad es el guardian de gasto, no el limite de peticiones", financiadas,
+                    ORIGENES_PARA_VACIAR_EL_DIA, LLAMADAS_DE_PAGO_POR_SESION);
+            porIp = LLAMADAS_DE_PAGO_POR_SESION;
+        }
+        int porIpInicial = porIp / LLAMADAS_DE_PAGO_POR_SESION;
+        // El global se calcula sobre el MAYOR de los dos, y no sobre `financiadas` a
+        // secas, por el mismo motivo que el suelo de arriba: con un tope de cero
+        // -clave mal escrita, variable de entorno vacia- `financiadas * 25` seria
+        // cero, y cero en consumirDiario significa «sin limite». El cubo que existe
+        // para ser el techo de la plataforma se apagaria justo cuando no hay
+        // presupuesto, que es cuando mas falta hace.
+        return new LimitesDePago(porIpInicial, porIp - porIpInicial,
+                Math.max(financiadas, porIp) * FACTOR_DEL_CUBO_GLOBAL);
+    }
+
+    private static int llamadasQueFinanciaElTope(BigDecimal tope, BigDecimal porLlamada) {
+        if (tope == null || porLlamada == null || porLlamada.signum() <= 0 || tope.signum() <= 0)
+            return 0;
+        return tope.divide(porLlamada, 0, RoundingMode.DOWN).intValue();
+    }
+
+    /** El reparto del presupuesto del dia entre las dos rutas que pagan. */
+    private record LimitesDePago(int porIpInicial, int porIpRefinamiento, int global) {
     }
 
     @Override
@@ -203,19 +343,29 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         }
 
         if (!tryConsume(routeLimit, ipKey(request, routeLimit))) {
-            writeRateLimited(response, routeLimit);
+            writeRateLimited(response, routeLimit, routeLimit.window());
+            return;
+        }
+        // La ventana diaria por IP va inmediatamente detras de la horaria: las dos
+        // cuentan la misma peticion y ninguna sustituye a la otra.
+        if (!consumirDiario(routeLimit, routeLimit.dailyPerIp(), ipKey(request, routeLimit))) {
+            writeRateLimited(response, routeLimit, UN_DIA);
             return;
         }
 
         HttpServletRequest requestForChain = request;
         for (String accountKey : pathAccountKeys(request, routeLimit)) {
             if (!tryConsume(routeLimit, accountKey)) {
-                writeRateLimited(response, routeLimit);
+                writeRateLimited(response, routeLimit, routeLimit.window());
                 return;
             }
         }
 
-        if (!routeLimit.accountFields().isEmpty()) {
+        // Identificable = el cuerpo trae los campos con los que esta ruta cuenta por
+        // cuenta. Una ruta que no declara ninguno lo es por vacuidad. Ver
+        // cobraPresupuestoDiario.
+        boolean identificable = true;
+        if (leeElCuerpo(routeLimit)) {
             byte[] body = request.getInputStream().readNBytes(MAX_ACCOUNT_BODY_BYTES + 1);
             if (body.length > MAX_ACCOUNT_BODY_BYTES) {
                 writeProblem(response, HttpStatus.PAYLOAD_TOO_LARGE, "REQUEST_BODY_TOO_LARGE",
@@ -224,18 +374,109 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             }
 
             requestForChain = new CachedBodyRequest(request, body);
-            for (String accountKey : bodyAccountKeys(body, routeLimit)) {
+            List<String> accountKeys = bodyAccountKeys(body, routeLimit);
+            identificable = routeLimit.accountFields().isEmpty() || !accountKeys.isEmpty();
+            for (String accountKey : accountKeys) {
                 if (!tryConsume(routeLimit, accountKey)) {
-                    writeRateLimited(response, routeLimit);
+                    writeRateLimited(response, routeLimit, routeLimit.window());
+                    return;
+                }
+                if (!consumirDiario(routeLimit, routeLimit.dailyPerAccount(), accountKey)) {
+                    writeRateLimited(response, routeLimit, UN_DIA);
                     return;
                 }
             }
         }
 
+        // El cubo global va EL ULTIMO, y ese orden es la decision: solo consume
+        // quien ya paso sus propios limites, asi que un abusador no puede agotar el
+        // cupo de la plataforma con peticiones que de todas formas iban a rechazarse.
+        boolean cobraPresupuesto = cobraPresupuestoDiario(routeLimit, identificable);
+        if (cobraPresupuesto
+                && !tryConsume(CLAVE_DIARIA_GLOBAL_DE_PAGO, routeLimit.dailyGlobal(), UN_DIA)) {
+            writeRateLimited(response, routeLimit, UN_DIA);
+            return;
+        }
+
         chain.doFilter(requestForChain, response);
+        // Llegar aqui con cobraPresupuesto significa que el token se consumio: la
+        // rama de arriba se lleva el caso contrario.
+        if (cobraPresupuesto)
+            devolverPresupuestoSiNoPasoLaValidacion(routeLimit, response);
     }
 
-    private static RouteLimit routeLimit(HttpServletRequest request) {
+    /**
+     * &#9940; <b>Tambien se lee el cuerpo de la ruta que no cuenta por cuenta.</b>
+     * La lectura acotada a {@value #MAX_ACCOUNT_BODY_BYTES} bytes era un efecto
+     * colateral de necesitar el JSON para sacar la clave de cuenta, asi que
+     * {@code PUT /assistant/proposal/lines} -una escritura publica y anonima, sin
+     * ningun {@code accountField}- se quedaba <b>sin ninguna cota de tamano</b>: el
+     * unico techo era el del contenedor. Aqui se le pone la misma red que a las
+     * demas.
+     *
+     * <p>
+     * El webhook de la DIAN queda fuera a proposito: su cuerpo lo escribe un
+     * tercero de confianza y no hay motivo para creer que cabe en 16 KB. Cortarlo
+     * convertiria un documento grande en un 413 en produccion, que es exactamente
+     * el tipo de regresion que se paga a las tres de la manana.
+     */
+    private static boolean leeElCuerpo(RouteLimit routeLimit) {
+        return !routeLimit.accountFields().isEmpty() || routeLimit == AI_PROPOSAL_LINES_LIMIT;
+    }
+
+    /**
+     * Si esta peticion tiene que pagar del presupuesto del dia de toda la
+     * plataforma.
+     *
+     * <p>
+     * &#9940; <b>Una peticion que no puede pasar {@code @Valid} no gasta
+     * presupuesto.</b> Este filtro corre <em>antes</em> que el binder, asi que un
+     * {@code POST /assistant/proposal} sin {@code email} consumia el cubo global y
+     * solo despues se rechazaba con un 400: peticiones invalidas, gratis para quien
+     * las manda, quemando el cupo de la plataforma. Si la ruta declara campos de
+     * cuenta y el cuerpo no trae ninguno, la peticion no es identificable y no
+     * puede ser valida, asi que ni se le cobra.
+     */
+    private static boolean cobraPresupuestoDiario(RouteLimit routeLimit, boolean identificable) {
+        return routeLimit.dailyGlobal() > 0 && identificable;
+    }
+
+    /**
+     * &#9940; <b>La red que cubre lo que la guarda de identificabilidad no ve.</b>
+     * Aquella solo sabe de los campos que la ruta cuenta por cuenta; el
+     * refinamiento no declara ninguno a proposito -su unico identificador es el
+     * token, y meterlo en una clave de Redis seria publicarlo-, asi que un cuerpo
+     * con el token mal formado o el texto demasiado corto pasaba igual y se cobraba
+     * igual. Un 400 aguas abajo significa que el cuerpo ni siquiera llego al caso
+     * de uso: no hubo llamada al modelo, no hubo gasto, y el token vuelve al cubo.
+     *
+     * <p>
+     * <b>Solo 400.</b> Un 404, un 409 o un 500 son peticiones que si llegaron a
+     * ejecutarse -y en las rutas de pago, posiblemente despues de invocar al
+     * modelo-, asi que devolver ahi el token seria regalar el gasto que si ocurrio.
+     *
+     * <p>
+     * <b>Y nunca lanza.</b> Un fallo de Valkey devolviendo un token no puede
+     * convertir el 400 del usuario en un 500.
+     */
+    private void devolverPresupuestoSiNoPasoLaValidacion(RouteLimit routeLimit,
+            HttpServletResponse response) {
+        if (response.getStatus() != HttpStatus.BAD_REQUEST.value())
+            return;
+        try {
+            proxyManager.builder()
+                    .build(CLAVE_DIARIA_GLOBAL_DE_PAGO,
+                            () -> bucketConfiguration(routeLimit.dailyGlobal(), UN_DIA))
+                    .addTokens(1);
+        } catch (RuntimeException fallo) {
+            log.warn(
+                    "No se pudo devolver al presupuesto diario el token de una peticion que no"
+                            + " paso la validacion; el cupo del dia queda mas bajo de lo real: {}",
+                    fallo.getMessage());
+        }
+    }
+
+    private RouteLimit routeLimit(HttpServletRequest request) {
         String uri = request.getServletPath();
         // Las dos ramas que NO son POST, y van antes del filtro por metodo porque
         // ese filtro es justo lo que las dejaba fuera. El PUT del asistente es una
@@ -290,24 +531,69 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         // equals en los dos: /assistant/proposal es el prefijo textual de /refine y
         // de /lines. Con startsWith, el refinamiento consumiria el cupo de 5/h que
         // protege la invocacion inicial de pago, y lo agotaria desde fuera.
-        if (uri.equals(AI_PROPOSAL_REFINE_LIMIT.path()))
-            return AI_PROPOSAL_REFINE_LIMIT;
-        if (uri.equals(AI_PROPOSAL_LIMIT.path()))
-            return AI_PROPOSAL_LIMIT;
+        if (uri.equals(aiProposalRefineLimit.path()))
+            return aiProposalRefineLimit;
+        if (uri.equals(aiProposalLimit.path()))
+            return aiProposalLimit;
         return null;
     }
 
-    private static BucketConfiguration bucketConfiguration(RouteLimit routeLimit) {
+    /**
+     * Solo para {@code LoginRateLimitFilterTest}: la invariante que hay que
+     * comprobar no es "el numero es N" sino que la suma de lo que las rutas de pago
+     * permiten a una IP no supere lo que el tope de gasto financia.
+     */
+    int cupoDiarioPorIpDeLasRutasDePago() {
+        return aiProposalLimit.dailyPerIp() + aiProposalRefineLimit.dailyPerIp();
+    }
+
+    int llamadasDePagoQueFinanciaElTope() {
+        return llamadasQueFinanciaElTope;
+    }
+
+    /**
+     * Solo para el test. Las dos rutas de pago comparten cubo, asi que tienen que
+     * declarar el mismo numero; el metodo lo comprueba en vez de devolver el de una
+     * de ellas y confiar.
+     */
+    int cupoDiarioGlobal() {
+        if (aiProposalLimit.dailyGlobal() != aiProposalRefineLimit.dailyGlobal())
+            throw new IllegalStateException("las dos rutas de pago comparten cubo global y tienen"
+                    + " que declarar el mismo cupo; bucket4j configuraria el cubo con el de la"
+                    + " primera peticion que llegara y el otro dejaria de existir en silencio");
+        return aiProposalLimit.dailyGlobal();
+    }
+
+    private static BucketConfiguration bucketConfiguration(int maxAttempts, Duration window) {
         return BucketConfiguration.builder()
-                .addLimit(limit -> limit.capacity(routeLimit.maxAttempts())
-                        .refillIntervally(routeLimit.maxAttempts(), routeLimit.window()))
+                .addLimit(
+                        limit -> limit.capacity(maxAttempts).refillIntervally(maxAttempts, window))
                 .build();
     }
 
     private boolean tryConsume(RouteLimit routeLimit, String key) {
+        return tryConsume(key, routeLimit.maxAttempts(), routeLimit.window());
+    }
+
+    private boolean tryConsume(String key, int maxAttempts, Duration window) {
         BucketProxy bucket = proxyManager.builder().build(key,
-                () -> bucketConfiguration(routeLimit));
+                () -> bucketConfiguration(maxAttempts, window));
         return bucket.tryConsume(1);
+    }
+
+    /**
+     * Un cubo de ventana diaria, o via libre si esta ruta no declara ninguna.
+     *
+     * <p>
+     * <b>La clave lleva su propio prefijo {@code day:}</b> y por tanto es distinta
+     * de la del cubo horario. Reutilizarla haria que las dos ventanas compartieran
+     * cubo: la que se configurara primero ganaria y la otra dejaria de existir, en
+     * silencio y de forma dependiente del orden de llegada de las peticiones.
+     */
+    private boolean consumirDiario(RouteLimit routeLimit, int cupo, String claveBase) {
+        if (cupo <= 0)
+            return true;
+        return tryConsume(routeLimit.keyPrefix() + "day:" + claveBase, cupo, UN_DIA);
     }
 
     /**
@@ -377,10 +663,16 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         }
     }
 
-    private void writeRateLimited(HttpServletResponse response, RouteLimit routeLimit)
-            throws IOException {
+    /**
+     * <b>El {@code Retry-After} lleva la ventana QUE RECHAZO</b>, no siempre la
+     * horaria. Un rechazo de la ventana diaria que anunciara una hora invitaria a
+     * reintentar cincuenta veces y a agotar el cubo horario encima del diario,
+     * castigando justo al usuario legitimo que hace caso a la cabecera.
+     */
+    private void writeRateLimited(HttpServletResponse response, RouteLimit routeLimit,
+            Duration ventana) throws IOException {
         auditLogger.rateLimited(routeLimit.code());
-        response.setHeader("Retry-After", String.valueOf(routeLimit.window().toSeconds()));
+        response.setHeader("Retry-After", String.valueOf(ventana.toSeconds()));
         writeProblem(response, HttpStatus.TOO_MANY_REQUESTS, routeLimit.code(),
                 routeLimit.detail());
     }
@@ -394,8 +686,77 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
                         status.value(), "code", code, "detail", detail));
     }
 
+    /**
+     * &#9940; <b>La segunda ventana de una ruta.</b> {@link RouteLimit} nacio con
+     * una sola -una capacidad y un periodo- y eso basta mientras el unico riesgo
+     * sea la rafaga. No basta cuando cada peticion cuesta dinero: ahi el goteo
+     * paciente es tan caro como la rafaga y ninguna ventana horaria lo ve.
+     *
+     * <p>
+     * Los tres cupos son de poblaciones distintas y por eso no se pueden fundir en
+     * uno: <b>{@code perIp}</b> acota a un origen, <b>{@code perAccount}</b> acota
+     * al identificador del cuerpo y <b>{@code global}</b> es el techo de toda la
+     * plataforma para el caso que los otros dos no pueden ver: muchos origenes
+     * distintos, cada uno dentro de su cupo.
+     *
+     * <p>
+     * &#9940; <b>{@code perAccount} NO detiene una botnet, y este javadoc afirmaba
+     * que si.</b> La clave sale de una cadena del cuerpo <em>que elige quien
+     * llama</em> y que nadie ha verificado: cambiar un caracter del correo da un
+     * cubo nuevo, y omitir el campo no consumia ningun cubo de cuenta en absoluto.
+     * Contra un atacante no vale nada. Lo que si hace, y por lo que se conserva, es
+     * <b>frenar el doble clic y el reintento honrado</b>: el mismo prospecto
+     * pulsando tres veces «generar» comparte cubo consigo mismo, que es un caso
+     * real y frecuente. Quien de verdad tiene que parar el abuso distribuido es
+     * {@code global} —el presupuesto del dia—, no esto.
+     *
+     * <p>
+     * <b>Cero desactiva el cupo</b>, que es lo que declara toda ruta que no pasa un
+     * {@code DailyLimit}: una ventana diaria sobre {@code /auth/login} no protege
+     * de nada que la horaria no proteja ya, y multiplicaria por dos las claves en
+     * Valkey.
+     *
+     * <p>
+     * <b>El global ya no es un literal</b>: sale de multiplicar por
+     * {@link #FACTOR_DEL_CUBO_GLOBAL} lo que el tope de gasto financia, asi que se
+     * mueve solo cuando se mueve el presupuesto. Empieza a morder cuando muchos
+     * origenes distintos agotan su cuota el mismo dia, que es exactamente la forma
+     * de una botnet y exactamente lo que los otros dos cubos no distinguen de un
+     * buen dia de trafico. No sustituye al tope de gasto -aquel cuenta dinero, este
+     * cuenta peticiones- y esta deliberadamente por encima de el: si mordiera
+     * antes, seria el limite efectivo y el control del dinero no llegaria a
+     * ejercerse nunca.
+     *
+     * <p>
+     * <b>Su cubo lo comparten TODAS las rutas que pagan</b>, con una unica clave
+     * fuera del prefijo de ruta ({@link #CLAVE_DIARIA_GLOBAL_DE_PAGO}). Por eso las
+     * dos tienen que declarar el mismo {@code global}: si declararan numeros
+     * distintos, bucket4j configuraria el cubo con el de la primera peticion que
+     * llegara y el otro dejaria de existir en silencio.
+     */
+    private record DailyLimit(int perIp, int perAccount, int global) {
+    }
+
     private record RouteLimit(String keyPrefix, String path, int maxAttempts, Duration window,
-            String code, String detail, List<String> accountFields) {
+            String code, String detail, List<String> accountFields, DailyLimit daily) {
+
+        /** Las rutas que solo necesitan la ventana corta, que son casi todas. */
+        RouteLimit(String keyPrefix, String path, int maxAttempts, Duration window, String code,
+                String detail, List<String> accountFields) {
+            this(keyPrefix, path, maxAttempts, window, code, detail, accountFields, null);
+        }
+
+        int dailyPerIp() {
+            return daily == null ? 0 : daily.perIp();
+        }
+
+        int dailyPerAccount() {
+            return daily == null ? 0 : daily.perAccount();
+        }
+
+        int dailyGlobal() {
+            return daily == null ? 0 : daily.global();
+        }
     }
 
     private static final class CachedBodyRequest extends HttpServletRequestWrapper {

@@ -8,6 +8,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.vetsoftware.app.aiproposal.application.usecase.ProposalReader;
+import com.vetsoftware.app.aiproposal.infrastructure.ai.BedrockProposalGenerator;
+import com.vetsoftware.app.aiproposal.infrastructure.ai.ValkeyDailySpendGuard;
 import com.vetsoftware.app.auth.infrastructure.config.PublicRoutes;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import io.github.bucket4j.distributed.BucketProxy;
@@ -16,6 +19,7 @@ import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
@@ -31,7 +35,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import tools.jackson.databind.ObjectMapper;
@@ -42,21 +45,56 @@ import tools.jackson.databind.ObjectMapper;
  * se puede afirmar sin una base real.
  *
  * <p>
- * La prueba que cierra BE-15 es {@code toda_ruta_publica_post_esta_limitada}:
+ * La prueba que cierra BE-15 es {@code toda_ruta_publica_esta_limitada}:
  * recorre {@link PublicRoutes#BUSINESS} en vez de una lista copiada a mano, así
  * que <b>una ruta pública nueva sin límite rompe este test</b>. Es la
  * diferencia entre arreglar los tres huecos de hoy y que no vuelvan a aparecer.
+ *
+ * <p>
+ * ⛔ <b>Y recorre TODOS los métodos, no solo los POST.</b> Con el filtro por
+ * {@code HttpMethod.POST} que tenía antes, el invariante no veía el
+ * {@code PUT /assistant/proposal/lines} —una escritura pública y anónima— ni el
+ * {@code GET /assistant/proposal} —que sirve la propuesta entera a quien tenga
+ * el token—: sus dos ramas de {@code routeLimit()} se podían borrar y el build
+ * seguía verde. Este fichero no contenía la cadena «assistant» ni una vez.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("LoginRateLimitFilter — qué rutas entran al limitador")
 class LoginRateLimitFilterTest {
 
     /**
-     * Rutas públicas POST que <b>no</b> necesitan límite propio, con el motivo. Es
-     * una lista de excepciones explícitas: lo que no esté aquí tiene que estar
-     * limitado.
+     * Rutas públicas que <b>no</b> necesitan límite propio, como
+     * <code>"MÉTODO /ruta"</code> y con el motivo escrito. Es una lista de
+     * excepciones explícitas: lo que no esté aquí tiene que estar limitado.
+     *
+     * <p>
+     * ⛔ <b>Antes esta lista estaba vacía porque la invariante solo recorría los
+     * POST</b>, y eso dejaba fuera de todo gate las dos rutas públicas que no lo
+     * son: el <code>PUT /assistant/proposal/lines</code> —una escritura anónima— y
+     * el <code>GET /assistant/proposal</code> —que sirve la propuesta entera a
+     * quien tenga el token—. Sus dos ramas del filtro se podían borrar y el build
+     * seguía verde. Ahora la invariante recorre todos los métodos, así que las
+     * lecturas de catálogo que legítimamente no necesitan cupo tienen que
+     * declararse aquí una por una.
+     *
+     * <p>
+     * Las trece primeras son <b>catálogos públicos de solo lectura</b>: no mandan
+     * correo, no consumen ningún token de un solo uso, no cuestan dinero por
+     * petición y sirven contenido que es el mismo para todo el mundo. Las tres
+     * últimas son las validaciones <code>GET</code> de un token: no lo consumen
+     * —solo dicen si sigue vivo— y el POST que sí lo consume ya tiene su propio
+     * cupo.
      */
-    private static final Set<String> POST_SIN_LIMITE_JUSTIFICADO = Set.of();
+    private static final Set<String> RUTAS_SIN_LIMITE_JUSTIFICADO = Set.of(
+            // Catálogos públicos de solo lectura: mismo contenido para todos.
+            "GET /countries", "GET /countries/x/states", "GET /states/x/cities", "GET /species",
+            "GET /species/x/breeds", "GET /animal-colors", "GET /consultation-types",
+            "GET /modules", "GET /sub-modules", "GET /spa-types", "GET /plans", "GET /catalog",
+            "GET /legal-documents/x/current",
+            // Validaciones de token que NO lo consumen; el POST que sí lo hace ya está
+            // limitado.
+            "GET /auth/reset-password/validate", "GET /platform/access-request/validate",
+            "GET /platform/invitation/validate");
 
     @Mock
     private LettuceBasedProxyManager<String> proxyManager;
@@ -67,7 +105,13 @@ class LoginRateLimitFilterTest {
 
     @BeforeEach
     void construirFiltro() {
-        filter = new LoginRateLimitFilter(proxyManager, new ObjectMapper(), auditLogger);
+        filter = filtroConTope(LoginRateLimitFilter.DEFECTO_TOPE_DE_GASTO_DIARIO_USD);
+    }
+
+    private LoginRateLimitFilter filtroConTope(String topeUsd) {
+        return new LoginRateLimitFilter(proxyManager, new ObjectMapper(), auditLogger,
+                new BigDecimal(topeUsd),
+                new BigDecimal(LoginRateLimitFilter.DEFECTO_USD_POR_LLAMADA_DE_PAGO));
     }
 
     @Nested
@@ -85,17 +129,63 @@ class LoginRateLimitFilterTest {
             assertThat(filter.shouldNotFilter(request("POST", path))).isFalse();
         }
 
+        /**
+         * ⛔ <b>Todos los métodos, no solo POST.</b> Filtrar por {@code HttpMethod.POST}
+         * hacía que el invariante no viera ni una sola ruta del asistente distinta del
+         * POST: el {@code PUT} que reescribe el carrito y el {@code GET} que sirve la
+         * propuesta entera quedaban sin gate, y este fichero no contenía la cadena
+         * «assistant» ni una vez. Con esto, borrar cualquiera de las dos ramas de
+         * {@code routeLimit()} pone el test en rojo.
+         */
         @Test
-        @DisplayName("toda ruta pública POST está limitada: una nueva sin límite rompe esta prueba")
-        void toda_ruta_publica_post_esta_limitada() {
-            List<String> sinLimite = PublicRoutes.BUSINESS.stream()
-                    .filter(route -> HttpMethod.POST.equals(route.method()))
-                    .map(PublicRoutes.Route::pattern).map(LoginRateLimitFilterTest::rutaConcreta)
-                    .filter(path -> !POST_SIN_LIMITE_JUSTIFICADO.contains(path))
-                    .filter(path -> filter.shouldNotFilter(request("POST", path))).toList();
+        @DisplayName("toda ruta pública está limitada, sea cual sea su método: una nueva sin"
+                + " límite rompe esta prueba")
+        void toda_ruta_publica_esta_limitada() {
+            List<String> sinLimite = rutasPublicas()
+                    .filter(clave -> !RUTAS_SIN_LIMITE_JUSTIFICADO.contains(clave))
+                    .filter(LoginRateLimitFilterTest.this::noPasaPorElLimitador).toList();
 
-            assertThat(sinLimite).as("rutas públicas POST sin rate limit").isEmpty();
+            assertThat(sinLimite).as("rutas públicas sin rate limit").isEmpty();
         }
+
+        /**
+         * La gemela anti-podredumbre, con la misma forma que las listas de exenciones
+         * de ArchUnit: una excepción que ya no corresponde a ninguna ruta pública —o
+         * que corresponde a una que entretanto SÍ se limitó— deja el repositorio
+         * afirmando por escrito algo falso, y enseña a no leer la lista.
+         */
+        @Test
+        @DisplayName("ninguna excepción está podrida: todas apuntan a una ruta pública que sigue"
+                + " sin límite")
+        void ninguna_excepcion_esta_podrida() {
+            Set<String> publicas = rutasPublicas().collect(java.util.stream.Collectors.toSet());
+
+            assertThat(RUTAS_SIN_LIMITE_JUSTIFICADO).as("excepciones que ya no son rutas públicas")
+                    .isSubsetOf(publicas);
+            assertThat(RUTAS_SIN_LIMITE_JUSTIFICADO)
+                    .as("excepciones que hoy SÍ están limitadas y sobran")
+                    .allMatch(LoginRateLimitFilterTest.this::noPasaPorElLimitador);
+        }
+
+        @Test
+        @DisplayName("las dos rutas del asistente que no son POST sí pasan por el limitador")
+        void las_rutas_no_post_del_asistente_estan_limitadas() {
+            assertThat(filter.shouldNotFilter(request("PUT", "/assistant/proposal/lines")))
+                    .isFalse();
+            assertThat(filter.shouldNotFilter(request("GET", "/assistant/proposal"))).isFalse();
+        }
+    }
+
+    /** Las rutas públicas con método declarado, como {@code "MÉTODO /ruta"}. */
+    private static java.util.stream.Stream<String> rutasPublicas() {
+        return PublicRoutes.BUSINESS.stream().filter(route -> route.method() != null)
+                .map(route -> route.method().name() + " " + rutaConcreta(route.pattern()));
+    }
+
+    private boolean noPasaPorElLimitador(String metodoYRuta) {
+        int espacio = metodoYRuta.indexOf(' ');
+        return filter.shouldNotFilter(
+                request(metodoYRuta.substring(0, espacio), metodoYRuta.substring(espacio + 1)));
     }
 
     @Nested
@@ -497,6 +587,158 @@ class LoginRateLimitFilterTest {
             assertThat(clavesDeCuenta).hasSize(2);
         }
 
+        /**
+         * ⛔ <b>El refinamiento paga modelo igual que la propuesta inicial y no contaba
+         * nada.</b> Su {@code RouteLimit} se construía con el constructor de siete
+         * argumentos, así que {@code daily} quedaba a {@code null},
+         * {@code dailyPerIp()} devolvía 0 y {@code consumirDiario} cortocircuitaba a
+         * {@code true}. El código que lo dejaba pasar se lee como una guarda correcta,
+         * que es lo que lo hacía invisible.
+         */
+        @Test
+        @DisplayName("el refinamiento tiene cupo diario por IP: agotarlo es 429 aunque la ventana"
+                + " horaria tenga margen")
+        void el_refinamiento_tiene_cupo_diario() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true, false);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request("POST", "/assistant/proposal/refine"), response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(429);
+            assertThat(response.getHeader("Retry-After"))
+                    .as("la ventana que se agotó es la diaria, no la horaria")
+                    .isEqualTo(String.valueOf(java.time.Duration.ofDays(1).toSeconds()));
+            verify(auditLogger).rateLimited("AI_PROPOSAL_REFINE_RATE_LIMITED");
+            verifyNoInteractions(chain);
+        }
+
+        /**
+         * ⛔ <b>El cubo «global» no era global.</b> Su clave se construía como
+         * {@code routeLimit.keyPrefix() + "day:" + "global"}, así que había uno por
+         * ruta: las dos que gastan del mismo presupuesto contaban por separado y el
+         * techo efectivo de la plataforma era el doble del declarado.
+         */
+        @Test
+        @DisplayName("las dos rutas que pagan comparten un único contador diario, fuera del"
+                + " prefijo de su ruta")
+        void las_dos_rutas_que_pagan_comparten_el_contador() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            ArgumentCaptor<String> keys = ArgumentCaptor.forClass(String.class);
+
+            filter.doFilterInternal(
+                    requestConCuerpo("POST", "/assistant/proposal", "{\"email\":\"a@b.com\"}"),
+                    new MockHttpServletResponse(), chain);
+            List<String> deLaInicial = clavesConsumidas(keys);
+
+            filter.doFilterInternal(request("POST", "/assistant/proposal/refine"),
+                    new MockHttpServletResponse(), chain);
+            List<String> deLasDos = clavesConsumidas(keys);
+
+            assertThat(deLaInicial).contains(LoginRateLimitFilter.CLAVE_DIARIA_GLOBAL_DE_PAGO);
+            assertThat(deLasDos).contains(LoginRateLimitFilter.CLAVE_DIARIA_GLOBAL_DE_PAGO);
+            assertThat(deLasDos).as("ninguna clave del presupuesto lleva prefijo de ruta")
+                    .noneMatch(clave -> clave.endsWith("day:global")
+                            && !clave.equals(LoginRateLimitFilter.CLAVE_DIARIA_GLOBAL_DE_PAGO));
+        }
+
+        /**
+         * ⛔ <b>Lo que no puede pasar {@code @Valid} no gasta presupuesto.</b> El filtro
+         * corre antes que el binder: un cuerpo sin {@code email} —campo
+         * {@code @NotBlank @Email}— consumía el cubo de la plataforma y solo después se
+         * rechazaba con un 400. Peticiones inválidas, gratis para quien las manda,
+         * quemando el cupo de todos.
+         */
+        @Test
+        @DisplayName("una petición sin el campo obligatorio no toca el presupuesto de la"
+                + " plataforma")
+        void una_peticion_sin_campo_obligatorio_no_toca_el_presupuesto() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            ArgumentCaptor<String> keys = ArgumentCaptor.forClass(String.class);
+
+            filter.doFilterInternal(requestConCuerpo("POST", "/assistant/proposal", "{}"),
+                    new MockHttpServletResponse(), chain);
+
+            assertThat(clavesConsumidas(keys))
+                    .doesNotContain(LoginRateLimitFilter.CLAVE_DIARIA_GLOBAL_DE_PAGO);
+        }
+
+        @Test
+        @DisplayName("y con el campo obligatorio presente sí lo toca: la guarda no rechaza de más")
+        void con_el_campo_obligatorio_si_toca_el_presupuesto() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            ArgumentCaptor<String> keys = ArgumentCaptor.forClass(String.class);
+
+            filter.doFilterInternal(
+                    requestConCuerpo("POST", "/assistant/proposal", "{\"email\":\"a@b.com\"}"),
+                    new MockHttpServletResponse(), chain);
+
+            assertThat(clavesConsumidas(keys))
+                    .contains(LoginRateLimitFilter.CLAVE_DIARIA_GLOBAL_DE_PAGO);
+        }
+
+        /**
+         * La red que cubre lo que la guarda anterior no ve: el refinamiento no declara
+         * campos de cuenta a propósito, así que un cuerpo inválido pasaba y se cobraba
+         * igual. Un 400 aguas abajo significa que nunca llegó al caso de uso.
+         */
+        @Test
+        @DisplayName("un 400 aguas abajo devuelve el token al presupuesto: no hubo llamada al"
+                + " modelo que pagar")
+        void un_400_devuelve_el_token_al_presupuesto() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            respondeConEstado(400);
+
+            filter.doFilterInternal(request("POST", "/assistant/proposal/refine"),
+                    new MockHttpServletResponse(), chain);
+
+            verify(bucket).addTokens(1);
+        }
+
+        @Test
+        @DisplayName("un 500 NO devuelve el token: ahí la llamada al modelo pudo ocurrir")
+        void un_500_no_devuelve_el_token() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            respondeConEstado(500);
+
+            filter.doFilterInternal(request("POST", "/assistant/proposal/refine"),
+                    new MockHttpServletResponse(), chain);
+
+            verify(bucket, org.mockito.Mockito.never()).addTokens(1);
+        }
+
+        /**
+         * ⛔ <b>El PUT anónimo no tenía ninguna cota de tamaño.</b> La lectura acotada a
+         * 16 KB era un efecto colateral de necesitar el JSON para sacar la clave de
+         * cuenta, y esta ruta no declara ninguna, así que el único techo era el del
+         * contenedor. Cada código del cuerpo es una fila de {@code ai_proposal_lines}.
+         */
+        @Test
+        @DisplayName("el PUT de líneas también tiene cota de cuerpo: 16 KB y un byte es 413")
+        void el_put_de_lineas_tiene_cota_de_cuerpo() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(true);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(
+                    requestConCuerpo("PUT", "/assistant/proposal/lines", "a".repeat(16 * 1024 + 1)),
+                    response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(413);
+            verifyNoInteractions(chain);
+        }
+
+        private List<String> clavesConsumidas(ArgumentCaptor<String> keys) {
+            verify(remoteBucketBuilder, org.mockito.Mockito.atLeastOnce()).build(keys.capture(),
+                    org.mockito.ArgumentMatchers.<java.util.function.Supplier<io.github.bucket4j.BucketConfiguration>>any());
+            return keys.getAllValues();
+        }
+
+        private void respondeConEstado(int estado) throws Exception {
+            org.mockito.Mockito.doAnswer(invocacion -> {
+                ((MockHttpServletResponse) invocacion.getArgument(1)).setStatus(estado);
+                return null;
+            }).when(chain).doFilter(any(), any());
+        }
+
         @Test
         @DisplayName("el flujo cacheado se puede leer byte a byte y sabe si aún no ha terminado")
         void el_flujo_cacheado_se_lee_byte_a_byte_y_sabe_si_no_ha_terminado() throws Exception {
@@ -515,6 +757,88 @@ class LoginRateLimitFilterTest {
 
             assertThat(stream.isFinished()).isFalse();
             assertThat(stream.read()).isEqualTo((int) cuerpo.charAt(0));
+        }
+    }
+
+    /**
+     * ⛔ <b>La invariante que la auditoría pidió, y no es «el número es 20».</b> Los
+     * dos límites del asistente —el de dinero y el de peticiones— se elegían por
+     * separado y quedaron calibrados al revés: 0,0176 USD por llamada contra un
+     * tope de 0,33 USD son <b>dieciocho</b> invocaciones al día para toda la
+     * plataforma, y el cupo por IP declaraba <b>veinte</b>. Cada número se leía
+     * bien por su cuenta; lo que estaba mal era la relación entre los dos, y ningún
+     * test que fijara un número la habría visto.
+     */
+    @Nested
+    @DisplayName("El límite por IP se deriva del límite de dinero")
+    class ElLimitePorIpSeDerivaDelDinero {
+
+        @ParameterizedTest(name = "tope {0} USD")
+        @ValueSource(strings = {"0.33", "0.50", "1.00", "2.50", "5.00", "10.00", "50.00", "100.00"})
+        @DisplayName("lo que una IP puede gastar en las dos rutas de pago nunca supera lo que el"
+                + " tope financia")
+        void el_cupo_por_ip_nunca_supera_lo_que_el_tope_financia(String tope) {
+            LoginRateLimitFilter conTope = filtroConTope(tope);
+
+            assertThat(conTope.cupoDiarioPorIpDeLasRutasDePago())
+                    .as("llamadas de pago que una IP puede consumir en un día")
+                    .isLessThanOrEqualTo(conTope.llamadasDePagoQueFinanciaElTope());
+        }
+
+        /**
+         * La otra mitad de «si alguien cambia uno de los dos, algo lo note»: con un
+         * literal, el cupo por IP sería el mismo para cualquier presupuesto.
+         */
+        @Test
+        @DisplayName("subir el tope sube el cupo por IP: el número no es un literal")
+        void subir_el_tope_sube_el_cupo() {
+            assertThat(filtroConTope("5.00").cupoDiarioPorIpDeLasRutasDePago())
+                    .isGreaterThan(filtroConTope("0.33").cupoDiarioPorIpDeLasRutasDePago());
+        }
+
+        @Test
+        @DisplayName("con el tope por defecto, 0,33 USD financian 18 invocaciones")
+        void el_tope_por_defecto_financia_dieciocho() {
+            assertThat(filter.llamadasDePagoQueFinanciaElTope()).isEqualTo(18);
+        }
+
+        /**
+         * Un tope que no financia ni una sesión por origen es una configuración de
+         * juguete: quien corta ahí es el guardián de gasto, que es fail-closed. El
+         * filtro deja el mínimo útil en vez de dejar cupos a cero, que en
+         * {@code consumirDiario} significan «sin límite» y serían lo contrario.
+         */
+        @ParameterizedTest(name = "tope {0} USD")
+        @ValueSource(strings = {"0.01", "0.0001", "0"})
+        @DisplayName("un tope de juguete no deja ningún cupo a cero, que significaría «sin límite»")
+        void un_tope_de_juguete_no_deja_cupos_a_cero(String tope) {
+            LoginRateLimitFilter conTope = filtroConTope(tope);
+
+            assertThat(conTope.cupoDiarioPorIpDeLasRutasDePago()).as("cupo por IP").isPositive();
+            assertThat(conTope.cupoDiarioGlobal())
+                    .as("el techo de la plataforma se apagaría justo cuando no hay presupuesto")
+                    .isPositive();
+        }
+
+        @Test
+        @DisplayName("el coste por llamada que declara el filtro es el que cobra el generador")
+        void el_coste_declarado_es_el_que_se_cobra() {
+            assertThat(new BigDecimal(LoginRateLimitFilter.DEFECTO_USD_POR_LLAMADA_DE_PAGO))
+                    .isEqualByComparingTo(BedrockProposalGenerator.USD_ESTIMADO_POR_LLAMADA);
+        }
+
+        @Test
+        @DisplayName("el tope por defecto que declara el filtro es el que aplica el guardián")
+        void el_tope_declarado_es_el_que_se_aplica() {
+            assertThat(LoginRateLimitFilter.DEFECTO_TOPE_DE_GASTO_DIARIO_USD)
+                    .isEqualTo(ValkeyDailySpendGuard.DEFECTO_TOPE_DIARIO_USD);
+        }
+
+        @Test
+        @DisplayName("una sesión son las mismas cuatro llamadas de pago que declara el dominio")
+        void una_sesion_son_cuatro_llamadas() {
+            assertThat(LoginRateLimitFilter.LLAMADAS_DE_PAGO_POR_SESION)
+                    .isEqualTo(ProposalReader.MAX_TURNOS_DE_MODELO);
         }
     }
 }
