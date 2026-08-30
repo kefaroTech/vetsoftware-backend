@@ -917,4 +917,13 @@
     <include
             file="db/changelog/migrations/379_attach_orphan_selfservice_submodules_to_core.xml"/>
 
+    <!-- 380: GROOMING REQUIRES SERVICES. Una peluqueria cobra por tamano y raza y es SERVICES
+         quien carga ese tarifario; vender GROOMING suelto entregaba un modulo sin forma de
+         tarifar. PACK_SPA y PACK_FULL (308/309) ya metian los dos juntos sin declarar por que.
+         Changeset nuevo y no una fila mas en 309: 308/309 ya se aplicaron en dev/produccion via
+         el pipeline de merge a develop, y editar un changeSet que ya corrio le rompe el checksum
+         (mismo criterio que 086/087). Detalle completo, incluida la comprobacion de ciclos, en
+         el propio 380. -->
+    <include file="db/changelog/migrations/380_seed_grooming_requires_services.xml"/>
+
 </databaseChangeLog>
