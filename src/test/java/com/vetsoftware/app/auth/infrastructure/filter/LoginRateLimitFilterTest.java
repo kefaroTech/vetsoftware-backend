@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -98,6 +99,30 @@ class LoginRateLimitFilterTest {
     }
 
     @Nested
+    @DisplayName("la ruta concreta con la que se prueba cada patrón")
+    class RutaConcretaDelPatron {
+
+        @Test
+        @DisplayName("expande el comodín y también la variable de path")
+        void expande_el_comodin_y_tambien_la_variable() {
+            assertThat(rutaConcreta("/auth/login/**")).isEqualTo("/auth/login/x");
+            assertThat(rutaConcreta("/legal-documents/{code}/current"))
+                    .isEqualTo("/legal-documents/x/current");
+            assertThat(rutaConcreta("/a/{uno}/b/{dos}")).isEqualTo("/a/x/b/x");
+            assertThat(rutaConcreta("/quotes/preview")).isEqualTo("/quotes/preview");
+        }
+
+        @Test
+        @DisplayName("ninguna ruta pública produce un path que no casaría con nada")
+        void ninguna_ruta_publica_produce_un_path_imposible() {
+            assertThat(PublicRoutes.BUSINESS.stream().map(PublicRoutes.Route::pattern)
+                    .map(LoginRateLimitFilterTest::rutaConcreta).toList())
+                    .allSatisfy(path -> assertThat(path).doesNotContain("{").doesNotContain("}")
+                            .doesNotContain("*"));
+        }
+    }
+
+    @Nested
     @DisplayName("rutas que no debe tocar")
     class RutasIgnoradas {
 
@@ -143,9 +168,40 @@ class LoginRateLimitFilterTest {
         }
     }
 
-    /** Sustituye los comodines del patrón por un segmento concreto. */
+    /**
+     * Variable de path de Spring: <code>{nombre}</code>. Deja fuera a propósito la
+     * forma con regex incrustada (<code>&#123;id:\d+&#125;</code>), que este
+     * proyecto no usa en ninguna ruta pública y cuyas llaves internas romperían el
+     * predicado — si algún día aparece una, la comprobación de abajo se pone roja
+     * en vez de dejarla pasar en silencio.
+     */
+    private static final Pattern VARIABLE_DE_PATH = Pattern.compile("\\{[^/{}]+}");
+
+    /**
+     * Sustituye por un segmento concreto <b>todo</b> lo que el patrón deja abierto:
+     * el comodín <code>/**</code> y cada variable de path.
+     *
+     * <p>
+     * <b>Expandir la variable no es cosmético.</b> {@code routeLimit()} casa el
+     * path crudo con {@code equals} y {@code startsWith}, así que
+     * {@code "/x/{token}/refine"} no casa con nada: si esto devolviera el patrón
+     * con las llaves puestas, {@code toda_ruta_publica_post_esta_limitada} <b>nunca
+     * podría satisfacerse</b> para una ruta con variable. Quien declarara su
+     * {@code RouteLimit} correctamente vería el gate en rojo, y la salida que
+     * tendría a mano —meter la ruta en {@code POST_SIN_LIMITE_JUSTIFICADO}— es
+     * renunciar a la invariante para que pase. Con la expansión, el test vuelve a
+     * medir lo que dice medir.
+     *
+     * <p>
+     * Hoy ninguna ruta pública POST lleva variable —las cuatro del asistente mueven
+     * su token a {@code ?token=} y al cuerpo justo para no llevarla—, así que esta
+     * corrección no cambia ni un resultado. Se hace igualmente: la primera ruta
+     * pública con variable ya está aquí ({@code GET
+     * /legal-documents/&#123;code&#125;/current}), y dejar el test insatisfacible
+     * para el siguiente que abra un POST es peor que dejarlo rojo.
+     */
     private static String rutaConcreta(String pattern) {
-        return pattern.replace("/**", "/x");
+        return VARIABLE_DE_PATH.matcher(pattern.replace("/**", "/x")).replaceAll("x");
     }
 
     private static MockHttpServletRequest request(String method, String path) {

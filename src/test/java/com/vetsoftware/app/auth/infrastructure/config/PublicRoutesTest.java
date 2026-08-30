@@ -57,8 +57,10 @@ class PublicRoutesTest {
                     "POST /platform/access-request", "GET /platform/access-request/validate",
                     "POST /platform/access-request/approve", "POST /platform/access-request/reject",
                     "GET /platform/invitation/validate", "POST /platform/invitation/accept",
-                    "ANY /swagger-ui/**", "ANY /v3/api-docs/**", "ANY /swagger-resources/**",
-                    "ANY /webjars/**");
+                    "POST /assistant/proposal", "POST /assistant/proposal/refine",
+                    "PUT /assistant/proposal/lines", "GET /assistant/proposal",
+                    "GET /legal-documents/{code}/current", "ANY /swagger-ui/**",
+                    "ANY /v3/api-docs/**", "ANY /swagger-resources/**", "ANY /webjars/**");
         }
 
         @Test

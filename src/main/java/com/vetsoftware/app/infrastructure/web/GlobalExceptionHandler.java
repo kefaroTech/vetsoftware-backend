@@ -458,7 +458,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             com.vetsoftware.app.revenuerecognitionline.domain.RevenueRecognitionLineNotFoundException.class,
             com.vetsoftware.app.accountingexport.domain.AccountingExportNotFoundException.class,
             com.vetsoftware.app.taxreturn.domain.TaxReturnNotFoundException.class,
-            com.vetsoftware.app.supplierwithholding.domain.SupplierWithholdingNotFoundException.class})
+            com.vetsoftware.app.supplierwithholding.domain.SupplierWithholdingNotFoundException.class,
+            // Un token que no existe y uno que existe y caduco dan el mismo 404: no
+            // hay nada que ganar distinguiendolos y si algo que perder, porque seria
+            // un oraculo de existencia sobre un identificador que alguien puede estar
+            // probando.
+            com.vetsoftware.app.aiproposal.domain.AiProposalNotFoundException.class})
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.info("Resource not found: {}", ex.getMessage());
         return problem(HttpStatus.NOT_FOUND, errorCode(ex), ex.getMessage());
@@ -1499,6 +1504,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // campo. Lo que cae en este handler es una invariante de dominio, que el front
     // no
     // sabe atribuir a ningún campo concreto.
+    /**
+     * Dos pestanas sobre la misma propuesta anonima. El front recarga con
+     * {@code GET /assistant/proposal?token=...} y reintenta con la version buena;
+     * sin este 409, un refinamiento en vuelo pisaria una edicion manual recien
+     * aplicada y devolveria la linea que el usuario acababa de quitar.
+     */
+    @ExceptionHandler(com.vetsoftware.app.aiproposal.domain.ProposalVersionConflictException.class)
+    public ProblemDetail handleProposalVersionConflict(
+            com.vetsoftware.app.aiproposal.domain.ProposalVersionConflictException ex) {
+        log.info("AI proposal version conflict");
+        return problem(HttpStatus.CONFLICT, "PROPOSAL_VERSION_CONFLICT", ex.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleBadRequest(IllegalArgumentException ex) {
         log.info("Bad request: {}", ex.getMessage());

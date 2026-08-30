@@ -141,6 +141,71 @@ public final class PublicRoutes {
             new Route(HttpMethod.POST, "/platform/access-request/reject"),
             new Route(HttpMethod.GET, "/platform/invitation/validate"),
             new Route(HttpMethod.POST, "/platform/invitation/accept"),
+            // El asistente comercial (propuesta generada por IA). Las CUATRO son
+            // anonimas por construccion: quien pide la propuesta todavia no tiene
+            // cuenta -de hecho el objetivo del embudo es que la cree- y quien la
+            // relee se acredita con el public_token de 43 caracteres que recibio,
+            // nunca con un JWT.
+            //
+            // ⛔ El token NO viaja en ningun segmento de ruta, y por eso los cuatro
+            // patrones son literales y sin variable: RequestLoggingContextFilter
+            // mete getRequestURI() en el contexto de log de TODA peticion -su
+            // javadoc dice "incluidas las publicas"- y ningun patron de LogRedactor
+            // casa con 43 caracteres de base64url sueltos (JWT exige el prefijo eyJ
+            // y tres segmentos; KEYED_VALUE exige una clave sensible delante). Con
+            // /assistant/proposal/{token} el secreto que ES el control de acceso de
+            // toda la feature acabaria en claro en CloudWatch y en Loki con 31 dias
+            // de retencion, y de paso en el Referer que el navegador manda a
+            // terceros. Va en ?token= en el GET y en el cuerpo en el POST y el PUT,
+            // que es el precedente de /auth/reset-password/validate,
+            // /platform/access-request/validate y /platform/invitation/validate.
+            //
+            // Efecto secundario bueno: con los cuatro patrones literales,
+            // LoginRateLimitFilter.routeLimit() los casa con equals y no les aplica
+            // la trampa de rutaConcreta(), que no expande {var} y dejaria el limite
+            // inoperante con el gate en verde.
+            //
+            // Patron literal y NO /assistant/**: el mismo prefijo acabara colgando
+            // administracion del asistente, y un comodin la abriria al mundo sin que
+            // nadie lo vea en el diff. Es el razonamiento que ya dejaron /plans,
+            // /catalog y las seis de /platform con su ruta exacta.
+            //
+            // Los dos POST llevan su RouteLimit -toda_ruta_publica_post_esta_limitada
+            // lo exige-. El PUT y el GET tambien lo llevan, aunque la invariante solo
+            // recorra los POST: el PUT es una escritura publica sin sesion y el GET
+            // sirve la propuesta entera a quien tenga el token.
+            new Route(HttpMethod.POST, "/assistant/proposal"),
+            new Route(HttpMethod.POST, "/assistant/proposal/refine"),
+            new Route(HttpMethod.PUT, "/assistant/proposal/lines"),
+            new Route(HttpMethod.GET, "/assistant/proposal"),
+            // El aviso legal vigente, para quien todavia no tiene cuenta. Cierra un
+            // agujero de cumplimiento, no una comodidad: el front del tenant pintaba
+            // la politica de privacidad desde una copia local del bundle porque este
+            // GET era inalcanzable para un anonimo, asi que el
+            // privacy_notice_version_id que se persiste al lado de cada propuesta
+            // apuntaba a una version que el prospecto nunca vio servida desde aqui.
+            // Eso no es evidencia debil del consentimiento del articulo 9 de la Ley
+            // 1581: es evidencia de otra cosa.
+            //
+            // Lo sirve FindPublicLegalDocumentUseCase -puerto NUEVO, sin companyId y
+            // anotado @NoAuthorizationRequired-, no una relajacion del que habia: ese
+            // lo consumen la consola y el tenant, y abrirlo habria abierto tambien lo
+            // que cuelga de el. Son las DOS cosas de siempre mas la linea del
+            // inventario de PublicRoutesTest.
+            //
+            // Patron literal con la variable escrita, y NO /legal-documents/**: por
+            // ese mismo prefijo cuelgan el POST que publica -SYSTEM-, la relectura por
+            // huella y el listado de versiones, y un comodin los abriria al mundo sin
+            // que nadie lo vea en el diff.
+            //
+            // Es la PRIMERA ruta publica con variable de path desde que se documento
+            // la trampa de LoginRateLimitFilterTest.rutaConcreta(), que sustituia /**
+            // y dejaba {var} literal. Es un GET, asi que la invariante
+            // toda_ruta_publica_post_esta_limitada -que solo recorre los POST- no la
+            // alcanza y el defecto no llega a morder aqui; se corrigio igualmente,
+            // porque un test insatisfacible para el siguiente que abra un POST con
+            // variable es peor que uno rojo.
+            new Route(HttpMethod.GET, "/legal-documents/{code}/current"),
             new Route(null, "/swagger-ui/**"), new Route(null, "/v3/api-docs/**"),
             new Route(null, "/swagger-resources/**"), new Route(null, "/webjars/**"));
 

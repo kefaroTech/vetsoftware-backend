@@ -132,6 +132,44 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             Duration.ofHours(1), "PLATFORM_INVITATION_ACCEPT_RATE_LIMITED",
             "Too many invitation attempts. Try again later.", List.of("token"));
 
+    // El asistente comercial (propuesta generada por IA). Los cuatro endpoints son
+    // anonimos y el POST inicial es el unico de todo el backend que cuesta dinero
+    // por peticion: cada uno invoca un modelo de pago. Copiar los 60/min de otro
+    // endpoint publico serian 86.400 invocaciones de pago al dia por IP.
+    //
+    // 5/h por IP Y por "email": el correo es lo unico que identifica al solicitante
+    // -no hay cuenta- y sin el bucket por cuenta una botnet reparte el gasto entre
+    // IP y el limite no filtra nada.
+    //
+    // ⚠️ El plan pide ademas 20/dia por IP y 3/dia por correo, y RouteLimit no sabe
+    // expresar dos ventanas sobre la misma ruta: lo que hay aqui es la ventana
+    // horaria, que es la que corta la rafaga. El techo diario de verdad lo pone el
+    // tope de gasto de SpendGuardPort, que es fail-closed y degrada con 200.
+    private static final RouteLimit AI_PROPOSAL_LIMIT = new RouteLimit("ai-proposal-rl:",
+            "/assistant/proposal", 5, Duration.ofHours(1), "AI_PROPOSAL_RATE_LIMITED",
+            "Too many proposal requests. Try again later.", List.of("email"));
+    // Sin clave de cuerpo, y a proposito: el unico campo que identifica aqui es el
+    // token, y contarlo por bucket lo escribiria como parte de una clave de Redis.
+    // El token ya esta acotado por su propio tope de tres refinamientos.
+    private static final RouteLimit AI_PROPOSAL_REFINE_LIMIT = new RouteLimit(
+            "ai-proposal-refine-rl:", "/assistant/proposal/refine", 10, Duration.ofHours(1),
+            "AI_PROPOSAL_REFINE_RATE_LIMITED", "Too many refinement requests. Try again later.",
+            List.of());
+    // ⛔ Un PUT anonimo, es decir una escritura publica sin sesion. La invariante
+    // toda_ruta_publica_post_esta_limitada solo recorre los POST, asi que este
+    // limite no lo exige ningun gate: si desaparece, nada se pone rojo. Se declara
+    // igualmente porque no llamar al modelo no lo hace gratis -reescribe el carrito
+    // entero y cierra el grafo de dependencias en cada llamada-.
+    private static final RouteLimit AI_PROPOSAL_LINES_LIMIT = new RouteLimit(
+            "ai-proposal-lines-rl:", "/assistant/proposal/lines", 30, Duration.ofHours(1),
+            "AI_PROPOSAL_LINES_RATE_LIMITED", "Too many proposal edits. Try again later.",
+            List.of());
+    // Ídem para el GET: sirve la propuesta entera a quien tenga el token, y sin
+    // limite es una lectura repetible sin coste para quien la haga.
+    private static final RouteLimit AI_PROPOSAL_READ_LIMIT = new RouteLimit("ai-proposal-read-rl:",
+            "/assistant/proposal", 60, Duration.ofHours(1), "AI_PROPOSAL_READ_RATE_LIMITED",
+            "Too many proposal reads. Try again later.", List.of());
+
     /**
      * Campos cuyo valor es un secreto opaco y NO se normaliza a minusculas: dos
      * tokens que solo difieran en mayusculas son tokens distintos, y meterlos en el
@@ -198,9 +236,20 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     }
 
     private static RouteLimit routeLimit(HttpServletRequest request) {
+        String uri = request.getServletPath();
+        // Las dos ramas que NO son POST, y van antes del filtro por metodo porque
+        // ese filtro es justo lo que las dejaba fuera. El PUT del asistente es una
+        // escritura publica anonima y su GET sirve la propuesta entera: los dos
+        // necesitan cupo propio, y ninguna invariante automatica lo exige -la que
+        // hay solo recorre los POST publicos-.
+        if ("PUT".equalsIgnoreCase(request.getMethod()))
+            return uri.equals(AI_PROPOSAL_LINES_LIMIT.path()) ? AI_PROPOSAL_LINES_LIMIT : null;
+        // equals y no startsWith: /assistant/proposal es tambien el path del POST
+        // inicial, y con startsWith el GET caeria en /refine y en /lines.
+        if ("GET".equalsIgnoreCase(request.getMethod()))
+            return uri.equals(AI_PROPOSAL_READ_LIMIT.path()) ? AI_PROPOSAL_READ_LIMIT : null;
         if (!"POST".equalsIgnoreCase(request.getMethod()))
             return null;
-        String uri = request.getServletPath();
         if (uri.equals(REFRESH_LIMIT.path()))
             return REFRESH_LIMIT;
         if (uri.startsWith(LOGIN_LIMIT.path() + "/"))
@@ -238,6 +287,13 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             return PLATFORM_INVITATION_ACCEPT_LIMIT;
         if (uri.startsWith(DIAN_WEBHOOK_LIMIT.path() + "/"))
             return DIAN_WEBHOOK_LIMIT;
+        // equals en los dos: /assistant/proposal es el prefijo textual de /refine y
+        // de /lines. Con startsWith, el refinamiento consumiria el cupo de 5/h que
+        // protege la invocacion inicial de pago, y lo agotaria desde fuera.
+        if (uri.equals(AI_PROPOSAL_REFINE_LIMIT.path()))
+            return AI_PROPOSAL_REFINE_LIMIT;
+        if (uri.equals(AI_PROPOSAL_LIMIT.path()))
+            return AI_PROPOSAL_LIMIT;
         return null;
     }
 
