@@ -19,6 +19,7 @@ import com.vetsoftware.app.subscription.application.port.out.SubscriptionStatusH
 import com.vetsoftware.app.subscription.domain.EffectivePeriod;
 import com.vetsoftware.app.subscription.domain.ItemOrigin;
 import com.vetsoftware.app.subscription.domain.PlatformCatalogNotConfiguredForSubscriptionException;
+import com.vetsoftware.app.subscription.domain.PriceListRef;
 import com.vetsoftware.app.subscription.domain.Subscription;
 import com.vetsoftware.app.subscription.domain.SubscriptionChangeKind;
 import com.vetsoftware.app.subscription.domain.SubscriptionItem;
@@ -99,20 +100,45 @@ public class CreateSubscriptionService implements CreateSubscriptionUseCase {
         // catalogo publicado- pero fallaba con el mensaje equivocado: «Published
         // catalog price not found for item» acusa al articulo cuando la culpable es
         // la tarifa, y quien lo leyera se ponia a revisar el catalogo. La cabecera
-        // exige ahora lo mismo que las lineas -publicada y vigente por fecha- y con
-        // el MISMO predicado del kernel -PriceListValidity, que solo sabe de dos
-        // fechas-: dos comparaciones que nada obliga a mover juntas es el defecto de
-        // manana. Quien pone el id y el codigo en el fallo es el companion VO de esta
-        // rodaja, porque el kernel no puede saber que existen las tarifas.
-        //
-        // La fecha es hoy EN BOGOTA: sale del reloj inyectado, que es el unico que
-        // lleva la zona del negocio (D-81). Un LocalDate.now() pelado ya contesta
-        // manana entre las 19:00 y la medianoche y rechazaria un alta legitima el
-        // ultimo dia de la tarifa.
-        priceListQueryPort.findPublishedById(command.priceListId())
+        // exige lo mismo que las lineas -publicada, y vigente por fecha SALVO cuando
+        // la firma viene de una cotizacion aceptada; ver el bloque de abajo- y con el
+        // MISMO predicado del kernel -PriceListValidity, que solo sabe de dos fechas-:
+        // dos comparaciones que nada obliga a mover juntas es el defecto de manana.
+        // Quien pone el id y el codigo en el fallo es el companion VO de esta rodaja,
+        // porque el kernel no puede saber que existen las tarifas.
+        PriceListRef priceList = priceListQueryPort.findPublishedById(command.priceListId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Published price list not found: " + command.priceListId()))
-                .requireEffectiveOn(LocalDate.now(clock));
+                        "Published price list not found: " + command.priceListId()));
+        // La vigencia POR FECHA solo se exige cuando no hay cotizacion detras, y esa
+        // asimetria es deliberada.
+        //
+        // Una cotizacion tiene su propia vigencia -quince dias en autoservicio- y su
+        // propia tarifa, y las dos pueden no durar lo mismo: la lista puede caducar el
+        // dia 8 de una oferta que promete precio hasta el 15. Antes eso hacia fallar la
+        // firma con «Published price list not found» o con el error de vigencia, es
+        // decir acusando a la tarifa de un desfase que el cliente no provoco, no puede
+        // entender y no puede resolver: hizo exactamente lo que se le ofrecio, dentro
+        // del plazo que se le prometio.
+        //
+        // Y comprobarla no protegia nada, porque en ese camino LA TARIFA NO SE USA:
+        // AcceptedQuoteContractLines copia precio, IVA, descuento y tramo ya congelados
+        // en los renglones de la oferta (D-66/D-86) y no vuelve al catalogo ni una vez.
+        // Exigir que la lista siga vigente era pedir que estuviera viva algo que no se
+        // consulta. La plataforma se obliga por lo que ofrecio; si no quiere sostener
+        // un precio quince dias, lo que tiene que acortar es la vigencia de la oferta
+        // -que es suya- y no romper la firma al final.
+        //
+        // Lo que SI se sigue exigiendo en los dos caminos es que la lista este
+        // PUBLICADA: un borrador nunca fue una oferta, y una cotizacion emitida contra
+        // uno seria un defecto anterior que esto no debe blanquear.
+        //
+        // La fecha, cuando se comprueba, es hoy EN BOGOTA: sale del reloj inyectado,
+        // que es el unico que lleva la zona del negocio (D-81). Un LocalDate.now()
+        // pelado ya contesta manana entre las 19:00 y la medianoche y rechazaria un
+        // alta legitima el ultimo dia de la tarifa.
+        if (command.quoteId() == null) {
+            priceList.requireEffectiveOn(LocalDate.now(clock));
+        }
 
         // Los dias de gracia por defecto se resuelven AQUI y en ningun otro sitio.
         // Habia dos caminos de alta y solo uno leia la configuracion de plataforma:

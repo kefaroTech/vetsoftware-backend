@@ -60,13 +60,21 @@ public class Quote {
     private final boolean enabled;
     private final List<QuoteLine> lines;
 
+    /**
+     * De que propuesta del asistente salio esta oferta, o null. Es atribucion de
+     * embudo: no participa en ningun total ni en ninguna transicion, y por eso no
+     * se valida mas alla de admitir el nulo. Es el <b>id</b> y nunca el token
+     * publico, que es el secreto de la URL de la propuesta.
+     */
+    private final Long aiProposalId;
+
     public Quote(Long id, String quoteNumber, CompanyRef company, String prospectName,
             String prospectEmail, String prospectDocument, String prospectPhone, Long priceListId,
             BillingCycle billingCycle, BigDecimal subtotalAmount, BigDecimal discountAmount,
             BigDecimal taxAmount, BigDecimal totalAmount, QuoteStatus status, LocalDate validUntil,
             int trialDays, LocalDateTime acceptedAt, String acceptedByEmail, String acceptedIp,
             String clientRequestId, LocalDateTime createdDate, Long version, boolean enabled,
-            List<QuoteLine> lines) {
+            List<QuoteLine> lines, Long aiProposalId) {
         validateHeader(quoteNumber, company, prospectName, prospectEmail, prospectDocument,
                 prospectPhone, priceListId, billingCycle, status, validUntil, trialDays,
                 clientRequestId);
@@ -97,7 +105,27 @@ public class Quote {
         this.version = version;
         this.enabled = enabled;
         this.lines = safeLines;
+        this.aiProposalId = aiProposalId;
         verifyTotals();
+    }
+
+    /**
+     * Sin propuesta del asistente detras. Es un constructor secundario y no un
+     * valor por defecto para que anadir la atribucion de embudo no obligara a
+     * reescribir los ocho sitios que ya construian una cotizacion.
+     */
+    @SuppressWarnings("java:S107")
+    public Quote(Long id, String quoteNumber, CompanyRef company, String prospectName,
+            String prospectEmail, String prospectDocument, String prospectPhone, Long priceListId,
+            BillingCycle billingCycle, BigDecimal subtotalAmount, BigDecimal discountAmount,
+            BigDecimal taxAmount, BigDecimal totalAmount, QuoteStatus status, LocalDate validUntil,
+            int trialDays, LocalDateTime acceptedAt, String acceptedByEmail, String acceptedIp,
+            String clientRequestId, LocalDateTime createdDate, Long version, boolean enabled,
+            List<QuoteLine> lines) {
+        this(id, quoteNumber, company, prospectName, prospectEmail, prospectDocument, prospectPhone,
+                priceListId, billingCycle, subtotalAmount, discountAmount, taxAmount, totalAmount,
+                status, validUntil, trialDays, acceptedAt, acceptedByEmail, acceptedIp,
+                clientRequestId, createdDate, version, enabled, lines, null);
     }
 
     /**
@@ -113,13 +141,27 @@ public class Quote {
             String prospectEmail, String prospectDocument, String prospectPhone, Long priceListId,
             BillingCycle billingCycle, LocalDate validUntil, int trialDays, String clientRequestId,
             List<QuoteLine> lines, LocalDateTime createdDate) {
+        return create(quoteNumber, company, prospectName, prospectEmail, prospectDocument,
+                prospectPhone, priceListId, billingCycle, validUntil, trialDays, clientRequestId,
+                lines, createdDate, null);
+    }
+
+    /**
+     * Igual, dejando escrito de que propuesta del asistente salio (DC-2). La
+     * atribucion no toca ni un solo total: entra en la fila y no en la aritmetica.
+     */
+    @SuppressWarnings("java:S107")
+    public static Quote create(String quoteNumber, CompanyRef company, String prospectName,
+            String prospectEmail, String prospectDocument, String prospectPhone, Long priceListId,
+            BillingCycle billingCycle, LocalDate validUntil, int trialDays, String clientRequestId,
+            List<QuoteLine> lines, LocalDateTime createdDate, Long aiProposalId) {
         List<QuoteLine> safeLines = lines == null ? List.of() : List.copyOf(lines);
         QuoteTotals totales = QuoteTotals.of(safeLines);
         return new Quote(null, quoteNumber, company, prospectName, prospectEmail, prospectDocument,
                 prospectPhone, priceListId, billingCycle, totales.subtotalAmount(),
                 totales.discountAmount(), totales.taxAmount(), totales.totalAmount(),
                 QuoteStatus.DRAFT, validUntil, trialDays, null, null, null, clientRequestId,
-                createdDate, null, true, safeLines);
+                createdDate, null, true, safeLines, aiProposalId);
     }
 
     /**
@@ -176,6 +218,11 @@ public class Quote {
     public void requireDeletable() {
         if (status != QuoteStatus.DRAFT)
             throw new InvalidQuoteStatusTransitionException(status, QuoteStatus.DRAFT);
+    }
+
+    /** De que propuesta del asistente salio, o null. Ver el campo. */
+    public Long getAiProposalId() {
+        return aiProposalId;
     }
 
     public boolean isExpiredOn(LocalDate today) {

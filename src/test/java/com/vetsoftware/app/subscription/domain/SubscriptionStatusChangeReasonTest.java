@@ -41,12 +41,19 @@ class SubscriptionStatusChangeReasonTest {
     class Vocabulario {
 
         @Test
-        @DisplayName("son exactamente los seis valores que el puerto llevaba documentados")
-        void losSeisValores() {
+        @DisplayName("son exactamente estos siete valores y ninguno mas")
+        void losSieteValores() {
+            // Inventario COMPLETO a proposito, como PublicRoutesTest con las rutas
+            // publicas: esta columna es prueba en una disputa de cobro, asi que anadir
+            // un motivo tiene que ser una decision visible en el diff y no una linea
+            // mas en una lista larga. El septimo -replaced_by_new_contract- lo trajo
+            // DC-2: aceptar una cotizacion cierra el contrato anterior, y ninguno de
+            // los seis anteriores describia ese cierre sin mentir.
             assertThat(SubscriptionStatusChangeReason.values())
                     .extracting(SubscriptionStatusChangeReason::code)
                     .containsExactlyInAnyOrder("overdue_balance", "payment_received", "trial_ended",
-                            "cancellation_effective", "period_expired", "manual");
+                            "cancellation_effective", "period_expired", "manual",
+                            "replaced_by_new_contract");
         }
 
         @ParameterizedTest

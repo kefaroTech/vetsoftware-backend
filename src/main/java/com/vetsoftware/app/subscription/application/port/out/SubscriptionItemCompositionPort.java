@@ -35,8 +35,20 @@ public interface SubscriptionItemCompositionPort {
      * {@code uq_subscription_item_sub_modules}: reescribir la misma foto no
      * duplica.
      *
-     * @return cuantos submodulos quedaron congelados. Cero es legitimo —una linea
-     *         de capacidad no ata ninguno— y por eso no es un error.
+     * <p>
+     * ⛔ <b>Una linea que no es de esta empresa LANZA, no devuelve cero.</b> La
+     * pertenencia la impone la clave foranea compuesta
+     * {@code (company_id, subscription_item_id)} de la tabla de composicion, y el
+     * adaptador ya no la silencia: hasta el arreglo de esta sesion la sentencia era
+     * {@code INSERT IGNORE}, que degradaba esa violacion a un aviso y devolvia
+     * cero, indistinguible del cero legitimo de abajo — con los dos llamantes
+     * descartando el valor de retorno, una firma cruzada entre clinicas quedaba sin
+     * foto y por tanto sin permisos, en silencio y para siempre.
+     *
+     * @return cuantos submodulos quedaron congelados. Cero es legitimo <b>en un
+     *         solo caso</b> —una linea de capacidad no ata ninguno— y en la segunda
+     *         pasada sobre una foto ya escrita, que es la idempotencia. Cualquier
+     *         otro fallo se propaga como excepcion.
      */
     int freeze(Long companyId, Long subscriptionItemId, Long catalogItemId);
 
