@@ -11,12 +11,10 @@ import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics.Ope
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics.ServedProposal;
 import com.vetsoftware.app.aiproposal.application.port.out.LegalConsentPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalGeneratorPort;
-import com.vetsoftware.app.aiproposal.application.port.out.ResponsePacingPort;
 import com.vetsoftware.app.aiproposal.application.port.out.SellableCatalogQueryPort;
 import com.vetsoftware.app.aiproposal.domain.AiProposal;
 import com.vetsoftware.app.aiproposal.domain.CartResult;
 import com.vetsoftware.app.aiproposal.domain.LegalDocumentVersionRef;
-import com.vetsoftware.app.aiproposal.domain.ProposalBillingCycle;
 import com.vetsoftware.app.aiproposal.domain.ProposalCart;
 import com.vetsoftware.app.aiproposal.domain.ProposalDraft;
 import com.vetsoftware.app.aiproposal.domain.ProposalToken;
@@ -59,12 +57,13 @@ import org.springframework.stereotype.Service;
 public class GenerateProposalService implements GenerateProposalUseCase {
 
     /**
-     * &#9940; Solo el ciclo mensual. La landing vende por mes y el ciclo anual
-     * cotiza contra otra escalera de {@code catalog_prices}: dejarlo entrar por
-     * parametro sin pantalla que lo elija seria un campo que nadie pone y que
-     * cambia el precio.
+     * Cuantas veces relee el perdedor de la carrera antes de rendirse. Ver
+     * {@link #esperarALaGanadora}.
      */
-    private static final ProposalBillingCycle CICLO = ProposalBillingCycle.MONTHLY;
+    private static final int RELECTURAS = 4;
+
+    /** Lo que espera entre relecturas: el orden de magnitud de un commit. */
+    private static final long ESPERA_ENTRE_RELECTURAS_MS = 25L;
 
     private final SellableCatalogQueryPort catalogQueryPort;
 
@@ -75,8 +74,6 @@ public class GenerateProposalService implements GenerateProposalUseCase {
     private final ProposalTurnWriter writer;
 
     private final ProposalReader reader;
-
-    private final ResponsePacingPort pacing;
 
     private final AiProposalMetrics metrics;
 
@@ -93,8 +90,8 @@ public class GenerateProposalService implements GenerateProposalUseCase {
     @SuppressWarnings("java:S107")
     public GenerateProposalService(SellableCatalogQueryPort catalogQueryPort,
             LegalConsentPort legalConsent, ProposalGeneratorPort generator,
-            ProposalTurnWriter writer, ProposalReader reader, ResponsePacingPort pacing,
-            AiProposalMetrics metrics, Clock clock,
+            ProposalTurnWriter writer, ProposalReader reader, AiProposalMetrics metrics,
+            Clock clock,
             @Value("${vetsoftware.ai.proposal.model-id:anthropic.claude-sonnet-5}") String modelId,
             @Value("${vetsoftware.ai.proposal.prompt-version:v1}") String promptVersion,
             @Value("${vetsoftware.ai.proposal.validity-days:14}") int diasDeVigencia,
@@ -104,7 +101,6 @@ public class GenerateProposalService implements GenerateProposalUseCase {
         this.generator = generator;
         this.writer = writer;
         this.reader = reader;
-        this.pacing = pacing;
         this.metrics = metrics;
         this.clock = clock;
         this.modelId = modelId;
@@ -115,17 +111,19 @@ public class GenerateProposalService implements GenerateProposalUseCase {
 
     @Override
     public ProposalViewDto generate(GenerateProposalCommand command) {
-        Optional<AiProposal> yaVista = reader.porIdempotencia(command.contactEmail(),
+        Optional<AiProposal> previa = reader.porIdempotencia(command.contactEmail(),
                 command.idempotencyKey());
-        if (yaVista.isPresent())
-            return reader.vista(yaVista.get(), false);
+        if (previa.isPresent() && previa.get().getBillingCycle() == command.billingCycle())
+            return reader.vista(previa.get(), false);
+        String clave = claveUtilizable(command, previa);
 
         ProspectText texto = ProspectText.of(command.description());
 
         Optional<Long> priceListId = catalogQueryPort.findPublishedPriceListId();
         if (priceListId.isEmpty())
             return sinCatalogo(texto);
-        Optional<SellableCatalog> catalogo = catalogQueryPort.loadCatalog(priceListId.get(), CICLO);
+        Optional<SellableCatalog> catalogo = catalogQueryPort.loadCatalog(priceListId.get(),
+                command.billingCycle());
         if (catalogo.isEmpty() || catalogo.get().items().isEmpty())
             return sinCatalogo(texto);
         SellableCatalog catalog = catalogo.get();
@@ -136,14 +134,16 @@ public class GenerateProposalService implements GenerateProposalUseCase {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "the privacy notice acceptance is required"));
 
-        ProposalTurnWriter.TurnoAbierto abierto = abrir(command, catalog, priceListId.get(),
-                avisoDePrivacidad, aceptadas);
-        if (abierto == null)
-            return reader
-                    .vista(reader.porIdempotencia(command.contactEmail(), command.idempotencyKey())
-                            .orElseThrow(), false);
+        ProposalTurnWriter.TurnoAbierto abierto;
+        try {
+            abierto = abrir(command, clave, catalog, priceListId.get(), avisoDePrivacidad,
+                    aceptadas);
+        } catch (DataIntegrityViolationException carrera) {
+            if (clave == null)
+                throw carrera;
+            return reader.vista(esperarALaGanadora(command, carrera), false);
+        }
 
-        long empezo = clock.millis();
         ProposalGenerationResult resultado = generator
                 .generate(new ProposalGenerationRequest(List.of(texto), List.of(), catalog));
 
@@ -160,11 +160,9 @@ public class GenerateProposalService implements GenerateProposalUseCase {
         metrics.proposalServed(ServedProposal.de(Operation.PROPOSE, resultado.outcome(),
                 presentacion, draft, carrito, texto.length(), guardada.getId()));
 
-        // El suelo de latencia va DESPUES de escribir y ANTES de responder: lo que
-        // se iguala es lo que el cliente mide, que es el tiempo hasta el ultimo byte.
-        if (resultado.outcome().esDegradacionSinLlamada())
-            pacing.applyDegradedFloor(clock.millis() - empezo);
-
+        // Aqui vivia el suelo de latencia aleatorio de la ruta degradada. Se retiro:
+        // el bit que ocultaba lo publica la respuesta. Ver
+        // ProposalAssembler.presentacion.
         return reader.vista(guardada, carrito, catalog, presentacion, true);
     }
 
@@ -182,30 +180,117 @@ public class GenerateProposalService implements GenerateProposalUseCase {
     }
 
     /**
-     * TX1, con la carrera de la idempotencia resuelta donde de verdad se decide.
-     *
-     * <p>
-     * Dos peticiones simultaneas con la misma clave pasan las dos por la lectura de
-     * arriba sin encontrar nada y llegan aqui; la segunda choca contra
-     * {@code uq_ai_proposals_idempotency}. Devolver 500 seria castigar al usuario
-     * por un doble clic que el propio boton de cancelar con {@code AbortController}
-     * hace <em>mas</em> probable, no menos: se devuelve {@code null} y el llamante
-     * relee la fila que gano.
+     * TX1. Dos peticiones simultaneas con la misma clave pasan las dos por la
+     * lectura de arriba sin encontrar nada y llegan aqui; la segunda choca contra
+     * {@code uq_ai_proposals_idempotency} y la excepcion sube al llamante, que la
+     * resuelve en {@link #esperarALaGanadora}.
      */
-    private ProposalTurnWriter.TurnoAbierto abrir(GenerateProposalCommand command,
+    @SuppressWarnings("java:S107")
+    private ProposalTurnWriter.TurnoAbierto abrir(GenerateProposalCommand command, String clave,
             SellableCatalog catalog, Long priceListId, Long avisoDePrivacidad,
             List<LegalDocumentVersionRef> aceptadas) {
-        AiProposal nueva = AiProposal.create(ProposalToken.nuevo(), priceListId, CICLO,
-                catalog.snapshotHash(), avisoDePrivacidad, command.idempotencyKey(),
+        AiProposal nueva = AiProposal.create(ProposalToken.nuevo(), priceListId,
+                command.billingCycle(), catalog.snapshotHash(), avisoDePrivacidad, clave,
                 command.contactEmail(), locale, diasDeVigencia, clock);
+        return writer.abrirPropuesta(nueva, command.description(), modelId, promptVersion, clave,
+                aceptadas, command.acceptedIpHash(), command.userAgentHash());
+    }
+
+    /**
+     * &#9940; <strong>La clave de idempotencia con la que se ESCRIBE, que no
+     * siempre es la que mando el cliente.</strong>
+     *
+     * <p>
+     * Sin esto, aceptar el ciclo por parametro no arregla el conmutador de la
+     * pantalla: {@code Idempotency-Key} lo genera el front <em>al montar</em>, asi
+     * que mensual y anual llegan con la MISMA clave. La lectura de arriba
+     * encontraria la propuesta mensual ya escrita y la devolveria tal cual, y el
+     * prospecto que acaba de pulsar "anual" seguiria viendo precio mensual — el
+     * defecto exacto que este cambio existe para cerrar, movido tres lineas mas
+     * abajo.
+     *
+     * <p>
+     * <strong>Y no basta con no devolverla: hay que dejar de escribir con esa
+     * clave.</strong> {@code uq_ai_proposals_idempotency} es
+     * {@code (contact_email_hash, idempotency_key)} y la fila mensual ya la ocupa;
+     * insertar la anual con la misma clave choca contra el unico, cae en
+     * {@link #esperarALaGanadora} y devuelve <em>la mensual</em>, que es peor que
+     * el defecto original porque ademas parece que funciono. Devolviendo
+     * {@code null} la fila anual se escribe: InnoDB no cuenta {@code NULL} contra
+     * si mismo en un indice {@code UNIQUE}.
+     *
+     * <p>
+     * <strong>Lo que se paga, escrito:</strong> esa segunda propuesta pierde la
+     * proteccion contra el doble clic. Es el mal menor y es acotado —solo la
+     * peticion que cambia de ciclo, no las demas— y la alternativa seria un 409
+     * sobre un conmutador de la interfaz, en un endpoint cuyo contrato es "siempre
+     * 200". La solucion sin peaje es que el front emita una clave nueva al
+     * conmutar, y entonces {@code previa} viene vacia y este metodo devuelve la
+     * clave del cliente intacta.
+     *
+     * <p>
+     * <strong>Limite declarado:</strong> dos pestanas que conmutan a la vez con la
+     * misma clave siguen siendo una carrera, y {@link #esperarALaGanadora} devuelve
+     * el ciclo del ganador. Es la ventana de un commit y no se trata aqui.
+     */
+    private static String claveUtilizable(GenerateProposalCommand command,
+            Optional<AiProposal> previa) {
+        return previa.isPresent() ? null : command.idempotencyKey();
+    }
+
+    /**
+     * &#9940; <strong>El perdedor de la carrera espera a que el ganador commitee,
+     * en vez de mirar una sola vez y reventar.</strong>
+     *
+     * <p>
+     * Devolver 500 seria castigar al usuario por un doble clic que el propio boton
+     * de cancelar con {@code AbortController} hace <em>mas</em> probable, no menos.
+     * Pero releer <em>una</em> vez no cerraba el caso: entre el rechazo del indice
+     * unico y el commit del ganador hay una ventana —corta y real— en la que la
+     * fila todavia no es visible para nadie mas, y ahi el {@code orElseThrow}
+     * convertia la carrera que se acababa de manejar en un
+     * {@code NoSuchElementException}. Es el peor desenlace posible de los tres: el
+     * ganador escribio, el perdedor no puede verlo <em>todavia</em>, y el que
+     * recibe el 500 es quien hizo doble clic sobre una propuesta que si existe.
+     *
+     * <p>
+     * <strong>Espera acotada y corta.</strong> {@link #RELECTURAS} intentos
+     * separados por {@link #ESPERA_ENTRE_RELECTURAS_MS} milisegundos: el orden de
+     * magnitud de un commit de una fila, no el de la invocacion al modelo. Si tras
+     * el ultimo intento la fila sigue sin verse, <strong>se relanza la violacion
+     * original</strong> y no un {@code NoSuchElementException}: el fallo que se
+     * reporta es el que de verdad ocurrio, y la escritura que lo causo aparece en
+     * el mensaje.
+     *
+     * <p>
+     * <strong>Sin transaccion que retener.</strong> Este metodo se ejecuta fuera de
+     * toda transaccion —esta clase no puede ser transaccional, ver arriba—, asi que
+     * la espera no bloquea una conexion de Hikari ni ningun lock. Esa es la
+     * condicion que hace admisible dormir aqui y que la haria inadmisible dentro de
+     * {@link ProposalTurnWriter}.
+     */
+    private AiProposal esperarALaGanadora(GenerateProposalCommand command,
+            DataIntegrityViolationException carrera) {
+        for (int intento = 0; intento < RELECTURAS; intento++) {
+            Optional<AiProposal> ganadora = reader.porIdempotencia(command.contactEmail(),
+                    command.idempotencyKey());
+            if (ganadora.isPresent())
+                return ganadora.get();
+            if (intento < RELECTURAS - 1)
+                dormir();
+        }
+        throw carrera;
+    }
+
+    /**
+     * La espera entre relecturas. Restaura el flag de interrupcion y abandona: si
+     * alguien esta parando el hilo, insistir seria ignorarlo.
+     */
+    private static void dormir() {
         try {
-            return writer.abrirPropuesta(nueva, command.description(), modelId, promptVersion,
-                    command.idempotencyKey(), aceptadas, command.acceptedIpHash(),
-                    command.userAgentHash());
-        } catch (DataIntegrityViolationException carrera) {
-            if (command.idempotencyKey() == null)
-                throw carrera;
-            return null;
+            Thread.sleep(ESPERA_ENTRE_RELECTURAS_MS);
+        } catch (InterruptedException interrumpido) {
+            Thread.currentThread().interrupt();
         }
     }
 

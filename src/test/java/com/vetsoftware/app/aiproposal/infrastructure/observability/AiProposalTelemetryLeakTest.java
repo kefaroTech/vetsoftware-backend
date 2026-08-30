@@ -15,7 +15,6 @@ import com.vetsoftware.app.aiproposal.application.port.out.AiProposalRepository;
 import com.vetsoftware.app.aiproposal.application.port.out.CatalogHintQueryPort;
 import com.vetsoftware.app.aiproposal.application.port.out.LegalConsentPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalLinkEmailSender;
-import com.vetsoftware.app.aiproposal.application.port.out.ResponsePacingPort;
 import com.vetsoftware.app.aiproposal.application.port.out.SellableCatalogQueryPort;
 import com.vetsoftware.app.aiproposal.application.port.out.SpendGuardPort;
 import com.vetsoftware.app.aiproposal.application.port.out.SpendGuardPort.SpendReservation;
@@ -127,9 +126,6 @@ class AiProposalTelemetryLeakTest {
     private ModelInvoker invoker;
 
     @Mock
-    private ResponsePacingPort pacing;
-
-    @Mock
     private ProposalLinkEmailSender enlacePorCorreo;
 
     private final List<Observation.Context> spans = new ArrayList<>();
@@ -162,7 +158,7 @@ class AiProposalTelemetryLeakTest {
         service = new GenerateProposalService(catalogQueryPort, legalConsent, generator,
                 new ProposalTurnWriter(repository, legalConsent, enlacePorCorreo,
                         ProposalMother.RELOJ),
-                new ProposalReader(repository, catalogQueryPort), pacing,
+                new ProposalReader(repository, catalogQueryPort, ProposalMother.RELOJ),
                 new MicrometerAiProposalMetrics(new SimpleMeterRegistry(), observaciones),
                 ProposalMother.RELOJ, ProposalMother.MODELO, ProposalMother.PROMPT, 14, "es-CO");
     }
@@ -328,7 +324,8 @@ class AiProposalTelemetryLeakTest {
 
     private static GenerateProposalCommand comando() {
         return new GenerateProposalCommand(ProposalMother.CORREO, DESCRIPCION, ProposalMother.CLAVE,
-                List.of(new LegalAcceptanceCommand("PRIVACY_NOTICE", 3)), "iphash", "uahash");
+                List.of(new LegalAcceptanceCommand("PRIVACY_NOTICE", 3)), "iphash", "uahash",
+                ProposalBillingCycle.MONTHLY);
     }
 
     /**

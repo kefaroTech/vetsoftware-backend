@@ -265,6 +265,55 @@ class AssistantControllerTest {
             assertThat(captor.getValue().addedCodes()).containsExactly("GROOMING");
             assertThat(captor.getValue().removedCodes()).containsExactly("EINVOICE");
         }
+
+        /**
+         * &#9940; <strong>El {@code @Size(max = 50)} de dentro del {@code List<>} acota
+         * CADA ELEMENTO, no la lista.</strong> Con eso escrito —y leyendose como si
+         * acotara algo— este {@code PUT} anonimo aceptaba una lista sin cota:
+         * {@code ProposalCart.build} emite una linea por codigo, rechazos incluidos, y
+         * {@code ProposalTurnWriter.escribirEdicion} las persiste todas en un unico
+         * {@code saveLines}. Una escritura publica, sin sesion y gratis para quien la
+         * hace, proporcional a lo que el cliente quiera mandar. Y el
+         * {@code MAX_CODES = 40} del validador no cubria esto: aquel acota la salida
+         * del modelo.
+         */
+        @Test
+        @DisplayName("\u26d4 una lista de mas de 40 codigos es 400 y no llega al caso de uso")
+        void una_lista_sin_cota_es_cuatrocientos() throws Exception {
+            mockMvc.perform(put("/assistant/proposal/lines").contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {"token":"%s","addedCodes":[%s],"removedCodes":[]}
+                            """.formatted(TOKEN, codigos(41)))).andExpect(status().isBadRequest());
+
+            verify(editUseCase, never()).edit(any());
+        }
+
+        @Test
+        @DisplayName("la cota tambien alcanza a removedCodes, que escribe una linea por codigo")
+        void la_cota_alcanza_a_removed_codes() throws Exception {
+            mockMvc.perform(put("/assistant/proposal/lines").contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {"token":"%s","addedCodes":[],"removedCodes":[%s]}
+                            """.formatted(TOKEN, codigos(41)))).andExpect(status().isBadRequest());
+
+            verify(editUseCase, never()).edit(any());
+        }
+
+        @Test
+        @DisplayName("justo en el tope si pasa: la cota no rechaza una edicion legitima")
+        void justo_en_el_tope_si_pasa() throws Exception {
+            when(editUseCase.edit(any())).thenReturn(propuesta());
+
+            mockMvc.perform(put("/assistant/proposal/lines").contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {"token":"%s","addedCodes":[%s],"removedCodes":[]}
+                            """.formatted(TOKEN, codigos(40)))).andExpect(status().isOk());
+        }
+
+        private static String codigos(int cuantos) {
+            return java.util.stream.IntStream.range(0, cuantos).mapToObj(i -> "\"C" + i + "\"")
+                    .collect(java.util.stream.Collectors.joining(","));
+        }
     }
 
     @Nested

@@ -92,6 +92,33 @@ final class ProposalAssembler {
      * aqui en tres estados de pantalla, y las <strong>tres</strong> degradaciones
      * mas el fallo del modelo dan el mismo: un anonimo no puede distinguir "se
      * agoto el presupuesto" de "la palanca esta apagada" de "el modelo fallo".
+     *
+     * <p>
+     * &#9940; <strong>LAPIDA — no reintroduzcas el suelo de latencia de la ruta
+     * degradada.</strong> Existio: {@code RandomizedResponsePacing} dormia el hilo
+     * del servlet entre 2.500 y 4.500 ms en cada respuesta degradada para que nadie
+     * distinguiera con un cronometro "hubo generacion real" (3-8 s) de "se agoto el
+     * presupuesto" (milisegundos). El argumento se lee perfecto y es falso desde el
+     * dia en que esta linea existe: <strong>el bit que ese suelo ocultaba lo
+     * publica la respuesta en texto plano</strong>. Todo lo que no sea
+     * {@code SUCCEEDED} sale por aqui como {@code DETERMINISTIC}, el controller lo
+     * serializa en {@code presentation} y {@code VetSoftwarePublicFront} lo usa
+     * como discriminador para elegir pantalla. Una sola peticion, sin cronometro y
+     * sin estadistica, lee el estado de degradacion de la plataforma.
+     *
+     * <p>
+     * Asi que el suelo costaba un hilo de servidor bloqueado hasta 4,5 s por
+     * peticion degradada -justo cuando la plataforma ya esta en apuros- a cambio de
+     * cerrar un canal que la linea de al lado deja abierto. Se retiro el suelo y
+     * <strong>no</strong> el campo: quitar {@code presentation} seria un cambio de
+     * contrato que rompe el front, y el bit ya es publico por diseno.
+     *
+     * <p>
+     * <strong>Si algun dia hace falta ocultarlo de verdad</strong>, el orden es al
+     * reves: primero dejar de publicar el estado -que {@code DETERMINISTIC} y
+     * {@code PROPOSAL} sean indistinguibles para el cliente, que hoy ademas
+     * renderizan la misma pantalla- y solo entonces igualar la latencia. Poner el
+     * suelo primero es pagar por cerrar una puerta abierta.
      */
     static ProposalPresentation presentacion(GenerationOutcome outcome, ProposalDraft draft) {
         if (outcome != GenerationOutcome.SUCCEEDED)

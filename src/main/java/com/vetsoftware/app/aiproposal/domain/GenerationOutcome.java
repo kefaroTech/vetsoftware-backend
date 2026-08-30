@@ -48,25 +48,11 @@ public enum GenerationOutcome {
      */
     MODEL_FAILED;
 
-    /**
-     * Las tres degradaciones que <strong>no llegaron a llamar</strong> al modelo, y
-     * por tanto responden en milisegundos.
-     *
-     * <p>
-     * ⛔ Es el discriminante del suelo de latencia de S4.2.3, y por eso vive aqui y
-     * no como un {@code Set} en el caso de uso: una generacion real tarda 3-8
-     * segundos, asi que un observador anonimo con un reloj distingue estas tres de
-     * aquella y sabe, sin credenciales, <strong>cuando se agoto el presupuesto
-     * diario de la plataforma</strong> -y por tanto cuando la competencia puede
-     * vaciarlo barato-.
-     *
-     * <p>
-     * <strong>{@link #MODEL_FAILED} queda fuera a proposito</strong>: ahi ya se
-     * pago la espera -el timeout, el reintento, la salida ilegible- y anadirle un
-     * suelo encima solo castigaria al prospecto por una averia nuestra.
-     */
-    public boolean esDegradacionSinLlamada() {
-        return this == DEGRADED_SPEND_CAP || this == DEGRADED_NO_HINTS
-                || this == DEGRADED_MODEL_UNAVAILABLE;
-    }
+    // ⛔ Aqui vivia esDegradacionSinLlamada(): las tres degradaciones que no
+    // llegaron a llamar al modelo y por tanto responden en milisegundos. Su unico
+    // consumidor era el suelo de latencia de S4.2.3, que se retiro porque el bit
+    // que ocultaba -"esto salio degradado"- lo publica la respuesta en el campo
+    // `presentation`. El argumento completo, y por que reintroducirlo seria un
+    // error, esta escrito en ProposalAssembler.presentacion. Si vuelve a hacer
+    // falta el predicado, se reescribe alli mismo: en este enum era codigo muerto.
 }

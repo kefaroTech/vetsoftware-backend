@@ -47,9 +47,12 @@ import org.springframework.web.bind.annotation.RestController;
  * entrada;</li>
  * <li>la ruta escrita tambien en el {@code containsExactlyInAnyOrder} de
  * {@code PublicRoutesTest}, que afirma el inventario completo a proposito;</li>
- * <li>y su {@code RouteLimit} en {@code LoginRateLimitFilter}.
- * {@code POST_SIN_LIMITE_JUSTIFICADO} esta vacio: no hay ni un POST publico
- * perdonado.</li>
+ * <li>y su {@code RouteLimit} en {@code LoginRateLimitFilter}. La invariante de
+ * {@code LoginRateLimitFilterTest} ya <b>no</b> recorre solo los POST: recorre
+ * las rutas publicas de <em>cualquier</em> metodo contra una lista de
+ * excepciones escritas, asi que el {@code PUT} de lineas y el {@code GET} de
+ * relectura si estan cubiertos por un gate. Antes no lo estaban, y borrar sus
+ * dos ramas del filtro dejaba el build en verde.</li>
  * </ol>
  *
  * <p>
@@ -111,18 +114,28 @@ public class AssistantController {
      * &#9940; <strong>La clave se busca ACOTADA al correo</strong> (en el caso de
      * uso, contra {@code uq_ai_proposals_idempotency}). Buscarla sola convertiria
      * una cabecera que elige el cliente en una lectura de las propuestas ajenas.
+     *
+     * <p>
+     * <strong>{@code billingCycle} si es un campo del cuerpo, y ahi esta la
+     * diferencia con la cabecera de arriba</strong>: no dice "esta peticion es la
+     * misma que la anterior" sino <em>que</em> se esta pidiendo. Cambia la escalera
+     * de precios contra la que se cotiza, se persiste con la propuesta y la
+     * relectura vuelve a leerlo. Puede faltar -es opcional a proposito, ver
+     * {@code GenerateProposalRequest}- y entonces lo resuelve a {@code MONTHLY} el
+     * constructor compacto de {@code GenerateProposalCommand}.
      */
     @PostMapping("/proposal")
     public AssistantProposalResponse generate(@Valid @RequestBody GenerateProposalRequest request,
             @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
             HttpServletRequest httpRequest) {
-        return toResponse(generateUseCase.generate(new GenerateProposalCommand(request.email(),
-                request.description(), idempotencyKey,
-                request.acceptances().stream()
-                        .map(aceptacion -> new LegalAcceptanceCommand(aceptacion.code(),
-                                aceptacion.documentVersion()))
-                        .toList(),
-                hash(httpRequest.getRemoteAddr()), hash(httpRequest.getHeader("User-Agent")))));
+        return toResponse(generateUseCase.generate(
+                new GenerateProposalCommand(request.email(), request.description(), idempotencyKey,
+                        request.acceptances().stream()
+                                .map(aceptacion -> new LegalAcceptanceCommand(aceptacion.code(),
+                                        aceptacion.documentVersion()))
+                                .toList(),
+                        hash(httpRequest.getRemoteAddr()),
+                        hash(httpRequest.getHeader("User-Agent")), request.billingCycle())));
     }
 
     /**

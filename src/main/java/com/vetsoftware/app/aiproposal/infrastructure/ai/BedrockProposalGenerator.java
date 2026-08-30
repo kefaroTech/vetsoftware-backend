@@ -61,12 +61,13 @@ import org.springframework.stereotype.Component;
  * que falta es la lectura del texto libre.
  *
  * <p>
- * ⚠️ <strong>Lo que este adaptador NO hace y hay que hacer aguas
- * arriba</strong>: el suelo de latencia aleatorio de 2.500-4.500 ms cuando se
- * degrada por tope o por palanca (S4.2.3). Sin el, un observador anonimo con un
- * reloj distingue la ruta degradada —milisegundos— de una generacion real
- * —segundos— y sabe cuando se vacio el presupuesto diario de la plataforma. Va
- * en el caso de uso, que es quien controla el hilo de la respuesta.
+ * ⚠️ <strong>El suelo de latencia de S4.2.3 ya no existe, y no hay que
+ * reponerlo.</strong> Este javadoc pedia que aguas arriba se durmiera el hilo
+ * 2.500-4.500 ms al degradar, para que un observador con un reloj no
+ * distinguiera la ruta degradada de una generacion real. Nunca funciono: la
+ * respuesta publica el estado de degradacion en su campo {@code presentation},
+ * asi que el canal estaba abierto en texto plano mientras se pagaba por
+ * cerrarlo. El argumento entero esta en {@code ProposalAssembler.presentacion}.
  */
 @Component
 public class BedrockProposalGenerator implements ProposalGeneratorPort {
@@ -88,6 +89,19 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
     private static final int TOKENS_ESTIMADOS_ENTRADA = 3_800;
 
     private static final int TOKENS_ESTIMADOS_SALIDA = 1_000;
+
+    /**
+     * &#9940; <strong>Lo que cuesta una invocacion de pago, y es publico porque hay
+     * otro sitio que tiene que saberlo.</strong> El permiso diario por IP de
+     * {@code LoginRateLimitFilter} se deriva de dividir el tope de gasto por este
+     * numero: si se eligen por separado, se calibra el limite de peticiones por
+     * encima del limite de dinero y una sola IP vacia el presupuesto de toda la
+     * plataforma —que es exactamente lo que pasaba con 20/dia por IP contra un tope
+     * que financiaba 18 llamadas—. {@code LoginRateLimitFilterTest} ata los dos
+     * numeros; sin esta constante publica solo podria copiarlos.
+     */
+    public static final BigDecimal USD_ESTIMADO_POR_LLAMADA = coste(TOKENS_ESTIMADOS_ENTRADA,
+            TOKENS_ESTIMADOS_SALIDA);
 
     /** Vocabulario cerrado de {@code failure_code}; cabe en los 40 del CHECK. */
     private static final String SALIDA_ILEGIBLE = AiErrorType.MODEL_OUTPUT_UNREADABLE.name();
@@ -174,7 +188,7 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
         if (!invoker.isAvailable())
             return ProposalGenerationResult.degradado(GenerationOutcome.DEGRADED_MODEL_UNAVAILABLE);
 
-        Optional<SpendReservation> reserva = spendGuard.reserve(estimacion());
+        Optional<SpendReservation> reserva = spendGuard.reserve(USD_ESTIMADO_POR_LLAMADA);
         if (reserva.isEmpty())
             return ProposalGenerationResult.degradado(GenerationOutcome.DEGRADED_SPEND_CAP);
 
@@ -214,11 +228,11 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
                             invocacion.stopReason(), invocacion.rawJson(), coste),
                     null, latencia);
         } catch (ModelInvoker.ModelInvocationException fallo) {
-            spendGuard.reconcile(reserva, estimacion());
+            spendGuard.reconcile(reserva, USD_ESTIMADO_POR_LLAMADA);
             return fallado(registrar(intento, fallo.getFailureCode(), fallo),
                     (int) Math.max(0, clock.millis() - empezo));
         } catch (RuntimeException inesperado) {
-            spendGuard.reconcile(reserva, estimacion());
+            spendGuard.reconcile(reserva, USD_ESTIMADO_POR_LLAMADA);
             return fallado(registrar(intento, "MODEL_UNEXPECTED_ERROR", inesperado),
                     (int) Math.max(0, clock.millis() - empezo));
         } finally {
@@ -363,10 +377,6 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
      */
     private static Integer entero(JsonNode nodo) {
         return nodo != null && nodo.isIntegralNumber() ? nodo.asInt() : null;
-    }
-
-    private static BigDecimal estimacion() {
-        return coste(TOKENS_ESTIMADOS_ENTRADA, TOKENS_ESTIMADOS_SALIDA);
     }
 
     /**

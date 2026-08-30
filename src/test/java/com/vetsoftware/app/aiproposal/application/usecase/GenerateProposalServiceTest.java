@@ -3,9 +3,9 @@ package com.vetsoftware.app.aiproposal.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -20,7 +20,6 @@ import com.vetsoftware.app.aiproposal.application.port.out.AiProposalRepository;
 import com.vetsoftware.app.aiproposal.application.port.out.LegalConsentPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalGeneratorPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalLinkEmailSender;
-import com.vetsoftware.app.aiproposal.application.port.out.ResponsePacingPort;
 import com.vetsoftware.app.aiproposal.application.port.out.SellableCatalogQueryPort;
 import com.vetsoftware.app.aiproposal.domain.AiProposal;
 import com.vetsoftware.app.aiproposal.domain.GenerationOutcome;
@@ -37,7 +36,6 @@ import com.vetsoftware.app.aiproposal.testsupport.ProposalMother;
 import com.vetsoftware.app.aiproposal.testsupport.SellableCatalogMother;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -90,9 +88,6 @@ class GenerateProposalServiceTest {
     private ProposalGeneratorPort generator;
 
     @Mock
-    private ResponsePacingPort pacing;
-
-    @Mock
     private ProposalLinkEmailSender enlacePorCorreo;
 
     @Mock
@@ -105,21 +100,42 @@ class GenerateProposalServiceTest {
         service = new GenerateProposalService(catalogQueryPort, legalConsent, generator,
                 new ProposalTurnWriter(repository, legalConsent, enlacePorCorreo,
                         ProposalMother.RELOJ),
-                new ProposalReader(repository, catalogQueryPort), pacing, metrics,
+                new ProposalReader(repository, catalogQueryPort, ProposalMother.RELOJ), metrics,
                 ProposalMother.RELOJ, ProposalMother.MODELO, ProposalMother.PROMPT, 14, "es-CO");
     }
 
-    private GenerateProposalCommand comando(String clave) {
+    private GenerateProposalCommand comandoMensual(String clave) {
+        return comando(clave, ProposalBillingCycle.MONTHLY);
+    }
+
+    private GenerateProposalCommand comandoAnual(String clave) {
+        return comando(clave, ProposalBillingCycle.ANNUAL);
+    }
+
+    /**
+     * &#9940; <strong>El ciclo es obligatorio y no tiene defecto AQUI a
+     * proposito.</strong> Un ayudante que lo omitiera devolveria el trabajo al
+     * estado del que se sale: catorce tests contra la rama mensual y cero contra la
+     * anual, sin que nada lo señalara.
+     */
+    private GenerateProposalCommand comando(String clave, ProposalBillingCycle ciclo) {
         return new GenerateProposalCommand(ProposalMother.CORREO, DESCRIPCION, clave,
                 List.of(new LegalAcceptanceCommand("PRIVACY_NOTICE", 3),
                         new LegalAcceptanceCommand("TERMS", 2)),
-                "iphash", "uahash");
+                "iphash", "uahash", ciclo);
     }
 
     private void conTarifaPublicada() {
         when(catalogQueryPort.findPublishedPriceListId())
                 .thenReturn(Optional.of(ProposalMother.ID_TARIFA));
         when(catalogQueryPort.loadCatalog(ProposalMother.ID_TARIFA, ProposalBillingCycle.MONTHLY))
+                .thenReturn(Optional.of(catalog));
+    }
+
+    private void conTarifaPublicadaAnual() {
+        when(catalogQueryPort.findPublishedPriceListId())
+                .thenReturn(Optional.of(ProposalMother.ID_TARIFA));
+        when(catalogQueryPort.loadCatalog(ProposalMother.ID_TARIFA, ProposalBillingCycle.ANNUAL))
                 .thenReturn(Optional.of(catalog));
     }
 
@@ -172,12 +188,12 @@ class GenerateProposalServiceTest {
                     .thenReturn(Optional.of(yaVista));
             conVistaReleible(yaVista);
 
-            ProposalViewDto vista = service.generate(comando(ProposalMother.CLAVE));
+            ProposalViewDto vista = service.generate(comandoMensual(ProposalMother.CLAVE));
 
             assertThat(vista.version()).isEqualTo(2L);
             assertThat(vista.recalculated()).isFalse();
             assertThat(vista.lines()).extracting(ProposalLineDto::code).containsExactly("CORE");
-            verifyNoInteractions(generator, pacing, enlacePorCorreo);
+            verifyNoInteractions(generator, enlacePorCorreo);
             noEscribioNada();
         }
 
@@ -197,18 +213,54 @@ class GenerateProposalServiceTest {
             when(repository.findLinesByTurnId(ID_TURNO)).thenReturn(
                     List.of(ProposalMother.lineaDelModelo(ID_TURNO, "CORE", "69000.00", 0)));
 
-            ProposalViewDto vista = service.generate(comando(ProposalMother.CLAVE));
+            ProposalViewDto vista = service.generate(comandoMensual(ProposalMother.CLAVE));
 
             assertThat(vista.version()).isEqualTo(1L);
             assertThat(vista.recalculated()).isFalse();
             assertThat(vista.lines()).extracting(ProposalLineDto::code).containsExactly("CORE");
-            verifyNoInteractions(generator, pacing);
+            verifyNoInteractions(generator);
         }
 
+        /**
+         * <b>La ventana que quedaba abierta, y ahora cerrada.</b> Entre el rechazo del
+         * índice único y el commit del ganador hay un instante en el que la fila
+         * todavía no es visible. Antes, una sola relectura con {@code orElseThrow}
+         * convertía ahí la carrera ya manejada en un {@code NoSuchElementException}: un
+         * 500 para quien hizo doble clic sobre una propuesta que sí existe. Ahora el
+         * perdedor reintenta la lectura y solo se rinde cuando el ganador no aparece en
+         * ninguno de los intentos.
+         */
         @Test
-        @DisplayName("&#9888; ventana abierta: si el ganador aun no ha commiteado, el perdedor se"
-                + " lleva un 500 y no un reintento")
-        void la_ventana_en_que_el_ganador_no_ha_commiteado_da_un_500() {
+        @DisplayName("el perdedor reintenta la lectura mientras el ganador no ha commiteado")
+        void el_perdedor_reintenta_mientras_el_ganador_no_ha_commiteado() {
+            AiProposal ganadora = ProposalMother.propuestaConVersion(ProposalMother.ID_PROPUESTA,
+                    1L);
+            when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
+                    .thenReturn(Optional.empty(), Optional.empty(), Optional.of(ganadora));
+            conTarifaPublicada();
+            conConsentimientoResoluble();
+            when(repository.save(any()))
+                    .thenThrow(new DataIntegrityViolationException("uq_ai_proposals_idempotency"));
+            when(repository.findTurnsByProposalId(ProposalMother.ID_PROPUESTA))
+                    .thenReturn(List.of(ProposalMother.turnoInicial(ID_TURNO, DESCRIPCION)));
+            when(repository.findLinesByTurnId(ID_TURNO)).thenReturn(
+                    List.of(ProposalMother.lineaDelModelo(ID_TURNO, "CORE", "69000.00", 0)));
+
+            ProposalViewDto vista = service.generate(comandoMensual(ProposalMother.CLAVE));
+
+            assertThat(vista.version()).isEqualTo(1L);
+            assertThat(vista.lines()).extracting(ProposalLineDto::code).containsExactly("CORE");
+            verifyNoInteractions(generator);
+        }
+
+        /**
+         * Agotados los reintentos se relanza <b>la violación original</b>, no un
+         * {@code NoSuchElementException}: el fallo que se reporta es el que de verdad
+         * ocurrió y nombra la restricción que lo causó.
+         */
+        @Test
+        @DisplayName("si el ganador no aparece en ningún intento, se relanza la violación original")
+        void si_el_ganador_no_aparece_se_relanza_la_violacion_original() {
             when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
                     .thenReturn(Optional.empty());
             conTarifaPublicada();
@@ -216,12 +268,12 @@ class GenerateProposalServiceTest {
             when(repository.save(any()))
                     .thenThrow(new DataIntegrityViolationException("uq_ai_proposals_idempotency"));
 
-            GenerateProposalCommand command = comando(ProposalMother.CLAVE);
+            GenerateProposalCommand command = comandoMensual(ProposalMother.CLAVE);
 
             assertThatThrownBy(() -> service.generate(command))
-                    .isInstanceOf(NoSuchElementException.class)
-                    .hasMessageContaining("No value present");
-            verifyNoInteractions(generator, pacing);
+                    .isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("uq_ai_proposals_idempotency");
+            verifyNoInteractions(generator);
         }
 
         @Test
@@ -232,12 +284,86 @@ class GenerateProposalServiceTest {
             when(repository.save(any()))
                     .thenThrow(new DataIntegrityViolationException("otra restriccion"));
 
-            GenerateProposalCommand command = comando(null);
+            GenerateProposalCommand command = comandoMensual(null);
 
             assertThatThrownBy(() -> service.generate(command))
                     .isInstanceOf(DataIntegrityViolationException.class)
                     .hasMessageContaining("otra restriccion");
             verifyNoInteractions(generator);
+        }
+
+        /**
+         * &#9940; <strong>La clave la genera el front al montar la pantalla, asi que la
+         * peticion mensual y la anual llegan con la MISMA.</strong> Devolver la previa
+         * mirando solo la clave hacia que conmutar a anual respondiera la propuesta
+         * mensual -con sus precios mensuales- y con toda la cara de haber funcionado:
+         * 200, lineas y ni un error en ningun sitio.
+         *
+         * <p>
+         * Y la nueva se escribe con clave <strong>nula</strong>: la fila mensual ya
+         * ocupa ese par en {@code uq_ai_proposals_idempotency}, asi que reusarla
+         * estrellaria el INSERT contra el unico.
+         */
+        @Test
+        @DisplayName("una previa mensual no vale para una peticion anual con la misma clave:"
+                + " se vuelve a generar y se escribe con clave nula")
+        void una_previa_mensual_no_vale_para_una_peticion_anual() {
+            AiProposal yaVista = ProposalMother.propuestaConVersion(ProposalMother.ID_PROPUESTA,
+                    2L);
+            when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
+                    .thenReturn(Optional.of(yaVista));
+            conTarifaPublicadaAnual();
+            conConsentimientoResoluble();
+            conEscrituraQueFunciona();
+            when(generator.generate(any())).thenReturn(
+                    ProposalMother.exito(ProposalMother.borrador(List.of("CORE"), List.of())));
+
+            ProposalViewDto vista = service.generate(comandoAnual(ProposalMother.CLAVE));
+
+            assertThat(vista.recalculated()).as("no puede ser la vista guardada").isTrue();
+            verify(generator).generate(any());
+
+            ArgumentCaptor<AiProposal> nueva = ArgumentCaptor.captor();
+            verify(repository, atLeastOnce()).save(nueva.capture());
+            assertThat(nueva.getValue().getBillingCycle()).isEqualTo(ProposalBillingCycle.ANNUAL);
+            assertThat(nueva.getValue().getIdempotencyKey())
+                    .as("la mensual ya ocupa ese par en el unico de idempotencia").isNull();
+        }
+    }
+
+    /**
+     * &#9940; <strong>El ciclo llegaba a {@code loadCatalog} clavado a
+     * {@code MONTHLY}</strong> por una constante, asi que el prospecto que pedia
+     * anual cotizaba contra la escalera mensual de {@code catalog_prices}: se
+     * llevaba precios que no son los suyos y la cabecera quedaba escrita como
+     * mensual, que es el dato que {@code ProposalReader.catalogo} vuelve a leer en
+     * cada refinamiento.
+     */
+    @Nested
+    @DisplayName("Ciclo de facturacion")
+    class CicloDeFacturacion {
+
+        @Test
+        @DisplayName("una peticion anual cotiza contra la escalera anual y persiste ANNUAL")
+        void una_peticion_anual_cotiza_contra_la_escalera_anual() {
+            when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
+                    .thenReturn(Optional.empty());
+            conTarifaPublicadaAnual();
+            conConsentimientoResoluble();
+            conEscrituraQueFunciona();
+            when(generator.generate(any())).thenReturn(
+                    ProposalMother.exito(ProposalMother.borrador(List.of("CORE"), List.of())));
+
+            service.generate(comandoAnual(ProposalMother.CLAVE));
+
+            verify(catalogQueryPort).loadCatalog(ProposalMother.ID_TARIFA,
+                    ProposalBillingCycle.ANNUAL);
+            verify(catalogQueryPort, never()).loadCatalog(ProposalMother.ID_TARIFA,
+                    ProposalBillingCycle.MONTHLY);
+
+            ArgumentCaptor<AiProposal> nueva = ArgumentCaptor.captor();
+            verify(repository, atLeastOnce()).save(nueva.capture());
+            assertThat(nueva.getValue().getBillingCycle()).isEqualTo(ProposalBillingCycle.ANNUAL);
         }
     }
 
@@ -253,12 +379,12 @@ class GenerateProposalServiceTest {
                     .thenReturn(Optional.empty());
             when(catalogQueryPort.findPublishedPriceListId()).thenReturn(Optional.empty());
 
-            ProposalViewDto vista = service.generate(comando(ProposalMother.CLAVE));
+            ProposalViewDto vista = service.generate(comandoMensual(ProposalMother.CLAVE));
 
             assertThat(vista.presentation()).isEqualTo(ProposalPresentation.DETERMINISTIC);
             assertThat(vista.publicToken()).isNull();
             assertThat(vista.lines()).isEmpty();
-            verifyNoInteractions(generator, legalConsent, pacing);
+            verifyNoInteractions(generator, legalConsent);
             noEscribioNada();
         }
 
@@ -273,9 +399,9 @@ class GenerateProposalServiceTest {
                     ProposalBillingCycle.MONTHLY))
                     .thenReturn(Optional.of(new SellableCatalog(Map.of(), Map.of(), List.of())));
 
-            assertThat(service.generate(comando(ProposalMother.CLAVE)).presentation())
+            assertThat(service.generate(comandoMensual(ProposalMother.CLAVE)).presentation())
                     .isEqualTo(ProposalPresentation.DETERMINISTIC);
-            verifyNoInteractions(generator, legalConsent, pacing);
+            verifyNoInteractions(generator, legalConsent);
             noEscribioNada();
         }
     }
@@ -291,7 +417,8 @@ class GenerateProposalServiceTest {
                     .thenReturn(Optional.empty());
             conTarifaPublicada();
             GenerateProposalCommand command = new GenerateProposalCommand(ProposalMother.CORREO,
-                    DESCRIPCION, ProposalMother.CLAVE, List.of(), "iphash", "uahash");
+                    DESCRIPCION, ProposalMother.CLAVE, List.of(), "iphash", "uahash",
+                    ProposalBillingCycle.MONTHLY);
 
             assertThatThrownBy(() -> service.generate(command))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -309,7 +436,7 @@ class GenerateProposalServiceTest {
             conTarifaPublicada();
             when(legalConsent.findVersion("PRIVACY_NOTICE", 3)).thenReturn(Optional.empty());
 
-            GenerateProposalCommand command = comando(ProposalMother.CLAVE);
+            GenerateProposalCommand command = comandoMensual(ProposalMother.CLAVE);
 
             assertThatThrownBy(() -> service.generate(command))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -327,7 +454,8 @@ class GenerateProposalServiceTest {
             when(legalConsent.findVersion("TERMS", 2)).thenReturn(Optional.of(TERMINOS));
             GenerateProposalCommand command = new GenerateProposalCommand(ProposalMother.CORREO,
                     DESCRIPCION, ProposalMother.CLAVE,
-                    List.of(new LegalAcceptanceCommand("TERMS", 2)), "iphash", "uahash");
+                    List.of(new LegalAcceptanceCommand("TERMS", 2)), "iphash", "uahash",
+                    ProposalBillingCycle.MONTHLY);
 
             assertThatThrownBy(() -> service.generate(command))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -352,7 +480,7 @@ class GenerateProposalServiceTest {
             when(generator.generate(any())).thenReturn(
                     ProposalMother.exito(ProposalMother.borrador(List.of("CORE"), List.of())));
 
-            service.generate(comando(ProposalMother.CLAVE));
+            service.generate(comandoMensual(ProposalMother.CLAVE));
 
             InOrder orden = inOrder(repository, generator);
             orden.verify(repository).saveTurn(any());
@@ -376,7 +504,7 @@ class GenerateProposalServiceTest {
             when(generator.generate(any())).thenReturn(ProposalMother
                     .exito(ProposalMother.borrador(List.of("CORE", "TELEMEDICINA"), List.of())));
 
-            ProposalViewDto vista = service.generate(comando(ProposalMother.CLAVE));
+            ProposalViewDto vista = service.generate(comandoMensual(ProposalMother.CLAVE));
 
             assertThat(vista.presentation()).isEqualTo(ProposalPresentation.PROPOSAL);
             assertThat(vista.recalculated()).isTrue();
@@ -399,7 +527,7 @@ class GenerateProposalServiceTest {
             when(generator.generate(any())).thenReturn(ProposalMother
                     .exito(ProposalDraft.sinLineas(true, true, List.of("CASH_REGISTER"))));
 
-            ProposalViewDto vista = service.generate(comando(ProposalMother.CLAVE));
+            ProposalViewDto vista = service.generate(comandoMensual(ProposalMother.CLAVE));
 
             assertThat(vista.presentation()).isEqualTo(ProposalPresentation.OUT_OF_DOMAIN);
             assertThat(vista.lines()).isEmpty();
@@ -424,7 +552,7 @@ class GenerateProposalServiceTest {
             when(generator.generate(any())).thenReturn(ProposalMother
                     .exito(ProposalMother.borrador(List.of("CORE", "TELEMEDICINA"), List.of())));
 
-            service.generate(comando(ProposalMother.CLAVE));
+            service.generate(comandoMensual(ProposalMother.CLAVE));
 
             ArgumentCaptor<List<ProposalLine>> lineas = ArgumentCaptor.captor();
             verify(repository).saveLines(lineas.capture());
@@ -437,17 +565,21 @@ class GenerateProposalServiceTest {
         }
     }
 
+    /**
+     * &#9940; El suelo de latencia de la ruta degradada <b>se retiro</b>: el bit
+     * que ocultaba lo publica la respuesta en {@code presentation}. Estas dos
+     * pruebas son las que impiden que vuelva de buena fe — la primera se pone roja
+     * si alguien reintroduce el {@code Thread.sleep}, la segunda dice por que no
+     * servia de nada.
+     */
     @Nested
-    @DisplayName("Suelo de latencia")
-    class SueloDeLatencia {
+    @DisplayName("Respuesta degradada")
+    class RespuestaDegradada {
 
         @ParameterizedTest
-        @CsvSource({"SUCCEEDED,0", "DEGRADED_SPEND_CAP,1", "DEGRADED_NO_HINTS,1",
-                "DEGRADED_MODEL_UNAVAILABLE,1", "MODEL_FAILED,0"})
-        @DisplayName("el suelo iguala las tres degradaciones sin llamada y deja fuera al fallo del"
-                + " modelo, que ya pago la espera")
-        void el_suelo_solo_iguala_las_degradaciones_sin_llamada(GenerationOutcome outcome,
-                int veces) {
+        @CsvSource({"DEGRADED_SPEND_CAP", "DEGRADED_NO_HINTS", "DEGRADED_MODEL_UNAVAILABLE"})
+        @DisplayName("una degradacion responde de inmediato: no hay suelo de latencia que pagar")
+        void una_degradacion_responde_de_inmediato(GenerationOutcome outcome) {
             when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
                     .thenReturn(Optional.empty());
             conTarifaPublicada();
@@ -456,9 +588,32 @@ class GenerateProposalServiceTest {
             when(generator.generate(any())).thenReturn(ProposalMother.resultadoDe(outcome,
                     ProposalMother.borrador(List.of("CORE"), List.of())));
 
-            service.generate(comando(ProposalMother.CLAVE));
+            long empezo = System.nanoTime();
+            service.generate(comandoMensual(ProposalMother.CLAVE));
+            long transcurrido = (System.nanoTime() - empezo) / 1_000_000;
 
-            verify(pacing, times(veces)).applyDegradedFloor(0L);
+            // El suelo retirado dormia entre 2.500 y 4.500 ms. Un segundo es holgado
+            // para una prueba unitaria con todo doblado y a la vez inalcanzable si
+            // alguien repone el sleep.
+            assertThat(transcurrido).as("ms hasta responder una degradacion").isLessThan(1_000L);
+        }
+
+        @ParameterizedTest
+        @CsvSource({"DEGRADED_SPEND_CAP", "DEGRADED_NO_HINTS", "DEGRADED_MODEL_UNAVAILABLE",
+                "MODEL_FAILED"})
+        @DisplayName("la respuesta publica el estado degradado en presentation: por eso el suelo"
+                + " de latencia no ocultaba nada")
+        void la_respuesta_publica_el_estado_degradado(GenerationOutcome outcome) {
+            when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
+                    .thenReturn(Optional.empty());
+            conTarifaPublicada();
+            conConsentimientoResoluble();
+            conEscrituraQueFunciona();
+            when(generator.generate(any())).thenReturn(ProposalMother.resultadoDe(outcome,
+                    ProposalMother.borrador(List.of("CORE"), List.of())));
+
+            assertThat(service.generate(comandoMensual(ProposalMother.CLAVE)).presentation())
+                    .isEqualTo(ProposalPresentation.DETERMINISTIC);
         }
 
         @Test
