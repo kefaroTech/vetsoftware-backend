@@ -21423,7 +21423,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/LegalDocumentVersionResponse"
+                  "$ref" : "#/components/schemas/PublicLegalDocumentResponse"
                 }
               }
             }
@@ -29350,7 +29350,9 @@
               "type" : "string",
               "maxLength" : 50,
               "minLength" : 0
-            }
+            },
+            "maxItems" : 40,
+            "minItems" : 0
           },
           "removedCodes" : {
             "type" : "array",
@@ -29358,7 +29360,9 @@
               "type" : "string",
               "maxLength" : 50,
               "minLength" : 0
-            }
+            },
+            "maxItems" : 40,
+            "minItems" : 0
           },
           "version" : {
             "type" : "integer",
@@ -34220,6 +34224,11 @@
             "type" : "string",
             "maxLength" : 4000,
             "minLength" : 0
+          },
+          "aiProposalToken" : {
+            "type" : "string",
+            "maxLength" : 43,
+            "minLength" : 0
           }
         },
         "required" : [ "cityId", "companyIdentifier", "companyName", "documentType", "employeeEmail", "employeeName", "fiscalEmail", "password", "taxRegime" ]
@@ -34542,6 +34551,11 @@
               "$ref" : "#/components/schemas/SelfServeQuoteLineRequest"
             },
             "minItems" : 1
+          },
+          "aiProposalToken" : {
+            "type" : "string",
+            "maxLength" : 43,
+            "minLength" : 0
           }
         },
         "required" : [ "billingCycle", "clientRequestId", "lines" ]
@@ -38872,9 +38886,17 @@
           "total" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "suppressedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "previouslySuppressedAt" : {
+            "type" : "string",
+            "format" : "date-time"
           }
         },
-        "required" : [ "lines", "proposals", "total", "turns" ]
+        "required" : [ "lines", "proposals", "suppressedAt", "total", "turns" ]
       },
       "GenerateProposalRequest" : {
         "type" : "object",
@@ -38896,6 +38918,10 @@
               "$ref" : "#/components/schemas/LegalAcceptanceRequest"
             },
             "minItems" : 1
+          },
+          "billingCycle" : {
+            "type" : "string",
+            "enum" : [ "MONTHLY", "ANNUAL" ]
           }
         },
         "required" : [ "acceptances", "description", "email" ]
@@ -39600,7 +39626,7 @@
           },
           "reason" : {
             "type" : "string",
-            "enum" : [ "OVERDUE_BALANCE", "PAYMENT_RECEIVED", "TRIAL_ENDED", "CANCELLATION_EFFECTIVE", "PERIOD_EXPIRED", "MANUAL" ]
+            "enum" : [ "OVERDUE_BALANCE", "PAYMENT_RECEIVED", "TRIAL_ENDED", "CANCELLATION_EFFECTIVE", "PERIOD_EXPIRED", "MANUAL", "REPLACED_BY_NEW_CONTRACT" ]
           },
           "actor" : {
             "type" : "string",
@@ -42594,6 +42620,58 @@
             "format" : "int32"
           }
         }
+      },
+      "PublicLegalDocumentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "code" : {
+            "type" : "string",
+            "example" : "PRIVACY_NOTICE"
+          },
+          "documentVersion" : {
+            "type" : "integer",
+            "format" : "int32",
+            "example" : 3
+          },
+          "kind" : {
+            "type" : "string",
+            "enum" : [ "TERMS", "PRIVACY_POLICY", "DATA_PROCESSING_AGREEMENT", "PRIVACY_NOTICE", "COMMITMENT_ANNEX" ]
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "content" : {
+            "type" : "string"
+          },
+          "contentHash" : {
+            "type" : "string",
+            "description" : "SHA-256 del contenido: la huella con la que se prueba que texto se acepto"
+          },
+          "publishedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "effectiveFrom" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "supersededAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "current" : {
+            "type" : "boolean"
+          },
+          "createdDate" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "code", "content", "contentHash", "createdDate", "current", "documentVersion", "effectiveFrom", "id", "kind", "publishedAt", "title" ]
       },
       "PageResponseLaboratoryTestResponse" : {
         "type" : "object",
