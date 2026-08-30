@@ -20,6 +20,10 @@ target/
 
 # Logs
 *.log
+# Marcadores de codigo de salida de procesos en segundo plano. Hermanos de *.log:
+# los agentes escriben `cmd > x.log 2>&1; echo $? > x.exit` porque la notificacion
+# de fondo miente sobre el exit code. Son desechables y NUNCA deben commitearse.
+*.exit
 # Anclado a la raiz A PROPOSITO. Sin la barra inicial, "logs/" casa con CUALQUIER
 # directorio llamado logs a cualquier profundidad: se comio el paquete Java
 # infrastructure/observability/logs/ y sus cinco clases nunca llegaron a estar en
