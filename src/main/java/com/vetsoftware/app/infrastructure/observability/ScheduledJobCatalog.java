@@ -139,7 +139,25 @@ public enum ScheduledJobCatalog {
 
     /** Conciliación de documentos pendientes en la DIAN. 02:30 y 14:30. */
     DIAN_PENDING_RECONCILIATION("dian.pending.reconciliation", "dian.reconciliation.cron",
-            "0 30 2,14 * * *", false);
+            "0 30 2,14 * * *", false),
+
+    /**
+     * Retención de las propuestas del asistente comercial: anonimización a los 90
+     * días, purga a los 24 meses. 03:55, en el hueco que dejan la caducidad de
+     * cotizaciones (03:25) y la cobranza (03:40), y antes de que la conciliación de
+     * consumo abra las 04:00.
+     *
+     * <p>
+     * <b>Escritor único.</b> Dos réplicas a la vez no corromperían nada —los seis
+     * pasos son idempotentes y van por lotes acotados— pero duplicarían el trabajo
+     * y se pisarían los bloqueos de fila sobre las mismas tres tablas.
+     *
+     * <p>
+     * <b>Los dos plazos son configuración</b>, no parte de esta entrada: aquí solo
+     * vive la cadencia. Ver {@code AiProposalRetentionProperties}.
+     */
+    AI_PROPOSAL_RETENTION("aiproposal.retention", "vetsoftware.ai.proposal.retention.cron",
+            "0 55 3 * * *", true);
 
     /**
      * Zona horaria de todas las expresiones. Explícita y no la del contenedor: ECS

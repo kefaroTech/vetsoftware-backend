@@ -4755,6 +4755,34 @@
         }
       }
     },
+    "/assistant/proposal/lines" : {
+      "put" : {
+        "tags" : [ "assistant-controller" ],
+        "operationId" : "editLines",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EditProposalLinesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AssistantProposalResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/appointments/{id}" : {
       "get" : {
         "tags" : [ "appointment-controller" ],
@@ -13262,6 +13290,122 @@
         "responses" : {
           "204" : {
             "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/assistant/proposals/suppress" : {
+      "post" : {
+        "tags" : [ "ai-proposal-retention-controller" ],
+        "operationId" : "suppress",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SuppressProposalDataRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProposalSuppressionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assistant/proposal" : {
+      "get" : {
+        "tags" : [ "assistant-controller" ],
+        "operationId" : "get_1",
+        "parameters" : [ {
+          "name" : "token",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AssistantProposalResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "assistant-controller" ],
+        "operationId" : "generate_4",
+        "parameters" : [ {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GenerateProposalRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AssistantProposalResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assistant/proposal/refine" : {
+      "post" : {
+        "tags" : [ "assistant-controller" ],
+        "operationId" : "refine",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RefineProposalRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AssistantProposalResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -23638,7 +23782,7 @@
     "/cash-sessions/{id}" : {
       "get" : {
         "tags" : [ "cash-session-controller" ],
-        "operationId" : "get_1",
+        "operationId" : "get_2",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -23934,7 +24078,7 @@
     "/animals/{animalId}/clinical-history" : {
       "get" : {
         "tags" : [ "clinical-history-controller" ],
-        "operationId" : "get_2",
+        "operationId" : "get_3",
         "parameters" : [ {
           "name" : "animalId",
           "in" : "path",
@@ -29191,6 +29335,173 @@
           }
         },
         "required" : [ "code", "createdDate", "enabled", "id", "name", "subModule" ]
+      },
+      "EditProposalLinesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "maxLength" : 43,
+            "minLength" : 43
+          },
+          "addedCodes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 50,
+              "minLength" : 0
+            }
+          },
+          "removedCodes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 50,
+              "minLength" : 0
+            }
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "token" ]
+      },
+      "AssistantPackOfferResponse" : {
+        "type" : "object",
+        "properties" : {
+          "packCode" : {
+            "type" : "string"
+          },
+          "packName" : {
+            "type" : "string"
+          },
+          "packAmount" : {
+            "type" : "number"
+          },
+          "standaloneTotal" : {
+            "type" : "number"
+          },
+          "monthlySaving" : {
+            "type" : "number"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "trialDaysLost" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "modulesLosingTrial" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "AssistantProposalLineResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "unitAmount" : {
+            "type" : "number"
+          },
+          "taxRate" : {
+            "type" : "number"
+          },
+          "taxAmount" : {
+            "type" : "number"
+          },
+          "totalAmount" : {
+            "type" : "number"
+          },
+          "trialDays" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          }
+        }
+      },
+      "AssistantProposalResponse" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string"
+          },
+          "presentation" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AssistantProposalLineResponse"
+            }
+          },
+          "recommendations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AssistantProposalLineResponse"
+            }
+          },
+          "discardedLines" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "subtotal" : {
+            "type" : "number"
+          },
+          "taxes" : {
+            "type" : "number"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "firstPeriodTotal" : {
+            "type" : "number"
+          },
+          "packOffer" : {
+            "$ref" : "#/components/schemas/AssistantPackOfferResponse"
+          },
+          "refinementsLeft" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "recalculated" : {
+            "type" : "boolean"
+          }
+        }
       },
       "UpdateAppointmentRequest" : {
         "type" : "object",
@@ -38529,6 +38840,101 @@
           }
         },
         "required" : [ "employeeCode" ]
+      },
+      "SuppressProposalDataRequest" : {
+        "type" : "object",
+        "properties" : {
+          "contactEmail" : {
+            "type" : "string",
+            "format" : "email",
+            "description" : "Correo del titular cuyos datos se suprimen",
+            "maxLength" : 320,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "contactEmail" ]
+      },
+      "ProposalSuppressionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "proposals" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "turns" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "lines" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "lines", "proposals", "total", "turns" ]
+      },
+      "GenerateProposalRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 320,
+            "minLength" : 0
+          },
+          "description" : {
+            "type" : "string",
+            "maxLength" : 1000,
+            "minLength" : 15
+          },
+          "acceptances" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LegalAcceptanceRequest"
+            },
+            "minItems" : 1
+          }
+        },
+        "required" : [ "acceptances", "description", "email" ]
+      },
+      "LegalAcceptanceRequest" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "maxLength" : 50,
+            "minLength" : 0
+          },
+          "documentVersion" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "code" ]
+      },
+      "RefineProposalRequest" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "maxLength" : 43,
+            "minLength" : 43
+          },
+          "text" : {
+            "type" : "string",
+            "maxLength" : 400,
+            "minLength" : 10
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "text", "token" ]
       },
       "CreateAppointmentRequest" : {
         "type" : "object",
