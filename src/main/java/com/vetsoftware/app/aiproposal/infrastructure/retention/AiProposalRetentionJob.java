@@ -106,6 +106,11 @@ public class AiProposalRetentionJob {
         pasada.ejecutar(Paso.REDACTAR_MOTIVOS, () -> retention.redactLineReasons(ahora, lote));
         pasada.ejecutar(Paso.PURGAR_LINEAS, () -> retention.purgeLines(purgablesDesde, lote));
         pasada.ejecutar(Paso.PURGAR_TURNOS, () -> retention.purgeTurns(purgablesDesde, lote));
+        // ANTES de purgar la cabecera, y ese orden es todo el paso: la aceptacion
+        // apunta a la propuesta por su id en un VARCHAR sin clave foranea, asi que
+        // borrar primero la cabecera deja una fila que ya no se puede reconocer.
+        pasada.ejecutar(Paso.PURGAR_ACEPTACIONES,
+                () -> retention.purgeAcceptances(purgablesDesde, lote));
         pasada.ejecutar(Paso.PURGAR_PROPUESTAS,
                 () -> retention.purgeProposals(purgablesDesde, lote));
 

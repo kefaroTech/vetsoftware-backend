@@ -70,8 +70,8 @@ public class AiProposalRetentionMetrics {
 
         ANONIMIZAR_PROPUESTAS("anonymize_proposals"), REDACTAR_TURNOS(
                 "redact_turns"), REDACTAR_MOTIVOS("redact_line_reasons"), PURGAR_LINEAS(
-                        "purge_lines"), PURGAR_TURNOS(
-                                "purge_turns"), PURGAR_PROPUESTAS("purge_proposals");
+                        "purge_lines"), PURGAR_TURNOS("purge_turns"), PURGAR_ACEPTACIONES(
+                                "purge_acceptances"), PURGAR_PROPUESTAS("purge_proposals");
 
         private final String etiqueta;
 

@@ -36,9 +36,16 @@ public class SuppressProposalDataService implements SuppressProposalDataUseCase 
         this.clock = clock;
     }
 
+    /**
+     * <strong>El instante se lee una sola vez</strong> y se usa para las tres
+     * cosas: la marca de anonimizacion en la base, la fila de evidencia y el
+     * {@code suppressedAt} del acuse. Leer el reloj dos veces dejaria el acuse
+     * diciendo una hora y la constancia otra, sobre el mismo hecho.
+     */
     @Override
     public ProposalSuppressionDto execute(SuppressProposalDataCommand command) {
-        return ProposalSuppressionDto.from(
-                retention.suppressByContactEmail(command.contactEmail(), LocalDateTime.now(clock)));
+        LocalDateTime ahora = LocalDateTime.now(clock);
+        return ProposalSuppressionDto.from(retention.suppressByContactEmail(command.contactEmail(),
+                command.executedBySystemUserId(), ahora), ahora);
     }
 }

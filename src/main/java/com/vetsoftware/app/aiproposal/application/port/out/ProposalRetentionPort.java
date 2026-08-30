@@ -73,6 +73,32 @@ public interface ProposalRetentionPort {
      * excluirla en el {@code WHERE} convierte un error de integridad en una
      * decision escrita.
      */
+    /**
+     * &#9940; <strong>Purga, el paso que faltaba: la evidencia de consentimiento de
+     * las propuestas que se van.</strong>
+     *
+     * <p>
+     * {@code legal_document_acceptances.subject_ref} es un {@code VARCHAR} y
+     * <strong>no</strong> una clave foranea —es deliberado: una FK polimorfica
+     * ataria la rodaja legal a {@code aiproposal}, a {@code company} y a cualquier
+     * sujeto futuro—, asi que la base no arrastra nada al borrar la cabecera. El
+     * resultado hasta hoy: cada propuesta purgada dejaba una o dos filas de
+     * aceptacion apuntando a un id que ya no existe. No es solo basura —crece con
+     * el trafico de la landing, que es el endpoint mas expuesto del producto— sino
+     * <strong>un informe de cumplimiento que miente en las dos
+     * direcciones</strong>: afirma consentimientos de titulares cuyos datos se
+     * borraron, y el recuento de evidencias deja de cuadrar con el de propuestas.
+     *
+     * <p>
+     * <strong>Va ANTES de {@link #purgeProposals}</strong>, y por eso comparte su
+     * predicado exacto: despues de borrar la cabecera no queda id por el que
+     * reconocer la fila. Es la misma leccion de orden que
+     * {@link #suppressByContactEmail}.
+     *
+     * @return cuantas aceptaciones se borraron
+     */
+    int purgeAcceptances(LocalDateTime anterioresA, int tamanoDeLote);
+
     int purgeProposals(LocalDateTime anterioresA, int tamanoDeLote);
 
     /**
@@ -88,14 +114,44 @@ public interface ProposalRetentionPort {
      * <strong>Limite declarado:</strong> alcanza {@code contact_email} y los
      * motivos. Un correo escrito <em>dentro</em> del texto libre lo cubre la
      * anonimizacion por tiempo, no esto.
+     *
+     * <p>
+     * &#9940; <strong>Escribe ademas la fila de evidencia, y en la MISMA
+     * transaccion que los tres borrados.</strong> No es un detalle de
+     * implementacion que el adaptador pueda repartir a su gusto: si la evidencia
+     * commitea aparte, el arbol de estados admite un borrado sin prueba —se atendio
+     * y no hay nada que ensenar ante la SIC— y tambien una prueba de un borrado que
+     * revirtio, que es peor porque afirma por escrito algo que no paso. Van juntas
+     * o no van.
+     *
+     * <p>
+     * <strong>La fila se escribe SIEMPRE, tambien con los tres contadores a
+     * cero.</strong> "Atendimos la peticion y no habia nada" es justo la respuesta
+     * que pide el regulador, y es ademas lo unico que vuelve distinguible el caso
+     * repetido del nunca-existio: la operacion es idempotente en su efecto pero no
+     * en su acuse, porque el primer borrado se lleva el hash por el que se busca y
+     * la segunda vez devuelve ceros igual que un correo que no estuvo nunca.
+     *
+     * @param executedBySystemUserId
+     *            quien la atiende, puesto por el controller desde la sesion y jamas
+     *            desde el cuerpo: un rastro de auditoria que escribe el auditado no
+     *            es un rastro de auditoria
      */
-    SuppressionResult suppressByContactEmail(String contactEmail, LocalDateTime ahora);
+    SuppressionResult suppressByContactEmail(String contactEmail, Long executedBySystemUserId,
+            LocalDateTime ahora);
 
     /**
      * Lo que movio una supresion, desglosado por tabla: sin el desglose, "borradas
      * 0 filas" no distingue "ese correo no esta" de "el paso de motivos no corrio".
+     *
+     * @param previouslySuppressedAt
+     *            cuando se atendio la peticion anterior del mismo titular, o
+     *            {@code null} si esta es la primera. Es lo que separa "ya se le
+     *            habia borrado" de "nunca hubo nada suyo", dos ceros que sin este
+     *            dato se leen igual
      */
-    record SuppressionResult(int proposals, int turns, int lines) {
+    record SuppressionResult(int proposals, int turns, int lines,
+            LocalDateTime previouslySuppressedAt) {
 
         public int total() {
             return proposals + turns + lines;

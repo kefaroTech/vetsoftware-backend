@@ -200,8 +200,9 @@ public final class BusinessMetricCardinalityFilter implements MeterFilter, Meter
             Map.entry("line.verdict",
                     Set.of("accepted", "unknown_code", "not_sellable", "not_self_service",
                             "duplicate")),
-            Map.entry("retention.step", Set.of("anonymize_proposals", "redact_turns",
-                    "redact_line_reasons", "purge_lines", "purge_turns", "purge_proposals")));
+            Map.entry("retention.step",
+                    Set.of("anonymize_proposals", "redact_turns", "redact_line_reasons",
+                            "purge_lines", "purge_turns", "purge_acceptances", "purge_proposals")));
 
     /**
      * Acumuladores de descarte por nombre de medidor. El conjunto de claves es fijo

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalRetentionPort;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
+import com.vetsoftware.app.infrastructure.observability.business.BusinessMetricCardinalityFilter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
@@ -120,7 +121,7 @@ class AiProposalRetentionJobTest {
         }
 
         @Test
-        @DisplayName("si un paso revienta informa PARTIAL_FAILURE y los otros cinco corren igual")
+        @DisplayName("si un paso revienta informa PARTIAL_FAILURE y los otros seis corren igual")
         void un_paso_que_revienta_no_aborta_la_pasada() {
             when(retention.anonymizeProposals(any(), any(), anyInt()))
                     .thenThrow(new IllegalStateException("la base no responde"));
@@ -131,11 +132,12 @@ class AiProposalRetentionJobTest {
             verify(retention).redactLineReasons(any(), anyInt());
             verify(retention).purgeLines(any(), anyInt());
             verify(retention).purgeTurns(any(), anyInt());
+            verify(retention).purgeAcceptances(any(), anyInt());
             verify(retention).purgeProposals(any(), anyInt());
         }
 
         @Test
-        @DisplayName("si revientan los seis informa FAILURE, que no sella el heartbeat")
+        @DisplayName("si revientan los siete informa FAILURE, que no sella el heartbeat")
         void si_revientan_todos_informa_failure() {
             RuntimeException caida = new IllegalStateException("la base no responde");
             when(retention.anonymizeProposals(any(), any(), anyInt())).thenThrow(caida);
@@ -143,6 +145,7 @@ class AiProposalRetentionJobTest {
             when(retention.redactLineReasons(any(), anyInt())).thenThrow(caida);
             when(retention.purgeLines(any(), anyInt())).thenThrow(caida);
             when(retention.purgeTurns(any(), anyInt())).thenThrow(caida);
+            when(retention.purgeAcceptances(any(), anyInt())).thenThrow(caida);
             when(retention.purgeProposals(any(), anyInt())).thenThrow(caida);
 
             ScheduledJobTelemetry.Outcome desenlace = job.aplicarRetencion();
@@ -282,6 +285,153 @@ class AiProposalRetentionJobTest {
             assertThat(contador(AiProposalRetentionMetrics.Paso.REDACTAR_TURNOS)).isZero();
             assertThat(contador(AiProposalRetentionMetrics.Paso.PURGAR_LINEAS))
                     .as("el fallo de un paso no borra las series de los demas").isZero();
+        }
+    }
+
+    /**
+     * &#9940; <b>La purga de la evidencia de consentimiento.</b>
+     * {@code legal_document_acceptances.subject_ref} es un {@code VARCHAR} y no una
+     * clave foranea -deliberado: una FK polimorfica ataria la rodaja legal a
+     * {@code aiproposal}, a {@code company} y a cualquier sujeto futuro-, asi que
+     * la base no arrastra nada al borrar la cabecera. Sin este paso, cada propuesta
+     * purgada dejaba una o dos filas de aceptacion apuntando a un id que ya no
+     * existe, y el informe de cumplimiento mentia en las dos direcciones: afirmaba
+     * consentimientos de titulares cuyos datos se borraron, y el recuento de
+     * evidencias dejaba de cuadrar con el de propuestas.
+     */
+    @Nested
+    @DisplayName("La purga de aceptaciones legales")
+    class PurgaDeAceptaciones {
+
+        /**
+         * &#9940; <b>El orden ES el paso.</b> La aceptacion apunta a la propuesta por
+         * su id, en un {@code VARCHAR} sin clave foranea: si la cabecera se borra
+         * primero, no queda id por el que reconocer la fila y la evidencia huerfana se
+         * queda para siempre. Es la misma leccion de orden que
+         * {@code suppressByContactEmail}.
+         */
+        @Test
+        @DisplayName("las aceptaciones se purgan ANTES que la cabecera, que es lo que hace"
+                + " reconocible la fila")
+        void las_aceptaciones_se_purgan_antes_que_la_cabecera() {
+            job.aplicarRetencion();
+
+            var enOrden = org.mockito.Mockito.inOrder(retention);
+            enOrden.verify(retention).purgeTurns(any(), anyInt());
+            enOrden.verify(retention).purgeAcceptances(any(), anyInt());
+            enOrden.verify(retention).purgeProposals(any(), anyInt());
+        }
+
+        /**
+         * Comparte el predicado exacto de {@code purgeProposals} y no el de la
+         * anonimizacion: se borra la evidencia de lo que se va, no la de lo que sigue
+         * vivo con el correo ya anonimizado.
+         */
+        @Test
+        @DisplayName("usa el mismo corte de purga que la cabecera, no el de la anonimizacion")
+        void usa_el_mismo_corte_que_la_cabecera() {
+            job.aplicarRetencion();
+
+            ArgumentCaptor<LocalDateTime> corteAceptaciones = ArgumentCaptor
+                    .forClass(LocalDateTime.class);
+            ArgumentCaptor<LocalDateTime> corteCabecera = ArgumentCaptor
+                    .forClass(LocalDateTime.class);
+            verify(retention).purgeAcceptances(corteAceptaciones.capture(), anyInt());
+            verify(retention).purgeProposals(corteCabecera.capture(), anyInt());
+            assertThat(corteAceptaciones.getValue()).isEqualTo(corteCabecera.getValue());
+        }
+
+        @Test
+        @DisplayName("va por lotes del tamano configurado, como los otros seis pasos")
+        void va_por_lotes_del_tamano_configurado() {
+            job.aplicarRetencion();
+
+            verify(retention).purgeAcceptances(any(), eq(properties.getBatchSize()));
+        }
+
+        /**
+         * Un paso que agota su cupo dejo filas elegibles sin tratar: aqui eso significa
+         * evidencias de consentimiento que siguen apuntando a propuestas que ya no
+         * existen. Informarlo como exito es como se llega a un panel en verde sobre una
+         * tabla sucia.
+         */
+        @Test
+        @DisplayName("si la purga de aceptaciones agota su cupo, la pasada no es un exito")
+        void agotar_el_cupo_de_aceptaciones_no_es_exito() {
+            when(retention.purgeAcceptances(any(), anyInt())).thenReturn(10);
+
+            assertThat(job.aplicarRetencion())
+                    .isEqualTo(ScheduledJobTelemetry.Outcome.PARTIAL_FAILURE);
+        }
+
+        @Test
+        @DisplayName("cuenta sus filas en su propia serie, no en la de la cabecera")
+        void cuenta_sus_filas_en_su_propia_serie() {
+            when(retention.purgeAcceptances(any(), anyInt())).thenReturn(4);
+
+            job.aplicarRetencion();
+
+            assertThat(contador(AiProposalRetentionMetrics.Paso.PURGAR_ACEPTACIONES)).isEqualTo(4);
+            assertThat(contador(AiProposalRetentionMetrics.Paso.PURGAR_PROPUESTAS)).isZero();
+        }
+
+        /**
+         * &#9940; <b>Que el contador se incremente no significa que la metrica
+         * salga.</b> {@code BusinessMetricCardinalityFilter} comprueba la etiqueta
+         * {@code retention.step} contra una lista blanca escrita a mano, y un valor que
+         * no este declarado hace que Micrometer descarte el medidor: no hay excepcion,
+         * no hay arranque fallido, y el panel muestra <b>un hueco indistinguible de "no
+         * paso nada"</b>. Esto ya ocurrio con {@code purge_acceptances}.
+         *
+         * <p>
+         * Por eso este caso no usa el registro pelado de los demas sino uno con el
+         * filtro puesto, que es como corre produccion: si alguien quita el valor de
+         * {@code ALLOWED_VALUES}, {@code find(...).counter()} devuelve {@code null} y
+         * el test se pone rojo, en vez de seguir en verde sobre una serie que ya no
+         * existe.
+         */
+        @Test
+        @DisplayName("la serie del paso sobrevive al filtro de cardinalidad: sale de verdad, no"
+                + " deja un hueco")
+        void la_serie_sobrevive_al_filtro_de_cardinalidad() {
+            MeterRegistry vigilado = new SimpleMeterRegistry();
+            vigilado.config().meterFilter(new BusinessMetricCardinalityFilter());
+            AiProposalRetentionJob conFiltro = new AiProposalRetentionJob(retention, properties,
+                    new AiProposalRetentionMetrics(vigilado),
+                    new ScheduledJobTelemetry(ObservationRegistry.NOOP), RELOJ);
+            when(retention.purgeAcceptances(any(), anyInt())).thenReturn(6);
+
+            conFiltro.aplicarRetencion();
+
+            assertThat(vigilado.find(AiProposalRetentionMetrics.ROWS_METRIC)
+                    .tag(AiProposalRetentionMetrics.STEP_TAG,
+                            AiProposalRetentionMetrics.Paso.PURGAR_ACEPTACIONES.etiqueta())
+                    .counter())
+                    .as("el filtro de cardinalidad descarto la serie: el panel de retencion"
+                            + " mostraria un hueco identico a no haber purgado nada")
+                    .isNotNull();
+            assertThat(vigilado.get(AiProposalRetentionMetrics.ROWS_METRIC)
+                    .tag(AiProposalRetentionMetrics.STEP_TAG,
+                            AiProposalRetentionMetrics.Paso.PURGAR_ACEPTACIONES.etiqueta())
+                    .counter().count()).isEqualTo(6);
+        }
+
+        /**
+         * La otra mitad del mismo riesgo: si el filtro descarta el medidor, el descarte
+         * queda contado. Un valor mayor que cero aqui es un panel ciego.
+         */
+        @Test
+        @DisplayName("ningun paso del barrido acaba en el contador de descartes por"
+                + " cardinalidad")
+        void ningun_paso_acaba_descartado() {
+            MeterRegistry vigilado = new SimpleMeterRegistry();
+            BusinessMetricCardinalityFilter filtro = new BusinessMetricCardinalityFilter();
+            vigilado.config().meterFilter(filtro);
+            new AiProposalRetentionMetrics(vigilado);
+            filtro.bindTo(vigilado);
+
+            assertThat(vigilado.find(BusinessMetricCardinalityFilter.DENIED).functionCounters())
+                    .allSatisfy(contador -> assertThat(contador.count()).isZero());
         }
     }
 }

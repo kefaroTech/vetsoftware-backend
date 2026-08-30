@@ -2,6 +2,7 @@ package com.vetsoftware.app.aiproposal.infrastructure.web;
 
 import com.vetsoftware.app.aiproposal.application.command.SuppressProposalDataCommand;
 import com.vetsoftware.app.aiproposal.application.port.in.SuppressProposalDataUseCase;
+import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.aiproposal.infrastructure.web.request.SuppressProposalDataRequest;
 import com.vetsoftware.app.aiproposal.infrastructure.web.response.ProposalSuppressionResponse;
 import jakarta.validation.Valid;
@@ -40,19 +41,35 @@ public class AiProposalRetentionController {
 
     private final SuppressProposalDataUseCase suppressUseCase;
 
-    public AiProposalRetentionController(SuppressProposalDataUseCase suppressUseCase) {
+    private final Authz authz;
+
+    public AiProposalRetentionController(SuppressProposalDataUseCase suppressUseCase, Authz authz) {
         this.suppressUseCase = suppressUseCase;
+        this.authz = authz;
     }
 
     /**
      * Devuelve 200 con los contadores incluso cuando no habia nada que borrar. Un
      * 404 para "ese correo no esta" convertiria este endpoint en un oraculo que
      * responde si una direccion pidio propuesta alguna vez.
+     *
+     * <p>
+     * &#9940; <strong>Quien atiende la peticion sale de la sesion, no del
+     * cuerpo.</strong> {@code SuppressProposalDataRequest} sigue teniendo un solo
+     * campo y no va a ganar ninguno: si el actor viajara en el JSON, el rastro de
+     * auditoria lo estaria escribiendo el auditado y la fila de
+     * {@code ai_proposal_suppression_requests} no probaria nada.
+     *
+     * <p>
+     * Se usa {@code currentSystemUserId()} y no la variante {@code ...OrNull}: una
+     * constancia que no puede nombrar a quien la firmo no sirve para lo unico que
+     * se le va a pedir, asi que es preferible el 403.
      */
     @PostMapping("/suppress")
     public ProposalSuppressionResponse suppress(
             @Valid @RequestBody SuppressProposalDataRequest request) {
         return ProposalSuppressionResponse.from(
-                suppressUseCase.execute(new SuppressProposalDataCommand(request.contactEmail())));
+                suppressUseCase.execute(new SuppressProposalDataCommand(request.contactEmail(),
+                        authz.currentSystemUserId())));
     }
 }
