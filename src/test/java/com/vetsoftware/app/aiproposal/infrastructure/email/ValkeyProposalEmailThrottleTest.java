@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -106,6 +107,65 @@ class ValkeyProposalEmailThrottleTest {
         void el_hash_es_sha256_hex() {
             assertThat(ValkeyProposalEmailThrottle.hash("laura@vetchapinero.co")).hasSize(64)
                     .matches("[0-9a-f]{64}");
+        }
+    }
+
+    /**
+     * &#9940; <b>El cupo se saltaba con subdirecciones, y bajar a minusculas no lo
+     * veia.</b> {@code victima+1@gmail.com}, {@code victima+2@gmail.com} y
+     * {@code v.i.c.t.i.m.a@gmail.com} eran tres claves distintas y <b>un solo
+     * buzon</b>: con un cupo de un correo por hora, iterar el sufijo mandaba un
+     * correo por peticion a un tercero, con nuestro remitente y nuestra reputacion,
+     * y el estrangulador contaba uno cada vez.
+     */
+    @Nested
+    @DisplayName("Canonicalizacion de la clave")
+    class Canonicalizacion {
+
+        @ParameterizedTest(name = "{0} y {1} comparten cupo")
+        @CsvSource({"victima@gmail.com,victima+1@gmail.com",
+                "victima+1@gmail.com,victima+2@gmail.com",
+                "victima@gmail.com,v.i.c.t.i.m.a@gmail.com",
+                "victima@gmail.com,Victima+Newsletter@GMail.com",
+                "victima@googlemail.com,vic.tima+x@googlemail.com",
+                "laura@vetchapinero.co,laura+propuesta@vetchapinero.co",
+                "laura@vetchapinero.co,  laura@VetChapinero.co  "})
+        @DisplayName("las variantes del mismo buzon dan el mismo hash")
+        void las_variantes_del_mismo_buzon_comparten_clave(String uno, String otro) {
+            assertThat(ValkeyProposalEmailThrottle.hash(uno))
+                    .isEqualTo(ValkeyProposalEmailThrottle.hash(otro));
+        }
+
+        /**
+         * <b>El punto solo es irrelevante donde el proveedor dice que lo es.</b>
+         * Quitarlo en todas partes fundiria los buzones de dos personas distintas de la
+         * misma empresa en un unico cupo de un correo por hora, y uno de los dos se
+         * quedaria sin su propuesta sin que nadie lo supiera.
+         */
+        @ParameterizedTest(name = "{0} y {1} NO comparten cupo")
+        @CsvSource({"a.b@vetchapinero.co,ab@vetchapinero.co",
+                "laura@vetchapinero.co,laura@otraclinica.co",
+                "laura@vetchapinero.co,mario@vetchapinero.co", "a.b@empresa.com,ab@empresa.com"})
+        @DisplayName("dos buzones que de verdad son distintos siguen teniendo claves distintas")
+        void dos_buzones_distintos_no_comparten_clave(String uno, String otro) {
+            assertThat(ValkeyProposalEmailThrottle.hash(uno))
+                    .isNotEqualTo(ValkeyProposalEmailThrottle.hash(otro));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"sinarroba", "+solotag@gmail.com", "@gmail.com", "laura@"})
+        @DisplayName("una direccion que no es canonicalizable no revienta ni colapsa en una"
+                + " sola clave")
+        void una_direccion_rara_no_revienta(String raro) {
+            assertThat(ValkeyProposalEmailThrottle.canonicalizar(raro))
+                    .isEqualTo(raro.trim().toLowerCase(java.util.Locale.ROOT));
+        }
+
+        @Test
+        @DisplayName("la clave sigue sin llevar el correo dentro, canonicalizado o no")
+        void la_clave_no_lleva_el_correo() {
+            assertThat(ValkeyProposalEmailThrottle.hash("victima+1@gmail.com"))
+                    .doesNotContain("victima").doesNotContain("gmail").hasSize(64);
         }
     }
 

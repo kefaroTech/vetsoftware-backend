@@ -241,6 +241,70 @@ class ProposalOutputValidatorTest {
         }
     }
 
+    /**
+     * &#9940; <b>Un codigo repetido no es una fealdad: es un 500 con la llamada al
+     * modelo ya pagada.</b> {@code ai_proposal_lines} tiene
+     * {@code uq_ai_proposal_lines_code} sobre {@code (turn_id, item_code)}, y
+     * {@code ProposalCart} escribe una linea por codigo <b>tambien cuando lo
+     * rechaza</b>. Dos lineas con el mismo codigo revientan el {@code saveLines},
+     * revierten TX2 y dejan el turno {@code PENDING} huerfano para siempre.
+     */
+    @Nested
+    @DisplayName("Deduplicacion: lo que impide el 500 del turno")
+    class Deduplicacion {
+
+        @Test
+        @DisplayName("un codigo que sale en las dos listas se queda solo en la de necesarios")
+        void un_codigo_en_las_dos_listas_no_se_duplica() {
+            ProposalDraft draft = ProposalOutputValidator.validate(salida(true, false,
+                    List.of("CORE", "SCHEDULING"), List.of("SCHEDULING", "LAB_IMAGING"), Map.of()),
+                    catalogo);
+
+            assertThat(draft.necessaryCodes()).containsExactly("CORE", "SCHEDULING");
+            assertThat(draft.recommendedCodes()).containsExactly("LAB_IMAGING");
+            assertThat(todosLosCodigos(draft)).doesNotHaveDuplicates();
+        }
+
+        @Test
+        @DisplayName("un codigo repetido dentro de la misma lista sale una sola vez")
+        void un_codigo_repetido_en_la_misma_lista_sale_una_vez() {
+            ProposalDraft draft = ProposalOutputValidator
+                    .validate(salida(true, false, List.of("CORE", "CORE", "SCHEDULING"),
+                            List.of("LAB_IMAGING", "LAB_IMAGING"), Map.of()), catalogo);
+
+            assertThat(draft.necessaryCodes()).containsExactly("CORE", "SCHEDULING");
+            assertThat(draft.recommendedCodes()).containsExactly("LAB_IMAGING");
+        }
+
+        @Test
+        @DisplayName("el codigo alucinado tambien se deduplica: no existe en el catalogo, pero"
+                + " la fila que lo rechaza si es real")
+        void el_codigo_alucinado_tambien_se_deduplica() {
+            ProposalDraft draft = ProposalOutputValidator.validate(
+                    salida(true, false, List.of("TELEMEDICINA"), List.of("TELEMEDICINA"), Map.of()),
+                    catalogo);
+
+            assertThat(todosLosCodigos(draft)).containsExactly("TELEMEDICINA");
+        }
+
+        @Test
+        @DisplayName("deduplicar no borra codigos legitimos: lo distinto sigue estando")
+        void deduplicar_no_borra_lo_legitimo() {
+            ProposalDraft draft = ProposalOutputValidator.validate(salida(true, false,
+                    List.of("CORE", "SCHEDULING"), List.of("LAB_IMAGING", "EXTRA_USER"), Map.of()),
+                    catalogo);
+
+            assertThat(todosLosCodigos(draft)).containsExactly("CORE", "SCHEDULING", "LAB_IMAGING",
+                    "EXTRA_USER");
+        }
+
+        private List<String> todosLosCodigos(ProposalDraft draft) {
+            List<String> todos = new java.util.ArrayList<>(draft.necessaryCodes());
+            todos.addAll(draft.recommendedCodes());
+            return todos;
+        }
+    }
+
     @Test
     @DisplayName("el payload se defiende de los nulos para que el validador no tenga que")
     void el_payload_normaliza_nulos() {

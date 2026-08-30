@@ -73,9 +73,29 @@ class EditProposalLinesServiceTest {
 
     @BeforeEach
     void montar() {
-        service = new EditProposalLinesService(catalogQueryPort, new ProposalTurnWriter(repository,
-                legalConsent, enlacePorCorreo, ProposalMother.RELOJ),
-                new ProposalReader(repository, catalogQueryPort));
+        service = new EditProposalLinesService(catalogQueryPort,
+                new ProposalTurnWriter(repository, legalConsent, enlacePorCorreo,
+                        ProposalMother.RELOJ),
+                new ProposalReader(repository, catalogQueryPort, ProposalMother.RELOJ));
+    }
+
+    /** Ver el javadoc del mismo bloque en {@code GetProposalServiceTest}. */
+    @Nested
+    @DisplayName("Caducidad")
+    class Caducidad {
+
+        @Test
+        @DisplayName("el PUT sobre una propuesta caducada es un 404 y no escribe ni un turno")
+        void el_put_sobre_una_propuesta_caducada_es_404() {
+            when(repository.findByPublicToken(ProposalMother.TOKEN)).thenReturn(
+                    Optional.of(ProposalMother.propuestaCaducada(ProposalMother.ID_PROPUESTA)));
+
+            assertThatThrownBy(() -> service.edit(new EditProposalLinesCommand(ProposalMother.TOKEN,
+                    List.of("VACCINATION"), List.of(), null)))
+                    .isInstanceOf(AiProposalNotFoundException.class);
+            verify(repository, never()).saveTurn(any());
+            verify(repository, never()).saveLines(any());
+        }
     }
 
     private AiProposal propuesta() {

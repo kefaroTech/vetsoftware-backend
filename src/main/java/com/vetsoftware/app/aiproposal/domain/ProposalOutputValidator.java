@@ -2,8 +2,10 @@ package com.vetsoftware.app.aiproposal.domain;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Convierte lo que dijo el modelo en algo que el motor determinista puede
@@ -71,8 +73,11 @@ public final class ProposalOutputValidator {
             return ProposalDraft.sinLineas(payload.understood(), payload.outOfDomain(),
                     contradichos(payload));
 
-        List<String> necesarios = acotar(payload.necessaryCodes());
-        List<String> recomendados = acotar(payload.recommendedCodes());
+        // Deduplicar aqui NO es simetria estetica con contradichos(): es lo que
+        // impide un 500. Ver el javadoc de deduplicar(...).
+        List<String> necesarios = acotar(deduplicar(payload.necessaryCodes(), Set.of()));
+        List<String> recomendados = acotar(
+                deduplicar(payload.recommendedCodes(), Set.copyOf(necesarios)));
         if (necesarios.isEmpty() && recomendados.isEmpty())
             return ProposalDraft.sinLineas(true, false);
 
@@ -101,6 +106,51 @@ public final class ProposalOutputValidator {
         List<String> todos = new ArrayList<>(payload.necessaryCodes());
         todos.addAll(payload.recommendedCodes());
         return acotar(todos.stream().distinct().toList());
+    }
+
+    /**
+     * &#9940; <strong>Un codigo repetido entre las dos listas revienta el turno
+     * entero con un 500, y la llamada ya esta pagada.</strong>
+     *
+     * <p>
+     * {@code ai_proposal_lines} lleva {@code uq_ai_proposal_lines_code} sobre
+     * {@code (turn_id, item_code)}. {@code ProposalCart.evaluar} escribe una linea
+     * por codigo <em>incluidos los rechazos</em>, y el rechazo por duplicado
+     * conserva el codigo verbatim -a proposito: la alucinacion es la senal-, asi
+     * que un {@code CORE} en {@code necessaryCodes} y otro en
+     * {@code recommendedCodes} produce dos filas con el mismo
+     * {@code (turn_id, item_code)}. El {@code saveLines} falla, TX2 revierte, el
+     * turno se queda {@code PENDING} para siempre y el prospecto recibe un 500 por
+     * una propuesta que ya se cobro al modelo.
+     *
+     * <p>
+     * {@link #contradichos(ModelProposalPayload)} ya lo hacia y su javadoc explica
+     * exactamente este motivo; lo que faltaba era aplicarlo tambien al camino
+     * bueno, que es el que corre siempre. <strong>Hoy no es alcanzable</strong>
+     * porque {@code ModelAccessNotEnabledInvoker} deja todo borrador sin lineas: se
+     * arma sola el dia que se habilite Bedrock, que es lo que la hace mas urgente y
+     * no menos.
+     *
+     * <p>
+     * <strong>Lo que se pierde</strong>: la linea {@code DUPLICATE} que el motor
+     * habria escrito como telemetria de calidad del modelo. Es un intercambio
+     * deliberado —una senal de calidad contra un 500 y una llamada de pago tirada—
+     * y ademas la senal no desaparece del todo: el codigo sigue en el carrito con
+     * su veredicto real.
+     *
+     * @param codigos
+     *            la lista tal como la mando el modelo
+     * @param yaEmitidos
+     *            lo que ya salio en la lista anterior del mismo turno
+     */
+    private static List<String> deduplicar(List<String> codigos, Set<String> yaEmitidos) {
+        Set<String> vistos = new LinkedHashSet<>(yaEmitidos);
+        List<String> unicos = new ArrayList<>();
+        for (String codigo : codigos) {
+            if (vistos.add(codigo))
+                unicos.add(codigo);
+        }
+        return unicos;
     }
 
     private static List<String> acotar(List<String> codigos) {

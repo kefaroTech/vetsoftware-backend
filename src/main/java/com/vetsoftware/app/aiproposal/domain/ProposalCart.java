@@ -120,13 +120,32 @@ public final class ProposalCart {
         }
 
         // Pasos 1 y 2 sobre lo recomendado: mismo filtro, y hasta aqui llegan.
+        //
+        // ⛔ Un codigo que YA se evaluo como necesario no se vuelve a evaluar aqui.
+        // Si se hiciera, evaluar() escribiria una segunda linea con el mismo codigo
+        // y veredicto DUPLICATE, y las dos filas chocarian contra
+        // uq_ai_proposal_lines_code al cerrar el turno: 500, transaccion revertida y
+        // turno PENDING huerfano con la llamada al modelo ya pagada. El validador
+        // deduplica las dos listas antes de llegar aqui, pero el refinamiento vuelve
+        // a mezclarlas -fusionar() anade lo que el cliente puso a mano, que puede
+        // ser justo lo que el modelo ahora recomienda-, asi que la guarda tiene que
+        // estar TAMBIEN en el motor: es el unico punto por el que pasan los tres
+        // llamantes.
         for (String code : sugeridos) {
+            if (code == null || vistos.contains(code))
+                continue;
             evaluar(code, LineSource.MODEL_RECOMMENDED, prosa.get(code), catalog, vistos, lineas);
         }
 
         // Paso 3: el nucleo entra siempre, lo pidiera el modelo o no.
+        // La guarda mira `vistos` y no `enCarrito`, igual que las dos de cerrar(...)
+        // -ver su javadoc-. Aqui es defensiva y hoy no alcanzable: el filtro
+        // esCotizable de la linea de arriba ya descarta al nucleo que evaluar
+        // habria rechazado, asi que las dos guardas coinciden. Se escribe con el
+        // mismo predicado para que las tres digan lo mismo y no haya que razonar
+        // cual de ellas era la buena el dia que el filtro cambie.
         catalog.core().filter(SellableItem::esCotizable).ifPresent(nucleo -> {
-            if (!enCarrito.contains(nucleo.code()))
+            if (!vistos.contains(nucleo.code()))
                 anadirPorCierre(nucleo.code(), catalog, vistos, enCarrito, lineas);
         });
 
@@ -177,6 +196,26 @@ public final class ProposalCart {
      * recorrido</strong>, y no como un paso posterior: {@code CASH_REGISTER} puede
      * entrar tanto porque lo pidio el modelo como porque lo arrastro otra
      * dependencia, y un paso al final solo cubriria el primer caso.
+     *
+     * <p>
+     * &#9940; <strong>Las guardas de «esto ya esta» miran {@code vistos}, nunca
+     * {@code enCarrito}</strong>, y la diferencia entre los dos conjuntos era un
+     * 500. {@code enCarrito} son los codigos <em>aceptados</em>; {@code vistos} son
+     * los <em>evaluados</em>, aceptados o no. Un requisito que se evaluo y salio
+     * rechazado -no existe, no esta publicado, no es autoservicio- esta en
+     * {@code vistos} y no en {@code enCarrito}: con la guarda vieja se volvia a
+     * evaluar, y {@link #evaluar} escribia entonces una segunda linea con el mismo
+     * codigo y veredicto {@code DUPLICATE}. Dos filas con el mismo
+     * {@code (turn_id, item_code)} chocan contra {@code uq_ai_proposal_lines_code},
+     * el {@code saveLines} revienta, la transaccion revierte y el turno se queda
+     * {@code PENDING} para siempre con la llamada al modelo ya pagada.
+     *
+     * <p>
+     * <strong>Es alcanzable hoy y sin modelo</strong>, a diferencia del duplicado
+     * entre las dos listas del borrador: basta con que un articulo requerido —o el
+     * propio nucleo— este marcado {@code active = false} o
+     * {@code self_service_eligible = false} en el catalogo publicado, que es una
+     * edicion normal de negocio y no una averia.
      */
     private static void cerrar(SellableCatalog catalog, Set<String> vistos, Set<String> enCarrito,
             List<CartLine> lineas) {
@@ -187,12 +226,12 @@ public final class ProposalCart {
             if (!expandidos.add(actual))
                 continue;
             for (String requerido : catalog.requiredBy(actual)) {
-                if (enCarrito.contains(requerido))
+                if (vistos.contains(requerido))
                     continue;
                 if (anadirPorCierre(requerido, catalog, vistos, enCarrito, lineas))
                     frontera.add(requerido);
             }
-            if (CASH_REGISTER.equals(actual) && !enCarrito.contains(CAPACITY_TERMINAL)
+            if (CASH_REGISTER.equals(actual) && !vistos.contains(CAPACITY_TERMINAL)
                     && anadirPorCierre(CAPACITY_TERMINAL, catalog, vistos, enCarrito, lineas)) {
                 frontera.add(CAPACITY_TERMINAL);
             }

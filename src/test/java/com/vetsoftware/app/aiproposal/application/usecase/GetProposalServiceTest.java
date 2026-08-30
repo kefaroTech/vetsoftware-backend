@@ -55,7 +55,30 @@ class GetProposalServiceTest {
 
     @BeforeEach
     void montar() {
-        service = new GetProposalService(new ProposalReader(repository, catalogQueryPort));
+        service = new GetProposalService(
+                new ProposalReader(repository, catalogQueryPort, ProposalMother.RELOJ));
+    }
+
+    /**
+     * La primera de las tres rutas que alcanzan una propuesta por su token. Las
+     * tres pasan por {@code ProposalReader.exigir}, y por eso la caducidad se
+     * comprueba alli y se afirma aqui, en cada una: es la unica forma de que la
+     * proxima ruta que se anada no nazca sin ella sin que nadie se entere.
+     */
+    @Nested
+    @DisplayName("Caducidad")
+    class Caducidad {
+
+        @Test
+        @DisplayName("el GET de una propuesta caducada es un 404 y no lee ni el catalogo")
+        void el_get_de_una_propuesta_caducada_es_404() {
+            when(repository.findByPublicToken(ProposalMother.TOKEN)).thenReturn(
+                    Optional.of(ProposalMother.propuestaCaducada(ProposalMother.ID_PROPUESTA)));
+
+            assertThatThrownBy(() -> service.get(ProposalMother.TOKEN))
+                    .isInstanceOf(AiProposalNotFoundException.class);
+            verify(catalogQueryPort, never()).loadCatalog(any(), any());
+        }
     }
 
     @Nested

@@ -187,6 +187,104 @@ class ProposalCartTest {
         }
     }
 
+    /**
+     * &#9940; <b>La invariante que sostiene la escritura del turno, y que no se ve
+     * mirando el carrito.</b> {@code ai_proposal_lines} tiene
+     * {@code uq_ai_proposal_lines_code} sobre {@code (turn_id, item_code)} y
+     * {@code ProposalTurnWriter} persiste <b>todas</b> las lineas del carrito en un
+     * solo {@code saveLines}, rechazos incluidos. Dos lineas con el mismo codigo no
+     * son una fealdad del resultado: son un {@code DataIntegrityViolationException}
+     * que revierte la transaccion, deja el turno {@code PENDING} para siempre y
+     * devuelve un 500 por una propuesta que ya se cobro al modelo.
+     *
+     * <p>
+     * El defecto estaba en que las guardas de cierre preguntaban por
+     * {@code enCarrito} -los codigos aceptados- en vez de por {@code vistos} -los
+     * evaluados-. Un requisito <b>rechazado</b> no esta en el primero y si en el
+     * segundo, asi que se volvia a evaluar y la segunda evaluacion escribia una
+     * linea {@code DUPLICATE} con el mismo codigo.
+     */
+    @Nested
+    @DisplayName("Ninguna linea repite codigo: es la clave unica de la tabla")
+    class SinCodigosRepetidos {
+
+        /**
+         * Un modulo publicado que <b>requiere</b> uno sin publicar. No hace falta un
+         * modelo estropeado ni una alucinacion: basta con despublicar un articulo del
+         * que otro depende, que es una edicion normal de catalogo.
+         */
+        private static final SellableCatalog CON_REQUISITO_RECHAZADO = new SellableCatalog(
+                Map.of("CORE", SellableCatalogMother.modulo("CORE", "Nucleo", 69_000, 30, true),
+                        "PADRE",
+                        SellableCatalogMother.modulo("PADRE", "Modulo padre", 30_000, 0, false),
+                        "DRAFT_MODULE", SellableCatalogMother.moduloEnBorrador()),
+                Map.of("PADRE", List.of("DRAFT_MODULE")), List.of());
+
+        @Test
+        @DisplayName("un requisito rechazado que ademas pidio el modelo no genera una segunda"
+                + " linea con el mismo codigo")
+        void un_requisito_rechazado_no_se_evalua_dos_veces() {
+            CartResult resultado = ProposalCart.build(List.of("DRAFT_MODULE", "PADRE"), List.of(),
+                    Map.of("DRAFT_MODULE", MOTIVO, "PADRE", MOTIVO), CON_REQUISITO_RECHAZADO);
+
+            assertThat(codigos(resultado.lineas())).doesNotHaveDuplicates();
+            assertThat(resultado.lineas()).filteredOn(linea -> "DRAFT_MODULE".equals(linea.code()))
+                    .singleElement().satisfies(linea -> assertThat(linea.verdict())
+                            .isEqualTo(LineVerdict.NOT_SELLABLE));
+        }
+
+        /**
+         * La tercera guarda del cierre, y la que mas facil se arma sola: la regla del
+         * terminal de caja. Basta con que {@code CAPACITY_TERMINAL} deje de estar
+         * publicado —o de ser autoservicio— para que la caja lo arrastre por segunda
+         * vez despues de que el modelo ya lo hubiera propuesto.
+         */
+        @Test
+        @DisplayName("la terminal que la caja arrastra no genera una segunda linea si ya se"
+                + " evaluo y quedo rechazada")
+        void la_terminal_rechazada_no_se_evalua_dos_veces() {
+            SellableCatalog conTerminalNoPublicada = new SellableCatalog(
+                    Map.of("CORE", SellableCatalogMother.modulo("CORE", "Nucleo", 69_000, 30, true),
+                            "CASH_REGISTER",
+                            SellableCatalogMother
+                                    .modulo("CASH_REGISTER", "Caja", 46_000, 14, false),
+                            "CAPACITY_TERMINAL",
+                            new SellableItem("CAPACITY_TERMINAL", "Terminal", "Un punto de venta",
+                                    SellableItemKind.CAPACITY, false, false, true, 0,
+                                    new java.math.BigDecimal("0.00"),
+                                    new java.math.BigDecimal("0.19"), "COP")),
+                    Map.of(), List.of());
+
+            CartResult resultado = ProposalCart.build(List.of("CAPACITY_TERMINAL", "CASH_REGISTER"),
+                    List.of(), Map.of("CAPACITY_TERMINAL", MOTIVO, "CASH_REGISTER", MOTIVO),
+                    conTerminalNoPublicada);
+
+            assertThat(codigos(resultado.lineas())).doesNotHaveDuplicates();
+            assertThat(resultado.lineas())
+                    .filteredOn(linea -> "CAPACITY_TERMINAL".equals(linea.code())).singleElement()
+                    .satisfies(linea -> assertThat(linea.verdict())
+                            .isEqualTo(LineVerdict.NOT_SELLABLE));
+        }
+
+        @Test
+        @DisplayName("un codigo que el modelo pone a la vez en necesarios y en recomendados"
+                + " produce UNA linea, no dos")
+        void un_codigo_en_las_dos_listas_produce_una_linea() {
+            CartResult resultado = carrito(List.of("SCHEDULING"), List.of("SCHEDULING"));
+
+            assertThat(codigos(resultado.lineas())).doesNotHaveDuplicates();
+        }
+
+        @Test
+        @DisplayName("y el carrito normal, con cierre de dependencias y terminal, tampoco repite")
+        void el_carrito_normal_no_repite_codigos() {
+            assertThat(
+                    codigos(carrito(List.of("LAB_IMAGING", "CASH_REGISTER"), List.of("VACCINATION"))
+                            .lineas()))
+                    .doesNotHaveDuplicates();
+        }
+    }
+
     @Nested
     @DisplayName("Precio")
     class Precio {

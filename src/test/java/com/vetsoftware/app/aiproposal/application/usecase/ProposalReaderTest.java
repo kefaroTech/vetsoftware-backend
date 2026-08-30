@@ -19,6 +19,7 @@ import com.vetsoftware.app.aiproposal.domain.ProposalPresentation;
 import com.vetsoftware.app.aiproposal.domain.ProposalTurn;
 import com.vetsoftware.app.aiproposal.domain.ProposalVersionConflictException;
 import com.vetsoftware.app.aiproposal.domain.ProspectText;
+import com.vetsoftware.app.aiproposal.domain.TurnType;
 import com.vetsoftware.app.aiproposal.testsupport.ProposalMother;
 import com.vetsoftware.app.aiproposal.testsupport.SellableCatalogMother;
 import java.util.List;
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -61,7 +63,7 @@ class ProposalReaderTest {
 
     @BeforeEach
     void montar() {
-        reader = new ProposalReader(repository, catalogQueryPort);
+        reader = new ProposalReader(repository, catalogQueryPort, ProposalMother.RELOJ);
     }
 
     @Nested
@@ -76,6 +78,37 @@ class ProposalReaderTest {
             assertThatThrownBy(() -> reader.exigir("noexiste"))
                     .isInstanceOf(AiProposalNotFoundException.class)
                     .hasMessageContaining("AI proposal not found");
+        }
+
+        /**
+         * &#9940; <b>Esta es la prueba que faltaba, y el nombre del test de arriba ya
+         * prometia su resultado.</b> {@code expires_at} se escribia al crear la
+         * propuesta, viajaba en la respuesta y el correo renderiza "caduca el
+         * DD/MM/YYYY" a partir de el — y <b>nadie lo leia</b>: {@code exigir} hacia un
+         * {@code findByPublicToken} pelado. El token era una credencial al portador
+         * permanente, asi que un enlace reenviado, indexado o en un historial
+         * compartido seguia sirviendo la propuesta anos despues.
+         */
+        @Test
+        @DisplayName("un token caducado da 404, y con el MISMO mensaje que uno que no existe: no"
+                + " hay oraculo de existencia")
+        void un_token_caducado_da_el_mismo_404() {
+            when(repository.findByPublicToken(ProposalMother.TOKEN)).thenReturn(
+                    Optional.of(ProposalMother.propuestaCaducada(ProposalMother.ID_PROPUESTA)));
+
+            assertThatThrownBy(() -> reader.exigir(ProposalMother.TOKEN))
+                    .isInstanceOf(AiProposalNotFoundException.class)
+                    .hasMessage("AI proposal not found");
+        }
+
+        @Test
+        @DisplayName("una propuesta vigente si se devuelve: la caducidad no rechaza de mas")
+        void una_propuesta_vigente_si_se_devuelve() {
+            AiProposal vigente = ProposalMother.propuesta(ProposalMother.ID_PROPUESTA);
+            when(repository.findByPublicToken(ProposalMother.TOKEN))
+                    .thenReturn(Optional.of(vigente));
+
+            assertThat(reader.exigir(ProposalMother.TOKEN)).isSameAs(vigente);
         }
 
         @Test
@@ -333,6 +366,127 @@ class ProposalReaderTest {
 
             assertThat(vista.presentation()).isEqualTo(ProposalPresentation.OUT_OF_DOMAIN);
             assertThat(vista.lines()).isEmpty();
+        }
+    }
+
+    /**
+     * &#9940; <b>La pantalla es el discriminador con el que el front elige que
+     * pintar</b> -lo consume {@code asistente.source.ts}-, asi que si se pierde al
+     * releer, el prospecto abre su enlace y ve la pantalla equivocada: se le pide
+     * que reescriba un texto que el sistema si entendio, o se le presenta como
+     * lectura del modelo un carrito que armo el motor determinista.
+     *
+     * <p>
+     * <b>Derivarla no basta, y por eso existe la columna.</b> El respaldo solo sabe
+     * separar {@code OUT_OF_DOMAIN} -el unico camino sin ni una linea aceptada- y
+     * funde todo lo demas en {@code PROPOSAL}: con el, un turno que salio por el
+     * camino degradado o que el modelo no entendio se relee como una propuesta
+     * normal. La columna {@code presentation} del changeset 388 es lo que lo
+     * arregla, y estos casos son los que lo comprueban.
+     */
+    @Nested
+    @DisplayName("La pantalla al releer")
+    class PantallaAlReleer {
+
+        private void catalogoPublicado() {
+            when(catalogQueryPort.loadCatalog(ProposalMother.ID_TARIFA,
+                    ProposalBillingCycle.MONTHLY))
+                    .thenReturn(Optional.of(SellableCatalogMother.sinPaquetes()));
+        }
+
+        /**
+         * El caso que la derivacion no puede resolver: el modelo dijo que no entendio
+         * el texto, el motor sirvio igual el carrito determinista, y hay lineas
+         * aceptadas. Derivando saldria {@code PROPOSAL}, que es <b>otra pantalla</b>:
+         * la de "no entendi, reescribelo" desaparece y el prospecto no sabe que hacer.
+         */
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(value = ProposalPresentation.class, names = {"PROPOSAL", "NOT_UNDERSTOOD",
+                "DETERMINISTIC"})
+        @DisplayName("la pantalla que se escribio en el turno es la que se sirve al releer")
+        void la_pantalla_persistida_es_la_que_se_sirve(ProposalPresentation pantalla) {
+            AiProposal propuesta = ProposalMother.propuesta(ProposalMother.ID_PROPUESTA);
+            catalogoPublicado();
+            when(repository.findTurnsByProposalId(ProposalMother.ID_PROPUESTA))
+                    .thenReturn(List.of(ProposalMother.turnoConPantalla(TURNO_1, 1,
+                            TurnType.MODEL_INITIAL, "una veterinaria de barrio", pantalla)));
+            when(repository.findLinesByTurnId(TURNO_1)).thenReturn(
+                    List.of(ProposalMother.lineaDelModelo(TURNO_1, "CORE", "69000.00", 0)));
+
+            assertThat(reader.vista(propuesta, false).presentation()).isEqualTo(pantalla);
+        }
+
+        /**
+         * &#9940; <b>La propuesta reconstruida tras una edicion manual.</b> El turno
+         * {@code CUSTOMER_EDIT} no anota pantalla a proposito: despues de que el
+         * cliente toque el carrito, lo que se le pinta es su propuesta, no el desenlace
+         * del modelo que la precedio. Aqui el turno del modelo dijo
+         * {@code NOT_UNDERSTOOD} y aun asi la relectura tiene que dar {@code PROPOSAL},
+         * porque el vigente es el de la edicion.
+         */
+        @Test
+        @DisplayName("tras una edicion manual la pantalla es la propuesta, no el desenlace del"
+                + " modelo que la precedio")
+        void tras_una_edicion_manual_la_pantalla_es_la_propuesta() {
+            AiProposal propuesta = ProposalMother.propuesta(ProposalMother.ID_PROPUESTA);
+            catalogoPublicado();
+            when(repository.findTurnsByProposalId(ProposalMother.ID_PROPUESTA)).thenReturn(List.of(
+                    ProposalMother.turnoConPantalla(TURNO_1, 1, TurnType.MODEL_INITIAL,
+                            "no se entiende", ProposalPresentation.NOT_UNDERSTOOD),
+                    ProposalMother.turnoDeEdicion(TURNO_2, 2)));
+            when(repository.findLinesByTurnId(TURNO_2)).thenReturn(List.of(
+                    ProposalMother.lineaAnadidaPorElCliente(TURNO_2, "CORE", "69000.00", 0),
+                    ProposalMother.lineaAnadidaPorElCliente(TURNO_2, "SCHEDULING", "35000.00", 1)));
+
+            ProposalViewDto vista = reader.vista(propuesta, false);
+
+            assertThat(vista.presentation()).isEqualTo(ProposalPresentation.PROPOSAL);
+            assertThat(vista.lines()).extracting(ProposalLineDto::code).containsExactly("CORE",
+                    "SCHEDULING");
+        }
+
+        /**
+         * Un turno de modelo que fallo sin escribir ni una linea no es el vigente, asi
+         * que tampoco impone su pantalla: el prospecto sigue viendo el carrito
+         * anterior, y tiene que seguir viendolo con la pantalla con la que se le
+         * sirvio.
+         */
+        @Test
+        @DisplayName("un turno posterior sin lineas no cambia la pantalla del que si las tiene")
+        void un_turno_sin_lineas_no_cambia_la_pantalla() {
+            AiProposal propuesta = ProposalMother.propuesta(ProposalMother.ID_PROPUESTA);
+            catalogoPublicado();
+            when(repository.findTurnsByProposalId(ProposalMother.ID_PROPUESTA)).thenReturn(List.of(
+                    ProposalMother.turnoConPantalla(TURNO_1, 1, TurnType.MODEL_INITIAL,
+                            "una veterinaria", ProposalPresentation.DETERMINISTIC),
+                    ProposalMother.turnoConPantalla(TURNO_2, 2, TurnType.MODEL_REFINEMENT,
+                            "y tambien vacuno", ProposalPresentation.NOT_UNDERSTOOD)));
+            when(repository.findLinesByTurnId(TURNO_2)).thenReturn(List.of());
+            when(repository.findLinesByTurnId(TURNO_1)).thenReturn(
+                    List.of(ProposalMother.lineaDelModelo(TURNO_1, "CORE", "69000.00", 0)));
+
+            assertThat(reader.vista(propuesta, false).presentation())
+                    .isEqualTo(ProposalPresentation.DETERMINISTIC);
+        }
+
+        /**
+         * La poblacion legitima que la derivacion sigue cubriendo: las filas escritas
+         * antes del changeset 388, que no tienen pantalla anotada. No se degradan a
+         * nada, se derivan como siempre.
+         */
+        @Test
+        @DisplayName("un turno anterior al changeset 388 -sin pantalla anotada- se sigue"
+                + " derivando")
+        void un_turno_sin_pantalla_anotada_se_deriva() {
+            AiProposal propuesta = ProposalMother.propuesta(ProposalMother.ID_PROPUESTA);
+            catalogoPublicado();
+            when(repository.findTurnsByProposalId(ProposalMother.ID_PROPUESTA))
+                    .thenReturn(List.of(ProposalMother.turnoInicial(TURNO_1, "una veterinaria")));
+            when(repository.findLinesByTurnId(TURNO_1)).thenReturn(
+                    List.of(ProposalMother.lineaDelModelo(TURNO_1, "CORE", "69000.00", 0)));
+
+            assertThat(reader.vista(propuesta, false).presentation())
+                    .isEqualTo(ProposalPresentation.PROPOSAL);
         }
     }
 }

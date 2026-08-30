@@ -15,6 +15,7 @@ import com.vetsoftware.app.aiproposal.domain.ProposalTurn;
 import com.vetsoftware.app.aiproposal.domain.ProposalVersionConflictException;
 import com.vetsoftware.app.aiproposal.domain.ProspectText;
 import com.vetsoftware.app.aiproposal.domain.SellableCatalog;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -36,31 +37,68 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProposalReader {
 
-    /** Turnos de modelo por propuesta: el inicial mas tres refinamientos. */
-    static final int MAX_TURNOS_DE_MODELO = 4;
+    /**
+     * Turnos de modelo por propuesta: el inicial mas tres refinamientos.
+     *
+     * <p>
+     * Es <b>publico</b> porque hay otro sitio que tiene que conocer el numero:
+     * {@code LoginRateLimitFilter} reparte el presupuesto diario en sesiones
+     * completas, y una sesion son exactamente estas cuatro llamadas de pago. No
+     * puede importarlo -es otra rodaja- asi que declara su propia constante y el
+     * test ata las dos.
+     */
+    public static final int MAX_TURNOS_DE_MODELO = 4;
 
     private final AiProposalRepository repository;
 
     private final SellableCatalogQueryPort catalogQueryPort;
 
+    private final Clock clock;
+
     public ProposalReader(AiProposalRepository repository,
-            SellableCatalogQueryPort catalogQueryPort) {
+            SellableCatalogQueryPort catalogQueryPort, Clock clock) {
         this.repository = repository;
         this.catalogQueryPort = catalogQueryPort;
+        this.clock = clock;
     }
 
     /**
-     * La propuesta que el token senala.
+     * La propuesta que el token senala, <strong>si todavia esta vigente</strong>.
      *
      * <p>
-     * <strong>Un token que no existe y uno que existe y caduco dan el mismo
-     * 404.</strong> No hay nada que ganar distinguiendolos y si algo que perder:
-     * seria un oraculo de existencia sobre un identificador que alguien puede estar
-     * probando.
+     * &#9940; <strong>La caducidad se comprueba aqui y no en cada caso de
+     * uso.</strong> Este es el unico punto por el que las tres rutas publicas
+     * -{@code GET}, {@code refine} y el {@code PUT} de lineas- alcanzan una
+     * propuesta: {@code GetProposalService}, {@code RefineProposalService} y
+     * {@code EditProposalLinesService} empiezan los tres llamando a este metodo.
+     * Comprobarlo en cada uno seria tres sitios donde olvidarlo, y el cuarto
+     * consumidor que llegue nacería sin la comprobacion.
+     *
+     * <p>
+     * <strong>Sin esto el token era una credencial al portador permanente.</strong>
+     * {@code expiresAt} se escribia al crear la propuesta, viajaba en la respuesta,
+     * el correo renderiza "caduca el DD/MM/YYYY" a partir de el y <em>nadie lo leia
+     * nunca</em>: un enlace filtrado -reenviado, indexado, en un historial de
+     * navegador compartido- seguia sirviendo la propuesta entera y dejando editarla
+     * anos despues.
+     *
+     * <p>
+     * <strong>Y es 404, no 410.</strong> Un 410 seria mas informativo y ese es
+     * justo el problema: distinguiria "este token nunca existio" de "este token
+     * existio y caduco" para quien esta probando tokens a ciegas, que es un oraculo
+     * de existencia sobre la unica frontera de autorizacion de la feature. Quien
+     * tiene un enlace legitimo no necesita el 410 para enterarse: mientras la
+     * propuesta vive, la respuesta le lleva {@code expiresAt} dentro y el correo se
+     * lo dijo por escrito. El 404 es ademas lo que ya afirmaban por escrito este
+     * javadoc y el de {@code GlobalExceptionHandler}; lo que faltaba era el codigo
+     * que lo cumpliera.
      */
     public AiProposal exigir(String publicToken) {
-        return repository.findByPublicToken(publicToken)
+        AiProposal proposal = repository.findByPublicToken(publicToken)
                 .orElseThrow(AiProposalNotFoundException::new);
+        if (proposal.haCaducado(clock))
+            throw new AiProposalNotFoundException();
+        return proposal;
     }
 
     /**
@@ -168,8 +206,19 @@ public class ProposalReader {
     /** La vista de una propuesta ya persistida, que es lo que sirve el GET. */
     public ProposalViewDto vista(AiProposal proposal, boolean recalculated) {
         SellableCatalog catalog = catalogo(proposal);
-        CartResult carrito = ProposalAssembler.reconstruir(lineasVigentes(proposal), catalog);
-        return vista(proposal, carrito, catalog, presentacionReleida(carrito), recalculated);
+        List<ProposalTurn> turnos = repository.findTurnsByProposalId(proposal.getId());
+        ProposalTurn vigente = null;
+        List<ProposalLine> lineas = List.of();
+        for (int i = turnos.size() - 1; i >= 0 && lineas.isEmpty(); i--) {
+            List<ProposalLine> delTurno = repository.findLinesByTurnId(turnos.get(i).getId());
+            if (!delTurno.isEmpty()) {
+                vigente = turnos.get(i);
+                lineas = delTurno;
+            }
+        }
+        CartResult carrito = ProposalAssembler.reconstruir(lineas, catalog);
+        return vista(proposal, carrito, catalog, presentacionReleida(vigente, carrito),
+                recalculated);
     }
 
     public ProposalViewDto vista(AiProposal proposal, CartResult carrito, SellableCatalog catalog,
@@ -185,19 +234,27 @@ public class ProposalReader {
     }
 
     /**
-     * &#9888; <strong>Lo que una relectura no puede reconstruir.</strong> El estado
-     * de pantalla se calcula al responder y <em>no se persiste</em>: no hay columna
-     * para el. Aqui se deriva del unico rastro que queda -si el turno vigente dejo
-     * alguna linea aceptada-, y eso separa bien
-     * {@link ProposalPresentation#OUT_OF_DOMAIN} -el unico camino que no escribe ni
-     * una linea aceptada, porque a un negocio ajeno no se le ofrece ni un punto de
-     * partida- de todo lo demas, pero <strong>funde
-     * {@link ProposalPresentation#NOT_UNDERSTOOD} y la degradacion en
-     * {@link ProposalPresentation#PROPOSAL}</strong>: las dos escriben el carrito
-     * determinista, que siempre lleva el nucleo. Distinguirlas al releer exige una
-     * columna, y esa columna no existe en el changeset 384.
+     * &#9940; <strong>La pantalla que se sirvio, leida de donde se
+     * escribio.</strong> El turno de modelo la persiste en
+     * {@code ai_proposal_turns.presentation} (changeset 388), asi que una relectura
+     * devuelve exactamente lo que el prospecto vio, incluidas
+     * {@link ProposalPresentation#NOT_UNDERSTOOD} y
+     * {@link ProposalPresentation#DETERMINISTIC}.
+     *
+     * <p>
+     * <strong>La derivacion sigue aqui, y solo como respaldo</strong>, para dos
+     * poblaciones legitimas: las filas escritas antes del changeset 388 y los
+     * turnos {@code CUSTOMER_EDIT}, que no anotan pantalla a proposito -despues de
+     * una edicion manual la pantalla es la propuesta, no el desenlace del modelo
+     * que la precedio-. Ese respaldo es exactamente lo que habia antes y arrastra
+     * su limitacion: separa {@link ProposalPresentation#OUT_OF_DOMAIN} -el unico
+     * camino que no deja ni una linea aceptada- y funde el resto en
+     * {@link ProposalPresentation#PROPOSAL}.
      */
-    private static ProposalPresentation presentacionReleida(CartResult carrito) {
+    private static ProposalPresentation presentacionReleida(ProposalTurn vigente,
+            CartResult carrito) {
+        if (vigente != null && vigente.getPresentation() != null)
+            return vigente.getPresentation();
         return carrito.aceptadas().isEmpty()
                 ? ProposalPresentation.OUT_OF_DOMAIN
                 : ProposalPresentation.PROPOSAL;
