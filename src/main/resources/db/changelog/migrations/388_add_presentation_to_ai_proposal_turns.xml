@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PROPUESTA IA. LA COLUMNA QUE 384 NO TENÍA: el estado de pantalla que se sirvió.
+
+         EL DEFECTO QUE CIERRA. `ProposalPresentation` distingue cuatro pantallas -PROPOSAL,
+         NOT_UNDERSTOOD, OUT_OF_DOMAIN y DETERMINISTIC- y se calcula al responder. No se
+         persistía en ninguna parte, así que una RELECTURA (el prospecto vuelve por su enlace,
+         que es el camino normal: el correo con el enlace es la mitad del producto) sólo podía
+         DEDUCIRLA de si el turno vigente había dejado alguna línea aceptada. Esa deducción
+         separa bien OUT_OF_DOMAIN -el único camino que no deja ni una línea, porque a un
+         negocio ajeno no se le ofrece ni un punto de partida- y FUNDE las otras tres: las tres
+         escriben el carrito determinista, que siempre lleva el núcleo. Resultado: a quien el
+         asistente le dijo «no te he entendido, reescríbelo» le enseñaba al volver una propuesta
+         normal, sin la pantalla que le pedía reescribir; y las tres degradaciones -tope de
+         gasto, palanca apagada, sin hints- se volvían indistinguibles de una propuesta leída de
+         verdad. La telemetría S9.2 sí las separaba, pero la telemetría no es la pantalla.
+
+         NULABLE, Y ESO ES PARTE DEL DISEÑO, no una concesión:
+          - Las filas escritas antes de este changeset no la tienen y NO se rellenan a
+            posteriori: inventarles una pantalla sería escribir en la evidencia una lectura que
+            nadie hizo. El lector cae en la derivación de siempre para ellas.
+          - Un turno CUSTOMER_EDIT no la escribe a propósito: después de una edición manual la
+            pantalla es la propuesta, no el desenlace del modelo que la precedió.
+
+         SIN AMPLIAR chk_ai_proposal_turns_model_arc. Ese CHECK ata model_id/prompt_version/
+         tokens/raw_response/stop_reason al arco exclusivo del modelo; `presentation` NO entra
+         ahí porque un CUSTOMER_EDIT podrá anotarla el día que la pantalla de edición tenga
+         estados propios, y un CHECK que hoy lo prohibiera obligaría a un ALTER para permitirlo.
+         Lo único que se restringe es el vocabulario, que es lo que no puede crecer sin que
+         alguien toque el enum de Java.
+
+         SIN ÍNDICE. Se lee siempre junto a la fila del turno, por su clave primaria o por
+         proposal_id; un índice sobre una columna de cuatro valores sólo añadiría escritura. -->
+    <changeSet id="388_add_presentation_to_ai_proposal_turns" author="orlando">
+        <preConditions onFail="HALT">
+            <not>
+                <columnExists tableName="ai_proposal_turns" columnName="presentation"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="ai_proposal_turns">
+            <column name="presentation" type="VARCHAR(20)" afterColumn="failure_code"/>
+        </addColumn>
+
+        <sql><![CDATA[
+            ALTER TABLE ai_proposal_turns
+                ADD CONSTRAINT chk_ai_proposal_turns_presentation
+                    CHECK (presentation IS NULL
+                           OR presentation IN ('PROPOSAL','NOT_UNDERSTOOD','OUT_OF_DOMAIN',
+                                               'DETERMINISTIC'))
+        ]]></sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE ai_proposal_turns
+                    DROP CONSTRAINT chk_ai_proposal_turns_presentation;
+            </sql>
+            <dropColumn tableName="ai_proposal_turns" columnName="presentation"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

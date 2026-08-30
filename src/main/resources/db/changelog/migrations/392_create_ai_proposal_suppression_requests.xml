@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- EVIDENCIA DE ATENCION DEL DERECHO DE SUPRESION (Ley 1581 de 2012, articulo 8 literal e).
+         El aviso de privacidad (privacy_notice_version_id en 383/legal_document_acceptances en
+         387) le promete al prospecto que puede pedir que se borren sus datos, y el endpoint que
+         atiende esa peticion existe y borra. Lo que no existe hoy es la CONSTANCIA de que se
+         atendio: el correo del solicitante no se registra en ningun log -a proposito, para no
+         filtrarlo en el propio sistema de observabilidad-, la telemetria solo emite una metrica
+         agregada (sin identidad) y no hay fila en ninguna tabla. Ante la SIC no hay como probar
+         "se atendio la peticion de fulano el dia tal": la propia pantalla de la consola que
+         muestra la fecha de atencion advierte que es el reloj del navegador, no el del servidor.
+
+         Esta tabla resuelve guardar CONSTANCIA DEL HECHO SIN GUARDAR EL DATO: seria absurdo que
+         la prueba de haber borrado un dato personal consistiera en conservarlo. Por eso NO hay
+         columna de correo en claro, ni siquiera transitoria: subject_email_hash es el sujeto sin
+         el sujeto.
+
+         subject_email_hash BINARY(32), Y NO CHAR(64) EN HEXADECIMAL -verificado contra 383, no
+         asumido-. Tiene que poder compararse BYTE A BYTE con la columna generada
+         ai_proposals.contact_email_hash, que 383 declara asi:
+             ADD COLUMN contact_email_hash BINARY(32)
+                 GENERATED ALWAYS AS (
+                     CASE WHEN contact_email IS NULL THEN NULL
+                          ELSE UNHEX(SHA2(LOWER(contact_email), 256)) END) STORED
+         es decir BINARY(32) con los 32 bytes crudos de SHA-256, no su representacion hexadecimal
+         de 64 caracteres. subject_email_hash se calcula en Java con el mismo algoritmo -SHA-256
+         sobre el correo en minusculas, sin el paso UNHEX/hex intermedio- para que el tipo, el
+         tamano en bytes y el valor sean el mismo dato: "¿este hash ya aparecio en ai_proposals?"
+         es una comparacion directa entre las dos columnas, sin CAST ni conversion de collation de
+         por medio. Un CHAR(64) hex habria sido comparable solo tras HEX()/UNHEX() en cada
+         consulta y habria duplicado el tamano de la columna sin motivo (64 bytes + overhead de
+         collation vs. 32 bytes fijos).
+
+         SIN UNIQUE SOBRE subject_email_hash, Y ES DELIBERADO. Un titular puede pedir la supresion
+         dos veces -es literalmente el escenario que esta tabla tiene que poder responder: "?ya se
+         atendio antes, y cuando fue la primera vez?"-, y cada atencion es su propia evidencia con
+         su propio executed_at y su propio actor. Un UNIQUE sobre el hash solo permitiria una fila
+         por sujeto y destruiria el registro de la segunda peticion, que es el caso de negocio, no
+         un defecto de datos. El indice compuesto (subject_email_hash, executed_at) sostiene la
+         consulta de esa pregunta -filtra por hash y ya llega ordenado por fecha- sin necesitar
+         una tabla ni una fila extra por sujeto.
+
+         SIN version NI enabled, MISMA FORMA QUE legal_document_acceptances (387): es tabla
+         probatoria, de solo insercion. version no aplica porque nunca se actualiza una fila ya
+         escrita -reescribirla borraria la version anterior de la evidencia-, y enabled tampoco
+         porque no hay borrado logico posible sobre una prueba: si algun dia hay que corregir un
+         registro, es una fila nueva, no un UPDATE ni un soft-delete de la anterior.
+
+         EXCLUIDA DE LA ANONIMIZACION A 90 DIAS Y DE LA PURGA A 24 MESES DE `aiproposal`
+         (AiProposalRetentionJob, com.vetsoftware.app.aiproposal.infrastructure.retention). Hoy el
+         barrido no alcanzaria esta tabla de todas formas -solo toca ai_proposals, ai_proposal_
+         turns y ai_proposal_lines por su cadena de FK-, pero se deja escrito a proposito y no por
+         omision: la purga de legal_document_acceptances (387) existe precisamente porque una vez
+         se dio por supuesto que un barrido generico no alcanzaba una tabla nueva y resulto falso.
+         Si en el futuro se generaliza AiProposalRetentionJob o aparece un job de retencion nuevo
+         que recorra tablas por convencion de nombre o de esquema, esta tabla queda fuera EXPRESA-
+         MENTE: purgarla o anonimizarla destruye la unica prueba de que el derecho se atendio, que
+         es exactamente lo contrario de lo que exige el articulo 8. No lleva columna de expiracion
+         ni FK a ninguna politica de retencion por ese mismo motivo: no vence.
+
+         executed_by_system_user_id NOT NULL y RESTRICT en ambos sentidos, mismo criterio que
+         fk_ldv_published_by (353/387): la evidencia no puede quedarse sin actor. Un system_user
+         no se puede borrar ni renombrar de tal forma que deje huerfana una fila de esta tabla.
+
+         Restricciones en bloque ALTER TABLE aparte del createTable, mismo patron que 383/387: en
+         este esquema las restricciones no viven junto a su tabla. El indice compuesto se declara
+         antes de la FK para que fk_ai_proposal_suppression_requests_actor reutilice un indice con
+         nombre propio en vez de que InnoDB cree uno sin nombre para respaldarla -mismo patron que
+         353 con ix_ldv_published_by-. -->
+    <changeSet id="392_create_ai_proposal_suppression_requests" author="orlando">
+        <preConditions onFail="HALT">
+            <not>
+                <tableExists tableName="ai_proposal_suppression_requests"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="ai_proposal_suppression_requests">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="subject_email_hash" type="BINARY(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="executed_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="executed_by_system_user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="proposals_suppressed" type="INT"><constraints nullable="false"/></column>
+            <column name="turns_suppressed" type="INT"><constraints nullable="false"/></column>
+            <column name="lines_suppressed" type="INT"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE ai_proposal_suppression_requests
+                ADD CONSTRAINT chk_ai_proposal_suppression_requests_counters
+                    CHECK (proposals_suppressed >= 0 AND turns_suppressed >= 0
+                           AND lines_suppressed >= 0)
+        ]]></sql>
+
+        <createIndex tableName="ai_proposal_suppression_requests"
+                      indexName="ix_ai_proposal_suppression_requests_subject">
+            <column name="subject_email_hash"/>
+            <column name="executed_at"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="ai_proposal_suppression_requests"
+                                 baseColumnNames="executed_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_ai_proposal_suppression_requests_actor"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="ai_proposal_suppression_requests"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
