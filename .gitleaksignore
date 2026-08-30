@@ -1,0 +1,55 @@
+# Hallazgos historicos ACEPTADOS, no resueltos.
+#
+# Decision del dueno del producto (2026-08-30): NO se rotan las dos credenciales
+# expuestas en el historial y se acepta la exposicion. El detalle, el alcance y
+# lo que sigue pendiente estan en docs/GESTION_DE_SECRETOS.md, seccion
+# "Excepciones aceptadas en el historial". Este fichero es solo el mecanismo.
+#
+# POR QUE EXISTE ESTE FICHERO. El escaneo de historial encuentra estos hallazgos
+# en cada ejecucion y seguira encontrandolos para siempre: reescribir el
+# historial es la unica forma de borrarlos y no se va a hacer. Un control que
+# sale en rojo todos los dias por algo que nadie va a arreglar no protege nada;
+# lo unico que consigue es ensenar al equipo a ignorar el check, y entonces el
+# hallazgo NUEVO -el que si importa- pasa desapercibido entre el ruido. Aceptar
+# por escrito lo que se ha decidido no arreglar es lo que devuelve al control su
+# capacidad de decir algo.
+#
+# POR QUE POR HUELLA Y NUNCA POR RUTA NI POR REGLA. Una huella es
+# <sha>:<fichero>:<regla>:<linea>: identifica UN hallazgo en UN commit concreto.
+# Excluir la ruta (src/main/resources/application.yml) o la regla
+# (spring-inline-secret-default) dejaria ciego el escaneo ante una aparicion
+# NUEVA del mismo secreto en el mismo sitio, que es justo lo que hay que seguir
+# cazando. Con huellas, el gate de pre-commit sigue rechazando cualquier
+# credencial que se intente commitear hoy, incluidas estas dos si alguien las
+# reintrodujera: seria otro commit y por tanto otra huella.
+#
+# COMO SE AMPLIA. No se anaden huellas a mano. Se corre
+# `sh scripts/security/scan-secrets.sh history` y se copia la huella tal cual
+# la reporta Gitleaks; una huella mal escrita no falla, simplemente no excluye
+# nada, y el ruido vuelve sin que nadie sepa por que.
+
+# --- Contrasena local historica (familia cronos20XX) + defaults embebidos en
+# --- placeholders de Spring. Cuatro commits del arranque del repositorio.
+955ee9e7d4fa407adc6ed2dc2ab202c973d875e7:docker-compose.yml:vetsoftware-legacy-local-password:6
+955ee9e7d4fa407adc6ed2dc2ab202c973d875e7:docker-compose.yml:vetsoftware-legacy-local-password:9
+955ee9e7d4fa407adc6ed2dc2ab202c973d875e7:src/main/resources/application.yml:spring-inline-secret-default:5
+955ee9e7d4fa407adc6ed2dc2ab202c973d875e7:src/main/resources/application.yml:vetsoftware-legacy-local-password:5
+bcce13111fee20f1c9fc7da5805692f5336319e4:docker-compose.yml:vetsoftware-legacy-local-password:6
+bcce13111fee20f1c9fc7da5805692f5336319e4:docker-compose.yml:vetsoftware-legacy-local-password:9
+bcce13111fee20f1c9fc7da5805692f5336319e4:src/main/resources/application.yml:spring-inline-secret-default:5
+bcce13111fee20f1c9fc7da5805692f5336319e4:src/main/resources/application.yml:vetsoftware-legacy-local-password:5
+
+# --- El mismo default embebido, ya movido de linea por ediciones posteriores.
+96697582c74ac025b0d994efda526656e5cf78ef:src/main/resources/application.yml:spring-inline-secret-default:17
+d74dc62d3b8172684f45b8ff98276d5782e6980e:src/main/resources/application.yml:spring-inline-secret-default:17
+ec676480cf25deceeee77fe637035b885f2dad82:src/main/resources/application.yml:spring-inline-secret-default:84
+
+# --- Perfil de desarrollo.
+7fd94b8c8229fe3fcf3466ac01593a00786a0fa6:src/main/resources/application-dev.yml:spring-inline-secret-default:7
+
+# --- application-local.yml, que estuvo versionado con la contrasena de MySQL en
+# --- claro pese a figurar en .gitignore (un .gitignore no surte efecto sobre un
+# --- fichero ya rastreado). Ya no se versiona; el historial se queda.
+99d505cc7d5ff567fbc5a8867847800d6d4dfa21:src/main/resources/application-local.yml:spring-inline-secret-default:6
+99d505cc7d5ff567fbc5a8867847800d6d4dfa21:src/main/resources/application-local.yml:spring-inline-secret-default:12
+99d505cc7d5ff567fbc5a8867847800d6d4dfa21:src/main/resources/application-local.yml:vetsoftware-legacy-local-password:6
