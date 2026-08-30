@@ -57,9 +57,27 @@ import java.util.List;
  * @param clientRequestId
  *            llave de idempotencia que genera el cliente. Es lo que hace que un
  *            doble clic en «Confirmar» no cree dos ofertas.
+ * @param aiProposalToken
+ *            token publico de la propuesta del asistente de la que viene esta
+ *            cesta, o ausente si el cliente llego por el configurador de la
+ *            portada.
+ *            <p>
+ *            <b>No es un termino economico</b>, asi que no rompe la regla que
+ *            da sentido a este request: sigue sin haber un solo campo con el
+ *            que el cliente pueda influir en lo que se le cobra. Solo dice de
+ *            donde viene, y el servidor lo traduce a id contra
+ *            {@code ProposalReferencePort}.
+ *            <p>
+ *            <b>43 caracteres</b> es exactamente lo que produce
+ *            {@code ProposalToken} —32 bytes en base64url sin relleno— y lo que
+ *            declara {@code public_token VARCHAR(43)}. Un token desconocido no
+ *            es un error: la oferta se emite igual y se queda sin atribuir, que
+ *            es lo correcto cuando la propuesta ya se la llevo la purga de
+ *            retencion.
  */
 public record SelfServeQuoteRequest(@NotBlank @Size(min = 1, max = 64) String clientRequestId,
         @NotBlank @Pattern(regexp = "MONTHLY|ANNUAL") @Schema(allowableValues = {
                 "MONTHLY", "ANNUAL"}) String billingCycle,
-        @NotEmpty @Valid List<SelfServeQuoteLineRequest> lines) {
+        @NotEmpty @Valid List<SelfServeQuoteLineRequest> lines,
+        @Size(max = 43) String aiProposalToken) {
 }

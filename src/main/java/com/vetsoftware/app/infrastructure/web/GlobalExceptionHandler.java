@@ -44,17 +44,6 @@ import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundException;
-import com.vetsoftware.app.configurator.domain.ConditionalQuestionCycleException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorCodeAlreadyExistsException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorEffectAlreadyExistsException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorEffectNotFoundException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorOptionNotFoundException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorQuestionHasActiveChildrenException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorQuestionNotFoundException;
-import com.vetsoftware.app.configurator.domain.MissingRequiredAnswerException;
-import com.vetsoftware.app.configurator.domain.NumberQuestionCannotHaveOptionsException;
-import com.vetsoftware.app.configurator.domain.QuantityFromAnswerRequiresNumberQuestionException;
-import com.vetsoftware.app.configurator.domain.UnreachableAnswerException;
 import com.vetsoftware.app.consultation.domain.ConsultationHasActiveChildrenException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeHasActiveChildrenException;
@@ -189,6 +178,8 @@ import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
 import com.vetsoftware.app.subscription.domain.CompanyAlreadyHasActiveSubscriptionException;
 import com.vetsoftware.app.subscription.domain.InvalidSubscriptionStatusTransitionException;
 import com.vetsoftware.app.subscription.domain.PlatformCatalogNotConfiguredForSubscriptionException;
+import com.vetsoftware.app.subscription.domain.QuoteAlreadyConvertedException;
+import com.vetsoftware.app.subscription.domain.StructuralMinimumNotCarriedException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemAlreadyEndedException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemNotFoundException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemOverlapException;
@@ -418,10 +409,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             CashSessionNotFoundException.class, SupplierNotFoundException.class,
             PurchaseOrderNotFoundException.class, GoodsReceiptNotFoundException.class,
             SupplierInvoiceNotFoundException.class, PetshopCatalogNotFoundException.class,
-            ConfiguratorQuestionNotFoundException.class, ConfiguratorOptionNotFoundException.class,
-            ConfiguratorEffectNotFoundException.class, PriceListNotFoundException.class,
-            CatalogPriceNotFoundException.class, QuoteNotFoundException.class,
-            CatalogItemNotFoundException.class, CatalogItemSubModuleNotFoundException.class,
+            PriceListNotFoundException.class, CatalogPriceNotFoundException.class,
+            QuoteNotFoundException.class, CatalogItemNotFoundException.class,
+            CatalogItemSubModuleNotFoundException.class,
             CatalogItemDependencyNotFoundException.class, BundleComponentNotFoundException.class,
             CompanyEntitlementNotFoundException.class, CompanyCapacityNotFoundException.class,
             SubscriptionNotFoundException.class, SubscriptionItemNotFoundException.class,
@@ -470,7 +460,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             com.vetsoftware.app.revenuerecognitionline.domain.RevenueRecognitionLineNotFoundException.class,
             com.vetsoftware.app.accountingexport.domain.AccountingExportNotFoundException.class,
             com.vetsoftware.app.taxreturn.domain.TaxReturnNotFoundException.class,
-            com.vetsoftware.app.supplierwithholding.domain.SupplierWithholdingNotFoundException.class})
+            com.vetsoftware.app.supplierwithholding.domain.SupplierWithholdingNotFoundException.class,
+            // Un token que no existe y uno que existe y caduco dan el mismo 404: no
+            // hay nada que ganar distinguiendolos y si algo que perder, porque seria
+            // un oraculo de existencia sobre un identificador que alguien puede estar
+            // probando.
+            com.vetsoftware.app.aiproposal.domain.AiProposalNotFoundException.class})
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.info("Resource not found: {}", ex.getMessage());
         return problem(HttpStatus.NOT_FOUND, errorCode(ex), ex.getMessage());
@@ -571,7 +566,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             CompanyHasActiveChildrenException.class, EmployeeHasActiveChildrenException.class,
             TaxHasActiveChildrenException.class, ProductCategoryHasActiveChildrenException.class,
             ServiceCategoryHasActiveChildrenException.class,
-            ConfiguratorQuestionHasActiveChildrenException.class,
             CatalogItemHasActiveChildrenException.class})
     public ProblemDetail handleHasActiveChildren(RuntimeException ex) {
         log.info("Cannot delete entity with active children: {}", ex.getMessage());
@@ -944,51 +938,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return pd;
     }
 
-    @ExceptionHandler(ConfiguratorCodeAlreadyExistsException.class)
-    public ProblemDetail handleConfiguratorCodeAlreadyExists(
-            ConfiguratorCodeAlreadyExistsException ex) {
-        log.info("Configurator code already exists: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_CODE_ALREADY_EXISTS", ex.getMessage());
-    }
-
-    @ExceptionHandler(ConfiguratorEffectAlreadyExistsException.class)
-    public ProblemDetail handleConfiguratorEffectAlreadyExists(
-            ConfiguratorEffectAlreadyExistsException ex) {
-        log.info("Configurator effect already exists: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_EFFECT_ALREADY_EXISTS", ex.getMessage());
-    }
-
     @ExceptionHandler(PriceListCodeAlreadyExistsException.class)
     public ProblemDetail handlePriceListCodeAlreadyExists(PriceListCodeAlreadyExistsException ex) {
         log.info("Price list code already exists: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "PRICE_LIST_CODE_ALREADY_EXISTS", ex.getMessage());
-    }
-
-    @ExceptionHandler(ConditionalQuestionCycleException.class)
-    public ProblemDetail handleConditionalQuestionCycle(ConditionalQuestionCycleException ex) {
-        log.info("Configurator question cycle: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_QUESTION_CYCLE", ex.getMessage());
-    }
-
-    @ExceptionHandler(QuantityFromAnswerRequiresNumberQuestionException.class)
-    public ProblemDetail handleQuantityFromAnswerRequiresNumber(
-            QuantityFromAnswerRequiresNumberQuestionException ex) {
-        log.info("Quantity from answer requires a NUMBER question: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "QUANTITY_FROM_ANSWER_REQUIRES_NUMBER",
-                ex.getMessage());
-    }
-
-    // 409 y no 400: lo que está en conflicto no es el cuerpo que acaba de llegar
-    // —una opción o un answerType perfectamente válidos por sí solos— sino el
-    // estado guardado del cuestionario contra el que se aplican. Es el mismo
-    // criterio con el que va QUANTITY_FROM_ANSWER_REQUIRES_NUMBER, y el contrario
-    // al de CONFIGURATOR_ANSWER_UNREACHABLE, que sí culpa al cuerpo.
-    @ExceptionHandler(NumberQuestionCannotHaveOptionsException.class)
-    public ProblemDetail handleNumberQuestionCannotHaveOptions(
-            NumberQuestionCannotHaveOptionsException ex) {
-        log.info("NUMBER question cannot have options: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_NUMBER_QUESTION_CANNOT_HAVE_OPTIONS",
-                ex.getMessage());
     }
 
     @ExceptionHandler(CatalogItemCodeAlreadyExistsException.class)
@@ -1053,6 +1006,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.info("Company already has an active subscription: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "COMPANY_ALREADY_HAS_ACTIVE_SUBSCRIPTION",
                 ex.getMessage());
+    }
+
+    /**
+     * El contrato que iba a firmarse dejaria a la empresa sin una capacidad sin la
+     * cual no puede operar. Es 409 y no 400 o 422 porque no es el cuerpo de la
+     * peticion lo que esta mal —el cliente pidio algo perfectamente valido— sino el
+     * estado del catalogo contra el que se firma.
+     */
+    @ExceptionHandler(StructuralMinimumNotCarriedException.class)
+    public ProblemDetail handleStructuralMinimumNotCarried(
+            StructuralMinimumNotCarriedException ex) {
+        log.warn("Structural minimum would be lost by the new contract: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "STRUCTURAL_MINIMUM_NOT_CARRIED", ex.getMessage());
+    }
+
+    /**
+     * Dos aceptaciones simultaneas de la misma cotizacion. Es 409 y no 500: la
+     * operacion que el cliente pidio YA esta hecha —su contrato existe— y quien
+     * reciba esto tiene que releer, no reintentar.
+     */
+    @ExceptionHandler(QuoteAlreadyConvertedException.class)
+    public ProblemDetail handleQuoteAlreadyConverted(QuoteAlreadyConvertedException ex) {
+        log.info("Quote already converted into a subscription: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "QUOTE_ALREADY_CONVERTED", ex.getMessage());
     }
 
     @ExceptionHandler(SubscriptionItemOverlapException.class)
@@ -1220,47 +1197,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         setIfPresent(pd, "validFrom", ex.getValidFrom());
         setIfPresent(pd, "validTo", ex.getValidTo());
         setIfPresent(pd, "quotedOn", ex.getQuotedOn());
-        return pd;
-    }
-
-    // Configurador: las dos son 400 y no 409 porque el conflicto está en el cuerpo
-    // que acaba de enviarse —una respuesta a una pregunta que las condiciones del
-    // propio envío dejan inalcanzable, o una obligatoria que falta—, no en el
-    // estado
-    // de nada guardado. Se arregla corrigiendo el envío, que es la definición de un
-    // 400.
-    // Las dos llevan la pregunta y la opcion como propiedades ademas de dentro del
-    // mensaje (#449). El detail sale en ingles y nombrando ids internos —"Answer
-    // refers to option 42, which does not exist…"— y el front lo pinta tal cual
-    // dentro de un aviso en español, a un operador de la consola y tambien al
-    // PROSPECTO ANONIMO, porque /configurator/resolve es publico por diseño. Nadie
-    // puede actuar sobre "la opcion 42". Con questionCode el cliente escribe la
-    // frase nombrando la pregunta con las mismas palabras que hay en pantalla, sin
-    // volver a pedir nada al servidor. No se traduce el backend: se le dan los
-    // datos
-    // a quien sí sabe el idioma de su usuario.
-    //
-    // Las propiedades solo se ponen si existen: un ProblemDetail con
-    // "questionCode": null le hace creer al front que la pregunta no tiene codigo,
-    // en vez de que este rechazo no señala a ninguna pregunta concreta.
-    @ExceptionHandler(UnreachableAnswerException.class)
-    public ProblemDetail handleUnreachableAnswer(UnreachableAnswerException ex) {
-        log.info("Unreachable configurator answer: {}", ex.getMessage());
-        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "CONFIGURATOR_ANSWER_UNREACHABLE",
-                ex.getMessage());
-        setIfPresent(pd, "questionId", ex.getQuestionId());
-        setIfPresent(pd, "questionCode", ex.getQuestionCode());
-        setIfPresent(pd, "optionId", ex.getOptionId());
-        return pd;
-    }
-
-    @ExceptionHandler(MissingRequiredAnswerException.class)
-    public ProblemDetail handleMissingRequiredAnswer(MissingRequiredAnswerException ex) {
-        log.info("Missing required configurator answer: {}", ex.getMessage());
-        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "CONFIGURATOR_REQUIRED_ANSWER_MISSING",
-                ex.getMessage());
-        setIfPresent(pd, "questionId", ex.getQuestionId());
-        setIfPresent(pd, "questionCode", ex.getQuestionCode());
         return pd;
     }
 
@@ -1594,6 +1530,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // campo. Lo que cae en este handler es una invariante de dominio, que el front
     // no
     // sabe atribuir a ningún campo concreto.
+    /**
+     * Dos pestanas sobre la misma propuesta anonima. El front recarga con
+     * {@code GET /assistant/proposal?token=...} y reintenta con la version buena;
+     * sin este 409, un refinamiento en vuelo pisaria una edicion manual recien
+     * aplicada y devolveria la linea que el usuario acababa de quitar.
+     */
+    @ExceptionHandler(com.vetsoftware.app.aiproposal.domain.ProposalVersionConflictException.class)
+    public ProblemDetail handleProposalVersionConflict(
+            com.vetsoftware.app.aiproposal.domain.ProposalVersionConflictException ex) {
+        log.info("AI proposal version conflict");
+        return problem(HttpStatus.CONFLICT, "PROPOSAL_VERSION_CONFLICT", ex.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleBadRequest(IllegalArgumentException ex) {
         log.info("Bad request: {}", ex.getMessage());
@@ -2059,15 +2008,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         // concurrente que pasó el check del service la atrapa la BD. Se mapea al mismo
         // código de
         // negocio.
-        // Las seis constraints del catalogo de plataforma (#437). Las altas de
-        // configurator y pricelist ya tienen guarda previa —consultan la fila ignorando
-        // el borrado logico y la reactivan en vez de insertar—, pero una guarda previa
-        // no puede cerrar la CARRERA: dos administradores dan de alta a la vez el mismo
-        // codigo de pregunta desde dos pestañas, los dos leen antes de que el otro
-        // escriba, y el segundo INSERT muere contra el indice. Sin mapeo eso sale como
-        // un 409 con el detail "Database constraint violation" —sobre catalog_prices,
-        // hablando de dinero— y deja un WARN indistinguible de un problema real de
-        // integridad.
+        // Las constraints del catalogo de plataforma (#437). Las altas de pricelist ya
+        // tienen guarda previa —consultan la fila ignorando el borrado logico y la
+        // reactivan en vez de insertar—, pero una guarda previa no puede cerrar la
+        // CARRERA: dos administradores dan de alta a la vez el mismo codigo desde dos
+        // pestañas, los dos leen antes de que el otro escriba, y el segundo INSERT
+        // muere contra el indice. Sin mapeo eso sale como un 409 con el detail
+        // "Database constraint violation" —sobre catalog_prices, hablando de dinero— y
+        // deja un WARN indistinguible de un problema real de integridad.
         //
         // MISMO errorCode que el guard sincrono de cada caso, igual que en las tres
         // ramas de arriba: al front le da igual si el choque lo detecto Java o lo
@@ -2076,18 +2024,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         //
         // uq_catalog_prices_tier va incluida aunque CreateCatalogPriceService bloquee
         // la lista con PESSIMISTIC_WRITE y ahi la carrera este serializada: es red, y
-        // cuesta un if. En las tres tablas de configurator y en price_lists no hay
-        // bloqueo y la carrera esta abierta de verdad.
-        if (cause != null && (cause.contains("uq_configurator_questions_code")
-                || cause.contains("uq_configurator_options_code"))) {
-            return problem(HttpStatus.CONFLICT, "CONFIGURATOR_CODE_ALREADY_EXISTS",
-                    "Ese código ya está en uso en el cuestionario.");
-        }
-        if (cause != null && (cause.contains("uq_configurator_effects_option")
-                || cause.contains("uq_configurator_effects_question"))) {
-            return problem(HttpStatus.CONFLICT, "CONFIGURATOR_EFFECT_ALREADY_EXISTS",
-                    "Esa respuesta ya tiene un efecto sobre ese artículo.");
-        }
+        // cuesta un if. En price_lists no hay bloqueo y la carrera esta abierta de
+        // verdad.
         if (cause != null && cause.contains("uq_price_lists_code")) {
             return problem(HttpStatus.CONFLICT, "PRICE_LIST_CODE_ALREADY_EXISTS",
                     "Ya existe una lista de precios con ese código.");

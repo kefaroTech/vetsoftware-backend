@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ====================================================================================
+         GROOMING REQUIRES SERVICES. Sin `context`: todos los entornos, igual que 309.
+
+         POR QUE ES UN CHANGESET NUEVO Y NO UNA LINEA MAS DENTRO DE 309. 308/309 no llevan
+         `context` a proposito -su propio encabezado lo dice- para que Liquibase los aplique en
+         desarrollo y produccion, y ese despliegue ya ocurrio: el pipeline de este repo publica en
+         dev en cada merge a `develop` (ver CLAUDE.md, "Versionado automatico de develop"), y
+         308/309 llevan mucho mas historia detras -hasta 379- sin que nadie los tocara. Editar el
+         `<changeSet id="309_seed_catalog_item_dependencies">` ya aplicado le cambiaria el checksum
+         y con `ddl-auto`/Liquibase comprobando integridad esa base queda inarrancable la proxima
+         vez que corra. Es el mismo criterio que 086/087 dejaron escrito para una columna: la
+         correccion es un changeset nuevo, nunca una edicion del que ya corrio.
+
+         POR QUE HACE FALTA EL ARCO. Una peluqueria cobra por tamano y raza, y es SERVICES
+         ($29.000) quien carga el tarifario que lo hace posible -ninguna otra tabla del catalogo
+         guarda tarifas por dimension-. Vender GROOMING suelto entrega un modulo que no se puede
+         tarifar: la pantalla de servicios y tarifas no esta. PACK_SPA (309) ya mete GROOMING y
+         SERVICES juntos -sin declarar por que-, y PACK_FULL tambien; el camino a la carta era el
+         unico que se habia quedado corto.
+
+         SIN CICLO, comprobado a mano igual que 308 lo hizo para las 9 filas de 309: SERVICES no
+         tiene ninguna fila de salida en `catalog_item_dependencies` -ni REQUIRES ni RECOMMENDS-,
+         asi que un arco que entra en SERVICES no puede volver a salir. GROOMING pasa de cero
+         REQUIRES de salida a uno; su unica fila previa era el RECOMMENDS hacia SCHEDULING que 309
+         ya declaraba, y relation_type distinto no compite con el mismo `uq_catalog_item_dependencies`
+         (catalog_item_id, related_item_id, relation_type).
+
+         LOS DOS PAQUETES QUE YA LLEVAN GROOMING SIGUEN CUMPLIENDO SU PROPIO REQUIRES, igual que
+         309 dejo escrito para los suyos: PACK_SPA trae SERVICES (y CASH_REGISTER, que es lo que
+         CAPACITY_TERMINAL exige) y PACK_FULL tambien trae SERVICES. Ningun paquete existente queda
+         incompleto por este arco.
+
+         LOS ENCABEZADOS DE 308 Y 309 NO CAMBIAN. El de 309 ("Nueve REQUIRES y cuatro RECOMMENDS")
+         describe las 13 filas que ese propio changeSet inserta, y esas 13 filas no se tocan aqui.
+         El de 308 ("las cadenas mas largas son...") esta acotado por su propio texto a "las
+         dependencias de 309" y a "las 13 filas": tampoco describe el estado global del grafo. Los
+         tres comentarios de test que citan "nueve arcos... desde el changeset 309"
+         (RequiredItemsClosureTest, ResolveConfiguratorSelectionServiceTest,
+         SelfServeQuoteRequirementsTest) son historicos sobre 309 en concreto y siguen siendo
+         ciertos. Nada de eso queda desactualizado por anadir un decimo arco en otro changeset.
+         ==================================================================================== -->
+
+    <changeSet id="380_seed_grooming_requires_services" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_dependencies
+                    (catalog_item_id, related_item_id, relation_type, note)
+            SELECT a.id, b.id, 'REQUIRES',
+                   'La estetica cobra por tamano y raza; el tarifario que lo permite vive en Servicios'
+              FROM catalog_items a
+              JOIN catalog_items b ON b.code = 'SERVICES'
+             WHERE a.code = 'GROOMING'
+               AND NOT EXISTS (
+                   SELECT 1 FROM catalog_item_dependencies x
+                    WHERE x.catalog_item_id = a.id AND x.related_item_id = b.id
+                      AND x.relation_type = 'REQUIRES');
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE cid FROM catalog_item_dependencies cid
+                  JOIN catalog_items a ON a.id = cid.catalog_item_id
+                  JOIN catalog_items b ON b.id = cid.related_item_id
+                 WHERE a.code = 'GROOMING' AND b.code = 'SERVICES' AND cid.relation_type = 'REQUIRES';
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

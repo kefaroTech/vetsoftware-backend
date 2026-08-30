@@ -19,8 +19,8 @@ public record QuoteDto(Long id, String quoteNumber, CompanySummaryDto company, S
         String billingCycle, BigDecimal subtotalAmount, BigDecimal discountAmount,
         BigDecimal taxAmount, BigDecimal totalAmount, String status, LocalDate validUntil,
         int trialDays, LocalDateTime acceptedAt, String acceptedByEmail, String acceptedIp,
-        String clientRequestId, List<QuoteLineDto> lines, List<QuoteAnswerDto> answers,
-        LocalDateTime createdDate, boolean enabled) {
+        String clientRequestId, List<QuoteLineDto> lines, LocalDateTime createdDate,
+        boolean enabled) {
 
     public static QuoteDto from(Quote quote) {
         return new QuoteDto(quote.getId(), quote.getQuoteNumber(),
@@ -31,8 +31,7 @@ public record QuoteDto(Long id, String quoteNumber, CompanySummaryDto company, S
                 quote.getStatus().name(), quote.getValidUntil(), quote.getTrialDays(),
                 quote.getAcceptedAt(), quote.getAcceptedByEmail(), quote.getAcceptedIp(),
                 quote.getClientRequestId(),
-                quote.getLines().stream().map(QuoteLineDto::from).toList(),
-                quote.getAnswers().stream().map(QuoteAnswerDto::from).toList(),
-                quote.getCreatedDate(), quote.isEnabled());
+                quote.getLines().stream().map(QuoteLineDto::from).toList(), quote.getCreatedDate(),
+                quote.isEnabled());
     }
 }

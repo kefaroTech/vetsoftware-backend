@@ -19,8 +19,25 @@ import java.util.List;
  * {@code currency} y {@code priceValidFrom} nulos con las cuatro listas vacias
  * es la respuesta 200 valida cuando no hay tarifa vigente, igual que en
  * {@link PublicPlanCatalogDto}: la portada tiene que seguir cargando.
+ *
+ * @param requirements
+ *            el grafo «si eliges esto, se te anade aquello», <strong>como lista
+ *            de arcos y no como campo dentro de cada articulo</strong>. Va
+ *            arriba por dos razones. La primera es de contrato: los tres
+ *            records de articulo —{@code PublicCatalogItemResponse},
+ *            {@code PublicCatalogCapacityResponse},
+ *            {@code PublicCatalogPackResponse}— quedan <em>intactos</em>, asi
+ *            que los dos fronts declaran un tipo nuevo y no tocan tres que ya
+ *            funcionan. La segunda es de completitud: un arco es un arco
+ *            independientemente del tipo de sus extremos, mientras que repartir
+ *            el campo por tipo de articulo obliga a decidir donde cuelga un
+ *            requisito cuyo origen sea un {@code BUNDLE} —hoy no hay ninguno, y
+ *            el dia que lo haya se caeria en silencio—. Ver
+ *            {@link PublicCatalogRequirementRowDto} para por que son arcos
+ *            directos y no el cierre transitivo. Lista vacia, nunca nula.
  */
 public record PublicCatalogDto(String currency, LocalDate priceValidFrom,
         List<PublicCatalogItemDto> modules, List<PublicCatalogCapacityDto> capacities,
-        List<PublicCatalogItemDto> oneTimeItems, List<PublicCatalogPackDto> packs) {
+        List<PublicCatalogItemDto> oneTimeItems, List<PublicCatalogPackDto> packs,
+        List<PublicCatalogRequirementDto> requirements) {
 }

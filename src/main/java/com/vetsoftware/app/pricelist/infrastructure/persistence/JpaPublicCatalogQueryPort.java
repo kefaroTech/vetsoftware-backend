@@ -2,6 +2,7 @@ package com.vetsoftware.app.pricelist.infrastructure.persistence;
 
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackComponentRowDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogRequirementRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicPlanRowDto;
 import com.vetsoftware.app.pricelist.application.port.out.PublicCatalogQueryPort;
 import com.vetsoftware.app.pricelist.domain.TaxTreatment;
@@ -181,6 +182,43 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
              ORDER BY bi.code, ci.sort_order, ci.id
             """;
 
+    /**
+     * Los arcos {@code REQUIRES}, por rotulos.
+     *
+     * <p>
+     * <b>Es el mismo {@code WHERE} que
+     * {@code JpaCatalogItemDependencyQueryPort.SQL}, columna por columna</b>, y esa
+     * coincidencia es el punto: aquel es el grafo que {@code RequiredItemsClosure}
+     * recorre para completar el carrito de verdad. Si este publicara un predicado
+     * distinto —anadiendo, por ejemplo, un filtro por precio para que ningun codigo
+     * quedara colgando—, la portada anunciaria un grafo y la contratacion aplicaria
+     * otro, que es exactamente el desajuste que este endpoint existe para cerrar.
+     *
+     * <p>
+     * <b>Los dos extremos vivos.</b> {@code status = 'ACTIVE'} y {@code enabled} en
+     * el articulo <em>y</em> en su requisito, ademas de en la propia dependencia:
+     * un arco hacia algo retirado exigiria al prospecto anadir un articulo que ya
+     * no se vende y dejaria el carrito imposible de completar.
+     *
+     * <p>
+     * <b>Sin {@code priceListId}</b>: la tabla no tiene columna de tarifa. El orden
+     * es el de presentacion del catalogo —{@code sort_order}— para que la lista
+     * salga estable entre peticiones y el diff de un contrato no baile.
+     */
+    private static final String SQL_REQUIREMENTS = """
+            SELECT ci.code, req.code
+              FROM catalog_item_dependencies d
+              JOIN catalog_items ci  ON ci.id  = d.catalog_item_id
+              JOIN catalog_items req ON req.id = d.related_item_id
+             WHERE d.relation_type = 'REQUIRES'
+               AND d.enabled = TRUE
+               AND ci.status = 'ACTIVE'
+               AND ci.enabled = TRUE
+               AND req.status = 'ACTIVE'
+               AND req.enabled = TRUE
+             ORDER BY ci.sort_order, ci.id, req.sort_order, req.id
+            """;
+
     private final EntityManager entityManager;
 
     public JpaPublicCatalogQueryPort(EntityManager entityManager) {
@@ -237,6 +275,18 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
                     asString(columns[1])));
         }
         return List.copyOf(lineas);
+    }
+
+    @Override
+    public List<PublicCatalogRequirementRowDto> findRequirements() {
+        Query query = entityManager.createNativeQuery(SQL_REQUIREMENTS);
+        List<PublicCatalogRequirementRowDto> arcos = new ArrayList<>();
+        for (Object row : query.getResultList()) {
+            Object[] columns = (Object[]) row;
+            arcos.add(
+                    new PublicCatalogRequirementRowDto(asString(columns[0]), asString(columns[1])));
+        }
+        return List.copyOf(arcos);
     }
 
     private static String asString(Object value) {

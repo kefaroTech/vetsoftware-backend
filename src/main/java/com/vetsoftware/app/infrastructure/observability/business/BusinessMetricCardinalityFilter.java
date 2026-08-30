@@ -159,7 +159,50 @@ public final class BusinessMetricCardinalityFilter implements MeterFilter, Meter
             // con dueno distinto -un pico a las 3 de la manana es el barrido; un
             // pico al mediodia es un incidente que estan viendo clientes- y
             // meterlas en la misma serie esconde la segunda detras de la primera.
-            Map.entry("trigger.reason", Set.of("subscription_changed", "scheduled_sweep")));
+            Map.entry("trigger.reason", Set.of("subscription_changed", "scheduled_sweep")),
+            // ── Asistente comercial con IA (aiproposal) ─────────────────────────
+            //
+            // Cinco vocabularios cerrados y NI UNO abierto, aunque este es el
+            // unico bloque del sistema alimentado por texto que escribe un
+            // anonimo de internet. Lo que ese anonimo escribe -y lo que el
+            // modelo devuelve en prosa- no llega hasta aqui: llega su longitud,
+            // el enum de la regla que lo rechazo y el enum del veredicto. La
+            // correccion, si algun dia aparece un codigo de catalogo o un
+            // public_token como valor, es quitarlo del emisor y NUNCA anadirlo
+            // a esta lista.
+            //
+            // La paridad enum <-> lista blanca la sostiene
+            // BusinessMetricEnumAllowlistParityTest: una constante nueva en
+            // GenerationOutcome, ProposalPresentation, ReasonRejection,
+            // LineVerdict o AiProposalRetentionMetrics.Paso sin tocar este Map
+            // rompe el build. Sin esa red, el valor nuevo deniega el MEDIDOR
+            // ENTERO -no esa serie suelta- y el hueco del panel es
+            // indistinguible de «no hubo prospectos».
+            //
+            // Cardinalidad, contada: generated = 2 x 6 x 4 = 48 en el peor caso
+            // teorico, ~14 reales porque presentation esta determinado por
+            // outcome salvo cuando el modelo respondio; reason.rejected = 9;
+            // invalid.lines = 5; retention.rows = 6; spend y spend.today no
+            // llevan etiqueta. Total <= 70 series, ~35 reales.
+            Map.entry("ai.operation", Set.of("propose", "refine")),
+            Map.entry("ai.outcome",
+                    Set.of("succeeded", "degraded_spend_cap", "degraded_no_hints",
+                            "degraded_model_unavailable", "model_failed", "no_catalog")),
+            Map.entry("ai.presentation",
+                    Set.of("proposal", "not_understood", "out_of_domain", "deterministic")),
+            Map.entry("reason.rule",
+                    Set.of("r1_corto", "r2_largo", "r3_cifra", "r4_dinero", "r5_marcado",
+                            "r6_enlace", "r7_codigo", "r8_contacto", "r9_repetido")),
+            // «accepted» esta declarado aunque hoy no se emita -el contador solo
+            // cuenta rechazos-. Cuesta cero mientras nadie lo emita y evita que
+            // el dia que alguien quiera contar tambien lo aceptado se encuentre
+            // con el medidor entero denegado en silencio.
+            Map.entry("line.verdict",
+                    Set.of("accepted", "unknown_code", "not_sellable", "not_self_service",
+                            "duplicate")),
+            Map.entry("retention.step",
+                    Set.of("anonymize_proposals", "redact_turns", "redact_line_reasons",
+                            "purge_lines", "purge_turns", "purge_acceptances", "purge_proposals")));
 
     /**
      * Acumuladores de descarte por nombre de medidor. El conjunto de claves es fijo

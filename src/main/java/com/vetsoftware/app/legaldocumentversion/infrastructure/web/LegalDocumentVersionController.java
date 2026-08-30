@@ -4,11 +4,12 @@ import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.legaldocumentversion.application.command.PublishLegalDocumentVersionCommand;
 import com.vetsoftware.app.legaldocumentversion.application.port.in.FindAcceptedLegalDocumentUseCase;
-import com.vetsoftware.app.legaldocumentversion.application.port.in.FindCurrentLegalDocumentUseCase;
+import com.vetsoftware.app.legaldocumentversion.application.port.in.FindPublicLegalDocumentUseCase;
 import com.vetsoftware.app.legaldocumentversion.application.port.in.ListLegalDocumentVersionsUseCase;
 import com.vetsoftware.app.legaldocumentversion.application.port.in.PublishLegalDocumentVersionUseCase;
 import com.vetsoftware.app.legaldocumentversion.infrastructure.web.request.PublishLegalDocumentVersionRequest;
 import com.vetsoftware.app.legaldocumentversion.infrastructure.web.response.LegalDocumentVersionResponse;
+import com.vetsoftware.app.legaldocumentversion.infrastructure.web.response.PublicLegalDocumentResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,13 +39,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class LegalDocumentVersionController {
 
     private final PublishLegalDocumentVersionUseCase publishUseCase;
-    private final FindCurrentLegalDocumentUseCase findCurrentUseCase;
+    private final FindPublicLegalDocumentUseCase findCurrentUseCase;
     private final FindAcceptedLegalDocumentUseCase findAcceptedUseCase;
     private final ListLegalDocumentVersionsUseCase listUseCase;
     private final Authz authz;
 
     public LegalDocumentVersionController(PublishLegalDocumentVersionUseCase publishUseCase,
-            FindCurrentLegalDocumentUseCase findCurrentUseCase,
+            FindPublicLegalDocumentUseCase findCurrentUseCase,
             FindAcceptedLegalDocumentUseCase findAcceptedUseCase,
             ListLegalDocumentVersionsUseCase listUseCase, Authz authz) {
         this.publishUseCase = publishUseCase;
@@ -64,10 +65,30 @@ public class LegalDocumentVersionController {
                         authz.currentSystemUserId())));
     }
 
+    /**
+     * <strong>Ruta publica.</strong> Es la unica de este controller que sirve a
+     * quien no tiene cuenta, y existe porque el consentimiento del articulo 9 de la
+     * Ley 1581 no se puede probar si el aviso que se le enseño al prospecto salio
+     * de una copia local del front en vez del servidor.
+     *
+     * <p>
+     * Por eso no llama a {@code authz}: el puerto es
+     * {@link FindPublicLegalDocumentUseCase}, sin {@code companyId} y con
+     * {@code @NoAuthorizationRequired}. Las otras tres operaciones de esta clase
+     * siguen exigiendo identidad.
+     *
+     * <p>
+     * &#9940; <strong>Y por eso responde {@link PublicLegalDocumentResponse} y no
+     * {@link LegalDocumentVersionResponse}</strong>: aquella no lleva
+     * {@code publishedBySystemUserId}. Que esta ruta sea anonima significa que todo
+     * campo que devuelva es publico, y el id del administrador de plataforma que
+     * firmo la publicacion no le sirve de nada a quien lee el aviso de privacidad.
+     * Las otras tres operaciones si lo llevan, porque quien administra la
+     * plataforma necesita saber quien publico que.
+     */
     @GetMapping("/{code}/current")
-    public LegalDocumentVersionResponse findCurrent(@PathVariable String code) {
-        return LegalDocumentVersionResponse
-                .from(findCurrentUseCase.findCurrentByCode(code, authz.currentCompanyIdOrNull()));
+    public PublicLegalDocumentResponse findCurrent(@PathVariable String code) {
+        return PublicLegalDocumentResponse.from(findCurrentUseCase.findCurrentByCode(code));
     }
 
     /**

@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PROPUESTA IA (docs/db/propuesta-ia-modelo-datos.md S2.3, con las tres correcciones sobre
+         la v1 ya aplicadas -es la versión que manda el plan de implementación S5.4/S5.5.1-).
+
+         (1) reason_redacted_at Y LA RAMA NUEVA DEL CHECK -la corrección que hacía falsa la
+         anonimización de toda la feature-. El anexo E obliga al modelo a CITAR al cliente en
+         `reason` ("le vendes a crédito a una fundación..."), así que esa columna guarda las
+         palabras del prospecto. La v1 de la política de retención borraba contact_email,
+         input_text y raw_response y conservaba "todas las líneas" -con su reason dentro-: una
+         fila anonymized_at seguía llevando el texto del prospecto. Y el CHECK de la v1
+         (source <> 'MODEL' OR reason IS NOT NULL) impedía el arreglo: no se podía anular el
+         motivo sin reescribir source, y reescribir source destruye la señal de qué propuso el
+         modelo. chk_ai_proposal_lines_model_reason pasa de "una línea de modelo TIENE motivo" a
+         "una línea de modelo tiene motivo, O CONSTA QUE SE LE BORRÓ" -distingue borrado de
+         ausente-. reason_redacted_at va EN LA PROPIA LÍNEA, no se lee ai_proposals.anonymized_at,
+         porque MySQL no permite que un CHECK referencie otra tabla. Se rechaza el centinela
+         (reason = '[anonimizado]'): "Fear of the Unknown" de Karwin, y un valor mágico que
+         cualquier COUNT de motivos contaría como motivo.
+
+         (2) VOCABULARIO DE verdict: manda el del plan de implementación
+         (ACCEPTED | UNKNOWN_CODE | NOT_SELLABLE | NOT_SELF_SERVICE | DUPLICATE), no el de la v1
+         del modelo de datos. NOT_SELF_SERVICE es el veredicto que exige la regla "la propuesta
+         solo emite líneas con selfServiceEligible = true" (contención de DC-1); EXCLUDED_BY_RULE
+         desaparece porque los arcos EXCLUDES son cero en el catálogo real. Los cinco valores NO
+         se serializan nunca por HTTP -son telemetría interna de calidad del modelo, no un oráculo
+         de cinco valores sobre el catálogo-.
+
+         (3) source GANA MODEL_RECOMMENDED: el esquema de salida del modelo devuelve DOS listas
+         (necesarios y recomendados) y el plan decide que "recomendados" no entra al carrito por
+         defecto. Un source propio, no una columna `necessity` aparte: la pregunta que responde
+         source es "¿quién puso esta línea aquí?", y "el modelo, como opcional" responde a esa
+         misma pregunta sin un CHECK cruzado para el estado imposible "CUSTOMER + recomendado".
+
+         item_code VARCHAR(50) NOT NULL guarda lo que dijo el modelo VERBATIM; catalog_item_id es
+         NULLABLE porque no se puede poner una FK a una fila que no existe -la alucinación
+         (verdict='UNKNOWN_CODE') es precisamente el dato que mide la calidad del modelo-.
+         chk_ai_proposal_lines_resolved exige la FK resuelta solo cuando verdict='ACCEPTED'.
+         uq_ai_proposal_lines_code va sobre (turn_id, item_code) y NO sobre (turn_id,
+         catalog_item_id): con catalog_item_id la constraint no valdría nada para las
+         alucinaciones -MySQL admite múltiples NULL en un índice único, así que el mismo código
+         inventado podría repetirse veinte veces en el mismo turno-. Ese mismo índice cubre por
+         prefijo izquierdo la FK de turn_id, así que InnoDB no crea un segundo índice para ella.
+
+         unit_amount DECIMAL(19,2), misma precisión que catalog_prices.unit_amount (234): congela
+         el importe mostrado -es un registro de auditoría, no una foto que cambia sola cuando se
+         publica una tarifa nueva-.
+
+         SE RECHAZA proposal_id denormalizada: es funcionalmente dependiente de turn_id (3NF) y
+         una propuesta tiene <= 5 turnos -no hay medición que pida el atajo, y añadiría una FK y
+         un índice a la tabla que más filas va a tener-.
+
+         CON version -superado el "SIN enabled y SIN version, exenta E1_APPEND_ONLY" de la v1-:
+         con el borrado del motivo en la retención, una línea SÍ se toca una vez, así que
+         E1_APPEND_ONLY sería falso por escrito. El UPDATE masivo de retención (paso 3, plan S5.5)
+         lleva version = version + 1 en el SET (UPDATE_MASIVO_MUEVE_LA_VERSION, dura). Queda para
+         la fase de entidades JPA añadir @Version aquí -sigue SIN enabled: una línea no se
+         desactiva-. -->
+    <changeSet id="385_create_ai_proposal_lines" author="orlando">
+        <preConditions onFail="HALT">
+            <not>
+                <tableExists tableName="ai_proposal_lines"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="ai_proposal_lines">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="turn_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="item_code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+            <column name="catalog_item_id" type="BIGINT"/>
+            <column name="action" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="source" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="verdict" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="quantity" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_amount" type="DECIMAL(19,2)"/>
+            <column name="reason" type="VARCHAR(500)"/>
+            <column name="reason_redacted_at" type="DATETIME(6)"/>
+            <column name="sort_order" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE ai_proposal_lines
+                ADD CONSTRAINT uq_ai_proposal_lines_code
+                    UNIQUE (turn_id, item_code),
+                ADD CONSTRAINT chk_ai_proposal_lines_action
+                    CHECK (action IN ('ADDED','REMOVED')),
+                ADD CONSTRAINT chk_ai_proposal_lines_source
+                    CHECK (source IN ('MODEL','MODEL_RECOMMENDED','DEPENDENCY_CLOSURE','CUSTOMER')),
+                ADD CONSTRAINT chk_ai_proposal_lines_verdict
+                    CHECK (verdict IN ('ACCEPTED','UNKNOWN_CODE','NOT_SELLABLE',
+                                        'NOT_SELF_SERVICE','DUPLICATE')),
+                ADD CONSTRAINT chk_ai_proposal_lines_resolved
+                    CHECK (verdict <> 'ACCEPTED' OR catalog_item_id IS NOT NULL),
+                ADD CONSTRAINT chk_ai_proposal_lines_quantity
+                    CHECK (quantity >= 1),
+                ADD CONSTRAINT chk_ai_proposal_lines_amount
+                    CHECK (unit_amount IS NULL OR unit_amount >= 0),
+                ADD CONSTRAINT chk_ai_proposal_lines_sort
+                    CHECK (sort_order >= 0),
+                ADD CONSTRAINT chk_ai_proposal_lines_model_reason
+                    CHECK (source NOT IN ('MODEL','MODEL_RECOMMENDED')
+                           OR reason IS NOT NULL
+                           OR reason_redacted_at IS NOT NULL),
+                ADD CONSTRAINT chk_ai_proposal_lines_redaccion
+                    CHECK (reason_redacted_at IS NULL OR reason IS NULL)
+        ]]></sql>
+
+        <createIndex tableName="ai_proposal_lines" indexName="ix_ai_proposal_lines_catalog_item">
+            <column name="catalog_item_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="ai_proposal_lines"
+                                 baseColumnNames="turn_id"
+                                 referencedTableName="ai_proposal_turns"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_ai_proposal_lines_turn"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <addForeignKeyConstraint baseTableName="ai_proposal_lines"
+                                 baseColumnNames="catalog_item_id"
+                                 referencedTableName="catalog_items"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_ai_proposal_lines_item"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="ai_proposal_lines"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

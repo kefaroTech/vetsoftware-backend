@@ -4,10 +4,12 @@ import com.vetsoftware.app.pricelist.application.dto.PublicCatalogCapacityDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogRequirementDto;
 import com.vetsoftware.app.pricelist.application.port.in.GetPublicCatalogUseCase;
 import com.vetsoftware.app.pricelist.infrastructure.web.response.PublicCatalogCapacityResponse;
 import com.vetsoftware.app.pricelist.infrastructure.web.response.PublicCatalogItemResponse;
 import com.vetsoftware.app.pricelist.infrastructure.web.response.PublicCatalogPackResponse;
+import com.vetsoftware.app.pricelist.infrastructure.web.response.PublicCatalogRequirementResponse;
 import com.vetsoftware.app.pricelist.infrastructure.web.response.PublicCatalogResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -76,7 +78,9 @@ public class PublicCatalogController {
                         .toList(),
                 catalog.oneTimeItems().stream().map(PublicCatalogController::toItemResponse)
                         .toList(),
-                catalog.packs().stream().map(PublicCatalogController::toPackResponse).toList());
+                catalog.packs().stream().map(PublicCatalogController::toPackResponse).toList(),
+                catalog.requirements().stream().map(PublicCatalogController::toRequirementResponse)
+                        .toList());
     }
 
     private static PublicCatalogItemResponse toItemResponse(PublicCatalogItemDto dto) {
@@ -90,6 +94,11 @@ public class PublicCatalogController {
                 dto.mandatory(), dto.unit(), dto.monthlyIncludedQuantity(),
                 dto.annualIncludedQuantity(), dto.monthlyUnitAmount(), dto.annualUnitAmount(),
                 dto.taxRate(), dto.taxTreatment(), dto.selfServiceEligible());
+    }
+
+    private static PublicCatalogRequirementResponse toRequirementResponse(
+            PublicCatalogRequirementDto dto) {
+        return new PublicCatalogRequirementResponse(dto.itemCode(), dto.requiredItemCode());
     }
 
     private static PublicCatalogPackResponse toPackResponse(PublicCatalogPackDto dto) {

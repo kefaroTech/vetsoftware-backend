@@ -38,7 +38,7 @@ public class RegistrationController {
                 request.companyAddress(), request.companyContactNumber(), request.cityId(),
                 request.employeeName(), request.employeeEmail(), request.password(),
                 request.taxRegime(), request.fiscalEmail(), request.recaptchaToken(),
-                httpRequest.getRemoteAddr()));
+                httpRequest.getRemoteAddr(), request.aiProposalToken()));
         // Auditoría: alta de nueva veterinaria (empresa) por auto-registro.
         //
         // El identificador que se entrega ES el correo del dueño: en el auto-registro

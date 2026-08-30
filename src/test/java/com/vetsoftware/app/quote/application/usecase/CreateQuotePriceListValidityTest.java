@@ -28,7 +28,6 @@ import com.vetsoftware.app.quote.application.dto.QuoteDto;
 import com.vetsoftware.app.quote.application.port.out.CatalogItemQueryPort;
 import com.vetsoftware.app.quote.application.port.out.CatalogPriceQueryPort;
 import com.vetsoftware.app.quote.application.port.out.CompanyQueryPort;
-import com.vetsoftware.app.quote.application.port.out.ConfiguratorQuestionQueryPort;
 import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteNumberPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteRepository;
@@ -103,19 +102,16 @@ class CreateQuotePriceListValidityTest {
     private CatalogItemQueryPort catalogItemQueryPort;
     @Mock
     private CatalogPriceQueryPort catalogPriceQueryPort;
-    @Mock
-    private ConfiguratorQuestionQueryPort configuratorQuestionQueryPort;
 
     private CreateQuoteService servicio(Clock reloj) {
         return new CreateQuoteService(repository, quoteNumberPort, companyQueryPort,
-                priceListQueryPort, catalogItemQueryPort, catalogPriceQueryPort,
-                configuratorQuestionQueryPort, reloj);
+                priceListQueryPort, catalogItemQueryPort, catalogPriceQueryPort, reloj);
     }
 
     private static CreateQuoteCommand comando() {
         return new CreateQuoteCommand(CLIENT_REQUEST_ID, empresa().id(), null, null, null, null,
                 PRICE_LIST_ID, "MONTHLY", OFERTA_VALIDA_HASTA, 0,
-                List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO)), List.of());
+                List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO)));
     }
 
     /** Lo minimo que se lee antes de mirar la tarifa: la llave de idempotencia. */

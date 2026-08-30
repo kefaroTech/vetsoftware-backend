@@ -88,17 +88,6 @@ class QuoteJpaMapperTest {
                 assertThat(linea.getQuantity()).isEqualTo(3);
             });
         }
-
-        @Test
-        @DisplayName("arrastra las respuestas del configurador con su codigo copiado")
-        void arrastra_las_respuestas() {
-            QuoteJpaEntity entity = mapper.toJpa(borrador(), companyEntity);
-
-            assertThat(entity.getAnswers()).singleElement().satisfies(respuesta -> {
-                assertThat(respuesta.getQuestionCode()).isEqualTo("SELLS_PRODUCTS");
-                assertThat(respuesta.getOptionId()).isEqualTo(99L);
-            });
-        }
     }
 
     @Nested

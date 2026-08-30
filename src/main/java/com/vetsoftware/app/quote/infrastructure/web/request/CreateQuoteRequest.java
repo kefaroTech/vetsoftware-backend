@@ -33,5 +33,5 @@ public record CreateQuoteRequest(@NotBlank @Size(max = 64) String clientRequestI
         @Size(max = 50) String prospectDocument, @Size(max = 30) String prospectPhone,
         @NotNull Long priceListId, @NotBlank @Size(max = 20) String billingCycle,
         @NotNull LocalDate validUntil, @PositiveOrZero int trialDays,
-        @NotEmpty @Valid List<QuoteLineRequest> lines, @Valid List<QuoteAnswerRequest> answers) {
+        @NotEmpty @Valid List<QuoteLineRequest> lines) {
 }

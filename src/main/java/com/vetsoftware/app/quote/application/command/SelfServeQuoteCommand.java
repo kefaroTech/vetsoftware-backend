@@ -29,7 +29,20 @@ import java.util.List;
  * @param clientRequestId
  *            llave de idempotencia que genera el cliente. Es lo que hace que un
  *            doble clic en «Confirmar» no cree dos ofertas.
+ * @param aiProposalToken
+ *            token publico de la propuesta del asistente de la que viene esta
+ *            cesta, o null si el cliente llego por el configurador de la
+ *            portada. <b>No es un termino economico</b> —no fija precio, ni
+ *            ciclo, ni descuento— asi que no rompe la regla que da sentido a
+ *            este command: sigue sin haber un solo campo con el que el cliente
+ *            pueda influir en lo que se le cobra.
  */
 public record SelfServeQuoteCommand(String clientRequestId, Long companyId, String billingCycle,
-        List<SelfServeQuoteLineCommand> lines) {
+        List<SelfServeQuoteLineCommand> lines, String aiProposalToken) {
+
+    /** Desde la portada, sin propuesta del asistente detras. */
+    public SelfServeQuoteCommand(String clientRequestId, Long companyId, String billingCycle,
+            List<SelfServeQuoteLineCommand> lines) {
+        this(clientRequestId, companyId, billingCycle, lines, null);
+    }
 }

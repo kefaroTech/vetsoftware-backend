@@ -82,35 +82,6 @@ class SecurityConfigTest {
             mockMvc.perform(get("/register")).andExpect(status().isUnauthorized());
         }
 
-        /**
-         * Las dos mitades del asistente de venta, juntas y en la misma prueba a
-         * proposito: el defecto que arreglan era exactamente que una entraba y la otra
-         * no. Ninguno de los dos {@code *ControllerTest} del configurador podia
-         * atraparlo — los dos usan {@code addFilters = false}, asi que la cadena de
-         * seguridad no se ejercitaba en esa feature.
-         */
-        @Test
-        @DisplayName("las dos mitades del asistente de venta entran sin token: leer el cuestionario y resolverlo")
-        void las_dos_mitades_del_asistente_entran_sin_token() throws Exception {
-            mockMvc.perform(get("/configurator/questionnaire")).andExpect(status().isOk());
-            mockMvc.perform(post("/configurator/resolve")).andExpect(status().isOk());
-        }
-
-        @Test
-        @DisplayName("abrir el asistente NO abre la administracion del cuestionario: el patron es exacto")
-        void abrir_el_asistente_no_abre_la_administracion() throws Exception {
-            mockMvc.perform(post("/configurator/questions")).andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.code").value("TOKEN_MISSING"));
-            mockMvc.perform(get("/configurator/questions")).andExpect(status().isUnauthorized());
-        }
-
-        @Test
-        @DisplayName("el verbo importa tambien aqui: /configurator/resolve esta abierto en POST y cerrado en GET")
-        void el_verbo_importa_en_configurator_resolve() throws Exception {
-            mockMvc.perform(post("/configurator/resolve")).andExpect(status().isOk());
-            mockMvc.perform(get("/configurator/resolve")).andExpect(status().isUnauthorized());
-        }
-
         @Test
         @DisplayName("la documentacion OpenAPI se abre a cualquier metodo HTTP")
         void la_documentacion_openapi_se_abre_a_cualquier_metodo() throws Exception {
@@ -181,8 +152,7 @@ class SecurityConfigTest {
     @TestComponent
     static class ProbeController {
 
-        @RequestMapping({"/countries", "/register", "/animals", "/swagger-ui/index.html",
-                "/configurator/questionnaire", "/configurator/resolve", "/configurator/questions"})
+        @RequestMapping({"/countries", "/register", "/animals", "/swagger-ui/index.html"})
         String probe() {
             return "ok";
         }

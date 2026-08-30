@@ -6,7 +6,6 @@ import com.vetsoftware.app.subscription.application.command.RequestedSubscriptio
 import com.vetsoftware.app.subscription.application.command.SubscriptionItemLineCommand;
 import com.vetsoftware.app.subscription.application.dto.PublishedCatalogItem;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
-import com.vetsoftware.app.subscription.application.dto.SubscriptionItemSnapshot;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionQuoteSnapshot;
 import com.vetsoftware.app.subscription.application.port.in.CreateRequestedSubscriptionUseCase;
 import com.vetsoftware.app.subscription.application.port.out.ResolvedSubscriptionCreationPort;
@@ -18,7 +17,6 @@ import io.micrometer.observation.annotation.Observed;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,7 +42,7 @@ public class CreateRequestedSubscriptionService implements CreateRequestedSubscr
     @Override
     @Transactional
     public SubscriptionDto execute(CreateRequestedSubscriptionCommand command) {
-        ResolvedRequest resolved = command.quoteId() == null
+        ResolvedContractLines resolved = command.quoteId() == null
                 ? resolveFromPublishedCatalog(command)
                 : resolveFromAcceptedQuote(command);
         return creationPort.create(new CreateSubscriptionCommand(command.companyId(),
@@ -61,26 +59,19 @@ public class CreateRequestedSubscriptionService implements CreateRequestedSubscr
      * precisamente lo que hace que el contrato diga lo mismo que el papel que firmo
      * el cliente.
      */
-    private ResolvedRequest resolveFromAcceptedQuote(CreateRequestedSubscriptionCommand command) {
+    private ResolvedContractLines resolveFromAcceptedQuote(
+            CreateRequestedSubscriptionCommand command) {
         if (command.items() != null && !command.items().isEmpty())
             throw new IllegalArgumentException("items must be omitted when quoteId is provided");
         SubscriptionQuoteSnapshot quote = quoteSnapshotPort
                 .findByIdAndCompanyId(command.quoteId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Quote not found for company: " + command.quoteId()));
-        if (!quote.accepted())
-            throw new IllegalStateException("Quote must be ACCEPTED: " + quote.id());
-        if (!Objects.equals(quote.priceListId(), command.priceListId()))
-            throw new IllegalArgumentException("priceListId does not match accepted quote");
-        if (quote.billingCycle() != command.billingCycle())
-            throw new IllegalArgumentException("billingCycle does not match accepted quote");
-        if (quote.items() == null || quote.items().isEmpty())
-            throw new IllegalStateException("Accepted quote has no contract lines: " + quote.id());
-        return new ResolvedRequest(
-                quote.acceptedBy() == null || quote.acceptedBy().isBlank()
-                        ? SYSTEM_ACTOR
-                        : quote.acceptedBy(),
-                quote.items().stream().map(item -> toLine(item, null, null)).toList());
+        // La validacion y la copia viven en AcceptedQuoteContractLines porque este
+        // camino y el de la sustitucion por aceptacion (DC-2) tienen que aceptar
+        // exactamente la misma oferta y copiarla exactamente igual. Ver su javadoc.
+        return AcceptedQuoteContractLines.from(quote, command.priceListId(),
+                command.billingCycle());
     }
 
     /**
@@ -90,7 +81,7 @@ public class CreateRequestedSubscriptionService implements CreateRequestedSubscr
      * unidades extra son ocho a 12.000 y cinco a 9.000, no trece al precio del
      * tramo alto.
      */
-    private ResolvedRequest resolveFromPublishedCatalog(
+    private ResolvedContractLines resolveFromPublishedCatalog(
             CreateRequestedSubscriptionCommand command) {
         if (command.items() == null || command.items().isEmpty())
             throw new IllegalArgumentException("items are required when quoteId is absent");
@@ -116,17 +107,7 @@ public class CreateRequestedSubscriptionService implements CreateRequestedSubscr
                         requested.effectiveTo()));
             }
         }
-        return new ResolvedRequest(SYSTEM_ACTOR, List.copyOf(lines));
-    }
-
-    private static SubscriptionItemLineCommand toLine(SubscriptionItemSnapshot snapshot,
-            LocalDate effectiveFrom, LocalDate effectiveTo) {
-        return new SubscriptionItemLineCommand(snapshot.catalogItemId(), snapshot.itemCode(),
-                snapshot.itemName(), snapshot.itemType(), snapshot.capacityUnit(),
-                snapshot.tierMin(), snapshot.tierMax(), snapshot.includedQuantity(),
-                snapshot.taxTreatment(), snapshot.quantity(), snapshot.unitAmount(),
-                snapshot.discountPercent(), snapshot.discountAmount(),
-                snapshot.discountIsConditional(), snapshot.taxRate(), effectiveFrom, effectiveTo);
+        return new ResolvedContractLines(SYSTEM_ACTOR, List.copyOf(lines));
     }
 
     private static SubscriptionItemLineCommand toLine(PublishedCatalogItem item,
@@ -136,8 +117,5 @@ public class CreateRequestedSubscriptionService implements CreateRequestedSubscr
                 tierLine.tier().tierMax(), tierLine.includedQuantity(),
                 tierLine.tier().taxTreatment(), tierLine.quantity(), tierLine.tier().unitAmount(),
                 null, null, false, tierLine.tier().taxRate(), effectiveFrom, effectiveTo);
-    }
-
-    private record ResolvedRequest(String actor, List<SubscriptionItemLineCommand> items) {
     }
 }

@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- SIEMBRA DE LOS 14 HINTS, revisión 1. Sin `context`: todos los entornos, igual que 308/309
+         y 380 -no es una semilla de laboratorio, es el catálogo real del modelo-.
+
+         TEXTOS: proceden de proporsal/anexos/anexo-f-hints-vigente.md, el borrador fusionado
+         vigente a 2026-08-29. ESE DOCUMENTO SE DECLARA A SÍ MISMO UN BORRADOR PARA QUE NEGOCIO
+         CORRIJA ("Este es un borrador para que negocio CORRIJA, no para que apruebe"), y R-2 del
+         plan de implementación sigue "Sin asignar" (issue backend#684). Sembrar aquí la
+         revisión 1 con este texto NO es esperar a esa validación: el esquema está construido
+         justamente para no tener que esperar -hint_revision, superseded_at y
+         uq_catalog_item_ai_hints_current existen para que negocio publique una revisión 2 desde
+         la consola de plataforma el día que corrija el texto, sin editar este changeset (un
+         changeset ya aplicado no se toca). Hasta entonces la revisión 1 es el texto real que usa
+         el prompt, no un placeholder.
+
+         13 de los 14 son MODULE vendibles a mano; CORE entra siempre (is_core = TRUE) y su hint
+         existe para decirle al modelo que NUNCA lo liste con motivo. GROOMING ya incluye en su
+         texto la dependencia SERVICES sembrada en 380 (REQUIRES, $29.000 -> $58.000 de arrastre).
+         Los 14 textos están medidos en el propio anexo F: ninguno pasa de 90 palabras, muy por
+         debajo de VARCHAR(1000).
+
+         POR QUÉ EL INSERT ES CONDICIONAL A QUE EXISTA UN system_user HABILITADO, Y EN SILENCIO
+         DELIBERADO SI NO LO HAY: published_by_system_user_id es NOT NULL con FK a system_users
+         (381), y 008_create_system_users.xml SOLO crea la tabla -no siembra ninguna fila; la
+         única cuenta que trae la base ("admin") no la sembró Liquibase, y 262 (la de
+         laboratorio) solo se aplica en contexts local,e2e, que el perfil de producción Y el de
+         test (application-test.yml, sin override de `contexts`) filtran fuera-. Sobre una base
+         recién migrada -incluida la de Testcontainers que corre `mvn verify`- system_users está
+         vacía. Un INSERT que fuerce un id fijo revienta la FK en el primer changelog limpio. Se
+         copia el patrón ya escrito y razonado en 311_publish_price_list_2026.xml
+         (311_publish_price_list_2026): la firma tiene que ser HUMANA, NOMINAL Y AUDITABLE -nunca
+         un PLATFORM-SEED técnico inventado para que "funcione"-, resuelta por precedencia
+         ('admin' > 'local-admin' > la más antigua habilitada) y, SI NO HAY NINGUNA CUENTA DE
+         SISTEMA, EL CHANGESET NO INSERTA NADA, EN SILENCIO: la feature arranca con el catálogo de
+         hints vacío -"muda", en los términos de la sección 7 del modelo de datos- hasta que
+         alguien publique un system_user real. Es el mismo estado honesto que 311 documenta para
+         la firma de la tarifa 2026, no un defecto de esta migración.
+
+         PRECONDICIÓN DISTINTA: el "sqlCheck > 0 sobre catalog_items ACTIVE" que exige la sección
+         9 del modelo de datos protege un caso estructural (sembrar hints contra un catálogo
+         vacío deja la feature muda sin que nadie se entere) y por eso HALT. La ausencia de
+         system_user es una variación normal de entorno -no un error de configuración- y por eso
+         NO lleva preCondition: se resuelve con el WHERE EXISTS de más abajo, igual que 311.
+
+         IDEMPOTENCIA: NOT EXISTS por catalog_item_id, igual que 380 hace por el par de códigos:
+         un reintento del changelog no duplica revisión 1. Nunca INSERT IGNORE (CLAUDE.md,
+         "Anti-patterns de test" -aunque esto no es un test, el motivo de fondo es el mismo: un
+         error silenciado dejaría el catálogo de hints a medias sin que nadie lo note-). -->
+    <changeSet id="382_seed_catalog_item_ai_hints" author="orlando">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="1">
+                SELECT (COUNT(*) > 0) FROM catalog_items WHERE status = 'ACTIVE'
+            </sqlCheck>
+        </preConditions>
+
+        <sql><![CDATA[
+            INSERT INTO catalog_item_ai_hints
+                    (catalog_item_id, hint_revision, hint_text, published_at,
+                     published_by_system_user_id, superseded_at)
+            SELECT ci.id, 1, v.hint_text, NOW(6),
+                   (SELECT su.id
+                      FROM system_users su
+                     WHERE su.enabled = TRUE
+                     ORDER BY (su.code = 'admin') DESC,
+                              (su.code = 'local-admin') DESC,
+                              su.id ASC
+                     LIMIT 1),
+                   NULL
+              FROM catalog_items ci
+              JOIN (
+                SELECT 'CORE' AS code,
+'Va siempre, en todo negocio, sin excepción: el sistema lo añade solo. Es el registro de los dueños y de sus mascotas -contacto, especie, raza, edad, peso- más la administración de la propia cuenta: sedes, empleados, roles, permisos y la suscripción.
+
+Señales en el texto: no hay que buscarlas.
+
+NUNCA lo devuelvas como una línea con motivo. Y no des por incluido nada más: lo médico, lo de estética, el cobro, la facturación y las existencias son módulos aparte que hay que proponer uno a uno.' AS hint_text
+                UNION ALL SELECT 'SCHEDULING',
+'Se necesita cuando el negocio trabaja con cita previa y necesita ver quién viene, cuándo y con quién: reservar horas, evitar que se crucen dos profesionales y confirmarle al cliente.
+
+Señales en el texto: "manejo citas", "agendo", "por cita previa", "se me cruzan las citas", "llevo la agenda en un cuaderno", "en un Excel", "confirmo por WhatsApp", "se me olvidan las citas", "somos tres veterinarios".
+
+NO se necesita si atiende por orden de llegada y sin reservar, como el pet shop con veterinario de mostrador.'
+                UNION ALL SELECT 'CLINICAL_HISTORY',
+'Se necesita cuando alguien con título de veterinario atiende animales: revisa, diagnostica, formula y deja constancia de lo que encontró. Es el expediente médico del paciente -consultas, signos vitales, diagnósticos y fórmulas- e incluye el listado de medicamentos que se recetan.
+
+Señales en el texto: "atiendo consultas", "consulta general", "soy veterinario", "somos dos médicos", "diagnostico", "formulo", "receto", "control", "urgencias", "atiendo 24 horas", "hospitalizo", "opero".
+
+NO se necesita si el negocio solo hace estética, guardería o venta de productos y nadie atiende médicamente. Una peluquería canina no lleva historia clínica.'
+                UNION ALL SELECT 'VACCINATION_DEWORMING',
+'Se necesita cuando el negocio aplica biológicos o antiparasitarios y tiene que llevar el carné al día: qué se puso, cuándo, de qué lote, y avisarle al dueño cuándo toca el refuerzo.
+
+Señales en el texto: "vacuno", "vacunación", "desparasito", "desparasitación", "plan sanitario", "carné", "refuerzo", "polivalente", "triple felina", "rabia", "antirrábica", "le toca la vacuna", "jornada de vacunación".
+
+NO se necesita si el negocio no aplica nada y remite a otro sitio a vacunar, ni si vende la vacuna en mostrador sin ponerla -eso es venta de producto-.'
+                UNION ALL SELECT 'HOSPITALIZATION',
+'Se necesita cuando el negocio deja animales internados por razones MÉDICAS y alguien tiene que registrar la evolución por turnos: medicación cada tantas horas, líquidos, notas de enfermería y quién entró en cada turno.
+
+Señales en el texto: "hospitalizo", "dejo pacientes internados", "tengo hospitalización", "cuidados intensivos", "UCI", "el paciente se queda", "manejo intrahospitalario", "posquirúrgico", "atiendo 24 horas".
+
+NO se necesita si lo que ofrece es guardería, hotel u hospedaje: eso es alojamiento de animales sanos. La diferencia es si el animal está enfermo y bajo tratamiento, no si duerme allí.'
+                UNION ALL SELECT 'SURGERY',
+'Se necesita cuando el negocio opera: entra a quirófano, usa anestesia y hay que dejar registro del procedimiento, de quién lo hizo y de cómo salió.
+
+Señales en el texto: "opero", "cirugía", "esterilizaciones", "castraciones", "ovariohisterectomía", "quirófano", "anestesia", "tengo cirujano", "procedimientos quirúrgicos", "odontología", "profilaxis dental".
+
+NO se necesita si el negocio remite las cirugías a otra clínica, algo muy frecuente en consultorios pequeños y en veterinarias a domicilio: "coordino la esterilización con una clínica aliada" no es operar.'
+                UNION ALL SELECT 'LAB_IMAGING',
+'Se necesita cuando el negocio pide o toma exámenes y tiene que guardar el resultado y la imagen dentro del expediente del paciente: cuadros hemáticos, químicas, radiografías, ecografías.
+
+Señales en el texto: "tengo laboratorio", "laboratorio clínico", "proceso muestras", "tomo radiografías", "rayos X", "tengo ecógrafo", "hago ecografías", "imagenología", "endoscopia", "mando las muestras a un laboratorio".
+
+NO se necesita si no pide exámenes en absoluto. Un spa, una guardería o un pet shop sin veterinario no lo necesitan.'
+                UNION ALL SELECT 'GROOMING',
+'Se necesita cuando el negocio ofrece servicios de bienestar y estética, o aloja mascotas sanas: baño, peluquería, guardería de día u hotel.
+
+Señales en el texto: "peluquería", "peluquería canina", "baño", "baños", "spa", "estética", "corte de raza", "corte higiénico", "deslanado", "cepillado", "corte de uñas", "baño medicado", "guardería", "hotel", "hospedaje", "day care", "ruta", "recojo a domicilio".
+
+NO se necesita si el negocio es solo clínico y no ofrece ninguno de estos servicios. Y si el animal se queda porque está enfermo, eso es hospitalización y no guardería.'
+                UNION ALL SELECT 'SERVICES',
+'Se necesita cuando el negocio tiene una lista de servicios con precios que cambian según el caso y quiere cobrarlos igual siempre: tarifas por tamaño o por raza, paquetes, planes, promociones o convenios con descuento.
+
+Señales en el texto: "tengo tarifas", "cobro distinto según el tamaño o la raza", "tengo paquetes", "plan de vacunación", "promociones", "convenio con", "descuento a", "cada quien cobra distinto", "no tengo lista de precios".
+
+NO se necesita si tiene dos o tres servicios a precio fijo que todo el equipo se sabe de memoria.'
+                UNION ALL SELECT 'CASH_REGISTER',
+'Se necesita cuando alguien cobra en el mostrador y hay que cuadrar la caja al final del día: registrar la venta, saber cuánto entró en efectivo y cuánto por datáfono, y cerrar el turno.
+
+Señales en el texto: "cobro en mostrador", "tengo caja", "manejo efectivo", "datáfono", "recibo tarjetas", "Nequi", "Daviplata", "transferencias", "cuadro la caja", "cierre de caja", "no me cuadra la caja", "varias personas cobran", "dos cajas".
+
+NO se necesita si nadie cobra en el sitio: la veterinaria 100% a domicilio que cobra por transferencia antes de ir.'
+                UNION ALL SELECT 'INVENTORY',
+'Se necesita cuando el negocio vende algo físico además de prestar servicios: concentrado, alimento medicado, accesorios, correas, o medicamentos que despacha en mostrador. También si compra a proveedores y necesita saber qué le queda en bodega.
+
+Señales en el texto: "vendo", "tengo tienda", "pet shop", "vendo concentrado", "vendo croquetas", "despacho medicamentos", "se me vencen los productos".
+
+NO se necesita si solo presta servicios (consulta, peluquería, guardería) y lo que usa son insumos de consumo propio -el shampoo del baño, la jeringa de la vacuna- que no le factura a nadie.'
+                UNION ALL SELECT 'PURCHASES',
+'Se necesita cuando el negocio le compra a proveedores con cierta frecuencia y quiere control de qué pidió, qué llegó y a qué precio: órdenes de compra, recepción de mercancía y la factura del proveedor.
+
+Señales en el texto: "le compro a proveedores", "manejo proveedores", "hago pedidos", "me llega mercancía", "distribuidor", "el proveedor me cambió el precio", "no sé cuánto le debo al proveedor".
+
+NO se necesita si compra poco y de forma ocasional, cuando se le acaba algo. Sin mercancía que recibir y guardar no hay compras que registrar.'
+                UNION ALL SELECT 'OPEN_ACCOUNTS',
+'Se necesita cuando el negocio entrega el servicio y cobra DESPUÉS: le fía a alguien, le factura a fin de mes, o va acumulando consumos que se pagan al final, como en una hospitalización larga.
+
+Señales en el texto: "vendo a crédito", "fío", "me pagan a fin de mes", "tengo convenio con", "le facturo a una empresa", "trabajo con fundaciones", "manejo cartera", "me quedan debiendo", "la cuenta se va sumando", "pagan al retirar el paciente".
+
+NO se necesita si todo se cobra de contado en el momento, sin excepciones.'
+                UNION ALL SELECT 'ELECTRONIC_INVOICING',
+'Se necesita cuando el negocio expide factura de venta: siempre que le venda a una empresa, a una entidad o a una fundación, y siempre que venda a crédito. En Colombia la factura electrónica ante la DIAN es obligatoria para quien factura.
+
+Señales en el texto: "facturo", "me piden factura", "vendo a crédito", "me pagan a fin de mes", "le vendo a una fundación", "trabajo con empresas", "soy responsable de IVA".
+
+NO se necesita si solo cobra de contado a personas naturales y entrega tirilla o recibo, sin expedir factura.'
+              ) v ON v.code = ci.code
+             WHERE EXISTS (SELECT 1 FROM system_users su2 WHERE su2.enabled = TRUE)
+               AND NOT EXISTS (
+                   SELECT 1 FROM catalog_item_ai_hints h WHERE h.catalog_item_id = ci.id);
+        ]]></sql>
+
+        <rollback>
+            <sql>DELETE FROM catalog_item_ai_hints WHERE hint_revision = 1;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

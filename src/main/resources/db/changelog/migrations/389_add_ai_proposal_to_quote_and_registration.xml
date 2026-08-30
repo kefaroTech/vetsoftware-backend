@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PROPUESTA IA. LA IDENTIDAD DE LA PROPUESTA EN LOS DOS ESLABONES INTERMEDIOS DEL EMBUDO.
+
+         386 creó `ai_proposal_conversions`, que ata la propuesta a la EMPRESA cuando el
+         prospecto ya se registró. Eso responde «cuántas propuestas acabaron en cliente» y no
+         responde ninguna de las que hay ENTRE MEDIAS, que son justamente donde se pierde la
+         gente: propuesta -> cotización -> registro -> verificación de correo -> empresa. Sin
+         estas dos columnas, un abandono entre la propuesta y la cotización y un abandono entre
+         la cotización y el registro son el mismo número.
+
+         >>> POR QUÉ AHORA Y NO CUANDO HAGA FALTA <<<
+         Hoy las dos tablas están prácticamente vacías de filas provenientes del asistente -el
+         embudo todavía no está abierto al público-, así que esto es un ALTER sobre nada. En
+         cuanto la landing empiece a convertir, la misma columna es una migración sobre datos
+         vivos y, peor, TODO LO ANTERIOR QUEDA SIN ATRIBUIR PARA SIEMPRE: la relación no se
+         puede reconstruir a posteriori, porque el único vínculo -que el prospecto venía de un
+         enlace- no se escribe en ninguna parte. El coste de ponerla hoy es este fichero; el de
+         ponerla después es este fichero MÁS el agujero de los primeros meses de embudo, que son
+         precisamente los que se van a analizar.
+
+         ON DELETE SET NULL, Y NO RESTRICT NI CASCADE. Las tres opciones dicen cosas distintas:
+          - RESTRICT ataría el job de retención a la cotización: una propuesta que cotizó y no
+            convirtió no se podría purgar jamás, y la retención de `aiproposal` -que es una
+            obligación legal, no una preferencia- quedaría bloqueada por una métrica.
+          - CASCADE borraría la COTIZACIÓN, que es un documento comercial con su propio ciclo de
+            vida y su propio consecutivo. Impensable.
+          - SET NULL deja la cotización intacta y la desatribuye. Es lo correcto: cuando la
+            propuesta se purga por retención, la respuesta honesta a «de qué propuesta salió
+            esta cotización» es «ya no se sabe», no un id que apunta a nada. Y evita el
+            problema que `subject_ref` sí tiene en `legal_document_acceptances` -VARCHAR sin FK,
+            con su purga a mano-, porque aquí sí hay una clave foránea de verdad.
+
+         SIN MAPEO JPA. Ninguna de las dos entidades declara la columna todavía y eso no rompe
+         `ddl-auto: validate`, que comprueba que lo mapeado exista, no que exista sólo lo
+         mapeado. Escribirla es trabajo del caso de uso que reciba el token de la propuesta en
+         el alta, y va en su propio PR: esto es el hueco donde meterlo, no el mecanismo.
+
+         `email_verification_tokens` ES el registro. La rodaja `registration` no tiene tabla
+         propia -su artefacto persistente es el token de verificación, una fila por alta, con su
+         employee_id y su company_id-, así que es ahí donde el registro tiene identidad antes de
+         que la empresa exista del todo.
+
+         ÍNDICES: uno por columna, para poder ir de la propuesta a su cotización y a su alta sin
+         escanear. No son únicos: una propuesta puede generar más de una cotización -el
+         prospecto reabre su enlace y vuelve a cotizar- y el único que sí es de uno a uno,
+         propuesta -> empresa, ya lo impone `uq_ai_proposal_conversions_proposal` en 386. -->
+    <changeSet id="389_add_ai_proposal_to_quotes" author="orlando">
+        <preConditions onFail="HALT">
+            <not>
+                <columnExists tableName="quotes" columnName="ai_proposal_id"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="quotes">
+            <column name="ai_proposal_id" type="BIGINT"/>
+        </addColumn>
+
+        <createIndex tableName="quotes" indexName="ix_quotes_ai_proposal">
+            <column name="ai_proposal_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="quotes"
+                                 baseColumnNames="ai_proposal_id"
+                                 referencedTableName="ai_proposals"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_quotes_ai_proposal"
+                                 onDelete="SET NULL" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="quotes"
+                                      constraintName="fk_quotes_ai_proposal"/>
+            <dropIndex tableName="quotes" indexName="ix_quotes_ai_proposal"/>
+            <dropColumn tableName="quotes" columnName="ai_proposal_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="389_add_ai_proposal_to_email_verification_tokens" author="orlando">
+        <preConditions onFail="HALT">
+            <not>
+                <columnExists tableName="email_verification_tokens" columnName="ai_proposal_id"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="email_verification_tokens">
+            <column name="ai_proposal_id" type="BIGINT"/>
+        </addColumn>
+
+        <createIndex tableName="email_verification_tokens"
+                     indexName="ix_email_verification_tokens_ai_proposal">
+            <column name="ai_proposal_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="email_verification_tokens"
+                                 baseColumnNames="ai_proposal_id"
+                                 referencedTableName="ai_proposals"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_email_verification_tokens_ai_proposal"
+                                 onDelete="SET NULL" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="email_verification_tokens"
+                                      constraintName="fk_email_verification_tokens_ai_proposal"/>
+            <dropIndex tableName="email_verification_tokens"
+                       indexName="ix_email_verification_tokens_ai_proposal"/>
+            <dropColumn tableName="email_verification_tokens" columnName="ai_proposal_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

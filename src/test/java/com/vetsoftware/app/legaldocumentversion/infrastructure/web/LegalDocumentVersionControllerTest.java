@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.vetsoftware.app.legaldocumentversion.application.command.PublishLegalDocumentVersionCommand;
 import com.vetsoftware.app.legaldocumentversion.application.dto.LegalDocumentVersionDto;
 import com.vetsoftware.app.legaldocumentversion.application.port.in.FindAcceptedLegalDocumentUseCase;
-import com.vetsoftware.app.legaldocumentversion.application.port.in.FindCurrentLegalDocumentUseCase;
+import com.vetsoftware.app.legaldocumentversion.application.port.in.FindPublicLegalDocumentUseCase;
 import com.vetsoftware.app.legaldocumentversion.application.port.in.ListLegalDocumentVersionsUseCase;
 import com.vetsoftware.app.legaldocumentversion.application.port.in.PublishLegalDocumentVersionUseCase;
 import com.vetsoftware.app.legaldocumentversion.domain.LegalDocumentKind;
@@ -56,7 +56,7 @@ class LegalDocumentVersionControllerTest {
     private PublishLegalDocumentVersionUseCase publishUseCase;
 
     @MockitoBean
-    private FindCurrentLegalDocumentUseCase findCurrentUseCase;
+    private FindPublicLegalDocumentUseCase findCurrentUseCase;
 
     @MockitoBean
     private FindAcceptedLegalDocumentUseCase findAcceptedUseCase;
@@ -150,11 +150,30 @@ class LegalDocumentVersionControllerTest {
         @Test
         @DisplayName("el vigente sale con su texto completo y su huella")
         void el_vigente_sale_con_texto_y_huella() throws Exception {
-            when(findCurrentUseCase.findCurrentByCode(anyString(), any())).thenReturn(version2());
+            when(findCurrentUseCase.findCurrentByCode(anyString())).thenReturn(version2());
 
             mockMvc.perform(get("/legal-documents/TERMS_OF_SERVICE/current"))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.content").value(TEXTO))
                     .andExpect(jsonPath("$.contentHash").value(HUELLA));
+        }
+
+        /**
+         * La razon por la que este endpoint cambio de puerto. El anonimo no tiene
+         * empresa, y el puerto viejo la exigia en la firma solo para alimentar su SpEL:
+         * el servicio la ignoraba. Que el controller no toque {@code authz} aqui es lo
+         * que hace que la ruta publica pueda existir.
+         */
+        @Test
+        @DisplayName("el vigente no consulta la empresa del principal: es la ruta anonima")
+        void el_vigente_no_consulta_la_empresa_del_principal() throws Exception {
+            when(findCurrentUseCase.findCurrentByCode(anyString())).thenReturn(version2());
+
+            mockMvc.perform(get("/legal-documents/PRIVACY_NOTICE/current"))
+                    .andExpect(status().isOk());
+
+            ArgumentCaptor<String> codigo = ArgumentCaptor.forClass(String.class);
+            verify(findCurrentUseCase).findCurrentByCode(codigo.capture());
+            assertThat(codigo.getValue()).isEqualTo("PRIVACY_NOTICE");
         }
 
         @Test

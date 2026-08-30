@@ -118,7 +118,24 @@ public final class LogFieldPolicy {
             "billing.document.number", "billing.document.charges", "payment.id", "payment.method",
             "application.id", "source.kind", "issue.status", "amount", "monthly.delta.amount",
             "quantity", "previous.quantity", "from.status", "to.status", "effective.on",
-            "trigger.reason", "entitlement.rows");
+            "trigger.reason", "entitlement.rows",
+            // ── Asistente comercial con IA (aiproposal) ─────────────────────────
+            //
+            // Dos claves, y solo dos. `ai.error.type` es el value() de un enum
+            // cerrado -AiErrorType- y `ai.exception.class` es un simple name de
+            // Java: los dos los produce el sistema y su forma la garantiza el
+            // compilador, que es lo que VERBATIM significa aqui.
+            //
+            // LO QUE NO ESTA Y NO PUEDE ESTAR: el texto del prospecto, la prosa
+            // del modelo, el cuerpo crudo de la respuesta, el codigo de catalogo
+            // que el modelo invento y el public_token de 43 caracteres. Los
+            // cuatro primeros son texto de un tercero; el quinto es el secreto
+            // de autorizacion de la URL, y ningun patron de LogRedactor casa con
+            // 43 caracteres de base64url sueltos, asi que saldria intacto a
+            // Loki con 31 dias de retencion y sin forma de rotarlo. Declararlos
+            // aqui seria exactamente la correccion equivocada: la correcta es no
+            // emitirlos, y por eso ninguna firma de esta rodaja los admite.
+            "ai.error.type", "ai.exception.class");
 
     /**
      * Claves permitidas cuyo valor sí se somete al enmascarado de texto.
@@ -163,7 +180,16 @@ public final class LogFieldPolicy {
             // fabrique una segunda linea de auditoria falsa (ASVS V7.3.1). Escaneado,
             // un motivo normal -«downgrade solicitado por el cliente»- sale entero y
             // un dato personal sale enmascarado.
-            "change.reason");
+            "change.reason",
+            // El failureCode que devuelve quien implemente ModelInvoker. SCANNED y
+            // no VERBATIM aunque AiErrorType.codigoSeguro(...) ya lo recorte a
+            // [A-Z][A-Z0-9_] y 40 caracteres: VERBATIM es la lista de los valores
+            // cuya forma garantiza el SISTEMA, y aqui la garantiza un saneado que
+            // alguien puede quitar de un emisor futuro. Escanearlo cuesta cero -un
+            // MODEL_TIMEOUT no casa con ningun patron y sale entero- y cierra el
+            // hueco para todo emisor presente y futuro, que es el mismo argumento
+            // con el que actor.identifier bajo aqui en la incidencia #216.
+            "ai.failure.code");
 
     /**
      * {@code true} si el valor de {@code key} se emite sin transformación alguna.

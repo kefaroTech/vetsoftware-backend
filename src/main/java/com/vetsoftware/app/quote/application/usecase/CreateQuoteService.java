@@ -1,27 +1,22 @@
 package com.vetsoftware.app.quote.application.usecase;
 
 import com.vetsoftware.app.quote.application.command.CreateQuoteCommand;
-import com.vetsoftware.app.quote.application.command.QuoteAnswerCommand;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
 import com.vetsoftware.app.quote.application.port.in.CreateQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.out.CatalogItemQueryPort;
 import com.vetsoftware.app.quote.application.port.out.CatalogPriceQueryPort;
 import com.vetsoftware.app.quote.application.port.out.CompanyQueryPort;
-import com.vetsoftware.app.quote.application.port.out.ConfiguratorQuestionQueryPort;
 import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteNumberPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteRepository;
 import com.vetsoftware.app.quote.domain.BillingCycle;
 import com.vetsoftware.app.quote.domain.CompanyRef;
-import com.vetsoftware.app.quote.domain.ConfiguratorQuestionRef;
 import com.vetsoftware.app.quote.domain.PriceListRef;
 import com.vetsoftware.app.quote.domain.Quote;
-import com.vetsoftware.app.quote.domain.QuoteAnswer;
 import com.vetsoftware.app.quote.domain.QuoteLine;
 import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
@@ -62,20 +57,18 @@ public class CreateQuoteService implements CreateQuoteUseCase {
     private final PriceListQueryPort priceListQueryPort;
     private final CatalogItemQueryPort catalogItemQueryPort;
     private final CatalogPriceQueryPort catalogPriceQueryPort;
-    private final ConfiguratorQuestionQueryPort configuratorQuestionQueryPort;
     private final Clock clock;
 
     public CreateQuoteService(QuoteRepository repository, QuoteNumberPort quoteNumberPort,
             CompanyQueryPort companyQueryPort, PriceListQueryPort priceListQueryPort,
             CatalogItemQueryPort catalogItemQueryPort, CatalogPriceQueryPort catalogPriceQueryPort,
-            ConfiguratorQuestionQueryPort configuratorQuestionQueryPort, Clock clock) {
+            Clock clock) {
         this.repository = repository;
         this.quoteNumberPort = quoteNumberPort;
         this.companyQueryPort = companyQueryPort;
         this.priceListQueryPort = priceListQueryPort;
         this.catalogItemQueryPort = catalogItemQueryPort;
         this.catalogPriceQueryPort = catalogPriceQueryPort;
-        this.configuratorQuestionQueryPort = configuratorQuestionQueryPort;
         this.clock = clock;
     }
 
@@ -114,12 +107,11 @@ public class CreateQuoteService implements CreateQuoteUseCase {
         CompanyRef company = resolveCompany(command.companyId());
 
         List<QuoteLine> lines = freezeLines(command, priceList, billingCycle, now);
-        List<QuoteAnswer> answers = captureAnswers(command.answers(), now);
 
         Quote quote = Quote.create(quoteNumberPort.next(now.getYear()), company,
                 command.prospectName(), command.prospectEmail(), command.prospectDocument(),
                 command.prospectPhone(), priceList.id(), billingCycle, command.validUntil(),
-                command.trialDays(), command.clientRequestId(), lines, answers, now);
+                command.trialDays(), command.clientRequestId(), lines, now, command.aiProposalId());
         return QuoteDto.from(repository.save(quote));
     }
 
@@ -144,22 +136,6 @@ public class CreateQuoteService implements CreateQuoteUseCase {
             BillingCycle billingCycle, LocalDateTime now) {
         return QuoteLineFreezer.freeze(command.lines(), priceList, billingCycle, now,
                 catalogItemQueryPort, catalogPriceQueryPort);
-    }
-
-    private List<QuoteAnswer> captureAnswers(List<QuoteAnswerCommand> requested,
-            LocalDateTime now) {
-        if (requested == null) {
-            return List.of();
-        }
-        List<QuoteAnswer> answers = new ArrayList<>();
-        for (QuoteAnswerCommand answer : requested) {
-            ConfiguratorQuestionRef question = configuratorQuestionQueryPort
-                    .findById(answer.questionId()).orElseThrow(() -> new IllegalArgumentException(
-                            "Configurator question not found: " + answer.questionId()));
-            answers.add(
-                    QuoteAnswer.capture(question, answer.optionId(), answer.answerValue(), now));
-        }
-        return answers;
     }
 
     private static BillingCycle parseBillingCycle(String raw) {

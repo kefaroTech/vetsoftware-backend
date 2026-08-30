@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PROPUESTA IA (docs/db/propuesta-ia-modelo-datos.md S1.3). El texto de prompt "cuando se
+         necesita este modulo" NO puede vivir en catalog_items.short_description/long_description:
+         esas dos las sirve GET /catalog y GET /plans a la landing publica, y el hint es
+         instruccion de modelo -mezclar las dos audiencias en una columna acopla en las dos
+         direcciones y no hay donde versionar (catalog_items.version es el bloqueo optimista de
+         la fila entera, no del texto). catalog_item_ai_hints es la tabla aparte: historia
+         append-only con una sola revision vigente por articulo, mismo patron que
+         353_create_legal_document_versions.xml -precedente exacto: texto versionado, editado por
+         la consola de plataforma, con huella para probar que texto exacto se uso-.
+
+         hint_hash y current_hint_marker son columnas GENERADAS y se declaran aqui, en el
+         CREATE, no en un ALTER futuro: anadir una GENERATED ... STORED a una tabla con datos es
+         "Rebuilds Table: Yes" / "Permits Concurrent DML: No" (manual de online DDL de InnoDB,
+         incidencia abierta #532). Sobre una tabla que nace vacia el coste es cero.
+
+         hint_hash = SHA2(hint_text, 256) GENERADA evita el trigger de inmutabilidad que 353 si
+         necesita: alli content_hash es una columna normal y hace falta un trigger para que
+         editar content no deje la huella vieja apuntando a un texto que ya no existe. Generada,
+         esa deriva es imposible por construccion.
+
+         current_hint_marker emula el indice unico parcial que MySQL no tiene (patron de la casa:
+         210, 226, y el propio 353 con current_version_marker): vale catalog_item_id cuando la
+         fila esta vigente (superseded_at IS NULL) y NULL en caso contrario -MySQL admite
+         multiples NULL en un indice unico-, asi que uq_catalog_item_ai_hints_current garantiza
+         una sola revision vigente por articulo sin CHECK cruzado entre filas.
+
+         ascii_bin en hint_hash: mismo criterio que content_hash en 353 e incidencia abierta
+         #633 (ninguna columna del esquema declara colacion; las huellas comparan ignorando
+         mayusculas y ocupan 4x en utf8mb4).
+
+         SIN enabled: un hint publicado no se desactiva, se sucede (mismo motivo que 353: "un
+         texto legal publicado no se desactiva, se sucede"). CON version: la vigencia se cierra
+         moviendo superseded_at sobre la misma fila, y esa edicion si es concurrente.
+
+         uq_catalog_item_ai_hints_text impide republicar el mismo texto bajo el mismo articulo:
+         sin ella el historico se llena de revisiones identicas y el golden set no puede
+         distinguirlas.
+
+         DESVIACION SOBRE EL DDL LITERAL DEL DOCUMENTO: el DDL de la seccion 1.3 no agrega FK de
+         published_by_system_user_id -> system_users, a diferencia de 353 (fk_ldv_published_by),
+         que es la tabla hermana mas cercana y usa exactamente esa columna con el mismo proposito
+         de auditoria. Se anade aqui esa FK (fk_catalog_item_ai_hints_published_by) siguiendo el
+         precedente de 353 en vez del DDL literal: sin ella, published_by_system_user_id es un
+         BIGINT sin garantia referencial, lo que permitiria una fila de auditoria que "firma" un
+         system_user inexistente. -->
+    <changeSet id="381_create_catalog_item_ai_hints" author="orlando">
+        <preConditions onFail="HALT">
+            <not>
+                <tableExists tableName="catalog_item_ai_hints"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="catalog_item_ai_hints">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="catalog_item_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="hint_revision" type="INT"><constraints nullable="false"/></column>
+            <column name="hint_text" type="VARCHAR(1000)"><constraints nullable="false"/></column>
+            <column name="published_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="published_by_system_user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="superseded_at" type="DATETIME(6)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_item_ai_hints
+                ADD COLUMN hint_hash CHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (SHA2(hint_text, 256)) STORED,
+                ADD COLUMN current_hint_marker BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE WHEN superseded_at IS NULL THEN catalog_item_id ELSE NULL END) STORED,
+                ADD CONSTRAINT uq_catalog_item_ai_hints_revision
+                    UNIQUE (catalog_item_id, hint_revision),
+                ADD CONSTRAINT uq_catalog_item_ai_hints_current
+                    UNIQUE (current_hint_marker),
+                ADD CONSTRAINT uq_catalog_item_ai_hints_text
+                    UNIQUE (catalog_item_id, hint_hash),
+                ADD CONSTRAINT chk_catalog_item_ai_hints_revision
+                    CHECK (hint_revision >= 1),
+                ADD CONSTRAINT chk_catalog_item_ai_hints_supersede
+                    CHECK (superseded_at IS NULL OR superseded_at >= published_at)
+        ]]></sql>
+
+        <createIndex tableName="catalog_item_ai_hints"
+                      indexName="ix_catalog_item_ai_hints_published_by">
+            <column name="published_by_system_user_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="catalog_item_ai_hints"
+                                 baseColumnNames="catalog_item_id"
+                                 referencedTableName="catalog_items"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_catalog_item_ai_hints_item"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <addForeignKeyConstraint baseTableName="catalog_item_ai_hints"
+                                 baseColumnNames="published_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_catalog_item_ai_hints_published_by"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="catalog_item_ai_hints"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

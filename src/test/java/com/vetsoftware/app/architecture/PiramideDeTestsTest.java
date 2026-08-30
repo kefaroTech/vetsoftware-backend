@@ -97,6 +97,55 @@ class PiramideDeTestsTest {
             .because("sin rodaja, el SQL del adaptador no lo ejecuta nadie hasta produccion");
 
     /**
+     * <strong>El SQL escrito a mano tenía que demostrar que alguien lo ejecuta, y
+     * era justamente el único que no lo demostraba.</strong>
+     *
+     * <p>
+     * <strong>El hueco, medido.</strong> {@link #ADAPTADOR_JPA_CON_RODAJA} vigila
+     * 153 clases {@code Jpa…Repository}. Las clases de {@code src/main} que arman
+     * SQL con {@code EntityManager.createNativeQuery} son 19. La intersección es
+     * <strong>vacía</strong>: ninguna de las 19 se llama {@code Jpa…Repository} y
+     * ninguna de las 153 usa SQL nativo. O sea que la regla que existía cubría
+     * exactamente el SQL que <em>no</em> se escribe a mano —el derivado por Spring
+     * Data desde el nombre del método, o el JPQL de una {@code @Query}, que al
+     * menos Hibernate valida al arrancar— y dejaba fuera el que se teclea entero,
+     * que es donde se equivoca uno. No fue un descuido de aquella regla: su
+     * predicado es el naming del CLAUDE.md, y estos adaptadores terminan en
+     * {@code …QueryPort}, {@code …ValidationPort} o {@code …CompositionPort}.
+     *
+     * <p>
+     * <strong>Lo que costó no tenerla.</strong> La incidencia #196 fue un literal
+     * booleano proyectado desde SQL nativo que sobrevivió meses hasta producción, y
+     * el defecto del {@code INSERT IGNORE} de
+     * {@code JpaSubscriptionItemCompositionPort} —una violación de clave foránea
+     * degradada a aviso, que convertía una firma cruzada entre clínicas en un cero
+     * silencioso— vivía en una clase cuyo nombre <b>no aparecía en ninguna parte de
+     * {@code src/test}</b>: su único ejercicio era un mock que devolvía lo que el
+     * propio test le decía que devolviera.
+     *
+     * <p>
+     * <strong>Nace dura, sin {@code freeze(…)} y sin tocar el almacén.</strong> Las
+     * 19 tienen hoy un {@code *IT} en su paquete, así que el contador está en cero
+     * y congelarla sería fotografiar un estado vacío —la trampa que el CLAUDE.md
+     * advierte sobre {@code allowStoreCreation}—. Y por eso es una regla
+     * <strong>nueva</strong> y no un predicado ensanchado sobre
+     * {@link #ADAPTADOR_JPA_CON_RODAJA}: el almacén indexa por el texto completo de
+     * la regla, así que tocar el {@code because} de aquella dejaría huérfanas sus
+     * fotos y devolvería la deuda entera.
+     *
+     * @see VetSoftwareConditions#armanSqlNativo()
+     * @see VetSoftwareConditions#tenerRodajaDeSqlNativo()
+     */
+    @ArchTest
+    static final ArchRule SQL_NATIVO_CON_RODAJA = classes()
+            .that(VetSoftwareConditions.armanSqlNativo())
+            .and(VetSoftwareConditions.sonCodigoDeProduccion())
+            .should(VetSoftwareConditions.tenerRodajaDeSqlNativo())
+            .because("un createNativeQuery que ninguna rodaja ejecuta es SQL que se estrena"
+                    + " en produccion: ni Spring Data lo deriva ni Hibernate lo valida al"
+                    + " arrancar");
+
+    /**
      * Un controller sin rodaja no tiene comprobado nada de lo que solo vive en él:
      * ni el {@code @PreAuthorize} que lo protege, ni la validación del
      * {@code @Valid}, ni el código de estado, ni la forma del JSON que el contrato

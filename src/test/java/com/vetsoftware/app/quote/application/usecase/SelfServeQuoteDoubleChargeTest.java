@@ -20,6 +20,7 @@ import com.vetsoftware.app.quote.application.command.SelfServeQuoteLineCommand;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
 import com.vetsoftware.app.quote.application.port.out.PlatformQuoteIssuerPort;
 import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
+import com.vetsoftware.app.quote.application.port.out.ProposalReferencePort;
 import com.vetsoftware.app.quote.application.port.out.PublishedCatalogItemQueryPort;
 import com.vetsoftware.app.quote.domain.BillingCycle;
 import com.vetsoftware.app.quote.domain.PriceListRef;
@@ -80,12 +81,16 @@ class SelfServeQuoteDoubleChargeTest {
     private PriceListQueryPort priceListQueryPort;
     @Mock
     private PublishedCatalogItemQueryPort publishedCatalogItemQueryPort;
+
+    /** DC-2: sin propuesta detras. El doble responde Optional.empty(). */
+    @Mock
+    private ProposalReferencePort proposalReferencePort;
     @Captor
     private ArgumentCaptor<CreateQuoteCommand> emitido;
 
     private SelfServeQuoteService servicio() {
         return new SelfServeQuoteService(issuer, priceListQueryPort, publishedCatalogItemQueryPort,
-                RELOJ);
+                proposalReferencePort, RELOJ);
     }
 
     private static PriceListRef vigente() {

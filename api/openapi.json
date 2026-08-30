@@ -3712,227 +3712,6 @@
         }
       }
     },
-    "/configurator/questions/{id}" : {
-      "get" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "findQuestion",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorQuestionResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "updateQuestion",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/UpdateConfiguratorQuestionRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorQuestionResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "deleteQuestion",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "No Content"
-          }
-        }
-      }
-    },
-    "/configurator/options/{id}" : {
-      "put" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "updateOption",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/UpdateConfiguratorOptionRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorOptionResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "deleteOption",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "No Content"
-          }
-        }
-      }
-    },
-    "/configurator/effects/{id}" : {
-      "put" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "updateEffect",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/UpdateConfiguratorEffectRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorEffectResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "deleteEffect",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "No Content"
-          }
-        }
-      }
-    },
-    "/configurator/effects/priorities" : {
-      "put" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "reorderEffects",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ReorderConfiguratorEffectsRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ConfiguratorEffectResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/company-tax-profile" : {
       "get" : {
         "tags" : [ "company-tax-profile-controller" ],
@@ -4972,6 +4751,34 @@
         "responses" : {
           "204" : {
             "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/assistant/proposal/lines" : {
+      "put" : {
+        "tags" : [ "assistant-controller" ],
+        "operationId" : "editLines",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EditProposalLinesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AssistantProposalResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -12165,188 +11972,6 @@
         }
       }
     },
-    "/configurator/resolve" : {
-      "post" : {
-        "tags" : [ "configurator-controller" ],
-        "operationId" : "resolve_1",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ResolveConfiguratorSelectionRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorSelectionResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/configurator/questions" : {
-      "get" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "listQuestions",
-        "parameters" : [ {
-          "name" : "page",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 0
-          }
-        }, {
-          "name" : "pageSize",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 20
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/PageResponseConfiguratorQuestionResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "createQuestion",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/CreateConfiguratorQuestionRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "201" : {
-            "description" : "Created",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorQuestionResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/configurator/options" : {
-      "post" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "createOption",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/CreateConfiguratorOptionRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "201" : {
-            "description" : "Created",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorOptionResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/configurator/effects" : {
-      "get" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "listEffects",
-        "parameters" : [ {
-          "name" : "page",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 0
-          }
-        }, {
-          "name" : "pageSize",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 20
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/PageResponseConfiguratorEffectResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "createEffect",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/CreateConfiguratorEffectRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "201" : {
-            "description" : "Created",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorEffectResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/company-contact-channels" : {
       "get" : {
         "tags" : [ "company-contact-channel-controller" ],
@@ -13669,6 +13294,122 @@
         }
       }
     },
+    "/assistant/proposals/suppress" : {
+      "post" : {
+        "tags" : [ "ai-proposal-retention-controller" ],
+        "operationId" : "suppress",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SuppressProposalDataRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProposalSuppressionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assistant/proposal" : {
+      "get" : {
+        "tags" : [ "assistant-controller" ],
+        "operationId" : "get_1",
+        "parameters" : [ {
+          "name" : "token",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AssistantProposalResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "assistant-controller" ],
+        "operationId" : "generate_4",
+        "parameters" : [ {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GenerateProposalRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AssistantProposalResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assistant/proposal/refine" : {
+      "post" : {
+        "tags" : [ "assistant-controller" ],
+        "operationId" : "refine",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RefineProposalRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AssistantProposalResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/appointments" : {
       "get" : {
         "tags" : [ "appointment-controller" ],
@@ -14408,7 +14149,7 @@
     "/system/payment-reversal-requests/{id}/outcome" : {
       "patch" : {
         "tags" : [ "system-payment-reversal-request-controller" ],
-        "operationId" : "resolve_2",
+        "operationId" : "resolve_1",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -17031,7 +16772,7 @@
     "/withholding-rate-rules/effective" : {
       "get" : {
         "tags" : [ "withholding-rate-rule-controller" ],
-        "operationId" : "resolve_3",
+        "operationId" : "resolve_2",
         "parameters" : [ {
           "name" : "withholdingType",
           "in" : "query",
@@ -19270,7 +19011,7 @@
     "/system/account-mappings/effective" : {
       "get" : {
         "tags" : [ "system-account-mapping-controller" ],
-        "operationId" : "resolve_4",
+        "operationId" : "resolve_3",
         "parameters" : [ {
           "name" : "mappingKind",
           "in" : "query",
@@ -21682,7 +21423,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/LegalDocumentVersionResponse"
+                  "$ref" : "#/components/schemas/PublicLegalDocumentResponse"
                 }
               }
             }
@@ -23533,57 +23274,6 @@
         }
       }
     },
-    "/configurator/questions/{questionId}/options" : {
-      "get" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "listOptions",
-        "parameters" : [ {
-          "name" : "questionId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ConfiguratorOptionResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/configurator/questionnaire" : {
-      "get" : {
-        "tags" : [ "configurator-controller" ],
-        "operationId" : "questionnaire",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/QuestionnaireQuestionResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/company-trial-windows/current" : {
       "get" : {
         "tags" : [ "company-trial-window-controller" ],
@@ -24092,7 +23782,7 @@
     "/cash-sessions/{id}" : {
       "get" : {
         "tags" : [ "cash-session-controller" ],
-        "operationId" : "get_1",
+        "operationId" : "get_2",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -24388,7 +24078,7 @@
     "/animals/{animalId}/clinical-history" : {
       "get" : {
         "tags" : [ "clinical-history-controller" ],
-        "operationId" : "get_2",
+        "operationId" : "get_3",
         "parameters" : [ {
           "name" : "animalId",
           "in" : "path",
@@ -28643,228 +28333,6 @@
         },
         "required" : [ "createdDate", "description", "enabled", "id", "name" ]
       },
-      "UpdateConfiguratorQuestionRequest" : {
-        "type" : "object",
-        "properties" : {
-          "questionText" : {
-            "type" : "string",
-            "maxLength" : 255,
-            "minLength" : 0
-          },
-          "helpText" : {
-            "type" : "string",
-            "maxLength" : 500,
-            "minLength" : 0
-          },
-          "answerType" : {
-            "type" : "string",
-            "enum" : [ "SINGLE", "MULTI", "NUMBER", "BOOLEAN" ]
-          },
-          "parentOptionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "required" : {
-            "type" : "boolean"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "answerType", "questionText", "required", "sortOrder" ]
-      },
-      "ConfiguratorOptionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "helpText" : {
-            "type" : "string"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "createdDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "enabled" : {
-            "type" : "boolean"
-          }
-        },
-        "required" : [ "code", "createdDate", "enabled", "id", "label", "questionId", "sortOrder" ]
-      },
-      "ConfiguratorQuestionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "questionText" : {
-            "type" : "string"
-          },
-          "helpText" : {
-            "type" : "string"
-          },
-          "answerType" : {
-            "type" : "string"
-          },
-          "parentOptionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "required" : {
-            "type" : "boolean"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "createdDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "enabled" : {
-            "type" : "boolean"
-          },
-          "options" : {
-            "type" : "array",
-            "description" : "Opciones activas de la pregunta. Vacía en las NUMBER, que no admiten ninguna",
-            "items" : {
-              "$ref" : "#/components/schemas/ConfiguratorOptionResponse"
-            }
-          }
-        },
-        "required" : [ "answerType", "code", "createdDate", "enabled", "id", "options", "questionText", "required", "sortOrder" ]
-      },
-      "UpdateConfiguratorOptionRequest" : {
-        "type" : "object",
-        "properties" : {
-          "label" : {
-            "type" : "string",
-            "maxLength" : 255,
-            "minLength" : 0
-          },
-          "helpText" : {
-            "type" : "string",
-            "maxLength" : 500,
-            "minLength" : 0
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "label", "sortOrder" ]
-      },
-      "UpdateConfiguratorEffectRequest" : {
-        "type" : "object",
-        "properties" : {
-          "catalogItemId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "effect" : {
-            "type" : "string",
-            "enum" : [ "ADD", "REMOVE", "SET_QUANTITY", "QUANTITY_FROM_ANSWER" ]
-          },
-          "quantity" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "catalogItemId", "effect" ]
-      },
-      "ConfiguratorEffectResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "optionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "catalogItemId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "effect" : {
-            "type" : "string"
-          },
-          "quantity" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "priority" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Orden de aplicacion, ascendente. A igualdad, desempata el id."
-          },
-          "createdDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "enabled" : {
-            "type" : "boolean"
-          }
-        },
-        "required" : [ "catalogItemId", "createdDate", "effect", "enabled", "id", "priority" ]
-      },
-      "EffectPriorityRequest" : {
-        "type" : "object",
-        "properties" : {
-          "effectId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "priority" : {
-            "type" : "integer",
-            "format" : "int32",
-            "maximum" : 9999,
-            "minimum" : 0
-          }
-        },
-        "required" : [ "effectId", "priority" ]
-      },
-      "ReorderConfiguratorEffectsRequest" : {
-        "type" : "object",
-        "properties" : {
-          "priorities" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/EffectPriorityRequest"
-            },
-            "minItems" : 1
-          }
-        },
-        "required" : [ "priorities" ]
-      },
       "UpdateCompanyTaxProfileRequest" : {
         "type" : "object",
         "properties" : {
@@ -29867,6 +29335,177 @@
           }
         },
         "required" : [ "code", "createdDate", "enabled", "id", "name", "subModule" ]
+      },
+      "EditProposalLinesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "maxLength" : 43,
+            "minLength" : 43
+          },
+          "addedCodes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 50,
+              "minLength" : 0
+            },
+            "maxItems" : 40,
+            "minItems" : 0
+          },
+          "removedCodes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "maxLength" : 50,
+              "minLength" : 0
+            },
+            "maxItems" : 40,
+            "minItems" : 0
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "token" ]
+      },
+      "AssistantPackOfferResponse" : {
+        "type" : "object",
+        "properties" : {
+          "packCode" : {
+            "type" : "string"
+          },
+          "packName" : {
+            "type" : "string"
+          },
+          "packAmount" : {
+            "type" : "number"
+          },
+          "standaloneTotal" : {
+            "type" : "number"
+          },
+          "monthlySaving" : {
+            "type" : "number"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "trialDaysLost" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "modulesLosingTrial" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "AssistantProposalLineResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "unitAmount" : {
+            "type" : "number"
+          },
+          "taxRate" : {
+            "type" : "number"
+          },
+          "taxAmount" : {
+            "type" : "number"
+          },
+          "totalAmount" : {
+            "type" : "number"
+          },
+          "trialDays" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          }
+        }
+      },
+      "AssistantProposalResponse" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string"
+          },
+          "presentation" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AssistantProposalLineResponse"
+            }
+          },
+          "recommendations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AssistantProposalLineResponse"
+            }
+          },
+          "discardedLines" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "subtotal" : {
+            "type" : "number"
+          },
+          "taxes" : {
+            "type" : "number"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "firstPeriodTotal" : {
+            "type" : "number"
+          },
+          "packOffer" : {
+            "$ref" : "#/components/schemas/AssistantPackOfferResponse"
+          },
+          "refinementsLeft" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "recalculated" : {
+            "type" : "boolean"
+          }
+        }
       },
       "UpdateAppointmentRequest" : {
         "type" : "object",
@@ -34585,6 +34224,11 @@
             "type" : "string",
             "maxLength" : 4000,
             "minLength" : 0
+          },
+          "aiProposalToken" : {
+            "type" : "string",
+            "maxLength" : 43,
+            "minLength" : 0
           }
         },
         "required" : [ "cityId", "companyIdentifier", "companyName", "documentType", "employeeEmail", "employeeName", "fiscalEmail", "password", "taxRegime" ]
@@ -34672,34 +34316,9 @@
               "$ref" : "#/components/schemas/QuoteLineRequest"
             },
             "minItems" : 1
-          },
-          "answers" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuoteAnswerRequest"
-            }
           }
         },
         "required" : [ "billingCycle", "clientRequestId", "lines", "priceListId", "validUntil" ]
-      },
-      "QuoteAnswerRequest" : {
-        "type" : "object",
-        "properties" : {
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "optionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "answerValue" : {
-            "type" : "string",
-            "maxLength" : 255,
-            "minLength" : 0
-          }
-        },
-        "required" : [ "questionId" ]
       },
       "QuoteLineRequest" : {
         "type" : "object",
@@ -34722,32 +34341,6 @@
           }
         },
         "required" : [ "catalogItemId" ]
-      },
-      "QuoteAnswerResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "optionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "questionCode" : {
-            "type" : "string"
-          },
-          "answerValue" : {
-            "type" : "string"
-          },
-          "enabled" : {
-            "type" : "boolean"
-          }
-        }
       },
       "QuoteLineResponse" : {
         "type" : "object",
@@ -34902,12 +34495,6 @@
               "$ref" : "#/components/schemas/QuoteLineResponse"
             }
           },
-          "answers" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuoteAnswerResponse"
-            }
-          },
           "createdDate" : {
             "type" : "string",
             "format" : "date-time"
@@ -34964,6 +34551,11 @@
               "$ref" : "#/components/schemas/SelfServeQuoteLineRequest"
             },
             "minItems" : 1
+          },
+          "aiProposalToken" : {
+            "type" : "string",
+            "maxLength" : 43,
+            "minLength" : 0
           }
         },
         "required" : [ "billingCycle", "clientRequestId", "lines" ]
@@ -38097,152 +37689,6 @@
         },
         "required" : [ "description", "name" ]
       },
-      "ResolveConfiguratorSelectionRequest" : {
-        "type" : "object",
-        "properties" : {
-          "selectedOptionIds" : {
-            "type" : "array",
-            "items" : {
-              "type" : "integer",
-              "format" : "int64"
-            },
-            "uniqueItems" : true
-          },
-          "numericAnswers" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "integer",
-              "format" : "int32"
-            }
-          },
-          "billingCycle" : {
-            "type" : "string",
-            "enum" : [ "MONTHLY", "ANNUAL" ],
-            "minLength" : 1,
-            "pattern" : "MONTHLY|ANNUAL"
-          }
-        },
-        "required" : [ "billingCycle" ]
-      },
-      "ConfiguratorSelectionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "items" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/SelectedItemResponse"
-            }
-          }
-        },
-        "required" : [ "items" ]
-      },
-      "SelectedItemResponse" : {
-        "type" : "object",
-        "properties" : {
-          "code" : {
-            "type" : "string",
-            "description" : "Rotulo del articulo; el mismo que aceptan /catalog y /quotes/self-serve"
-          },
-          "quantity" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "code", "quantity" ]
-      },
-      "CreateConfiguratorQuestionRequest" : {
-        "type" : "object",
-        "properties" : {
-          "code" : {
-            "type" : "string",
-            "maxLength" : 50,
-            "minLength" : 0
-          },
-          "questionText" : {
-            "type" : "string",
-            "maxLength" : 255,
-            "minLength" : 0
-          },
-          "helpText" : {
-            "type" : "string",
-            "maxLength" : 500,
-            "minLength" : 0
-          },
-          "answerType" : {
-            "type" : "string",
-            "enum" : [ "SINGLE", "MULTI", "NUMBER", "BOOLEAN" ]
-          },
-          "parentOptionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "required" : {
-            "type" : "boolean"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "answerType", "code", "questionText", "required", "sortOrder" ]
-      },
-      "CreateConfiguratorOptionRequest" : {
-        "type" : "object",
-        "properties" : {
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "code" : {
-            "type" : "string",
-            "maxLength" : 50,
-            "minLength" : 0
-          },
-          "label" : {
-            "type" : "string",
-            "maxLength" : 255,
-            "minLength" : 0
-          },
-          "helpText" : {
-            "type" : "string",
-            "maxLength" : 500,
-            "minLength" : 0
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "code", "label", "questionId", "sortOrder" ]
-      },
-      "CreateConfiguratorEffectRequest" : {
-        "type" : "object",
-        "properties" : {
-          "optionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "catalogItemId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "effect" : {
-            "type" : "string",
-            "enum" : [ "ADD", "REMOVE", "SET_QUANTITY", "QUANTITY_FROM_ANSWER" ]
-          },
-          "quantity" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "catalogItemId", "effect" ]
-      },
       "CreateCompanyTaxProfileRequest" : {
         "type" : "object",
         "properties" : {
@@ -39409,6 +38855,113 @@
         },
         "required" : [ "employeeCode" ]
       },
+      "SuppressProposalDataRequest" : {
+        "type" : "object",
+        "properties" : {
+          "contactEmail" : {
+            "type" : "string",
+            "format" : "email",
+            "description" : "Correo del titular cuyos datos se suprimen",
+            "maxLength" : 320,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "contactEmail" ]
+      },
+      "ProposalSuppressionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "proposals" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "turns" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "lines" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "suppressedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "previouslySuppressedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "lines", "proposals", "suppressedAt", "total", "turns" ]
+      },
+      "GenerateProposalRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 320,
+            "minLength" : 0
+          },
+          "description" : {
+            "type" : "string",
+            "maxLength" : 1000,
+            "minLength" : 15
+          },
+          "acceptances" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LegalAcceptanceRequest"
+            },
+            "minItems" : 1
+          },
+          "billingCycle" : {
+            "type" : "string",
+            "enum" : [ "MONTHLY", "ANNUAL" ]
+          }
+        },
+        "required" : [ "acceptances", "description", "email" ]
+      },
+      "LegalAcceptanceRequest" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "maxLength" : 50,
+            "minLength" : 0
+          },
+          "documentVersion" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "code" ]
+      },
+      "RefineProposalRequest" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "maxLength" : 43,
+            "minLength" : 43
+          },
+          "text" : {
+            "type" : "string",
+            "maxLength" : 400,
+            "minLength" : 10
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "text", "token" ]
+      },
       "CreateAppointmentRequest" : {
         "type" : "object",
         "properties" : {
@@ -40073,7 +39626,7 @@
           },
           "reason" : {
             "type" : "string",
-            "enum" : [ "OVERDUE_BALANCE", "PAYMENT_RECEIVED", "TRIAL_ENDED", "CANCELLATION_EFFECTIVE", "PERIOD_EXPIRED", "MANUAL" ]
+            "enum" : [ "OVERDUE_BALANCE", "PAYMENT_RECEIVED", "TRIAL_ENDED", "CANCELLATION_EFFECTIVE", "PERIOD_EXPIRED", "MANUAL", "REPLACED_BY_NEW_CONTRACT" ]
           },
           "actor" : {
             "type" : "string",
@@ -43068,6 +42621,58 @@
           }
         }
       },
+      "PublicLegalDocumentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "code" : {
+            "type" : "string",
+            "example" : "PRIVACY_NOTICE"
+          },
+          "documentVersion" : {
+            "type" : "integer",
+            "format" : "int32",
+            "example" : 3
+          },
+          "kind" : {
+            "type" : "string",
+            "enum" : [ "TERMS", "PRIVACY_POLICY", "DATA_PROCESSING_AGREEMENT", "PRIVACY_NOTICE", "COMMITMENT_ANNEX" ]
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "content" : {
+            "type" : "string"
+          },
+          "contentHash" : {
+            "type" : "string",
+            "description" : "SHA-256 del contenido: la huella con la que se prueba que texto se acepto"
+          },
+          "publishedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "effectiveFrom" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "supersededAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "current" : {
+            "type" : "boolean"
+          },
+          "createdDate" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "code", "content", "contentHash", "createdDate", "current", "documentVersion", "effectiveFrom", "id", "kind", "publishedAt", "title" ]
+      },
       "PageResponseLaboratoryTestResponse" : {
         "type" : "object",
         "properties" : {
@@ -44002,122 +43607,6 @@
           }
         }
       },
-      "PageResponseConfiguratorQuestionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "content" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ConfiguratorQuestionResponse"
-            }
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "totalElements" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
-      "QuestionnaireOptionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "helpText" : {
-            "type" : "string"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "code", "id", "label", "sortOrder" ]
-      },
-      "QuestionnaireQuestionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "questionText" : {
-            "type" : "string"
-          },
-          "helpText" : {
-            "type" : "string"
-          },
-          "answerType" : {
-            "type" : "string"
-          },
-          "parentOptionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "required" : {
-            "type" : "boolean"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "options" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuestionnaireOptionResponse"
-            }
-          }
-        },
-        "required" : [ "answerType", "code", "id", "options", "questionText", "required", "sortOrder" ]
-      },
-      "PageResponseConfiguratorEffectResponse" : {
-        "type" : "object",
-        "properties" : {
-          "content" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ConfiguratorEffectResponse"
-            }
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "totalElements" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
       "PageResponseCompanyContactChannelResponse" : {
         "type" : "object",
         "properties" : {
@@ -44373,6 +43862,20 @@
         },
         "required" : [ "code", "componentCodes", "name" ]
       },
+      "PublicCatalogRequirementResponse" : {
+        "type" : "object",
+        "properties" : {
+          "itemCode" : {
+            "type" : "string",
+            "description" : "Code del articulo que el cliente elige"
+          },
+          "requiredItemCode" : {
+            "type" : "string",
+            "description" : "Code del articulo que se le anadira. Puede no aparecer en modules/capacities/oneTimeItems si no tiene precio en la tarifa vigente: el servidor lo anade igual"
+          }
+        },
+        "required" : [ "itemCode", "requiredItemCode" ]
+      },
       "PublicCatalogResponse" : {
         "type" : "object",
         "properties" : {
@@ -44412,9 +43915,16 @@
             "items" : {
               "$ref" : "#/components/schemas/PublicCatalogPackResponse"
             }
+          },
+          "requirements" : {
+            "type" : "array",
+            "description" : "Grafo de requisitos: arcos DIRECTOS «si eliges itemCode, se anade requiredItemCode». No es el cierre transitivo; recorrelos en anchura si lo necesitas",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicCatalogRequirementResponse"
+            }
           }
         },
-        "required" : [ "capacities", "modules", "oneTimeItems", "packs" ]
+        "required" : [ "capacities", "modules", "oneTimeItems", "packs", "requirements" ]
       },
       "PageResponseCatalogPriceResponse" : {
         "type" : "object",

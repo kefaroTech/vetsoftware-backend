@@ -234,13 +234,8 @@
     <include file="db/changelog/migrations/232_create_bundle_components.xml"/>
     <include file="db/changelog/migrations/233_create_price_lists.xml"/>
     <include file="db/changelog/migrations/234_create_catalog_prices.xml"/>
-    <include file="db/changelog/migrations/235_create_configurator_questions.xml"/>
-    <include file="db/changelog/migrations/236_create_configurator_options.xml"/>
-    <include file="db/changelog/migrations/237_add_parent_option_to_configurator_questions.xml"/>
-    <include file="db/changelog/migrations/238_create_configurator_effects.xml"/>
     <include file="db/changelog/migrations/239_create_quotes.xml"/>
     <include file="db/changelog/migrations/240_create_quote_lines.xml"/>
-    <include file="db/changelog/migrations/241_create_quote_answers.xml"/>
     <include file="db/changelog/migrations/242_create_subscriptions.xml"/>
     <include file="db/changelog/migrations/243_create_subscription_amendments.xml"/>
     <include file="db/changelog/migrations/244_create_subscription_items.xml"/>
@@ -456,8 +451,6 @@
                                      system_users, y en una base recién creada esa tabla está vacía
            311 la publicación        firma con la cuenta de plataforma que exista, reapunta
                                      platform_billing_config (255) y archiva la lista de laboratorio
-           312 el configurador       necesita artículo (308) y las tablas de 235/236/237/238; es lo
-                                     que estrena `configurator_effects.priority`
            313 ejes y techos         necesitan submódulo (258/272), eje (300) y artículo (308)
 
          LAS OCHO CONDICIONES DEL ALTA DE UNA EMPRESA quedan cubiertas por 308+310+311, y son las que
@@ -482,7 +475,6 @@
     <include file="db/changelog/migrations/309_seed_commercial_catalog_relations.xml"/>
     <include file="db/changelog/migrations/310_seed_price_list_2026.xml"/>
     <include file="db/changelog/migrations/311_publish_price_list_2026.xml"/>
-    <include file="db/changelog/migrations/312_seed_configurator.xml"/>
     <include file="db/changelog/migrations/313_seed_limit_dimensions_and_ceilings.xml"/>
 
     <!-- 314 repunta el contador (#629): company_capacities deja la lista cerrada de cuatro
@@ -916,5 +908,92 @@
          sesion. -->
     <include
             file="db/changelog/migrations/379_attach_orphan_selfservice_submodules_to_core.xml"/>
+
+    <!-- 380: GROOMING REQUIRES SERVICES. Una peluqueria cobra por tamano y raza y es SERVICES
+         quien carga ese tarifario; vender GROOMING suelto entregaba un modulo sin forma de
+         tarifar. PACK_SPA y PACK_FULL (308/309) ya metian los dos juntos sin declarar por que.
+         Changeset nuevo y no una fila mas en 309: 308/309 ya se aplicaron en dev/produccion via
+         el pipeline de merge a develop, y editar un changeSet que ya corrio le rompe el checksum
+         (mismo criterio que 086/087). Detalle completo, incluida la comprobacion de ciclos, en
+         el propio 380. -->
+    <include file="db/changelog/migrations/380_seed_grooming_requires_services.xml"/>
+
+    <!-- PROPUESTA COMERCIAL GENERADA POR IA (docs/db/propuesta-ia-modelo-datos.md +
+         proporsal/plan-implementacion-propuesta-ia.md S5). Cinco tablas en tres rodajas: el
+         texto de prompt versionado (381/382, rodaja catalogitem), la cabecera/turnos/lineas de
+         la propuesta anonima sin company_id (383-385, rodaja aiproposal, a proposito: una FK a
+         companies ahi enciende BE-COV sobre toda la rodaja) y el puente hacia la empresa cuando
+         el prospecto se registra (386, rodaja company). 387 es la evidencia de aceptacion de
+         documentos legales -no depende de nada de aiproposal, es la primera pieza desplegable-.
+         Orden de FK: 381 antes que 382 (la siembra necesita la tabla); 383 antes que 384 antes
+         que 385 antes que 386 (cada uno referencia al anterior); 387 es independiente. -->
+    <include file="db/changelog/migrations/381_create_catalog_item_ai_hints.xml"/>
+    <include file="db/changelog/migrations/382_seed_catalog_item_ai_hints.xml"/>
+    <include file="db/changelog/migrations/383_create_ai_proposals.xml"/>
+    <include file="db/changelog/migrations/384_create_ai_proposal_turns.xml"/>
+    <include file="db/changelog/migrations/385_create_ai_proposal_lines.xml"/>
+    <include file="db/changelog/migrations/386_create_ai_proposal_conversions.xml"/>
+    <include file="db/changelog/migrations/387_create_legal_document_acceptances.xml"/>
+
+    <!-- 388-390. Tres huecos que la tanda anterior dejo abiertos, y ninguno es cosmetico:
+
+         388 la columna `presentation` de los turnos. Sin ella una RELECTURA de la propuesta no
+         puede distinguir NOT_UNDERSTOOD ni las tres degradaciones de una propuesta normal -las
+         cuatro escriben el carrito determinista-, asi que a quien el asistente le pidio
+         reescribir el texto le ensenaba otra pantalla al volver por su enlace. Va despues de
+         384, que crea la tabla.
+
+         389 la identidad de la propuesta en `quotes` y en `email_verification_tokens`, que son
+         los dos eslabones intermedios del embudo. 386 solo ata propuesta -> empresa, asi que
+         hoy un abandono antes de cotizar y uno antes de registrarse son el mismo numero. Va
+         despues de 383 (la tabla a la que apunta) y necesita 239 y 176, muy anteriores. Se hace
+         AHORA porque las dos tablas estan vacias de trafico del asistente: hecho despues es una
+         migracion sobre datos vivos y, sobre todo, deja los primeros meses de embudo sin
+         atribuir para siempre.
+
+         NO HAY 390, Y LA AUSENCIA ESTA RAZONADA. Se escribio y se ejecuto un changeset 390 con
+         dos triggers BEFORE INSERT/UPDATE sobre `bundle_components` para llevar a la base la
+         regla «un componente no puede ser otro BUNDLE» -de la que depende que la expansion de
+         `JpaSubscriptionItemCompositionPort.freeze` sea de un solo nivel, y que hoy vive SOLO en
+         `CreateBundleComponentService`, al que las semillas 309 y 380 no pasan-. Los triggers
+         funcionan: en `mvn verify` cazaron 22 inserciones. TODAS eran de un mismo fixture de
+         test, `PublicPlanQueryPortIT`, que siembra a proposito un paquete dentro de otro
+         (`PACK_ANIDADO` dentro de `PACK`, linea 178) para afirmar en su caso
+         «ni un DRAFT, ni un DEPRECATED, ni un ONE_TIME, ni un paquete anidado...» que la
+         consulta publica lo excluye.
+
+         Es decir: el paquete anidado NO es hipotetico. El lado de LECTURA ya esta escrito para
+         tolerarlo y hay una prueba que lo documenta. Prohibirlo en la base deja ese estado sin
+         representar y convierte esa asercion en codigo muerto, asi que la decision -si el
+         invariante se impone y esas pruebas defensivas pierden su sentido, o si el invariante se
+         queda en el servicio y la expansion asume el riesgo- es de producto y no de esta tanda.
+         Queda medida y documentada aqui para que quien la tome no tenga que redescubrirla. -->
+    <include file="db/changelog/migrations/388_add_presentation_to_ai_proposal_turns.xml"/>
+    <include file="db/changelog/migrations/389_add_ai_proposal_to_quote_and_registration.xml"/>
+
+    <!-- NO HAY 390: ver la nota de 389 arriba, no se reutiliza ese numero. 391 cierra la carrera
+         de "cotizacion aceptada -> contrato": el enlace DC-2 (AcceptQuoteService ->
+         AcceptedQuoteSubscriptionProvisioner -> ReplaceSubscriptionFromQuoteUseCase) no tenia
+         ninguna barandilla de esquema contra firmar dos contratos desde la misma cotizacion; lo
+         unico que lo tapaba por accidente era uq_subscriptions_active_company (242). quote_id
+         nullable no es un obstaculo -InnoDB no cuenta NULL contra si mismo en un indice UNIQUE,
+         mismo comportamiento que ya usa 369-, y el indice compuesto (company_id, quote_id) de 242
+         se queda intacto porque respalda la FK y no puede sustituir a esta UNIQUE de una sola
+         columna ni al reves (detalle completo en el propio 391). -->
+    <include file="db/changelog/migrations/391_add_unique_quote_to_subscriptions.xml"/>
+
+    <!-- 392: EVIDENCIA DE ATENCION DEL DERECHO DE SUPRESION (Ley 1581, articulo 8 literal e).
+         El endpoint que atiende la supresion existe y borra, pero hasta ahora no quedaba
+         constancia de que se atendio -no se loguea el correo del solicitante a proposito, la
+         observabilidad solo emite una metrica agregada, y no habia tabla-. ai_proposal_
+         suppression_requests guarda constancia del hecho SIN guardar el dato: subject_email_hash
+         es BINARY(32), el mismo tipo y algoritmo que la columna generada ai_proposals.
+         contact_email_hash (383), verificado para que ambas sean comparables byte a byte. Sin
+         UNIQUE sobre el hash -un titular puede pedirlo mas de una vez y cada atencion es su
+         propia evidencia-. Excluida de la anonimizacion a 90 dias y de la purga a 24 meses de
+         AiProposalRetentionJob, misma exencion que legal_document_acceptances (387): purgar la
+         evidencia destruiria la prueba de que el derecho se atendio. Detalle completo en el
+         propio 392. -->
+    <include file="db/changelog/migrations/392_create_ai_proposal_suppression_requests.xml"/>
 
 </databaseChangeLog>

@@ -16,7 +16,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.quote.application.command.AcceptQuoteCommand;
 import com.vetsoftware.app.quote.application.command.CreateQuoteCommand;
-import com.vetsoftware.app.quote.application.command.QuoteAnswerCommand;
 import com.vetsoftware.app.quote.application.command.QuoteLineCommand;
 import com.vetsoftware.app.quote.application.command.RejectQuoteCommand;
 import com.vetsoftware.app.quote.application.command.SendQuoteCommand;
@@ -119,8 +118,7 @@ class QuoteControllerTest {
              "prospectEmail":"ana@ejemplo.com","prospectDocument":"12345678",
              "prospectPhone":"3001112233","priceListId":7,"billingCycle":"MONTHLY",
              "validUntil":"2026-09-30","trialDays":15,
-             "lines":[{"catalogItemId":1,"quantity":3,"discountPercent":"10.00"}],
-             "answers":[{"questionId":11,"optionId":99,"answerValue":"SI"}]}
+             "lines":[{"catalogItemId":1,"quantity":3,"discountPercent":"10.00"}]}
             """;
 
     /**
@@ -200,7 +198,7 @@ class QuoteControllerTest {
     }
 
     private static QuoteDto cotizacion() {
-        return QuoteDto.from(QuoteMother.persistidaConRespuestas(QUOTE_ID));
+        return QuoteDto.from(QuoteMother.persistida(QUOTE_ID, QuoteStatus.DRAFT));
     }
 
     private static QuoteDto cotizacionDeProspecto() {
@@ -251,10 +249,7 @@ class QuoteControllerTest {
                     .andExpect(jsonPath("$.lines[0].grossAmount").value(100000.00))
                     .andExpect(jsonPath("$.lines[0].taxRate").value(19.00))
                     .andExpect(jsonPath("$.lines[0].taxTreatment").value("TAXED"))
-                    .andExpect(jsonPath("$.lines[0].lineTotal").value(119000.00))
-                    .andExpect(jsonPath("$.answers.length()").value(1))
-                    .andExpect(jsonPath("$.answers[0].questionCode").value("SELLS_PRODUCTS"))
-                    .andExpect(jsonPath("$.answers[0].answerValue").value("SI"));
+                    .andExpect(jsonPath("$.lines[0].lineTotal").value(119000.00));
         }
 
         @Test
@@ -272,8 +267,7 @@ class QuoteControllerTest {
             assertThat(comando.getValue()).isEqualTo(new CreateQuoteCommand("req-0001", COMPANY_ID,
                     "Veterinaria del Sur", "ana@ejemplo.com", "12345678", "3001112233", 7L,
                     "MONTHLY", LocalDate.of(2026, 9, 30), 15,
-                    List.of(new QuoteLineCommand(1L, 3, new BigDecimal("10.00"))),
-                    List.of(new QuoteAnswerCommand(11L, 99L, "SI"))));
+                    List.of(new QuoteLineCommand(1L, 3, new BigDecimal("10.00")))));
         }
 
         @Test

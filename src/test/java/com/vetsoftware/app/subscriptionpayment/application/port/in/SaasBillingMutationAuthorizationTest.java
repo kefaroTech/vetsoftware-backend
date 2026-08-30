@@ -367,7 +367,7 @@ class SaasBillingMutationAuthorizationTest {
 
     private static CreateQuoteCommand createQuoteCommand() {
         return new CreateQuoteCommand("quote-1", COMPANY_ID, null, null, null, null, 3L, "MONTHLY",
-                LocalDate.of(2026, 9, 22), 15, List.of(), List.of());
+                LocalDate.of(2026, 9, 22), 15, List.of());
     }
 
     private static CreateSubscriptionCommand createSubscriptionCommand() {

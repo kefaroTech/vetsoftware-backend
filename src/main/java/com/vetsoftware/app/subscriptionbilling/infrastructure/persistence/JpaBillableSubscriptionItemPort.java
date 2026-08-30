@@ -29,6 +29,16 @@ import org.springframework.stereotype.Component;
  * completo y se lo cobraria a todos los clientes en prueba.
  *
  * <p>
+ * <b>{@code enabled = TRUE} no es ceremonia: es la coherencia con las otras
+ * tres consultas de esta misma tabla.</b> {@code ContractItemJpaRepository}
+ * (permisos) y {@code EffectiveLimitCandidateJpaRepository} (cupos) lo llevan
+ * las dos, asi que una linea dada de baja logica deja de conceder submodulos y
+ * deja de conceder cantidad. Sin este filtro seguia <b>devengando</b>: al
+ * cliente se le retiraba lo contratado y se le seguia facturando, y nada en el
+ * sistema decia que las tres consultas hubieran dejado de hablar de la misma
+ * poblacion.
+ *
+ * <p>
  * <b>Vigencia semiabierta {@code [effective_from, effective_to)}</b>, igual que
  * {@code SubscriptionItemJpaRepository#findAllCurrentOn}: el dia en que una
  * linea se cierra y su sucesora se abre pertenece a la sucesora, y solo a ella.
@@ -49,6 +59,7 @@ public class JpaBillableSubscriptionItemPort implements BillableSubscriptionItem
             FROM subscription_items i
             WHERE i.company_id = :companyId
               AND i.subscription_id = :subscriptionId
+              AND i.enabled = TRUE
               AND i.effective_from <= :day
               AND (i.effective_to IS NULL OR i.effective_to > :day)
             ORDER BY i.id ASC

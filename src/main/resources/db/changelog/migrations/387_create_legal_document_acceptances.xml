@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PROPUESTA IA (docs/db/propuesta-ia-modelo-datos.md S2.1 + plan-implementacion-propuesta-
+         ia.md S1.4). NO DEPENDE DE NADA DE `aiproposal` -por eso el número 387, el último de la
+         serie, pero es la primera pieza que se puede desplegar: el plan la entrega en su fase
+         1.3b, junto con la ruta pública del aviso legal, antes que la rodaja de propuestas. Si se
+         retrasa, el front no puede cerrar el consentimiento.
+
+         353_create_legal_document_versions.xml registra QUÉ TEXTO se le mostró a alguien -la
+         mitad de la prueba que exige el artículo 9 de la Ley 1581-. Esta tabla registra la otra
+         mitad: QUE ALGUIEN LO ACEPTÓ. Va en TABLA PROPIA y no en una columna de ai_proposals,
+         razonado en el plan S1.4: (a) el resto del producto ya necesita aceptaciones -el paso de
+         contratación acepta términos, el alta de empresa acepta política, y ninguno de los dos
+         tiene hoy dónde escribirlo; una columna en ai_proposals resuelve un caso y deja pendientes
+         otros dos-; (b) son DOS documentos, no uno -privacidad y transferencia internacional, que
+         el literal a) del artículo 26 exige nombrar con su destino, porque el texto libre viaja a
+         us-east-1/us-east-2/us-west-2-; (c) una aceptación se REVOCA (artículo 8) y una columna en
+         cabecera no sabe representarlo sin inventar un segundo *_revoked_at por cada sitio que
+         consienta.
+
+         VIVE EN LA RODAJA `legaldocumentversion`, que NO alcanza companies -verificado en el
+         propio modelo de datos: LegalDocumentVersionJpaEntity tiene 13 campos, todos escalares, y
+         LegalDocumentVersionRepository no declara ni un método con companyId ni con "Company" en
+         el nombre-, así que colgar esta tabla ahí no enciende BE-COV ni LISTADOS_SIN_EMPRESA_
+         SOLO_SYSTEM.
+
+         subject_ref es un VARCHAR, DELIBERADAMENTE NO UNA FK POLIMÓRFICA: una FK que apunta a
+         tablas distintas según una columna es "Polymorphic Associations" (Karwin), y aquí además
+         ataría la rodaja legal a `aiproposal`, `company` y cualquier sujeto futuro. subject_kind
+         distingue el universo; su CHECK es la única constraint de vocabulario que pide el plan.
+         PARA UNA PROPUESTA, subject_ref ES SU id, NUNCA SU public_token: copiar el token -el
+         secreto de la URL, S2.1 de 383- a una segunda tabla lo saca del único control de acceso
+         que lo protege.
+
+         accepted_ip_hash / user_agent_hash: CHAR(64) ascii_bin, ya hasheados por Java antes de
+         llegar aquí -no son columnas GENERATED: no hay ninguna otra columna de la que derivarlos
+         determinísticamente dentro de esta misma fila-. Mismo criterio de colación que las demás
+         huellas del documento (incidencia #633).
+
+         NI ESTAS DOS COLUMNAS NI LA FILA SE ANONIMIZAN A LOS 90 DÍAS (plan S1.4): son la
+         evidencia de consentimiento, y borrarla deja la recogida sin respaldo. accepted_ip_hash ya
+         es un hash, no una IP en claro.
+
+         SIN version: EXENTA E1_APPEND_ONLY -per el propio plan S1.4 ("exenta de version con
+         E1_APPEND_ONLY")-, se escribe una vez por aceptación; revocar es una fila nueva o un
+         UPDATE puntual de revoked_at, no una reescritura del resto de la fila. Queda para la fase
+         de entidades JPA añadir esta tabla a ENTIDADES_EXENTAS_DE_VERSION con ese código.
+         SIN enabled: no es borrado lógico, es evidencia legal -se revoca con revoked_at, no se
+         desactiva-.
+
+         ALCANCE DE ESTE CHANGESET: el modelo de datos y el plan coinciden en exactamente UN
+         CHECK para esta tabla (vocabulario de subject_kind). Se consideró añadir un
+         chk_legal_document_acceptances_revocation (revoked_at IS NULL OR revoked_at >=
+         accepted_at), análogo a chk_ldv_supersede/chk_catalog_item_ai_hints_supersede, pero se
+         DEFIERE a propósito: ninguno de los dos documentos lo pide y añadir constraints no
+         solicitadas a una tabla de evidencia legal es una decisión que le corresponde a quien
+         redactó el contrato de esta tabla, no a quien la implementa. Queda anotado en el informe
+         de esta sesión, no como issue -no hay riesgo de dato hoy: la tabla nace vacía-. -->
+    <changeSet id="387_create_legal_document_acceptances" author="orlando">
+        <preConditions onFail="HALT">
+            <not>
+                <tableExists tableName="legal_document_acceptances"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="legal_document_acceptances">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="legal_document_version_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="subject_kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="subject_ref" type="VARCHAR(64)"><constraints nullable="false"/></column>
+            <column name="accepted_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="accepted_ip_hash" type="CHAR(64)"/>
+            <column name="user_agent_hash" type="CHAR(64)"/>
+            <column name="revoked_at" type="DATETIME(6)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE legal_document_acceptances
+                MODIFY COLUMN accepted_ip_hash CHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN user_agent_hash CHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD CONSTRAINT uq_legal_document_acceptances_subject
+                    UNIQUE (subject_kind, subject_ref, legal_document_version_id),
+                ADD CONSTRAINT chk_legal_document_acceptances_subject_kind
+                    CHECK (subject_kind IN ('AI_PROPOSAL','COMPANY','SYSTEM_USER'))
+        ]]></sql>
+
+        <createIndex tableName="legal_document_acceptances"
+                      indexName="ix_legal_document_acceptances_version">
+            <column name="legal_document_version_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="legal_document_acceptances"
+                                 baseColumnNames="legal_document_version_id"
+                                 referencedTableName="legal_document_versions"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_legal_document_acceptances_version"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="legal_document_acceptances"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

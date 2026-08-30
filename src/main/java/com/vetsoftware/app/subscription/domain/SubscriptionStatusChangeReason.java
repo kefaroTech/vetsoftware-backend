@@ -61,7 +61,24 @@ public enum SubscriptionStatusChangeReason {
     PERIOD_EXPIRED,
 
     /** Decision deliberada de una persona de plataforma. */
-    MANUAL;
+    MANUAL,
+
+    /**
+     * El cliente acepto una cotizacion y ese contrato sustituye al que habia
+     * (DC-2).
+     *
+     * <p>
+     * <strong>Es un codigo nuevo y no se reutilizo ninguno de los cinco
+     * anteriores</strong>, aunque hubiera sido mas barato. Ninguno dice la verdad:
+     * {@code MANUAL} atribuiria a una persona de plataforma una decision que tomo
+     * el cliente; {@code CANCELLATION_EFFECTIVE} describe una baja que alguien
+     * pidio y que llego a su fecha, y aqui no hay baja ninguna —el cliente no se
+     * fue, compro mas—; {@code PERIOD_EXPIRED} afirma un vencimiento que no
+     * ocurrio. Esta columna es prueba en una disputa de cobro: poner el rotulo
+     * equivocado en la fila que explica por que murio un contrato es exactamente lo
+     * que la convierte en inservible el dia que hay que exhibirla.
+     */
+    REPLACED_BY_NEW_CONTRACT;
 
     /**
      * La forma en que este motivo se escribe en la columna {@code reason} de la

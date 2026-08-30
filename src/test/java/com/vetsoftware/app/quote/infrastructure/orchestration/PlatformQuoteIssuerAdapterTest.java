@@ -96,7 +96,7 @@ class PlatformQuoteIssuerAdapterTest {
     private static CreateQuoteCommand comando() {
         return new CreateQuoteCommand(CLIENT_REQUEST_ID, empresa().id(), null, null, null, null,
                 QuoteMother.PRICE_LIST_ID, "MONTHLY", LocalDate.of(2026, 9, 6), 0,
-                List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO)), List.of());
+                List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO)));
     }
 
     private static QuoteDto oferta(QuoteStatus status) {

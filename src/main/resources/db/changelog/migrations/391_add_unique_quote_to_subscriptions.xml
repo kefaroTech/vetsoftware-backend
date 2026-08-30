@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- El enlace «cotizacion aceptada -> contrato» (AcceptQuoteService.execute, DC-2) firma el
+         contrato EN LA MISMA TRANSACCION de la aceptacion: SENT -> ACCEPTED y
+         subscriptionProvisioningPort.provisionFromAcceptedQuote(quoteId, companyId) van juntos, y
+         AcceptedQuoteSubscriptionProvisioner delega en ReplaceSubscriptionFromQuoteUseCase, que
+         cancela el contrato vigente de la empresa y firma uno nuevo con ese quote_id. Hoy NADA en
+         el esquema impide firmar DOS contratos desde la MISMA cotizacion: lo unico que lo tapa por
+         accidente es uq_subscriptions_active_company (242) -una empresa, un contrato vivo a la
+         vez-, y tapar un defecto con otro deja abierta la ventana real: dos aceptaciones
+         concurrentes de la misma cotizacion (doble clic, un reintento de red del cliente, un
+         reintento de un job) pueden colar dos REPLACE antes de que el primer commit deje sin
+         "vigente" al contrato anterior, y las dos pasan el SELECT previo de
+         CompanyAlreadyHasActiveSubscriptionException -es un SELECT seguido de un INSERT, la misma
+         carrera que ya describe su javadoc para el caso de la empresa, aqui aplicada a la
+         cotizacion-.
+
+         SIN COLUMNA GENERADA, Y ESTA VEZ VERIFICADO EN VEZ DE ASUMIDO. A diferencia de 372/373,
+         que necesitaron una columna GENERATED ALWAYS ... STORED porque su unicidad era
+         CONDICIONAL (solo cargos RECURRING, solo documentos ya numerados), esta es incondicional:
+         todo quote_id no nulo tiene que ser unico, punto. InnoDB no cuenta un NULL contra si mismo
+         en un indice UNIQUE -mismo comportamiento que ya documenta y usa 369 en este mismo
+         esquema-, asi que los contratos SIN cotizacion detras -el inicial de cada empresa,
+         quote_id NULL, el que crea CreateInitialSubscriptionService- conviven sin chocar entre
+         ellos. Verificado contra la documentacion de MySQL 8.4 (Server SQL Statements > CREATE
+         INDEX; la semantica de UNIQUE con NULL no cambio entre 8.0 y 8.4): no hace falta indice
+         parcial ni columna generada.
+
+         NO SE TOCA ix_subscriptions_company_quote (242), Y ES UNA DECISION, NO UN OLVIDO. Antes
+         de escribir este changeset se comprobo si el indice compuesto (company_id, quote_id) que
+         respalda a fk_subscriptions_quote se volvia redundante con esta UNIQUE nueva, o si MySQL
+         podia reutilizar la UNIQUE de una sola columna para la propia FK. Las dos preguntas se
+         responden que no:
+           - fk_subscriptions_quote referencia quotes(company_id, id) con
+             baseColumnNames="company_id, quote_id", en ese orden. Un indice solo sirve de respaldo
+             a una FK si sus columnas son un PREFIJO por la izquierda EN EL MISMO ORDEN que la FK;
+             una UNIQUE sobre quote_id a secas no lleva company_id y no puede respaldarla. MySQL no
+             "reutiliza" nada aqui: sigue siendo ix_subscriptions_company_quote quien sostiene la
+             FK, exactamente como el dia que 242 la creo.
+           - Al reves tampoco: ix_subscriptions_company_quote empieza por company_id, no por
+             quote_id, asi que NO sirve para la pregunta que esta UNIQUE nueva viene a responder
+             -"¿ya existe UN contrato para esta cotizacion, sea cual sea la empresa?"- ni la
+             reemplaza como llave de negocio: dos filas con el MISMO quote_id y el MISMO company_id
+             pasan el indice compuesto sin chocar (compuesto no es UNIQUE), que es precisamente la
+             carrera que este changeset cierra.
+         Los dos indices quedan vivos porque resuelven preguntas distintas: uno es el respaldo de
+         la FK y el acceso "de esta empresa, con esta cotizacion"; el otro es la invariante global
+         "esta cotizacion ya tiene contrato". Ninguno queda huerfano.
+
+         IMPACTO EN DATOS: subscriptions es una tabla nueva de esta misma tanda (242) y aun no se
+         ha desplegado -ver la nota de alcance de esta sesion-, asi que hoy no puede tener
+         duplicados que bloqueen el ADD CONSTRAINT. Aun asi, y siguiendo el mismo criterio que
+         106/133/144/372/373, antes de aplicar esto en cualquier entorno que ya tenga trafico:
+         `SELECT quote_id, COUNT(*) FROM subscriptions WHERE quote_id IS NOT NULL
+          GROUP BY quote_id HAVING COUNT(*) > 1;`
+         -si devuelve filas, hay que decidir con negocio cual de los contratos duplicados por
+         cotizacion es el valido y cancelar (CANCELLED, no borrar) los demas antes de que el ADD
+         CONSTRAINT pueda aplicar-.
+
+         COSTE, Y POR QUE ES MAS BARATO QUE 372/373: esto es un addUniqueConstraint sobre una
+         columna YA EXISTENTE, sin columna generada de por medio. MySQL 8.4 lo ejecuta como un ADD
+         INDEX corriente -ALGORITHM=INPLACE, Rebuilds Table: No, Permits Concurrent DML: Yes-: no
+         reescribe la tabla fila a fila como si hizo 242 con active_marker; solo construye el
+         indice nuevo, con coste proporcional al numero de filas mientras dura, sin bloquear DML
+         concurrente de punta a punta.
+
+         JAVA PENDIENTE (fuera del alcance de este changeset, para backend-feature): sin
+         traduccion, la carrera que este UNIQUE cierra sale como el 409 generico "Database
+         constraint violation" de GlobalExceptionHandler.handleDataIntegrity -exactamente el mismo
+         riesgo que documenta 373 para uq_electronic_documents_fiscal_number-. El patron ya existe
+         en JpaSubscriptionRepository.save (lineas 39-53): comprueba
+         violates(exception, ACTIVE_COMPANY_CONSTRAINT) y traduce a
+         CompanyAlreadyHasActiveSubscriptionException. Hace falta la misma rama para
+         "uq_subscriptions_quote" -el nombre exacto que el driver reporta en el mensaje-: una
+         constante hermana de ACTIVE_COMPANY_CONSTRAINT, un nuevo
+         subscription.domain.QuoteAlreadyHasSubscriptionException(Long quoteId) analogo a
+         CompanyAlreadyHasActiveSubscriptionException, y en GlobalExceptionHandler un
+         @ExceptionHandler(QuoteAlreadyHasSubscriptionException.class) hermano de
+         handleCompanyAlreadyHasActiveSubscription (linea 1002) que devuelva 409 con un codigo de
+         negocio nuevo, p.ej. QUOTE_ALREADY_HAS_SUBSCRIPTION. Sin esa rama el guard de
+         ReplaceSubscriptionFromQuoteService sigue siendo un SELECT-luego-INSERT sin nada que
+         serialice las dos operaciones, y esta UNIQUE es lo unico que de verdad cierra la carrera
+         -el 500 en vez del 409 es el precio de no traducirlo, no una carrera abierta-. -->
+    <changeSet id="391_add_unique_quote_to_subscriptions" author="orlando">
+        <addUniqueConstraint tableName="subscriptions" columnNames="quote_id"
+                             constraintName="uq_subscriptions_quote"/>
+
+        <rollback>
+            <dropUniqueConstraint tableName="subscriptions" constraintName="uq_subscriptions_quote"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

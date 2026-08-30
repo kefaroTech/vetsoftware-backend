@@ -2,13 +2,11 @@ package com.vetsoftware.app.quote.infrastructure.persistence;
 
 import com.vetsoftware.app.quote.application.port.out.CatalogItemQueryPort;
 import com.vetsoftware.app.quote.application.port.out.CatalogPriceQueryPort;
-import com.vetsoftware.app.quote.application.port.out.ConfiguratorQuestionQueryPort;
 import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
 import com.vetsoftware.app.quote.application.port.out.PublishedCatalogItemQueryPort;
 import com.vetsoftware.app.quote.domain.BillingCycle;
 import com.vetsoftware.app.quote.domain.CatalogItemRef;
 import com.vetsoftware.app.quote.domain.CatalogPriceRef;
-import com.vetsoftware.app.quote.domain.ConfiguratorQuestionRef;
 import com.vetsoftware.app.quote.domain.PriceListRef;
 import com.vetsoftware.app.quote.domain.QuoteItemType;
 import com.vetsoftware.app.quote.domain.TaxTreatment;
@@ -23,9 +21,9 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /**
- * Los cinco adaptadores de lectura contra los slices vecinos del catalogo:
- * {@code catalog_items}, {@code price_lists}, {@code catalog_prices},
- * {@code bundle_components} y {@code configurator_questions}.
+ * Los cuatro adaptadores de lectura contra los slices vecinos del catalogo:
+ * {@code catalog_items}, {@code price_lists}, {@code catalog_prices} y
+ * {@code bundle_components}.
  *
  * <p>
  * <b>Por que SQL nativo y no un {@code XxxJpaRepository} de la otra
@@ -465,29 +463,6 @@ public final class JpaCatalogQueryPorts {
                 faltantes.add(text(row));
             }
             return List.copyOf(faltantes);
-        }
-    }
-
-    /** Lee la pregunta del configurador solo para copiar su codigo. */
-    @Component
-    public static class JpaConfiguratorQuestionQueryPort implements ConfiguratorQuestionQueryPort {
-
-        private final EntityManager entityManager;
-
-        public JpaConfiguratorQuestionQueryPort(EntityManager entityManager) {
-            this.entityManager = entityManager;
-        }
-
-        @Override
-        public Optional<ConfiguratorQuestionRef> findById(Long questionId) {
-            Query query = entityManager.createNativeQuery("""
-                    SELECT id, code
-                      FROM configurator_questions
-                     WHERE id = :id
-                       AND enabled = TRUE
-                    """).setParameter("id", questionId);
-            return singleRow(query)
-                    .map(row -> new ConfiguratorQuestionRef(id(row[0]), text(row[1])));
         }
     }
 }

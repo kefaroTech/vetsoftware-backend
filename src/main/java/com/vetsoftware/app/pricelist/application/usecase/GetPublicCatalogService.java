@@ -6,6 +6,7 @@ import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackComponentRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogRequirementDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicPriceListDto;
 import com.vetsoftware.app.pricelist.application.port.in.GetPublicCatalogUseCase;
 import com.vetsoftware.app.pricelist.application.port.out.PublicCatalogQueryPort;
@@ -54,7 +55,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class GetPublicCatalogService implements GetPublicCatalogUseCase {
 
     private static final PublicCatalogDto SIN_TARIFA = new PublicCatalogDto(null, null, List.of(),
-            List.of(), List.of(), List.of());
+            List.of(), List.of(), List.of(), List.of());
 
     private final PublicPlanQueryPort priceListQueryPort;
     private final PublicCatalogQueryPort queryPort;
@@ -89,11 +90,13 @@ public class GetPublicCatalogService implements GetPublicCatalogUseCase {
                         .map(PublicCatalogItemDto::from).toList(),
                 articulos.stream().filter(PublicCatalogItemRowDto::esCapacidad)
                         .map(PublicCatalogCapacityDto::from).toList(),
-                articulos
-                        .stream().filter(PublicCatalogItemRowDto::esCargoUnico).map(
-                                PublicCatalogItemDto::from)
+                articulos.stream().filter(PublicCatalogItemRowDto::esCargoUnico)
+                        .map(PublicCatalogItemDto::from).toList(),
+                queryPort.findPacks(tarifa.id()).stream()
+                        .map(pack -> PublicCatalogPackDto.from(pack,
+                                porPaquete.getOrDefault(pack.code(), List.of())))
                         .toList(),
-                queryPort.findPacks(tarifa.id()).stream().map(pack -> PublicCatalogPackDto
-                        .from(pack, porPaquete.getOrDefault(pack.code(), List.of()))).toList());
+                queryPort.findRequirements().stream().map(PublicCatalogRequirementDto::from)
+                        .toList());
     }
 }

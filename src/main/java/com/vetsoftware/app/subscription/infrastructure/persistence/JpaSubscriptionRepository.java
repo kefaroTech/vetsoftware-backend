@@ -6,6 +6,7 @@ import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
 import com.vetsoftware.app.subscription.domain.CompanyAlreadyHasActiveSubscriptionException;
+import com.vetsoftware.app.subscription.domain.QuoteAlreadyConvertedException;
 import com.vetsoftware.app.subscription.domain.Subscription;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
 import java.util.List;
@@ -24,6 +25,21 @@ public class JpaSubscriptionRepository implements SubscriptionRepository {
      * dos «no hay» e insertarian las dos.
      */
     private static final String ACTIVE_COMPANY_CONSTRAINT = "uq_subscriptions_active_company";
+
+    /**
+     * El indice unico sobre {@code quote_id} (changeset 391): una cotizacion, un
+     * contrato. Cierra la carrera que la guarda de
+     * {@code ReplaceSubscriptionFromQuoteService} no puede cerrar —dos aceptaciones
+     * simultaneas de la misma oferta— por la misma razon que la constante de
+     * arriba: un {@code SELECT} previo y un {@code INSERT} despues no serializan
+     * nada.
+     *
+     * <p>
+     * El compuesto {@code (company_id, quote_id)} que respalda la clave foranea NO
+     * lo cubria: empieza por la empresa, asi que dos filas con la misma cotizacion
+     * y la misma empresa pasan por el sin chocar.
+     */
+    private static final String QUOTE_CONSTRAINT = "uq_subscriptions_quote";
 
     private final SubscriptionJpaRepository jpaRepository;
     private final SubscriptionJpaMapper mapper;
@@ -47,6 +63,13 @@ public class JpaSubscriptionRepository implements SubscriptionRepository {
         } catch (DataIntegrityViolationException exception) {
             if (violates(exception, ACTIVE_COMPANY_CONSTRAINT)) {
                 throw new CompanyAlreadyHasActiveSubscriptionException(subscription.getCompanyId());
+            }
+            // La hermana: misma forma, otro invariante. Se comprueba aparte y no con un
+            // OR porque los dos conflictos son distintos para quien los lee -«ya tienes
+            // contrato» y «esa oferta ya se firmo»- y colapsarlos en un mensaje devuelve
+            // al cliente a adivinar cual de los dos le paso.
+            if (violates(exception, QUOTE_CONSTRAINT)) {
+                throw new QuoteAlreadyConvertedException(subscription.getQuoteId());
             }
             throw exception;
         }

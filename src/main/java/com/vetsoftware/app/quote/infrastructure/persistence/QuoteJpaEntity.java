@@ -13,14 +13,13 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 /**
- * Cabecera de la cotizacion con su detalle y sus respuestas.
+ * Cabecera de la cotizacion con su detalle.
  *
  * <p>
  * <b>company es NULABLE</b> y esa es la particularidad del bloque: se cotiza a
  * un prospecto que todavia no es empresa. Esta cabecera es la frontera de
- * tenant de {@code quote_lines} y {@code quote_answers}, que por eso no llevan
- * {@code company_id} -una FK compuesta con una columna nula del padre nunca se
- * comprobaria-.
+ * tenant de {@code quote_lines}, que por eso no lleva {@code company_id} -una
+ * FK compuesta con una columna nula del padre nunca se comprobaria-.
  *
  * <p>
  * <b>priceListId es una columna plana, no un {@code @ManyToOne}</b>, y tampoco
@@ -108,13 +107,23 @@ public class QuoteJpaEntity {
     @Column(name = "client_request_id", nullable = false, length = 64)
     private String clientRequestId;
 
-    @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
-    @JoinColumn(name = "quote_id", nullable = false)
-    private Set<QuoteLineJpaEntity> lines = new LinkedHashSet<>();
+    /**
+     * De que propuesta del asistente salio esta oferta (changeset 389). Sin
+     * {@code @ManyToOne} a proposito: es atribucion de embudo, nunca se navega
+     * hacia la propuesta desde aqui, y una asociacion meteria a esta rodaja en el
+     * grafo de alcanzabilidad que miran las reglas de aislamiento sin aportar nada.
+     *
+     * <p>
+     * Su clave foranea va {@code ON DELETE SET NULL}: cuando la retencion se lleve
+     * la propuesta, la cotizacion sigue viva y queda <em>desatribuida</em>, que es
+     * la respuesta honesta a «de que propuesta salio» y no un id que apunta a nada.
+     */
+    @Column(name = "ai_proposal_id")
+    private Long aiProposalId;
 
     @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     @JoinColumn(name = "quote_id", nullable = false)
-    private Set<QuoteAnswerJpaEntity> answers = new LinkedHashSet<>();
+    private Set<QuoteLineJpaEntity> lines = new LinkedHashSet<>();
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
@@ -285,6 +294,14 @@ public class QuoteJpaEntity {
         return clientRequestId;
     }
 
+    public Long getAiProposalId() {
+        return aiProposalId;
+    }
+
+    public void setAiProposalId(Long aiProposalId) {
+        this.aiProposalId = aiProposalId;
+    }
+
     public void setClientRequestId(String clientRequestId) {
         this.clientRequestId = clientRequestId;
     }
@@ -295,14 +312,6 @@ public class QuoteJpaEntity {
 
     public void setLines(Set<QuoteLineJpaEntity> lines) {
         this.lines = lines;
-    }
-
-    public Set<QuoteAnswerJpaEntity> getAnswers() {
-        return answers;
-    }
-
-    public void setAnswers(Set<QuoteAnswerJpaEntity> answers) {
-        this.answers = answers;
     }
 
     public LocalDateTime getCreatedDate() {

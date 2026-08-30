@@ -310,7 +310,8 @@ class GetPublicCatalogServiceTest {
         void no_publica_ningun_id_ni_la_fecha_de_caducidad() {
             assertThat(PublicCatalogDto.class.getRecordComponents())
                     .extracting(RecordComponent::getName).containsExactly("currency",
-                            "priceValidFrom", "modules", "capacities", "oneTimeItems", "packs");
+                            "priceValidFrom", "modules", "capacities", "oneTimeItems", "packs",
+                            "requirements");
         }
 
         @Test

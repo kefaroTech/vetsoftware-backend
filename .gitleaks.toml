@@ -35,6 +35,25 @@ regexTarget = "line"
 paths = ['''^src/main/resources/application-dev\.yml$''']
 regexes = ['''(?:Site key para el front|RECAPTCHA_SECRET):?\s*\$?\{?6LeIxAcT''']
 
+# El token publico de una propuesta son 43 caracteres de base64url, que es
+# exactamente la forma de una credencial: generic-api-key lo marca por entropia
+# (4,69) y ademas lo marca UNA SEGUNDA VEZ ya decodificado, porque el valor de
+# prueba es base64 valido y Gitleaks baja un nivel. Las dos mitades del regex
+# cubren esos dos hallazgos, que son el mismo literal visto de dos maneras.
+#
+# El valor es un senuelo declarado -decodifica a "foobarbazqux0123456789..."- y
+# vive en una prueba que precisamente afirma que el correo del enlace NO lleva
+# ni una palabra del cliente ni del modelo. Mismo criterio y misma forma que la
+# entrada de DECOY_OPAQUE_TOKEN de LogRedactorTest, unos bloques mas arriba:
+# acotado a un fichero y a un literal, nunca a la regla entera.
+[[allowlists]]
+description = "Synthetic proposal public token used only in the assistant link-email test."
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^src/test/java/com/vetsoftware/app/aiproposal/infrastructure/email/ResendProposalLinkEmailSenderTest\.java$''']
+regexes = ['''TOKEN\s*=\s*"(?:Zm9vYmFyYmF6cXV4|foobarbazqux)''']
+
 # ---------------------------------------------------------------------------
 # Reglas propias. Origen: INF-34 / kefaroTech/vetsoftware-infrastructure#123.
 #

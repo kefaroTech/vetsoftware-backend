@@ -22,7 +22,6 @@ import com.vetsoftware.app.quote.application.dto.QuoteLineDto;
 import com.vetsoftware.app.quote.application.port.out.CatalogItemQueryPort;
 import com.vetsoftware.app.quote.application.port.out.CatalogPriceQueryPort;
 import com.vetsoftware.app.quote.application.port.out.CompanyQueryPort;
-import com.vetsoftware.app.quote.application.port.out.ConfiguratorQuestionQueryPort;
 import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteNumberPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteRepository;
@@ -82,16 +81,13 @@ class CreateQuoteBundlePricingTest {
     private CatalogItemQueryPort catalogItemQueryPort;
     @Mock
     private CatalogPriceQueryPort catalogPriceQueryPort;
-    @Mock
-    private ConfiguratorQuestionQueryPort configuratorQuestionQueryPort;
 
     private CreateQuoteService service;
 
     @BeforeEach
     void crearServicio() {
         service = new CreateQuoteService(repository, quoteNumberPort, companyQueryPort,
-                priceListQueryPort, catalogItemQueryPort, catalogPriceQueryPort,
-                configuratorQuestionQueryPort, RELOJ);
+                priceListQueryPort, catalogItemQueryPort, catalogPriceQueryPort, RELOJ);
     }
 
     private static CatalogItemRef paquete() {
@@ -106,7 +102,7 @@ class CreateQuoteBundlePricingTest {
     private static CreateQuoteCommand comando(Long catalogItemId) {
         return new CreateQuoteCommand(CLIENT_REQUEST_ID, empresa().id(), null, null, null, null,
                 PRICE_LIST_ID, "MONTHLY", VIGENTE_HASTA, 0,
-                List.of(new QuoteLineCommand(catalogItemId, 1, BigDecimal.ZERO)), List.of());
+                List.of(new QuoteLineCommand(catalogItemId, 1, BigDecimal.ZERO)));
     }
 
     private void caminoFeliz() {

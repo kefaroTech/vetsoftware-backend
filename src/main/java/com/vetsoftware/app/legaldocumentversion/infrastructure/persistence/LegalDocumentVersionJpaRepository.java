@@ -17,6 +17,17 @@ public interface LegalDocumentVersionJpaRepository
      */
     Optional<LegalDocumentVersionJpaEntity> findByCodeAndSupersededAtIsNull(String code);
 
+    /**
+     * La version <strong>exacta</strong> que se le mostro al prospecto, por el par
+     * {@code (code, documentVersion)} que devuelve la casilla del front. Resolver
+     * "la vigente ahora" en su lugar dejaria la fila aceptada y la fila mostrada
+     * separadas en cuanto alguien publique una version entre que se pinta la
+     * pantalla y se envia el formulario, y una prueba de cumplimiento que prueba
+     * otra cosa es peor que no tenerla.
+     */
+    Optional<LegalDocumentVersionJpaEntity> findByCodeAndDocumentVersion(String code,
+            int documentVersion);
+
     Optional<LegalDocumentVersionJpaEntity> findByCodeAndContentHash(String code,
             String contentHash);
 
