@@ -9,6 +9,7 @@ import com.vetsoftware.app.legaldocumentversion.application.port.in.ListLegalDoc
 import com.vetsoftware.app.legaldocumentversion.application.port.in.PublishLegalDocumentVersionUseCase;
 import com.vetsoftware.app.legaldocumentversion.infrastructure.web.request.PublishLegalDocumentVersionRequest;
 import com.vetsoftware.app.legaldocumentversion.infrastructure.web.response.LegalDocumentVersionResponse;
+import com.vetsoftware.app.legaldocumentversion.infrastructure.web.response.PublicLegalDocumentResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -75,10 +76,19 @@ public class LegalDocumentVersionController {
      * {@link FindPublicLegalDocumentUseCase}, sin {@code companyId} y con
      * {@code @NoAuthorizationRequired}. Las otras tres operaciones de esta clase
      * siguen exigiendo identidad.
+     *
+     * <p>
+     * &#9940; <strong>Y por eso responde {@link PublicLegalDocumentResponse} y no
+     * {@link LegalDocumentVersionResponse}</strong>: aquella no lleva
+     * {@code publishedBySystemUserId}. Que esta ruta sea anonima significa que todo
+     * campo que devuelva es publico, y el id del administrador de plataforma que
+     * firmo la publicacion no le sirve de nada a quien lee el aviso de privacidad.
+     * Las otras tres operaciones si lo llevan, porque quien administra la
+     * plataforma necesita saber quien publico que.
      */
     @GetMapping("/{code}/current")
-    public LegalDocumentVersionResponse findCurrent(@PathVariable String code) {
-        return LegalDocumentVersionResponse.from(findCurrentUseCase.findCurrentByCode(code));
+    public PublicLegalDocumentResponse findCurrent(@PathVariable String code) {
+        return PublicLegalDocumentResponse.from(findCurrentUseCase.findCurrentByCode(code));
     }
 
     /**
