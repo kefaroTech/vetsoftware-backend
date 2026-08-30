@@ -17,6 +17,5 @@ import java.util.List;
  */
 public record CreateQuoteCommand(String clientRequestId, Long companyId, String prospectName,
         String prospectEmail, String prospectDocument, String prospectPhone, Long priceListId,
-        String billingCycle, LocalDate validUntil, int trialDays, List<QuoteLineCommand> lines,
-        List<QuoteAnswerCommand> answers) {
+        String billingCycle, LocalDate validUntil, int trialDays, List<QuoteLineCommand> lines) {
 }

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.vetsoftware.app.quote.domain.BillingCycle;
 import com.vetsoftware.app.quote.domain.CatalogItemRef;
 import com.vetsoftware.app.quote.domain.CatalogPriceRef;
-import com.vetsoftware.app.quote.domain.ConfiguratorQuestionRef;
 import com.vetsoftware.app.quote.domain.PriceListRef;
 import com.vetsoftware.app.quote.domain.QuoteItemType;
 import com.vetsoftware.app.quote.domain.TaxTreatment;
@@ -109,16 +108,12 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
     private static final String CODE_INTERNO = "TEST_MODULO_INTERNO";
     private static final String CODE_BORRADOR = "BORRADOR";
 
-    private static final Long PREGUNTA = 1990L;
-    private static final Long PREGUNTA_DESHABILITADA = 1991L;
-
     @PersistenceContext
     private EntityManager entityManager;
 
     private JpaCatalogQueryPorts.JpaCatalogItemQueryPort itemPort;
     private JpaCatalogQueryPorts.JpaPriceListQueryPort priceListPort;
     private JpaCatalogQueryPorts.JpaCatalogPriceQueryPort pricePort;
-    private JpaCatalogQueryPorts.JpaConfiguratorQuestionQueryPort questionPort;
     private JpaCatalogQueryPorts.JpaPublishedCatalogItemQueryPort publicadoPort;
 
     /** Resuelto, no sembrado: el articulo CORE llega del changeset 308. */
@@ -131,7 +126,6 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
         itemPort = new JpaCatalogQueryPorts.JpaCatalogItemQueryPort(entityManager);
         priceListPort = new JpaCatalogQueryPorts.JpaPriceListQueryPort(entityManager);
         pricePort = new JpaCatalogQueryPorts.JpaCatalogPriceQueryPort(entityManager);
-        questionPort = new JpaCatalogQueryPorts.JpaConfiguratorQuestionQueryPort(entityManager);
         publicadoPort = new JpaCatalogQueryPorts.JpaPublishedCatalogItemQueryPort(entityManager);
 
         articulo(ITEM_DEPRECATED, "RETIRADO", "Modulo retirado", "MODULE", null, "DEPRECATED",
@@ -160,11 +154,6 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
                 "100000.00", "0.00", "EXCLUDED", true);
         precio(PRECIO_DESHABILITADO, SchemaSeed.PRICE_LIST_ID, ITEM_DEPRECATED, "MONTHLY", 1, null,
                 0, "5000.00", "0.00", "EXEMPT", false);
-
-        // TEST_SELLS_PRODUCTS: el changeset 312 ya siembra SELLS_PRODUCTS, y el
-        // ON DUPLICATE KEY de pregunta() convertia la colision en un no-op.
-        pregunta(PREGUNTA, "TEST_SELLS_PRODUCTS", true);
-        pregunta(PREGUNTA_DESHABILITADA, "PREGUNTA_VIEJA", false);
 
         sembrarElCatalogoPublicable();
         entityManager.flush();
@@ -266,18 +255,6 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
                 .setParameter("tasa", new BigDecimal(taxRate))
                 .setParameter("tratamiento", taxTreatment).setParameter("enabled", enabled)
                 .executeUpdate();
-    }
-
-    private void pregunta(Long id, String code, boolean enabled) {
-        entityManager.createNativeQuery("""
-                INSERT INTO configurator_questions (id, code, question_text, help_text,
-                                                    answer_type, required, sort_order,
-                                                    created_date, enabled, version)
-                VALUES (:id, :code, '¿Vende productos?', NULL, 'BOOLEAN', true, 0,
-                        '2026-01-01 00:00:00', :enabled, 0)
-                ON DUPLICATE KEY UPDATE id = id
-                """).setParameter("id", id).setParameter("code", code)
-                .setParameter("enabled", enabled).executeUpdate();
     }
 
     @Nested
@@ -515,30 +492,6 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
             assertThat(pricePort.findAllTiers(SchemaSeed.PRICE_LIST_ID, ITEM_CAPACIDAD,
                     BillingCycle.MONTHLY)).first().extracting(CatalogPriceRef::includedQuantity)
                     .isEqualTo(2);
-        }
-    }
-
-    @Nested
-    @DisplayName("JpaConfiguratorQuestionQueryPort")
-    class Preguntas {
-
-        @Test
-        @DisplayName("lee el id y el código, que es lo único que se copia a la respuesta")
-        void lee_el_id_y_el_codigo() {
-            assertThat(questionPort.findById(PREGUNTA))
-                    .contains(new ConfiguratorQuestionRef(PREGUNTA, "TEST_SELLS_PRODUCTS"));
-        }
-
-        @Test
-        @DisplayName("una pregunta dada de baja ya no se puede congelar en una respuesta")
-        void una_pregunta_dada_de_baja_no_se_congela() {
-            assertThat(questionPort.findById(PREGUNTA_DESHABILITADA)).isEmpty();
-        }
-
-        @Test
-        @DisplayName("un id inexistente devuelve vacío")
-        void un_id_inexistente_devuelve_vacio() {
-            assertThat(questionPort.findById(-1L)).isEmpty();
         }
     }
 

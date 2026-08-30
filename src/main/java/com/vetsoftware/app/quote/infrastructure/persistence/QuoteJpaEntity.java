@@ -13,14 +13,13 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 /**
- * Cabecera de la cotizacion con su detalle y sus respuestas.
+ * Cabecera de la cotizacion con su detalle.
  *
  * <p>
  * <b>company es NULABLE</b> y esa es la particularidad del bloque: se cotiza a
  * un prospecto que todavia no es empresa. Esta cabecera es la frontera de
- * tenant de {@code quote_lines} y {@code quote_answers}, que por eso no llevan
- * {@code company_id} -una FK compuesta con una columna nula del padre nunca se
- * comprobaria-.
+ * tenant de {@code quote_lines}, que por eso no lleva {@code company_id} -una
+ * FK compuesta con una columna nula del padre nunca se comprobaria-.
  *
  * <p>
  * <b>priceListId es una columna plana, no un {@code @ManyToOne}</b>, y tampoco
@@ -111,10 +110,6 @@ public class QuoteJpaEntity {
     @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     @JoinColumn(name = "quote_id", nullable = false)
     private Set<QuoteLineJpaEntity> lines = new LinkedHashSet<>();
-
-    @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
-    @JoinColumn(name = "quote_id", nullable = false)
-    private Set<QuoteAnswerJpaEntity> answers = new LinkedHashSet<>();
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
@@ -295,14 +290,6 @@ public class QuoteJpaEntity {
 
     public void setLines(Set<QuoteLineJpaEntity> lines) {
         this.lines = lines;
-    }
-
-    public Set<QuoteAnswerJpaEntity> getAnswers() {
-        return answers;
-    }
-
-    public void setAnswers(Set<QuoteAnswerJpaEntity> answers) {
-        this.answers = answers;
     }
 
     public LocalDateTime getCreatedDate() {

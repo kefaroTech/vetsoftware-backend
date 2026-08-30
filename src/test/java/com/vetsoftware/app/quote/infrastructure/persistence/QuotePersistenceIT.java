@@ -102,7 +102,7 @@ class QuotePersistenceIT extends AbstractDataJpaTest {
             LocalDateTime creada) {
         Quote quote = Quote.create(numero, empresa, empresa == null ? "Prospecto Sur" : null, null,
                 null, null, SchemaSeed.PRICE_LIST_ID, BillingCycle.MONTHLY, vigenteHasta, 0, llave,
-                List.of(lineaNucleo()), List.of(), creada);
+                List.of(lineaNucleo()), creada);
         return repository.save(quote);
     }
 

@@ -508,19 +508,6 @@ class SelfServeQuoteServiceTest {
         }
 
         @Test
-        @DisplayName("no se copia ninguna respuesta del configurador")
-        void no_se_copia_ninguna_respuesta_del_configurador() {
-            when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));
-            elCatalogoPublicaLasDosLineas(TARIFA_VIGENTE);
-            elIssuerEmite();
-
-            servicio(RELOJ).execute(comando());
-
-            verify(issuer).issue(emitido.capture());
-            assertThat(emitido.getValue().answers()).isEmpty();
-        }
-
-        @Test
         @DisplayName("un cuerpo sin lineas produce una oferta sin lineas, no un NullPointer")
         void un_cuerpo_sin_lineas_no_revienta() {
             when(priceListQueryPort.findAllPublished()).thenReturn(List.of(vigente()));

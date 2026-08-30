@@ -3712,227 +3712,6 @@
         }
       }
     },
-    "/configurator/questions/{id}" : {
-      "get" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "findQuestion",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorQuestionResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "updateQuestion",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/UpdateConfiguratorQuestionRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorQuestionResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "deleteQuestion",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "No Content"
-          }
-        }
-      }
-    },
-    "/configurator/options/{id}" : {
-      "put" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "updateOption",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/UpdateConfiguratorOptionRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorOptionResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "deleteOption",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "No Content"
-          }
-        }
-      }
-    },
-    "/configurator/effects/{id}" : {
-      "put" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "updateEffect",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/UpdateConfiguratorEffectRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorEffectResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "deleteEffect",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "No Content"
-          }
-        }
-      }
-    },
-    "/configurator/effects/priorities" : {
-      "put" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "reorderEffects",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ReorderConfiguratorEffectsRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ConfiguratorEffectResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/company-tax-profile" : {
       "get" : {
         "tags" : [ "company-tax-profile-controller" ],
@@ -12165,188 +11944,6 @@
         }
       }
     },
-    "/configurator/resolve" : {
-      "post" : {
-        "tags" : [ "configurator-controller" ],
-        "operationId" : "resolve_1",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ResolveConfiguratorSelectionRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorSelectionResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/configurator/questions" : {
-      "get" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "listQuestions",
-        "parameters" : [ {
-          "name" : "page",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 0
-          }
-        }, {
-          "name" : "pageSize",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 20
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/PageResponseConfiguratorQuestionResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "createQuestion",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/CreateConfiguratorQuestionRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "201" : {
-            "description" : "Created",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorQuestionResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/configurator/options" : {
-      "post" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "createOption",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/CreateConfiguratorOptionRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "201" : {
-            "description" : "Created",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorOptionResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/configurator/effects" : {
-      "get" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "listEffects",
-        "parameters" : [ {
-          "name" : "page",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 0
-          }
-        }, {
-          "name" : "pageSize",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 20
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/PageResponseConfiguratorEffectResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "createEffect",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/CreateConfiguratorEffectRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "201" : {
-            "description" : "Created",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ConfiguratorEffectResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/company-contact-channels" : {
       "get" : {
         "tags" : [ "company-contact-channel-controller" ],
@@ -14408,7 +14005,7 @@
     "/system/payment-reversal-requests/{id}/outcome" : {
       "patch" : {
         "tags" : [ "system-payment-reversal-request-controller" ],
-        "operationId" : "resolve_2",
+        "operationId" : "resolve_1",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -17031,7 +16628,7 @@
     "/withholding-rate-rules/effective" : {
       "get" : {
         "tags" : [ "withholding-rate-rule-controller" ],
-        "operationId" : "resolve_3",
+        "operationId" : "resolve_2",
         "parameters" : [ {
           "name" : "withholdingType",
           "in" : "query",
@@ -19270,7 +18867,7 @@
     "/system/account-mappings/effective" : {
       "get" : {
         "tags" : [ "system-account-mapping-controller" ],
-        "operationId" : "resolve_4",
+        "operationId" : "resolve_3",
         "parameters" : [ {
           "name" : "mappingKind",
           "in" : "query",
@@ -23526,57 +23123,6 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ConsultationResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/configurator/questions/{questionId}/options" : {
-      "get" : {
-        "tags" : [ "configurator-admin-controller" ],
-        "operationId" : "listOptions",
-        "parameters" : [ {
-          "name" : "questionId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ConfiguratorOptionResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/configurator/questionnaire" : {
-      "get" : {
-        "tags" : [ "configurator-controller" ],
-        "operationId" : "questionnaire",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/QuestionnaireQuestionResponse"
-                  }
                 }
               }
             }
@@ -28642,228 +28188,6 @@
           }
         },
         "required" : [ "createdDate", "description", "enabled", "id", "name" ]
-      },
-      "UpdateConfiguratorQuestionRequest" : {
-        "type" : "object",
-        "properties" : {
-          "questionText" : {
-            "type" : "string",
-            "maxLength" : 255,
-            "minLength" : 0
-          },
-          "helpText" : {
-            "type" : "string",
-            "maxLength" : 500,
-            "minLength" : 0
-          },
-          "answerType" : {
-            "type" : "string",
-            "enum" : [ "SINGLE", "MULTI", "NUMBER", "BOOLEAN" ]
-          },
-          "parentOptionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "required" : {
-            "type" : "boolean"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "answerType", "questionText", "required", "sortOrder" ]
-      },
-      "ConfiguratorOptionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "helpText" : {
-            "type" : "string"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "createdDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "enabled" : {
-            "type" : "boolean"
-          }
-        },
-        "required" : [ "code", "createdDate", "enabled", "id", "label", "questionId", "sortOrder" ]
-      },
-      "ConfiguratorQuestionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "questionText" : {
-            "type" : "string"
-          },
-          "helpText" : {
-            "type" : "string"
-          },
-          "answerType" : {
-            "type" : "string"
-          },
-          "parentOptionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "required" : {
-            "type" : "boolean"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "createdDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "enabled" : {
-            "type" : "boolean"
-          },
-          "options" : {
-            "type" : "array",
-            "description" : "Opciones activas de la pregunta. Vacía en las NUMBER, que no admiten ninguna",
-            "items" : {
-              "$ref" : "#/components/schemas/ConfiguratorOptionResponse"
-            }
-          }
-        },
-        "required" : [ "answerType", "code", "createdDate", "enabled", "id", "options", "questionText", "required", "sortOrder" ]
-      },
-      "UpdateConfiguratorOptionRequest" : {
-        "type" : "object",
-        "properties" : {
-          "label" : {
-            "type" : "string",
-            "maxLength" : 255,
-            "minLength" : 0
-          },
-          "helpText" : {
-            "type" : "string",
-            "maxLength" : 500,
-            "minLength" : 0
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "label", "sortOrder" ]
-      },
-      "UpdateConfiguratorEffectRequest" : {
-        "type" : "object",
-        "properties" : {
-          "catalogItemId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "effect" : {
-            "type" : "string",
-            "enum" : [ "ADD", "REMOVE", "SET_QUANTITY", "QUANTITY_FROM_ANSWER" ]
-          },
-          "quantity" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "catalogItemId", "effect" ]
-      },
-      "ConfiguratorEffectResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "optionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "catalogItemId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "effect" : {
-            "type" : "string"
-          },
-          "quantity" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "priority" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "Orden de aplicacion, ascendente. A igualdad, desempata el id."
-          },
-          "createdDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "enabled" : {
-            "type" : "boolean"
-          }
-        },
-        "required" : [ "catalogItemId", "createdDate", "effect", "enabled", "id", "priority" ]
-      },
-      "EffectPriorityRequest" : {
-        "type" : "object",
-        "properties" : {
-          "effectId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "priority" : {
-            "type" : "integer",
-            "format" : "int32",
-            "maximum" : 9999,
-            "minimum" : 0
-          }
-        },
-        "required" : [ "effectId", "priority" ]
-      },
-      "ReorderConfiguratorEffectsRequest" : {
-        "type" : "object",
-        "properties" : {
-          "priorities" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/EffectPriorityRequest"
-            },
-            "minItems" : 1
-          }
-        },
-        "required" : [ "priorities" ]
       },
       "UpdateCompanyTaxProfileRequest" : {
         "type" : "object",
@@ -34672,34 +33996,9 @@
               "$ref" : "#/components/schemas/QuoteLineRequest"
             },
             "minItems" : 1
-          },
-          "answers" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuoteAnswerRequest"
-            }
           }
         },
         "required" : [ "billingCycle", "clientRequestId", "lines", "priceListId", "validUntil" ]
-      },
-      "QuoteAnswerRequest" : {
-        "type" : "object",
-        "properties" : {
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "optionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "answerValue" : {
-            "type" : "string",
-            "maxLength" : 255,
-            "minLength" : 0
-          }
-        },
-        "required" : [ "questionId" ]
       },
       "QuoteLineRequest" : {
         "type" : "object",
@@ -34722,32 +34021,6 @@
           }
         },
         "required" : [ "catalogItemId" ]
-      },
-      "QuoteAnswerResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "optionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "questionCode" : {
-            "type" : "string"
-          },
-          "answerValue" : {
-            "type" : "string"
-          },
-          "enabled" : {
-            "type" : "boolean"
-          }
-        }
       },
       "QuoteLineResponse" : {
         "type" : "object",
@@ -34900,12 +34173,6 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/QuoteLineResponse"
-            }
-          },
-          "answers" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuoteAnswerResponse"
             }
           },
           "createdDate" : {
@@ -38096,152 +37363,6 @@
           }
         },
         "required" : [ "description", "name" ]
-      },
-      "ResolveConfiguratorSelectionRequest" : {
-        "type" : "object",
-        "properties" : {
-          "selectedOptionIds" : {
-            "type" : "array",
-            "items" : {
-              "type" : "integer",
-              "format" : "int64"
-            },
-            "uniqueItems" : true
-          },
-          "numericAnswers" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "integer",
-              "format" : "int32"
-            }
-          },
-          "billingCycle" : {
-            "type" : "string",
-            "enum" : [ "MONTHLY", "ANNUAL" ],
-            "minLength" : 1,
-            "pattern" : "MONTHLY|ANNUAL"
-          }
-        },
-        "required" : [ "billingCycle" ]
-      },
-      "ConfiguratorSelectionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "items" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/SelectedItemResponse"
-            }
-          }
-        },
-        "required" : [ "items" ]
-      },
-      "SelectedItemResponse" : {
-        "type" : "object",
-        "properties" : {
-          "code" : {
-            "type" : "string",
-            "description" : "Rotulo del articulo; el mismo que aceptan /catalog y /quotes/self-serve"
-          },
-          "quantity" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "code", "quantity" ]
-      },
-      "CreateConfiguratorQuestionRequest" : {
-        "type" : "object",
-        "properties" : {
-          "code" : {
-            "type" : "string",
-            "maxLength" : 50,
-            "minLength" : 0
-          },
-          "questionText" : {
-            "type" : "string",
-            "maxLength" : 255,
-            "minLength" : 0
-          },
-          "helpText" : {
-            "type" : "string",
-            "maxLength" : 500,
-            "minLength" : 0
-          },
-          "answerType" : {
-            "type" : "string",
-            "enum" : [ "SINGLE", "MULTI", "NUMBER", "BOOLEAN" ]
-          },
-          "parentOptionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "required" : {
-            "type" : "boolean"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "answerType", "code", "questionText", "required", "sortOrder" ]
-      },
-      "CreateConfiguratorOptionRequest" : {
-        "type" : "object",
-        "properties" : {
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "code" : {
-            "type" : "string",
-            "maxLength" : 50,
-            "minLength" : 0
-          },
-          "label" : {
-            "type" : "string",
-            "maxLength" : 255,
-            "minLength" : 0
-          },
-          "helpText" : {
-            "type" : "string",
-            "maxLength" : 500,
-            "minLength" : 0
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "code", "label", "questionId", "sortOrder" ]
-      },
-      "CreateConfiguratorEffectRequest" : {
-        "type" : "object",
-        "properties" : {
-          "optionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "questionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "catalogItemId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "effect" : {
-            "type" : "string",
-            "enum" : [ "ADD", "REMOVE", "SET_QUANTITY", "QUANTITY_FROM_ANSWER" ]
-          },
-          "quantity" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "catalogItemId", "effect" ]
       },
       "CreateCompanyTaxProfileRequest" : {
         "type" : "object",
@@ -44002,122 +43123,6 @@
           }
         }
       },
-      "PageResponseConfiguratorQuestionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "content" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ConfiguratorQuestionResponse"
-            }
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "totalElements" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
-      "QuestionnaireOptionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "helpText" : {
-            "type" : "string"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "code", "id", "label", "sortOrder" ]
-      },
-      "QuestionnaireQuestionResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "questionText" : {
-            "type" : "string"
-          },
-          "helpText" : {
-            "type" : "string"
-          },
-          "answerType" : {
-            "type" : "string"
-          },
-          "parentOptionId" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "required" : {
-            "type" : "boolean"
-          },
-          "sortOrder" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "options" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuestionnaireOptionResponse"
-            }
-          }
-        },
-        "required" : [ "answerType", "code", "id", "options", "questionText", "required", "sortOrder" ]
-      },
-      "PageResponseConfiguratorEffectResponse" : {
-        "type" : "object",
-        "properties" : {
-          "content" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ConfiguratorEffectResponse"
-            }
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "totalElements" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
       "PageResponseCompanyContactChannelResponse" : {
         "type" : "object",
         "properties" : {
@@ -44373,6 +43378,20 @@
         },
         "required" : [ "code", "componentCodes", "name" ]
       },
+      "PublicCatalogRequirementResponse" : {
+        "type" : "object",
+        "properties" : {
+          "itemCode" : {
+            "type" : "string",
+            "description" : "Code del articulo que el cliente elige"
+          },
+          "requiredItemCode" : {
+            "type" : "string",
+            "description" : "Code del articulo que se le anadira. Puede no aparecer en modules/capacities/oneTimeItems si no tiene precio en la tarifa vigente: el servidor lo anade igual"
+          }
+        },
+        "required" : [ "itemCode", "requiredItemCode" ]
+      },
       "PublicCatalogResponse" : {
         "type" : "object",
         "properties" : {
@@ -44412,9 +43431,16 @@
             "items" : {
               "$ref" : "#/components/schemas/PublicCatalogPackResponse"
             }
+          },
+          "requirements" : {
+            "type" : "array",
+            "description" : "Grafo de requisitos: arcos DIRECTOS «si eliges itemCode, se anade requiredItemCode». No es el cierre transitivo; recorrelos en anchura si lo necesitas",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicCatalogRequirementResponse"
+            }
           }
         },
-        "required" : [ "capacities", "modules", "oneTimeItems", "packs" ]
+        "required" : [ "capacities", "modules", "oneTimeItems", "packs", "requirements" ]
       },
       "PageResponseCatalogPriceResponse" : {
         "type" : "object",

@@ -66,28 +66,13 @@ public final class PublicRoutes {
             new Route(HttpMethod.GET, "/species"), new Route(HttpMethod.GET, "/animal-colors"),
             new Route(HttpMethod.GET, "/consultation-types"), new Route(HttpMethod.GET, "/modules"),
             new Route(HttpMethod.GET, "/sub-modules"), new Route(HttpMethod.GET, "/spa-types"),
-            // El asistente de venta lo lee un prospecto que todavia no es cliente: si
-            // exigiera token no se podria cotizar antes de existir como usuario. Van
-            // las DOS mitades del asistente —leer el cuestionario y resolver lo
-            // respondido—: abrir solo la primera deja al prospecto con un 401 en el
-            // paso siguiente, que es el unico para el que la primera se abrio.
-            // Los patrones son exactos y NO /configurator/**, que abriria tambien los
-            // endpoints SYSTEM de administracion del cuestionario que cuelgan del mismo
-            // prefijo.
-            //
-            // /configurator/resolve es un POST anonimo, asi que lleva su propio limite
-            // por IP en LoginRateLimitFilter: LoginRateLimitFilterTest exige que toda
-            // ruta publica POST este limitada, y esa prueba es lo que hace de esto una
-            // invariante y no una buena intencion.
-            new Route(HttpMethod.GET, "/configurator/questionnaire"),
-            new Route(HttpMethod.POST, "/configurator/resolve"),
             // El catalogo comercial con precio, que es lo que la landing publica
             // necesita para vender. Mismo publico y mismo motivo que el asistente: un
             // prospecto sin cuenta tiene que poder ver cuanto cuesta antes de dar su
             // NIT, y hasta ahora no habia ningun endpoint que se lo dijera -los tres
             // de catalogo estan cerrados a hasRole('SYSTEM')-.
             //
-            // Patron literal y NO /plans/**, por lo mismo que /configurator: el mismo
+            // Patron literal y NO /plans/**: el mismo
             // prefijo acabara colgando la administracion de planes, y un comodin la
             // abriria al mundo sin que nadie lo vea en el diff.
             //
@@ -110,7 +95,7 @@ public final class PublicRoutes {
             // UndeclaredFields falla en cuanto la respuesta trae un campo que el front no
             // declara. Un recurso nuevo es estrictamente aditivo.
             //
-            // Patron literal y NO /catalog/**, por lo mismo que /plans y /configurator.
+            // Patron literal y NO /catalog/**, por lo mismo que /plans.
             // Ojo: /catalog-items y /catalog-prices son OTRAS rutas, cerradas a
             // hasRole('SYSTEM'), y un comodin sobre este prefijo no las alcanzaria por
             // AntPathMatcher pero si invitaria al proximo a escribirlo.
@@ -144,8 +129,8 @@ public final class PublicRoutes {
             // Se listan una a una, con metodo explicito y patron literal. /platform/**
             // NO vale: el mismo prefijo acabara colgando endpoints SYSTEM de
             // administracion de plataforma, y un comodin los abriria al mundo sin que
-            // nadie lo vea en el diff. Es el razonamiento que ya dejo /configurator con
-            // sus dos rutas exactas en vez de /configurator/**.
+            // nadie lo vea en el diff. Es el razonamiento que ya dejo /plans y /catalog
+            // con su ruta exacta en vez de un comodin.
             //
             // Los cuatro POST llevan limite propio en LoginRateLimitFilter —el test
             // toda_ruta_publica_post_esta_limitada lo exige—. Los dos GET de validacion

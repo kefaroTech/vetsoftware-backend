@@ -4,7 +4,6 @@ import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.infrastructure.web.PageResponse;
 import com.vetsoftware.app.quote.application.command.AcceptQuoteCommand;
 import com.vetsoftware.app.quote.application.command.CreateQuoteCommand;
-import com.vetsoftware.app.quote.application.command.QuoteAnswerCommand;
 import com.vetsoftware.app.quote.application.command.QuoteLineCommand;
 import com.vetsoftware.app.quote.application.command.RejectQuoteCommand;
 import com.vetsoftware.app.quote.application.command.PreviewQuoteCommand;
@@ -12,7 +11,6 @@ import com.vetsoftware.app.quote.application.command.SelfServeQuoteCommand;
 import com.vetsoftware.app.quote.application.command.SelfServeQuoteLineCommand;
 import com.vetsoftware.app.quote.application.command.SendQuoteCommand;
 import com.vetsoftware.app.quote.application.dto.CompanySummaryDto;
-import com.vetsoftware.app.quote.application.dto.QuoteAnswerDto;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
 import com.vetsoftware.app.quote.application.dto.QuotePreviewDto;
 import com.vetsoftware.app.quote.application.dto.QuotePreviewLineDto;
@@ -33,13 +31,11 @@ import com.vetsoftware.app.quote.application.port.in.SelfServeQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.in.SendQuoteUseCase;
 import com.vetsoftware.app.quote.infrastructure.web.request.AcceptQuoteRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.CreateQuoteRequest;
-import com.vetsoftware.app.quote.infrastructure.web.request.QuoteAnswerRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.QuoteLineRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.SelfServeQuoteLineRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.PreviewQuoteRequest;
 import com.vetsoftware.app.quote.infrastructure.web.request.SelfServeQuoteRequest;
 import com.vetsoftware.app.quote.infrastructure.web.response.CompanySummary;
-import com.vetsoftware.app.quote.infrastructure.web.response.QuoteAnswerResponse;
 import com.vetsoftware.app.quote.infrastructure.web.response.QuoteLineResponse;
 import com.vetsoftware.app.quote.infrastructure.web.response.QuotePreviewLineResponse;
 import com.vetsoftware.app.quote.infrastructure.web.response.QuotePreviewResponse;
@@ -120,7 +116,7 @@ public class QuoteController {
                 authz.currentCompanyIdOrNull(), request.prospectName(), request.prospectEmail(),
                 request.prospectDocument(), request.prospectPhone(), request.priceListId(),
                 request.billingCycle(), request.validUntil(), request.trialDays(),
-                toLineCommands(request.lines()), toAnswerCommands(request.answers()))));
+                toLineCommands(request.lines()))));
     }
 
     /**
@@ -307,14 +303,6 @@ public class QuoteController {
                         .toList();
     }
 
-    private static List<QuoteAnswerCommand> toAnswerCommands(List<QuoteAnswerRequest> answers) {
-        return answers == null
-                ? List.of()
-                : answers.stream().map(
-                        a -> new QuoteAnswerCommand(a.questionId(), a.optionId(), a.answerValue()))
-                        .toList();
-    }
-
     private static QuoteResponse toResponse(QuoteDto dto) {
         return new QuoteResponse(dto.id(), dto.quoteNumber(), toCompanySummary(dto.company()),
                 dto.prospectName(), dto.prospectEmail(), dto.prospectDocument(),
@@ -323,7 +311,6 @@ public class QuoteController {
                 dto.validUntil(), dto.trialDays(), dto.acceptedAt(), dto.acceptedByEmail(),
                 dto.acceptedIp(), dto.clientRequestId(),
                 dto.lines().stream().map(QuoteController::toLineResponse).toList(),
-                dto.answers().stream().map(QuoteController::toAnswerResponse).toList(),
                 dto.createdDate(), dto.enabled());
     }
 
@@ -346,10 +333,5 @@ public class QuoteController {
                 dto.grossAmount(), dto.discountPercent(), dto.discountAmount(),
                 dto.discountIsConditional(), dto.taxRate(), dto.taxTreatment(), dto.taxableBase(),
                 dto.taxAmount(), dto.lineTotal(), dto.enabled());
-    }
-
-    private static QuoteAnswerResponse toAnswerResponse(QuoteAnswerDto dto) {
-        return new QuoteAnswerResponse(dto.id(), dto.questionId(), dto.optionId(),
-                dto.questionCode(), dto.answerValue(), dto.enabled());
     }
 }

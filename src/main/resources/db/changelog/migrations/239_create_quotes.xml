@@ -6,7 +6,7 @@
 
     <!-- Modelo de suscripciones, fase 3 (suscripciones-tablas.md #10). company_id es NULABLE a
          propósito: un prospecto que aún no es empresa no tiene compañía (suscripciones-modelo.md
-         §4.7). quotes es la frontera de tenant de quote_lines/quote_answers, que cuelgan de aquí con
+         §4.7). quotes es la frontera de tenant de quote_lines, que cuelga de aquí con
          FK simple y sin company_id propio. ix_quotes_expiring NO empieza por company_id: es un
          barrido de plataforma, no una consulta de un tenant (declarado, no un olvido). -->
     <changeSet id="239_create_quotes" author="orlando">

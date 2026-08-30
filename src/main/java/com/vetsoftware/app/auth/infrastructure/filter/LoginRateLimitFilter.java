@@ -83,9 +83,8 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     // y acota lo que cuesta el endpoint, que lee el cuestionario entero dos veces
     // por
     // llamada.
-    // La calculadora publica de precio. Mismo perfil que /configurator/resolve: es
-    // una lectura anonima, cara en CPU pero sin correo ni token que proteger, asi
-    // que
+    // La calculadora publica de precio: es una lectura anonima, cara en CPU pero
+    // sin correo ni token que proteger, asi que
     // el limite es de higiene -evitar que alguien la use de bomba de consultas- y
     // no
     // de fuerza bruta. Sin clave de cuerpo: no hay ningun campo que identifique a
@@ -93,10 +92,6 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     private static final RouteLimit QUOTE_PREVIEW_LIMIT = new RouteLimit("quote-preview-rl:",
             "/quotes/preview", 60, Duration.ofMinutes(1), "QUOTE_PREVIEW_RATE_LIMITED",
             "Too many price preview requests. Try again later.", List.of());
-    private static final RouteLimit CONFIGURATOR_RESOLVE_LIMIT = new RouteLimit(
-            "configurator-resolve-rl:", "/configurator/resolve", 60, Duration.ofMinutes(1),
-            "CONFIGURATOR_RESOLVE_RATE_LIMITED", "Too many configurator requests. Try again later.",
-            List.of());
     // Alta de superadministradores de plataforma (#360). Los cuatro POST son
     // anonimos y
     // su desenlace es una cuenta con control total sobre la plataforma, asi que
@@ -222,8 +217,6 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             return RESET_PASSWORD_LIMIT;
         if (uri.equals(VERIFY_EMAIL_LIMIT.path()))
             return VERIFY_EMAIL_LIMIT;
-        if (uri.equals(CONFIGURATOR_RESOLVE_LIMIT.path()))
-            return CONFIGURATOR_RESOLVE_LIMIT;
         // equals y no startsWith: /quotes es el prefijo del embudo comercial entero,
         // que
         // es territorio autenticado. Solo /quotes/preview es publico.

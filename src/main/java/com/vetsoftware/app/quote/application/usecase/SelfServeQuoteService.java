@@ -145,7 +145,7 @@ public class SelfServeQuoteService implements SelfServeQuoteUseCase {
         return issuer.issue(new CreateQuoteCommand(command.clientRequestId(), command.companyId(),
                 null, null, null, null, tarifa.id(), command.billingCycle(),
                 today.plusDays(VIGENCIA_DIAS), SIN_PRUEBA_EN_CABECERA,
-                traducirCodigos(command, tarifa, ciclo), List.of()));
+                traducirCodigos(command, tarifa, ciclo)));
     }
 
     /**

@@ -3,7 +3,6 @@ package com.vetsoftware.app.quote.infrastructure.persistence;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.quote.domain.CompanyRef;
 import com.vetsoftware.app.quote.domain.Quote;
-import com.vetsoftware.app.quote.domain.QuoteAnswer;
 import com.vetsoftware.app.quote.domain.QuoteLine;
 import com.vetsoftware.app.quote.domain.QuoteSummary;
 import java.util.Comparator;
@@ -44,7 +43,6 @@ public class QuoteJpaMapper {
         entity.setVersion(quote.getVersion());
         entity.setEnabled(quote.isEnabled());
         entity.setLines(toJpaLines(quote.getLines()));
-        entity.setAnswers(toJpaAnswers(quote.getAnswers()));
         return entity;
     }
 
@@ -78,25 +76,9 @@ public class QuoteJpaMapper {
         return result;
     }
 
-    private static Set<QuoteAnswerJpaEntity> toJpaAnswers(List<QuoteAnswer> answers) {
-        Set<QuoteAnswerJpaEntity> result = new LinkedHashSet<>();
-        for (QuoteAnswer answer : answers) {
-            QuoteAnswerJpaEntity entity = new QuoteAnswerJpaEntity();
-            entity.setId(answer.getId());
-            entity.setQuestionId(answer.getQuestionId());
-            entity.setOptionId(answer.getOptionId());
-            entity.setQuestionCode(answer.getQuestionCode());
-            entity.setAnswerValue(answer.getAnswerValue());
-            entity.setCreatedDate(answer.getCreatedDate());
-            entity.setEnabled(answer.isEnabled());
-            result.add(entity);
-        }
-        return result;
-    }
-
     /**
-     * Camino de lectura: el {@code @EntityGraph} ya hidrato la empresa y las dos
-     * colecciones.
+     * Camino de lectura: el {@code @EntityGraph} ya hidrato la empresa y las
+     * lineas.
      */
     public Quote toDomain(QuoteJpaEntity entity) {
         return toDomain(entity, companyRefOf(entity.getCompany()));
@@ -115,8 +97,7 @@ public class QuoteJpaMapper {
                 entity.getTotalAmount(), entity.getStatus(), entity.getValidUntil(),
                 entity.getTrialDays(), entity.getAcceptedAt(), entity.getAcceptedByEmail(),
                 entity.getAcceptedIp(), entity.getClientRequestId(), entity.getCreatedDate(),
-                entity.getVersion(), entity.isEnabled(), toDomainLines(entity.getLines()),
-                toDomainAnswers(entity.getAnswers()));
+                entity.getVersion(), entity.isEnabled(), toDomainLines(entity.getLines()));
     }
 
     /**
@@ -155,14 +136,5 @@ public class QuoteJpaMapper {
                 e.isDiscountIsConditional(), e.getTaxRate(), e.getTaxTreatment(), e.getTaxAmount(),
                 e.getLineTotal(), e.getCreatedDate(), e.isEnabled()))
                 .sorted(Comparator.comparingInt(QuoteLine::getLineNumber)).toList();
-    }
-
-    private static List<QuoteAnswer> toDomainAnswers(Set<QuoteAnswerJpaEntity> answers) {
-        return answers.stream()
-                .map(e -> new QuoteAnswer(e.getId(), e.getQuestionId(), e.getOptionId(),
-                        e.getQuestionCode(), e.getAnswerValue(), e.getCreatedDate(), e.isEnabled()))
-                .sorted(Comparator.comparing(QuoteAnswer::getQuestionCode)
-                        .thenComparing(a -> a.getId() == null ? 0L : a.getId()))
-                .toList();
     }
 }

@@ -111,7 +111,7 @@ class QuoteTest {
                     PRICE_LIST_ID, BillingCycle.MONTHLY, new BigDecimal("100000.00"),
                     new BigDecimal("0.00"), new BigDecimal("19000.00"), new BigDecimal("999999.00"),
                     QuoteStatus.SENT, VIGENTE_HASTA, 0, null, null, null, CLIENT_REQUEST_ID, AHORA,
-                    1L, true, lineas, List.of())).isInstanceOf(QuoteTotalsMismatchException.class)
+                    1L, true, lineas)).isInstanceOf(QuoteTotalsMismatchException.class)
                     .hasMessageContaining("totalAmount");
         }
 
@@ -124,7 +124,7 @@ class QuoteTest {
                     PRICE_LIST_ID, BillingCycle.MONTHLY, new BigDecimal("100000.00"),
                     new BigDecimal("0.00"), new BigDecimal("1.00"), new BigDecimal("119000.00"),
                     QuoteStatus.SENT, VIGENTE_HASTA, 0, null, null, null, CLIENT_REQUEST_ID, AHORA,
-                    1L, true, lineas, List.of())).isInstanceOf(QuoteTotalsMismatchException.class)
+                    1L, true, lineas)).isInstanceOf(QuoteTotalsMismatchException.class)
                     .hasMessageContaining("taxAmount");
         }
     }
@@ -138,8 +138,7 @@ class QuoteTest {
         void exige_empresa_o_prospecto() {
             assertThatThrownBy(() -> Quote.create(NUMERO, null, null, null, null, null,
                     PRICE_LIST_ID, BillingCycle.MONTHLY, VIGENTE_HASTA, 0, CLIENT_REQUEST_ID,
-                    List.of(lineaModulo()), List.of(), AHORA))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    List.of(lineaModulo()), AHORA)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("company or a prospect name");
         }
 
@@ -148,7 +147,7 @@ class QuoteTest {
         void exige_al_menos_una_linea() {
             assertThatThrownBy(() -> Quote.create(NUMERO, empresa(), null, null, null, null,
                     PRICE_LIST_ID, BillingCycle.MONTHLY, VIGENTE_HASTA, 0, CLIENT_REQUEST_ID,
-                    List.of(), List.of(), AHORA)).isInstanceOf(IllegalArgumentException.class)
+                    List.of(), AHORA)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("at least one line");
         }
 
@@ -183,8 +182,7 @@ class QuoteTest {
         void exige_valid_until() {
             assertThatThrownBy(() -> Quote.create(NUMERO, empresa(), null, null, null, null,
                     PRICE_LIST_ID, BillingCycle.MONTHLY, null, 0, CLIENT_REQUEST_ID,
-                    List.of(lineaModulo()), List.of(), AHORA))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    List.of(lineaModulo()), AHORA)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("validUntil is required");
         }
 
@@ -193,8 +191,7 @@ class QuoteTest {
         void exige_client_request_id() {
             assertThatThrownBy(() -> Quote.create(NUMERO, empresa(), null, null, null, null,
                     PRICE_LIST_ID, BillingCycle.MONTHLY, VIGENTE_HASTA, 0, "  ",
-                    List.of(lineaModulo()), List.of(), AHORA))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    List.of(lineaModulo()), AHORA)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("clientRequestId is required");
         }
 
@@ -203,8 +200,7 @@ class QuoteTest {
         void rechaza_dias_de_prueba_negativos() {
             assertThatThrownBy(() -> Quote.create(NUMERO, empresa(), null, null, null, null,
                     PRICE_LIST_ID, BillingCycle.MONTHLY, VIGENTE_HASTA, -1, CLIENT_REQUEST_ID,
-                    List.of(lineaModulo()), List.of(), AHORA))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    List.of(lineaModulo()), AHORA)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("trialDays cannot be negative");
         }
 
@@ -217,8 +213,7 @@ class QuoteTest {
                     PRICE_LIST_ID, BillingCycle.MONTHLY, new BigDecimal("100000.00"),
                     new BigDecimal("0.00"), new BigDecimal("19000.00"), new BigDecimal("119000.00"),
                     QuoteStatus.ACCEPTED, VIGENTE_HASTA, 0, null, null, null, CLIENT_REQUEST_ID,
-                    AHORA, 1L, true, lineas, List.of()))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    AHORA, 1L, true, lineas)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("acceptedAt is required");
         }
     }
@@ -298,7 +293,7 @@ class QuoteTest {
                     BillingCycle.MONTHLY, new BigDecimal("100000.00"), new BigDecimal("0.00"),
                     new BigDecimal("19000.00"), new BigDecimal("119000.00"), desde, VIGENTE_HASTA,
                     0, desde == QuoteStatus.ACCEPTED ? AHORA : null, null, null, CLIENT_REQUEST_ID,
-                    AHORA, 1L, true, List.of(lineaModulo()), List.of());
+                    AHORA, 1L, true, List.of(lineaModulo()));
 
             assertThatThrownBy(quote::reject)
                     .isInstanceOf(InvalidQuoteStatusTransitionException.class);

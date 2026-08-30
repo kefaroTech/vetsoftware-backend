@@ -44,17 +44,6 @@ import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundException;
-import com.vetsoftware.app.configurator.domain.ConditionalQuestionCycleException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorCodeAlreadyExistsException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorEffectAlreadyExistsException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorEffectNotFoundException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorOptionNotFoundException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorQuestionHasActiveChildrenException;
-import com.vetsoftware.app.configurator.domain.ConfiguratorQuestionNotFoundException;
-import com.vetsoftware.app.configurator.domain.MissingRequiredAnswerException;
-import com.vetsoftware.app.configurator.domain.NumberQuestionCannotHaveOptionsException;
-import com.vetsoftware.app.configurator.domain.QuantityFromAnswerRequiresNumberQuestionException;
-import com.vetsoftware.app.configurator.domain.UnreachableAnswerException;
 import com.vetsoftware.app.consultation.domain.ConsultationHasActiveChildrenException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeHasActiveChildrenException;
@@ -418,10 +407,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             CashSessionNotFoundException.class, SupplierNotFoundException.class,
             PurchaseOrderNotFoundException.class, GoodsReceiptNotFoundException.class,
             SupplierInvoiceNotFoundException.class, PetshopCatalogNotFoundException.class,
-            ConfiguratorQuestionNotFoundException.class, ConfiguratorOptionNotFoundException.class,
-            ConfiguratorEffectNotFoundException.class, PriceListNotFoundException.class,
-            CatalogPriceNotFoundException.class, QuoteNotFoundException.class,
-            CatalogItemNotFoundException.class, CatalogItemSubModuleNotFoundException.class,
+            PriceListNotFoundException.class, CatalogPriceNotFoundException.class,
+            QuoteNotFoundException.class, CatalogItemNotFoundException.class,
+            CatalogItemSubModuleNotFoundException.class,
             CatalogItemDependencyNotFoundException.class, BundleComponentNotFoundException.class,
             CompanyEntitlementNotFoundException.class, CompanyCapacityNotFoundException.class,
             SubscriptionNotFoundException.class, SubscriptionItemNotFoundException.class,
@@ -571,7 +559,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             CompanyHasActiveChildrenException.class, EmployeeHasActiveChildrenException.class,
             TaxHasActiveChildrenException.class, ProductCategoryHasActiveChildrenException.class,
             ServiceCategoryHasActiveChildrenException.class,
-            ConfiguratorQuestionHasActiveChildrenException.class,
             CatalogItemHasActiveChildrenException.class})
     public ProblemDetail handleHasActiveChildren(RuntimeException ex) {
         log.info("Cannot delete entity with active children: {}", ex.getMessage());
@@ -944,51 +931,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return pd;
     }
 
-    @ExceptionHandler(ConfiguratorCodeAlreadyExistsException.class)
-    public ProblemDetail handleConfiguratorCodeAlreadyExists(
-            ConfiguratorCodeAlreadyExistsException ex) {
-        log.info("Configurator code already exists: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_CODE_ALREADY_EXISTS", ex.getMessage());
-    }
-
-    @ExceptionHandler(ConfiguratorEffectAlreadyExistsException.class)
-    public ProblemDetail handleConfiguratorEffectAlreadyExists(
-            ConfiguratorEffectAlreadyExistsException ex) {
-        log.info("Configurator effect already exists: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_EFFECT_ALREADY_EXISTS", ex.getMessage());
-    }
-
     @ExceptionHandler(PriceListCodeAlreadyExistsException.class)
     public ProblemDetail handlePriceListCodeAlreadyExists(PriceListCodeAlreadyExistsException ex) {
         log.info("Price list code already exists: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "PRICE_LIST_CODE_ALREADY_EXISTS", ex.getMessage());
-    }
-
-    @ExceptionHandler(ConditionalQuestionCycleException.class)
-    public ProblemDetail handleConditionalQuestionCycle(ConditionalQuestionCycleException ex) {
-        log.info("Configurator question cycle: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_QUESTION_CYCLE", ex.getMessage());
-    }
-
-    @ExceptionHandler(QuantityFromAnswerRequiresNumberQuestionException.class)
-    public ProblemDetail handleQuantityFromAnswerRequiresNumber(
-            QuantityFromAnswerRequiresNumberQuestionException ex) {
-        log.info("Quantity from answer requires a NUMBER question: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "QUANTITY_FROM_ANSWER_REQUIRES_NUMBER",
-                ex.getMessage());
-    }
-
-    // 409 y no 400: lo que está en conflicto no es el cuerpo que acaba de llegar
-    // —una opción o un answerType perfectamente válidos por sí solos— sino el
-    // estado guardado del cuestionario contra el que se aplican. Es el mismo
-    // criterio con el que va QUANTITY_FROM_ANSWER_REQUIRES_NUMBER, y el contrario
-    // al de CONFIGURATOR_ANSWER_UNREACHABLE, que sí culpa al cuerpo.
-    @ExceptionHandler(NumberQuestionCannotHaveOptionsException.class)
-    public ProblemDetail handleNumberQuestionCannotHaveOptions(
-            NumberQuestionCannotHaveOptionsException ex) {
-        log.info("NUMBER question cannot have options: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "CONFIGURATOR_NUMBER_QUESTION_CANNOT_HAVE_OPTIONS",
-                ex.getMessage());
     }
 
     @ExceptionHandler(CatalogItemCodeAlreadyExistsException.class)
@@ -1220,47 +1166,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         setIfPresent(pd, "validFrom", ex.getValidFrom());
         setIfPresent(pd, "validTo", ex.getValidTo());
         setIfPresent(pd, "quotedOn", ex.getQuotedOn());
-        return pd;
-    }
-
-    // Configurador: las dos son 400 y no 409 porque el conflicto está en el cuerpo
-    // que acaba de enviarse —una respuesta a una pregunta que las condiciones del
-    // propio envío dejan inalcanzable, o una obligatoria que falta—, no en el
-    // estado
-    // de nada guardado. Se arregla corrigiendo el envío, que es la definición de un
-    // 400.
-    // Las dos llevan la pregunta y la opcion como propiedades ademas de dentro del
-    // mensaje (#449). El detail sale en ingles y nombrando ids internos —"Answer
-    // refers to option 42, which does not exist…"— y el front lo pinta tal cual
-    // dentro de un aviso en español, a un operador de la consola y tambien al
-    // PROSPECTO ANONIMO, porque /configurator/resolve es publico por diseño. Nadie
-    // puede actuar sobre "la opcion 42". Con questionCode el cliente escribe la
-    // frase nombrando la pregunta con las mismas palabras que hay en pantalla, sin
-    // volver a pedir nada al servidor. No se traduce el backend: se le dan los
-    // datos
-    // a quien sí sabe el idioma de su usuario.
-    //
-    // Las propiedades solo se ponen si existen: un ProblemDetail con
-    // "questionCode": null le hace creer al front que la pregunta no tiene codigo,
-    // en vez de que este rechazo no señala a ninguna pregunta concreta.
-    @ExceptionHandler(UnreachableAnswerException.class)
-    public ProblemDetail handleUnreachableAnswer(UnreachableAnswerException ex) {
-        log.info("Unreachable configurator answer: {}", ex.getMessage());
-        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "CONFIGURATOR_ANSWER_UNREACHABLE",
-                ex.getMessage());
-        setIfPresent(pd, "questionId", ex.getQuestionId());
-        setIfPresent(pd, "questionCode", ex.getQuestionCode());
-        setIfPresent(pd, "optionId", ex.getOptionId());
-        return pd;
-    }
-
-    @ExceptionHandler(MissingRequiredAnswerException.class)
-    public ProblemDetail handleMissingRequiredAnswer(MissingRequiredAnswerException ex) {
-        log.info("Missing required configurator answer: {}", ex.getMessage());
-        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "CONFIGURATOR_REQUIRED_ANSWER_MISSING",
-                ex.getMessage());
-        setIfPresent(pd, "questionId", ex.getQuestionId());
-        setIfPresent(pd, "questionCode", ex.getQuestionCode());
         return pd;
     }
 
@@ -2059,15 +1964,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         // concurrente que pasó el check del service la atrapa la BD. Se mapea al mismo
         // código de
         // negocio.
-        // Las seis constraints del catalogo de plataforma (#437). Las altas de
-        // configurator y pricelist ya tienen guarda previa —consultan la fila ignorando
-        // el borrado logico y la reactivan en vez de insertar—, pero una guarda previa
-        // no puede cerrar la CARRERA: dos administradores dan de alta a la vez el mismo
-        // codigo de pregunta desde dos pestañas, los dos leen antes de que el otro
-        // escriba, y el segundo INSERT muere contra el indice. Sin mapeo eso sale como
-        // un 409 con el detail "Database constraint violation" —sobre catalog_prices,
-        // hablando de dinero— y deja un WARN indistinguible de un problema real de
-        // integridad.
+        // Las constraints del catalogo de plataforma (#437). Las altas de pricelist ya
+        // tienen guarda previa —consultan la fila ignorando el borrado logico y la
+        // reactivan en vez de insertar—, pero una guarda previa no puede cerrar la
+        // CARRERA: dos administradores dan de alta a la vez el mismo codigo desde dos
+        // pestañas, los dos leen antes de que el otro escriba, y el segundo INSERT
+        // muere contra el indice. Sin mapeo eso sale como un 409 con el detail
+        // "Database constraint violation" —sobre catalog_prices, hablando de dinero— y
+        // deja un WARN indistinguible de un problema real de integridad.
         //
         // MISMO errorCode que el guard sincrono de cada caso, igual que en las tres
         // ramas de arriba: al front le da igual si el choque lo detecto Java o lo
@@ -2076,18 +1980,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         //
         // uq_catalog_prices_tier va incluida aunque CreateCatalogPriceService bloquee
         // la lista con PESSIMISTIC_WRITE y ahi la carrera este serializada: es red, y
-        // cuesta un if. En las tres tablas de configurator y en price_lists no hay
-        // bloqueo y la carrera esta abierta de verdad.
-        if (cause != null && (cause.contains("uq_configurator_questions_code")
-                || cause.contains("uq_configurator_options_code"))) {
-            return problem(HttpStatus.CONFLICT, "CONFIGURATOR_CODE_ALREADY_EXISTS",
-                    "Ese código ya está en uso en el cuestionario.");
-        }
-        if (cause != null && (cause.contains("uq_configurator_effects_option")
-                || cause.contains("uq_configurator_effects_question"))) {
-            return problem(HttpStatus.CONFLICT, "CONFIGURATOR_EFFECT_ALREADY_EXISTS",
-                    "Esa respuesta ya tiene un efecto sobre ese artículo.");
-        }
+        // cuesta un if. En price_lists no hay bloqueo y la carrera esta abierta de
+        // verdad.
         if (cause != null && cause.contains("uq_price_lists_code")) {
             return problem(HttpStatus.CONFLICT, "PRICE_LIST_CODE_ALREADY_EXISTS",
                     "Ya existe una lista de precios con ese código.");

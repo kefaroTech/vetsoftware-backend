@@ -10,7 +10,6 @@ import static com.vetsoftware.app.quote.testsupport.QuoteMother.empresa;
 import static com.vetsoftware.app.quote.testsupport.QuoteMother.modulo;
 import static com.vetsoftware.app.quote.testsupport.QuoteMother.precioConIncluidas;
 import static com.vetsoftware.app.quote.testsupport.QuoteMother.precioGravado;
-import static com.vetsoftware.app.quote.testsupport.QuoteMother.pregunta;
 import static com.vetsoftware.app.quote.testsupport.QuoteMother.tarifa;
 import static com.vetsoftware.app.quote.testsupport.QuoteMother.tarifaSinCierre;
 import static com.vetsoftware.app.quote.testsupport.QuoteMother.usuarioExtra;
@@ -24,14 +23,12 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.quote.application.command.CreateQuoteCommand;
-import com.vetsoftware.app.quote.application.command.QuoteAnswerCommand;
 import com.vetsoftware.app.quote.application.command.QuoteLineCommand;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
 import com.vetsoftware.app.quote.application.dto.QuoteLineDto;
 import com.vetsoftware.app.quote.application.port.out.CatalogItemQueryPort;
 import com.vetsoftware.app.quote.application.port.out.CatalogPriceQueryPort;
 import com.vetsoftware.app.quote.application.port.out.CompanyQueryPort;
-import com.vetsoftware.app.quote.application.port.out.ConfiguratorQuestionQueryPort;
 import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteNumberPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteRepository;
@@ -73,26 +70,22 @@ class CreateQuoteServiceTest {
     private CatalogItemQueryPort catalogItemQueryPort;
     @Mock
     private CatalogPriceQueryPort catalogPriceQueryPort;
-    @Mock
-    private ConfiguratorQuestionQueryPort configuratorQuestionQueryPort;
 
     private CreateQuoteService service;
 
     @BeforeEach
     void crearServicio() {
         service = new CreateQuoteService(repository, quoteNumberPort, companyQueryPort,
-                priceListQueryPort, catalogItemQueryPort, catalogPriceQueryPort,
-                configuratorQuestionQueryPort, RELOJ);
+                priceListQueryPort, catalogItemQueryPort, catalogPriceQueryPort, RELOJ);
     }
 
-    private static CreateQuoteCommand comando(List<QuoteLineCommand> lineas,
-            List<QuoteAnswerCommand> respuestas) {
+    private static CreateQuoteCommand comando(List<QuoteLineCommand> lineas) {
         return new CreateQuoteCommand(CLIENT_REQUEST_ID, empresa().id(), null, null, null, null,
-                PRICE_LIST_ID, "MONTHLY", VIGENTE_HASTA, 0, lineas, respuestas);
+                PRICE_LIST_ID, "MONTHLY", VIGENTE_HASTA, 0, lineas);
     }
 
     private static CreateQuoteCommand comandoDeUnModulo() {
-        return comando(List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO)), List.of());
+        return comando(List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO)));
     }
 
     private void caminoFeliz() {
@@ -202,9 +195,8 @@ class CreateQuoteServiceTest {
             when(catalogPriceQueryPort.findAllTiers(PRICE_LIST_ID, usuarioExtra().id(),
                     BillingCycle.MONTHLY)).thenReturn(List.of(TRAMO_BAJO, TRAMO_ALTO));
 
-            QuoteDto dto = service.execute(
-                    comando(List.of(new QuoteLineCommand(usuarioExtra().id(), 15, BigDecimal.ZERO)),
-                            List.of()));
+            QuoteDto dto = service.execute(comando(
+                    List.of(new QuoteLineCommand(usuarioExtra().id(), 15, BigDecimal.ZERO))));
 
             assertThat(dto.lines()).hasSize(2);
             assertThat(dto.lines().get(0).tierMin()).isEqualTo(1);
@@ -231,9 +223,8 @@ class CreateQuoteServiceTest {
             when(catalogPriceQueryPort.findAllTiers(PRICE_LIST_ID, usuarioExtra().id(),
                     BillingCycle.MONTHLY)).thenReturn(List.of(TRAMO_BAJO, TRAMO_ALTO));
 
-            QuoteDto dto = service.execute(
-                    comando(List.of(new QuoteLineCommand(usuarioExtra().id(), 15, BigDecimal.ZERO)),
-                            List.of()));
+            QuoteDto dto = service.execute(comando(
+                    List.of(new QuoteLineCommand(usuarioExtra().id(), 15, BigDecimal.ZERO))));
 
             assertThat(dto.lines()).extracting(QuoteLineDto::lineNumber).containsExactly(1, 2);
             assertThat(dto.lines()).extracting(QuoteLineDto::contractedQuantity).containsExactly(15,
@@ -279,10 +270,9 @@ class CreateQuoteServiceTest {
             when(catalogPriceQueryPort.findAllTiers(PRICE_LIST_ID, usuarioExtra().id(),
                     BillingCycle.MONTHLY)).thenReturn(List.of(precioGravado("12000.00")));
 
-            QuoteDto dto = service.execute(comando(
-                    List.of(new QuoteLineCommand(modulo().id(), 1, new BigDecimal("10.00")),
-                            new QuoteLineCommand(usuarioExtra().id(), 3, BigDecimal.ZERO)),
-                    List.of()));
+            QuoteDto dto = service.execute(
+                    comando(List.of(new QuoteLineCommand(modulo().id(), 1, new BigDecimal("10.00")),
+                            new QuoteLineCommand(usuarioExtra().id(), 3, BigDecimal.ZERO))));
 
             assertThat(dto.subtotalAmount()).isEqualByComparingTo("136000.00");
             assertThat(dto.discountAmount()).isEqualByComparingTo("10000.00");
@@ -303,10 +293,9 @@ class CreateQuoteServiceTest {
             when(catalogPriceQueryPort.findAllTiers(eq(PRICE_LIST_ID), eq(usuarioExtra().id()),
                     any())).thenReturn(List.of(precioGravado("12000.00")));
 
-            QuoteDto dto = service.execute(comando(
-                    List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO),
-                            new QuoteLineCommand(usuarioExtra().id(), 2, BigDecimal.ZERO)),
-                    List.of()));
+            QuoteDto dto = service.execute(
+                    comando(List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO),
+                            new QuoteLineCommand(usuarioExtra().id(), 2, BigDecimal.ZERO))));
 
             assertThat(dto.lines()).extracting(QuoteLineDto::lineNumber).containsExactly(1, 2);
         }
@@ -325,9 +314,8 @@ class CreateQuoteServiceTest {
             when(catalogPriceQueryPort.findAllTiers(PRICE_LIST_ID, usuarioExtra().id(),
                     BillingCycle.MONTHLY)).thenReturn(List.of(precioConIncluidas("12000.00", 2)));
 
-            QuoteDto dto = service.execute(
-                    comando(List.of(new QuoteLineCommand(usuarioExtra().id(), 3, BigDecimal.ZERO)),
-                            List.of()));
+            QuoteDto dto = service.execute(comando(
+                    List.of(new QuoteLineCommand(usuarioExtra().id(), 3, BigDecimal.ZERO))));
 
             assertThat(dto.lines()).singleElement().satisfies(linea -> {
                 assertThat(linea.contractedQuantity()).isEqualTo(3);
@@ -351,10 +339,9 @@ class CreateQuoteServiceTest {
             when(catalogPriceQueryPort.findAllTiers(PRICE_LIST_ID, usuarioExtra().id(),
                     BillingCycle.MONTHLY)).thenReturn(List.of(precioConIncluidas("12000.00", 2)));
 
-            QuoteDto dto = service.execute(comando(
-                    List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO),
-                            new QuoteLineCommand(usuarioExtra().id(), 1, BigDecimal.ZERO)),
-                    List.of()));
+            QuoteDto dto = service.execute(
+                    comando(List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO),
+                            new QuoteLineCommand(usuarioExtra().id(), 1, BigDecimal.ZERO))));
 
             assertThat(dto.lines()).hasSize(1);
             assertThat(dto.lines().getFirst().itemCode()).isEqualTo("CLINICAL_HISTORY");
@@ -374,10 +361,9 @@ class CreateQuoteServiceTest {
             when(catalogPriceQueryPort.findAllTiers(PRICE_LIST_ID, usuarioExtra().id(),
                     BillingCycle.MONTHLY)).thenReturn(List.of(precioConIncluidas("12000.00", 2)));
 
-            QuoteDto dto = service.execute(comando(
-                    List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO),
-                            new QuoteLineCommand(usuarioExtra().id(), 2, BigDecimal.ZERO)),
-                    List.of()));
+            QuoteDto dto = service.execute(
+                    comando(List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO),
+                            new QuoteLineCommand(usuarioExtra().id(), 2, BigDecimal.ZERO))));
 
             assertThat(dto.lines()).hasSize(1);
             assertThat(dto.totalAmount()).isEqualByComparingTo("119000.00");
@@ -401,35 +387,16 @@ class CreateQuoteServiceTest {
             when(catalogPriceQueryPort.findAllTiers(PRICE_LIST_ID, modulo().id(),
                     BillingCycle.MONTHLY)).thenReturn(List.of(precioGravado("100000.00")));
 
-            QuoteDto dto = service.execute(new CreateQuoteCommand(CLIENT_REQUEST_ID, null,
-                    "Veterinaria del Sur", null, null, null, PRICE_LIST_ID, "MONTHLY",
-                    VIGENTE_HASTA, 15,
-                    List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO)), List.of()));
+            QuoteDto dto = service
+                    .execute(new CreateQuoteCommand(CLIENT_REQUEST_ID, null, "Veterinaria del Sur",
+                            null, null, null, PRICE_LIST_ID, "MONTHLY", VIGENTE_HASTA, 15,
+                            List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO))));
 
             assertThat(dto.company()).isNull();
             assertThat(dto.prospectName()).isEqualTo("Veterinaria del Sur");
             verifyNoInteractions(companyQueryPort);
         }
 
-        @Test
-        @DisplayName("registra la respuesta del configurador copiando el codigo de la pregunta")
-        void registra_las_respuestas_del_configurador() {
-            caminoFeliz();
-            when(catalogItemQueryPort.findActiveById(modulo().id()))
-                    .thenReturn(Optional.of(modulo()));
-            when(catalogPriceQueryPort.findAllTiers(PRICE_LIST_ID, modulo().id(),
-                    BillingCycle.MONTHLY)).thenReturn(List.of(precioGravado("100000.00")));
-            when(configuratorQuestionQueryPort.findById(11L)).thenReturn(Optional.of(pregunta()));
-
-            QuoteDto dto = service.execute(
-                    comando(List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO)),
-                            List.of(new QuoteAnswerCommand(11L, 99L, "SI"))));
-
-            assertThat(dto.answers()).singleElement().satisfies(respuesta -> {
-                assertThat(respuesta.questionCode()).isEqualTo("SELLS_PRODUCTS");
-                assertThat(respuesta.optionId()).isEqualTo(99L);
-            });
-        }
     }
 
     @Nested
@@ -495,7 +462,7 @@ class CreateQuoteServiceTest {
 
             CreateQuoteCommand comando = new CreateQuoteCommand(CLIENT_REQUEST_ID, empresa().id(),
                     null, null, null, null, PRICE_LIST_ID, "SEMANAL", VIGENTE_HASTA, 0,
-                    List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO)), List.of());
+                    List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO)));
 
             assertThatThrownBy(() -> service.execute(comando))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -527,33 +494,11 @@ class CreateQuoteServiceTest {
                     .thenReturn(Optional.of(tarifa()));
             when(companyQueryPort.findById(empresa().id())).thenReturn(Optional.of(empresa()));
 
-            assertThatThrownBy(() -> service.execute(comando(List.of(), List.of())))
+            assertThatThrownBy(() -> service.execute(comando(List.of())))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("at least one line");
         }
 
-        @Test
-        @DisplayName("una pregunta de configurador inexistente no se puede congelar")
-        void exige_pregunta_existente() {
-            when(repository.findByClientRequestIdAndCompanyId(CLIENT_REQUEST_ID, empresa().id()))
-                    .thenReturn(Optional.empty());
-            when(priceListQueryPort.findPublishedById(PRICE_LIST_ID))
-                    .thenReturn(Optional.of(tarifa()));
-            when(companyQueryPort.findById(empresa().id())).thenReturn(Optional.of(empresa()));
-            when(catalogItemQueryPort.findActiveById(modulo().id()))
-                    .thenReturn(Optional.of(modulo()));
-            when(catalogPriceQueryPort.findAllTiers(PRICE_LIST_ID, modulo().id(),
-                    BillingCycle.MONTHLY)).thenReturn(List.of(precioGravado("100000.00")));
-            when(configuratorQuestionQueryPort.findById(11L)).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.execute(
-                    comando(List.of(new QuoteLineCommand(modulo().id(), 1, BigDecimal.ZERO)),
-                            List.of(new QuoteAnswerCommand(11L, 99L, "SI")))))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Configurator question not found: 11");
-
-            verify(repository, never()).save(any());
-        }
     }
 
     @Nested
@@ -568,7 +513,7 @@ class CreateQuoteServiceTest {
                     ZoneId.systemDefault());
             CreateQuoteService conOtroReloj = new CreateQuoteService(repository, quoteNumberPort,
                     companyQueryPort, priceListQueryPort, catalogItemQueryPort,
-                    catalogPriceQueryPort, configuratorQuestionQueryPort, enDosMil);
+                    catalogPriceQueryPort, enDosMil);
             when(repository.findByClientRequestIdAndCompanyId(CLIENT_REQUEST_ID, empresa().id()))
                     .thenReturn(Optional.empty());
             // Tarifa SIN fecha de fin: lo que se prueba aqui es el ano del numero, no la

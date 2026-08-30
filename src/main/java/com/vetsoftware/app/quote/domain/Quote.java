@@ -22,8 +22,8 @@ import java.util.Set;
  * <b>El caso raro del tenant.</b> {@code company} es NULABLE a proposito: se
  * cotiza a un prospecto que todavia no es cliente, y tambien una ampliacion a
  * quien ya tiene contrato. La frontera de tenant de todo el bloque es esta
- * cabecera: {@code quote_lines} y {@code quote_answers} no llevan
- * {@code company_id} y solo se alcanzan pasando por aqui.
+ * cabecera: {@code quote_lines} no lleva {@code company_id} y solo se alcanza
+ * pasando por aqui.
  */
 public class Quote {
 
@@ -59,7 +59,6 @@ public class Quote {
     private final Long version;
     private final boolean enabled;
     private final List<QuoteLine> lines;
-    private final List<QuoteAnswer> answers;
 
     public Quote(Long id, String quoteNumber, CompanyRef company, String prospectName,
             String prospectEmail, String prospectDocument, String prospectPhone, Long priceListId,
@@ -67,13 +66,12 @@ public class Quote {
             BigDecimal taxAmount, BigDecimal totalAmount, QuoteStatus status, LocalDate validUntil,
             int trialDays, LocalDateTime acceptedAt, String acceptedByEmail, String acceptedIp,
             String clientRequestId, LocalDateTime createdDate, Long version, boolean enabled,
-            List<QuoteLine> lines, List<QuoteAnswer> answers) {
+            List<QuoteLine> lines) {
         validateHeader(quoteNumber, company, prospectName, prospectEmail, prospectDocument,
                 prospectPhone, priceListId, billingCycle, status, validUntil, trialDays,
                 clientRequestId);
         validateAcceptance(status, acceptedAt, acceptedIp);
         List<QuoteLine> safeLines = lines == null ? List.of() : List.copyOf(lines);
-        List<QuoteAnswer> safeAnswers = answers == null ? List.of() : List.copyOf(answers);
         validateLines(safeLines);
         this.id = id;
         this.quoteNumber = quoteNumber;
@@ -99,7 +97,6 @@ public class Quote {
         this.version = version;
         this.enabled = enabled;
         this.lines = safeLines;
-        this.answers = safeAnswers;
         verifyTotals();
     }
 
@@ -115,14 +112,14 @@ public class Quote {
     public static Quote create(String quoteNumber, CompanyRef company, String prospectName,
             String prospectEmail, String prospectDocument, String prospectPhone, Long priceListId,
             BillingCycle billingCycle, LocalDate validUntil, int trialDays, String clientRequestId,
-            List<QuoteLine> lines, List<QuoteAnswer> answers, LocalDateTime createdDate) {
+            List<QuoteLine> lines, LocalDateTime createdDate) {
         List<QuoteLine> safeLines = lines == null ? List.of() : List.copyOf(lines);
         QuoteTotals totales = QuoteTotals.of(safeLines);
         return new Quote(null, quoteNumber, company, prospectName, prospectEmail, prospectDocument,
                 prospectPhone, priceListId, billingCycle, totales.subtotalAmount(),
                 totales.discountAmount(), totales.taxAmount(), totales.totalAmount(),
                 QuoteStatus.DRAFT, validUntil, trialDays, null, null, null, clientRequestId,
-                createdDate, null, true, safeLines, answers);
+                createdDate, null, true, safeLines);
     }
 
     /**
@@ -408,9 +405,5 @@ public class Quote {
 
     public List<QuoteLine> getLines() {
         return new ArrayList<>(lines);
-    }
-
-    public List<QuoteAnswer> getAnswers() {
-        return new ArrayList<>(answers);
     }
 }

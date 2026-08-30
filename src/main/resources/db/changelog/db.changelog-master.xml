@@ -234,13 +234,8 @@
     <include file="db/changelog/migrations/232_create_bundle_components.xml"/>
     <include file="db/changelog/migrations/233_create_price_lists.xml"/>
     <include file="db/changelog/migrations/234_create_catalog_prices.xml"/>
-    <include file="db/changelog/migrations/235_create_configurator_questions.xml"/>
-    <include file="db/changelog/migrations/236_create_configurator_options.xml"/>
-    <include file="db/changelog/migrations/237_add_parent_option_to_configurator_questions.xml"/>
-    <include file="db/changelog/migrations/238_create_configurator_effects.xml"/>
     <include file="db/changelog/migrations/239_create_quotes.xml"/>
     <include file="db/changelog/migrations/240_create_quote_lines.xml"/>
-    <include file="db/changelog/migrations/241_create_quote_answers.xml"/>
     <include file="db/changelog/migrations/242_create_subscriptions.xml"/>
     <include file="db/changelog/migrations/243_create_subscription_amendments.xml"/>
     <include file="db/changelog/migrations/244_create_subscription_items.xml"/>
@@ -456,8 +451,6 @@
                                      system_users, y en una base recién creada esa tabla está vacía
            311 la publicación        firma con la cuenta de plataforma que exista, reapunta
                                      platform_billing_config (255) y archiva la lista de laboratorio
-           312 el configurador       necesita artículo (308) y las tablas de 235/236/237/238; es lo
-                                     que estrena `configurator_effects.priority`
            313 ejes y techos         necesitan submódulo (258/272), eje (300) y artículo (308)
 
          LAS OCHO CONDICIONES DEL ALTA DE UNA EMPRESA quedan cubiertas por 308+310+311, y son las que
@@ -482,7 +475,6 @@
     <include file="db/changelog/migrations/309_seed_commercial_catalog_relations.xml"/>
     <include file="db/changelog/migrations/310_seed_price_list_2026.xml"/>
     <include file="db/changelog/migrations/311_publish_price_list_2026.xml"/>
-    <include file="db/changelog/migrations/312_seed_configurator.xml"/>
     <include file="db/changelog/migrations/313_seed_limit_dimensions_and_ceilings.xml"/>
 
     <!-- 314 repunta el contador (#629): company_capacities deja la lista cerrada de cuatro

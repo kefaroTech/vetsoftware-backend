@@ -71,10 +71,10 @@ public interface QuoteJpaRepository extends JpaRepository<QuoteJpaEntity, Long> 
     List<Object[]> findAllTotalsMismatches();
 
     @Override
-    @EntityGraph(attributePaths = {"company", "lines", "answers"})
+    @EntityGraph(attributePaths = {"company", "lines"})
     Optional<QuoteJpaEntity> findById(Long id);
 
-    @EntityGraph(attributePaths = {"company", "lines", "answers"})
+    @EntityGraph(attributePaths = {"company", "lines"})
     Optional<QuoteJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
 
     /**
@@ -82,7 +82,7 @@ public interface QuoteJpaRepository extends JpaRepository<QuoteJpaEntity, Long> 
      * que recibir exactamente la misma respuesta que el primer intento, lineas
      * incluidas.
      */
-    @EntityGraph(attributePaths = {"company", "lines", "answers"})
+    @EntityGraph(attributePaths = {"company", "lines"})
     Optional<QuoteJpaEntity> findByClientRequestId(String clientRequestId);
 
     /**
@@ -95,11 +95,11 @@ public interface QuoteJpaRepository extends JpaRepository<QuoteJpaEntity, Long> 
      * otra clinica devuelva la cotizacion de esa otra clinica. El indice unico de
      * {@code client_request_id} es global y se queda como esta.
      */
-    @EntityGraph(attributePaths = {"company", "lines", "answers"})
+    @EntityGraph(attributePaths = {"company", "lines"})
     Optional<QuoteJpaEntity> findByClientRequestIdAndCompany_Id(String clientRequestId,
             Long companyId);
 
-    @EntityGraph(attributePaths = {"company", "lines", "answers"})
+    @EntityGraph(attributePaths = {"company", "lines"})
     List<QuoteJpaEntity> findAllByIdIn(Collection<Long> ids);
 
     @EntityGraph(attributePaths = "company")
@@ -130,10 +130,10 @@ public interface QuoteJpaRepository extends JpaRepository<QuoteJpaEntity, Long> 
             @Param("today") LocalDate today, Pageable pageable);
 
     // Baja logica por UPDATE nativo, NUNCA por deleteById(). El @SQLDelete de la
-    // entidad solo sustituye el DELETE de la raiz: el cascade a quote_lines y
-    // quote_answers lo emite Hibernate antes y sin interceptar, asi que
-    // deleteById() dejaria la cabecera pausada y las copias congeladas -que son la
-    // prueba de lo que se le ofrecio al cliente- borradas de la base.
+    // entidad solo sustituye el DELETE de la raiz: el cascade a quote_lines lo
+    // emite Hibernate antes y sin interceptar, asi que deleteById() dejaria la
+    // cabecera pausada y las copias congeladas -que son la prueba de lo que se le
+    // ofrecio al cliente- borradas de la base.
     //
     // El UPDATE mueve tambien `version` (#53). Sin eso, un save cargado antes de la
     // baja reescribe `enabled` con su valor viejo -el mapper lo copia desde el
