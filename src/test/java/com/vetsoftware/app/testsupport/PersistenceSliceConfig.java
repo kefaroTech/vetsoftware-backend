@@ -437,7 +437,17 @@ import org.springframework.context.annotation.Import;
         com.vetsoftware.app.companyactivitymonth.infrastructure.persistence.JpaCompanyActivityMonthRepository.class,
         com.vetsoftware.app.companyactivitymonth.infrastructure.persistence.CompanyActivityMonthJpaMapper.class,
         com.vetsoftware.app.platformtaxprofile.infrastructure.persistence.JpaPlatformTaxProfileRepository.class,
-        com.vetsoftware.app.platformtaxprofile.infrastructure.persistence.PlatformTaxProfileJpaMapper.class})
+        com.vetsoftware.app.platformtaxprofile.infrastructure.persistence.PlatformTaxProfileJpaMapper.class,
+
+        // Los dos adaptadores de SQL nativo que inyectan el EntityManager por
+        // @PersistenceContext sobre campo privado y NO tienen constructor: a
+        // diferencia de los JpaCatalogQueryPorts de `quote`, sus rodajas no los
+        // pueden construir a mano. Van aqui y no en un @Import propio por el mismo
+        // motivo que el bloque fiscal de mas arriba: un @Import distinto por clase
+        // es una clave de MergedContextConfiguration distinta y un contexto de
+        // Spring entero mas en la cache.
+        com.vetsoftware.app.subscriptionpayment.infrastructure.persistence.JpaWithholdingQueryPort.class,
+        com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.JpaBillableSubscriptionItemPort.class})
 public class PersistenceSliceConfig {
 
     /**

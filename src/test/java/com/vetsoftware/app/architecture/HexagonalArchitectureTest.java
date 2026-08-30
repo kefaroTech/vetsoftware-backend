@@ -610,6 +610,14 @@ class HexagonalArchitectureTest {
             // E1 — se insertan y no se vuelven a modificar.
             exenta("WeightRecordJpaEntity", E1_APPEND_ONLY,
                     "serie temporal de pesos: el dominio no expone ningún update()"),
+            exenta("AiProposalConversionJpaEntity", E1_APPEND_ONLY,
+                    "puente propuesta -> empresa: se escribe en el instante de la conversión"
+                            + " y no se corrige; sus dos unique impiden una segunda fila"),
+            exenta("AiProposalSuppressionRequestJpaEntity", E1_APPEND_ONLY,
+                    "constancia de una petición de supresión: se inserta en la misma"
+                            + " transacción que los tres borrados y no se corrige; poder"
+                            + " reescribirla sería poder corregir a posteriori la única prueba"
+                            + " de que se atendió el artículo 8 ante la SIC"),
             exenta("CashMovementJpaEntity", E1_APPEND_ONLY,
                     "asiento de libro mayor: se escribe una vez y no se corrige"),
             exenta("CashSessionCountJpaEntity", E1_APPEND_ONLY,

@@ -11,6 +11,7 @@ import com.vetsoftware.app.aiproposal.domain.LineVerdict;
 import com.vetsoftware.app.aiproposal.domain.ProposalBillingCycle;
 import com.vetsoftware.app.aiproposal.domain.ProposalDraft;
 import com.vetsoftware.app.aiproposal.domain.ProposalLine;
+import com.vetsoftware.app.aiproposal.domain.ProposalPresentation;
 import com.vetsoftware.app.aiproposal.domain.ProposalStatus;
 import com.vetsoftware.app.aiproposal.domain.ProposalTurn;
 import com.vetsoftware.app.aiproposal.domain.SanitizedReason;
@@ -18,6 +19,7 @@ import com.vetsoftware.app.aiproposal.domain.TurnStatus;
 import com.vetsoftware.app.aiproposal.domain.TurnType;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -76,6 +78,26 @@ public final class ProposalMother {
         return propuesta;
     }
 
+    /**
+     * Una propuesta cuyo enlace <b>ya caduco</b> respecto de {@link #RELOJ}: nacio
+     * hace treinta dias con catorce de vigencia, asi que expiro hace dieciseis.
+     *
+     * <p>
+     * Se construye moviendo el reloj de creacion y no escribiendo un
+     * {@code expiresAt} a mano: {@code AiProposal} valida en el constructor que
+     * {@code expiresAt} sea posterior a {@code firstSeenAt}, y una propuesta de
+     * prueba que se salte esa invariante probaria contra un estado que produccion
+     * rechaza.
+     */
+    public static AiProposal propuestaCaducada(Long id) {
+        Clock haceTreintaDias = Clock.fixed(RELOJ.instant().minus(Duration.ofDays(30)),
+                ZoneOffset.UTC);
+        AiProposal propuesta = AiProposal.create(TOKEN, ID_TARIFA, ProposalBillingCycle.MONTHLY,
+                HASH, ID_AVISO, CLAVE, CORREO, "es-CO", 14, haceTreintaDias);
+        propuesta.setId(id);
+        return propuesta;
+    }
+
     /** La unica forma de tener una cabecera con {@code version} ya asignada. */
     public static AiProposal propuestaConVersion(Long id, Long version) {
         LocalDateTime ahora = LocalDateTime.now(RELOJ);
@@ -88,8 +110,28 @@ public final class ProposalMother {
         LocalDateTime ahora = LocalDateTime.now(RELOJ);
         ProposalTurn turno = new ProposalTurn(id, ID_PROPUESTA, numero, tipo, TurnStatus.SUCCEEDED,
                 texto, texto == null ? null : texto.length(), MODELO, PROMPT, 100, 50, 900,
-                "end_turn", "{}", null, null, ahora, ahora, 0L);
+                "end_turn", "{}", null, null, null, ahora, ahora, 0L);
         return turno;
+    }
+
+    /**
+     * El turno de modelo que <b>anoto la pantalla que sirvio</b>, en
+     * {@code ai_proposal_turns.presentation} (changeset 388).
+     *
+     * <p>
+     * &#9940; {@link #turnoDeModelo} deja esa columna en {@code null} a proposito:
+     * es la poblacion legitima de las filas escritas antes del 388, y con ella la
+     * relectura solo puede <em>derivar</em> la pantalla —y derivando solo se
+     * distingue {@code OUT_OF_DOMAIN} del resto—. Para afirmar que una relectura
+     * devuelve exactamente lo que el prospecto vio hace falta una fila que si la
+     * lleve escrita, y esa es esta.
+     */
+    public static ProposalTurn turnoConPantalla(Long id, int numero, TurnType tipo, String texto,
+            ProposalPresentation pantalla) {
+        LocalDateTime ahora = LocalDateTime.now(RELOJ);
+        return new ProposalTurn(id, ID_PROPUESTA, numero, tipo, TurnStatus.SUCCEEDED, texto,
+                texto == null ? null : texto.length(), MODELO, PROMPT, 100, 50, 900, "end_turn",
+                "{}", null, pantalla, null, ahora, ahora, 0L);
     }
 
     public static ProposalTurn turnoInicial(Long id, String texto) {

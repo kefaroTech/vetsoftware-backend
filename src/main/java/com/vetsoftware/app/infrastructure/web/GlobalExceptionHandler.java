@@ -178,6 +178,8 @@ import com.vetsoftware.app.submodule.domain.SubModuleNotFoundException;
 import com.vetsoftware.app.subscription.domain.CompanyAlreadyHasActiveSubscriptionException;
 import com.vetsoftware.app.subscription.domain.InvalidSubscriptionStatusTransitionException;
 import com.vetsoftware.app.subscription.domain.PlatformCatalogNotConfiguredForSubscriptionException;
+import com.vetsoftware.app.subscription.domain.QuoteAlreadyConvertedException;
+import com.vetsoftware.app.subscription.domain.StructuralMinimumNotCarriedException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemAlreadyEndedException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemNotFoundException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemOverlapException;
@@ -1004,6 +1006,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.info("Company already has an active subscription: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "COMPANY_ALREADY_HAS_ACTIVE_SUBSCRIPTION",
                 ex.getMessage());
+    }
+
+    /**
+     * El contrato que iba a firmarse dejaria a la empresa sin una capacidad sin la
+     * cual no puede operar. Es 409 y no 400 o 422 porque no es el cuerpo de la
+     * peticion lo que esta mal —el cliente pidio algo perfectamente valido— sino el
+     * estado del catalogo contra el que se firma.
+     */
+    @ExceptionHandler(StructuralMinimumNotCarriedException.class)
+    public ProblemDetail handleStructuralMinimumNotCarried(
+            StructuralMinimumNotCarriedException ex) {
+        log.warn("Structural minimum would be lost by the new contract: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "STRUCTURAL_MINIMUM_NOT_CARRIED", ex.getMessage());
+    }
+
+    /**
+     * Dos aceptaciones simultaneas de la misma cotizacion. Es 409 y no 500: la
+     * operacion que el cliente pidio YA esta hecha —su contrato existe— y quien
+     * reciba esto tiene que releer, no reintentar.
+     */
+    @ExceptionHandler(QuoteAlreadyConvertedException.class)
+    public ProblemDetail handleQuoteAlreadyConverted(QuoteAlreadyConvertedException ex) {
+        log.info("Quote already converted into a subscription: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "QUOTE_ALREADY_CONVERTED", ex.getMessage());
     }
 
     @ExceptionHandler(SubscriptionItemOverlapException.class)

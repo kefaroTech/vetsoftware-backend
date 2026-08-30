@@ -1904,6 +1904,74 @@ final class VetSoftwareConditions {
      * bastante menos que la del adaptador que escribe. Ampliar el alcance es
      * ampliar el predicado, no relajar esta condición.
      */
+    /**
+     * Las clases de producción que arman SQL nativo con
+     * {@code EntityManager.createNativeQuery}.
+     *
+     * <p>
+     * <strong>Es un conjunto DISJUNTO del de
+     * {@link #tenerRodajaDePersistencia()}</strong>, y esa es toda la razón por la
+     * que hace falta otra regla. Medido sobre este árbol: 19 clases de
+     * {@code src/main} llaman a {@code createNativeQuery} y
+     * <strong>ninguna</strong> se llama {@code Jpa…Repository}; el alcance de
+     * {@code ADAPTADOR_JPA_CON_RODAJA} son 153 clases y <strong>ninguna</strong> de
+     * ellas usa SQL nativo. Los dos predicados no se solapan en un solo punto, así
+     * que el SQL escrito a mano —justamente el que ningún derivador de Spring Data
+     * valida— era el único que no tenía que demostrar que alguien lo ejecuta.
+     *
+     * <p>
+     * <strong>El nombre no sirve como señal aquí.</strong> Los 19 se llaman
+     * {@code Jpa…QueryPort}, {@code Jpa…ValidationPort},
+     * {@code Jpa…CompositionPort} o {@code JpaCatalogQueryPorts} —en plural—, y
+     * varios comparten paquete con adaptadores que no tocan SQL nativo. Por eso el
+     * predicado mira <strong>lo que la clase hace</strong>, que es lo que ArchUnit
+     * sí puede ver de un punto de llamada: el nombre del método invocado.
+     */
+    static DescribedPredicate<JavaClass> armanSqlNativo() {
+        return DescribedPredicate.describe("arman SQL nativo con createNativeQuery",
+                javaClass -> javaClass.getMethodCallsFromSelf().stream()
+                        .anyMatch(call -> "createNativeQuery".equals(call.getName())));
+    }
+
+    /**
+     * Exige que toda clase que arma SQL nativo tenga <strong>alguna</strong> rodaja
+     * {@code *IT} en su mismo paquete.
+     *
+     * <p>
+     * <strong>Por qué «alguna» y no el cruce por nombre que exige
+     * {@link #tenerRodajaDePersistencia()}.</strong> Allí el nombre del adaptador y
+     * el de su rodaja comparten núcleo por convención, así que cruzar por él hace
+     * que la unidad de medida sea el adaptador. Aquí no hay convención que cruzar:
+     * {@code JpaCatalogHintQueryPort} está cubierto por
+     * {@code SellableCatalogQueryPortIT} —una rodaja escrita para el puerto hermano
+     * que consulta las mismas tablas—, y exigir un {@code CatalogHintQueryPortIT}
+     * sería inventar una convención que este árbol no sigue, para acabar
+     * ilustrándola con ficheros vacíos. El criterio es el medido: <strong>los 19
+     * tienen hoy un {@code *IT} en su paquete</strong>, así que la regla
+     * <strong>nace dura y en cero</strong>, sin {@code freeze(…)} y sin una línea
+     * en el almacén de violaciones.
+     *
+     * <p>
+     * <strong>Lo que esta regla NO promete.</strong> No dice que el SQL esté bien,
+     * ni que la rodaja del paquete ejercite esta clase concreta. Dice que en el
+     * paquete hay al menos una prueba contra MySQL real, que es la diferencia entre
+     * un SQL que alguien ejecuta antes de producción y uno que no ejecuta nadie —el
+     * caso de la incidencia #196, que sobrevivió meses—.
+     */
+    static ArchCondition<JavaClass> tenerRodajaDeSqlNativo() {
+        return new ArchCondition<>("tener alguna rodaja *IT en su mismo paquete") {
+            @Override
+            public void check(JavaClass clase, ConditionEvents events) {
+                boolean cubierto = hermanasDePaquete(clase)
+                        .anyMatch(nombre -> nombre.endsWith(SUFIJO_RODAJA_PERSISTENCIA));
+                events.add(new SimpleConditionEvent(clase, cubierto,
+                        clase.getSimpleName() + " arma SQL nativo y su paquete no tiene ninguna"
+                                + " rodaja *IT: falta un @DataJpaTest contra MySQL real en "
+                                + clase.getPackageName()));
+            }
+        };
+    }
+
     static ArchCondition<JavaClass> tenerRodajaDePersistencia() {
         return new ArchCondition<>("tener una rodaja *IT en su mismo paquete") {
             @Override
