@@ -39,6 +39,7 @@ public class QuoteJpaMapper {
         entity.setAcceptedByEmail(quote.getAcceptedByEmail());
         entity.setAcceptedIp(quote.getAcceptedIp());
         entity.setClientRequestId(quote.getClientRequestId());
+        entity.setAiProposalId(quote.getAiProposalId());
         entity.setCreatedDate(quote.getCreatedDate());
         entity.setVersion(quote.getVersion());
         entity.setEnabled(quote.isEnabled());
@@ -97,7 +98,8 @@ public class QuoteJpaMapper {
                 entity.getTotalAmount(), entity.getStatus(), entity.getValidUntil(),
                 entity.getTrialDays(), entity.getAcceptedAt(), entity.getAcceptedByEmail(),
                 entity.getAcceptedIp(), entity.getClientRequestId(), entity.getCreatedDate(),
-                entity.getVersion(), entity.isEnabled(), toDomainLines(entity.getLines()));
+                entity.getVersion(), entity.isEnabled(), toDomainLines(entity.getLines()),
+                entity.getAiProposalId());
     }
 
     /**

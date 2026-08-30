@@ -23,5 +23,21 @@ public record RegisterUserRequest(
         // deshabilitado por config (dev); cuando esta habilitado, el CaptchaVerifier
         // exige su
         // presencia.
-        @Size(max = 4000, message = "La verificación de seguridad no puede superar los 4000 caracteres.") String recaptchaToken) {
+        @Size(max = 4000, message = "La verificación de seguridad no puede superar los 4000 caracteres.") String recaptchaToken,
+        // ── DC-2, puente del asistente ──────────────────────────────────────────
+        // Token PUBLICO de la propuesta de IA de la que viene este alta, o null si el
+        // prospecto llego por la portada. Es lo unico que el cliente tiene: la URL de
+        // su propuesta. El backend lo traduce a id y guarda el ID, nunca el token —
+        // copiar el secreto a una segunda tabla lo multiplica por dos y lo saca del
+        // control de acceso que lo protege (mismo criterio que
+        // legal_document_acceptances.subject_ref).
+        //
+        // Opcional a nivel de bean-validation y tolerante a lo desconocido: un token
+        // caducado, o cuya propuesta ya se llevo la purga de retencion, NO puede
+        // tumbar un registro. Se pierde la atribucion del embudo, que es analitica; no
+        // el cliente.
+        //
+        // 43 caracteres es exactamente lo que produce ProposalToken (32 bytes en
+        // base64url sin relleno) y lo que declara public_token VARCHAR(43).
+        @Size(max = 43, message = "El identificador de la propuesta no es válido.") String aiProposalToken) {
 }

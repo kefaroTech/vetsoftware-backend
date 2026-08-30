@@ -22,6 +22,7 @@ import com.vetsoftware.app.quote.application.command.SelfServeQuoteLineCommand;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
 import com.vetsoftware.app.quote.application.port.out.PlatformQuoteIssuerPort;
 import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
+import com.vetsoftware.app.quote.application.port.out.ProposalReferencePort;
 import com.vetsoftware.app.quote.application.port.out.PublishedCatalogItemQueryPort;
 import com.vetsoftware.app.quote.domain.BillingCycle;
 import com.vetsoftware.app.quote.domain.PriceListRef;
@@ -103,12 +104,16 @@ class SelfServeQuoteServiceTest {
     private PriceListQueryPort priceListQueryPort;
     @Mock
     private PublishedCatalogItemQueryPort publishedCatalogItemQueryPort;
+
+    /** DC-2: sin propuesta detras. El doble responde Optional.empty(). */
+    @Mock
+    private ProposalReferencePort proposalReferencePort;
     @Captor
     private ArgumentCaptor<CreateQuoteCommand> emitido;
 
     private SelfServeQuoteService servicio(Clock reloj) {
         return new SelfServeQuoteService(issuer, priceListQueryPort, publishedCatalogItemQueryPort,
-                reloj);
+                proposalReferencePort, reloj);
     }
 
     private static PriceListRef vigente() {
@@ -539,14 +544,31 @@ class SelfServeQuoteServiceTest {
         /**
          * El contraste es la mitad del argumento: si {@link CreateQuoteCommand} tampoco
          * los declarase, la ausencia de arriba no probaria nada.
+         *
+         * <p>
+         * <strong>La lista es cerrada ({@code containsExactly}) a proposito, y no se
+         * abre.</strong> Lo que prueba este test no es que falten tres campos
+         * concretos, sino que no hay <em>ningun</em> sitio donde el cliente pueda
+         * escribir un termino economico. Un {@code contains} dejaria entrar el
+         * siguiente campo sin que nadie lo mirase, que es justo el descuido que aqui
+         * cuesta dinero. Cada campo nuevo tiene que pasar por esta linea y quedar
+         * justificado.
+         *
+         * <p>
+         * <strong>{@code aiProposalToken} es el cuarto, y no es un termino
+         * economico</strong> (DC-2): es el token publico de la propuesta del asistente
+         * de la que viene la cesta. Dice de DONDE viene, no CUANTO cuesta —el servidor
+         * lo traduce a id contra {@code ProposalReferencePort}—, asi que la garantia
+         * sigue intacta: el precio lo sigue poniendo el servidor porque el cliente
+         * sigue sin tener donde ponerlo.
          */
         @Test
         @DisplayName("el comando de autoservicio no declara ni tarifa, ni vigencia, ni dias de"
                 + " prueba; el de plataforma si")
         void el_comando_de_autoservicio_no_declara_terminos() {
             assertThat(SelfServeQuoteCommand.class.getRecordComponents())
-                    .extracting(RecordComponent::getName)
-                    .containsExactly("clientRequestId", "companyId", "billingCycle", "lines");
+                    .extracting(RecordComponent::getName).containsExactly("clientRequestId",
+                            "companyId", "billingCycle", "lines", "aiProposalToken");
 
             assertThat(CreateQuoteCommand.class.getRecordComponents())
                     .extracting(RecordComponent::getName)

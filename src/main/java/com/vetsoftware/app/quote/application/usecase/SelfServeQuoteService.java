@@ -8,6 +8,7 @@ import com.vetsoftware.app.quote.application.dto.QuoteDto;
 import com.vetsoftware.app.quote.application.port.in.SelfServeQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.out.PlatformQuoteIssuerPort;
 import com.vetsoftware.app.quote.application.port.out.PriceListQueryPort;
+import com.vetsoftware.app.quote.application.port.out.ProposalReferencePort;
 import com.vetsoftware.app.quote.application.port.out.PublishedCatalogItemQueryPort;
 import com.vetsoftware.app.quote.domain.BillingCycle;
 import com.vetsoftware.app.quote.domain.PriceListRef;
@@ -119,14 +120,17 @@ public class SelfServeQuoteService implements SelfServeQuoteUseCase {
     private final PlatformQuoteIssuerPort issuer;
     private final PriceListQueryPort priceListQueryPort;
     private final PublishedCatalogItemQueryPort publishedCatalogItemQueryPort;
+    private final ProposalReferencePort proposalReferencePort;
     private final Clock clock;
 
     public SelfServeQuoteService(PlatformQuoteIssuerPort issuer,
             PriceListQueryPort priceListQueryPort,
-            PublishedCatalogItemQueryPort publishedCatalogItemQueryPort, Clock clock) {
+            PublishedCatalogItemQueryPort publishedCatalogItemQueryPort,
+            ProposalReferencePort proposalReferencePort, Clock clock) {
         this.issuer = issuer;
         this.priceListQueryPort = priceListQueryPort;
         this.publishedCatalogItemQueryPort = publishedCatalogItemQueryPort;
+        this.proposalReferencePort = proposalReferencePort;
         this.clock = clock;
     }
 
@@ -142,10 +146,18 @@ public class SelfServeQuoteService implements SelfServeQuoteUseCase {
                 "No published price list is effective on " + today));
         BillingCycle ciclo = parseBillingCycle(command.billingCycle());
 
+        // DC-2: de que propuesta del asistente viene esta cesta, si viene de alguna.
+        // Se traduce el token a id AQUI porque este es el unico punto del camino que
+        // conoce las dos cosas, y un token que no resuelve NO detiene la emision: la
+        // propuesta pudo purgarse por retencion, y la respuesta honesta a «de que
+        // propuesta salio» pasa a ser «ya no se sabe», no un fallo del cliente.
+        Long propuesta = proposalReferencePort.findIdByPublicToken(command.aiProposalToken())
+                .orElse(null);
+
         return issuer.issue(new CreateQuoteCommand(command.clientRequestId(), command.companyId(),
                 null, null, null, null, tarifa.id(), command.billingCycle(),
                 today.plusDays(VIGENCIA_DIAS), SIN_PRUEBA_EN_CABECERA,
-                traducirCodigos(command, tarifa, ciclo)));
+                traducirCodigos(command, tarifa, ciclo), propuesta));
     }
 
     /**

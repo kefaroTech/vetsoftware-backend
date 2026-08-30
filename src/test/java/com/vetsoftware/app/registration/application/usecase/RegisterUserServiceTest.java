@@ -28,6 +28,8 @@ import com.vetsoftware.app.registration.application.port.out.EmployeeCreator.Emp
 import com.vetsoftware.app.registration.application.port.out.EmployeeRoleAssigner;
 import com.vetsoftware.app.registration.application.port.out.InitialSubscriptionCreator;
 import com.vetsoftware.app.registration.application.port.out.OwnerBranchAssigner;
+import com.vetsoftware.app.registration.application.port.out.ProposalConversionRecorder;
+import com.vetsoftware.app.registration.application.port.out.ProposalConverter;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator.RoleResult;
 import com.vetsoftware.app.registration.application.port.out.RolePermissionInitializationPort;
@@ -97,6 +99,18 @@ class RegisterUserServiceTest {
     @Mock
     private VerificationEmailSender verificationEmailSender;
 
+    /**
+     * DC-2, puente del asistente. Dobles mudos: el command de estos casos no trae
+     * token, asi que markConverted responde Optional.empty() y el puente no se
+     * escribe. Que el puente SI se escriba cuando hay token lo prueba
+     * {@code RegisterUserProposalBridgeTest}.
+     */
+    @Mock
+    private ProposalConverter proposalConverter;
+
+    @Mock
+    private ProposalConversionRecorder proposalConversionRecorder;
+
     private RegisterUserService service;
 
     /**
@@ -136,8 +150,8 @@ class RegisterUserServiceTest {
                 branchCreator, employeeCreator, companyIdentifierChecker, employeeCodeChecker,
                 baseRoleProvider, roleCreator, employeeRoleAssigner, ownerBranchAssigner,
                 initialSubscriptionCreator, rolePermissionInitializationPort,
-                emailVerificationTokenRepository, verificationEmailSender,
-                directTransactionTemplate(), 24L);
+                emailVerificationTokenRepository, verificationEmailSender, proposalConverter,
+                proposalConversionRecorder, directTransactionTemplate(), 24L);
 
         lenient().when(companyIdentifierChecker.exists(anyString())).thenReturn(false);
         lenient().when(employeeCodeChecker.exists(anyString())).thenReturn(false);

@@ -111,7 +111,7 @@ public class CreateQuoteService implements CreateQuoteUseCase {
         Quote quote = Quote.create(quoteNumberPort.next(now.getYear()), company,
                 command.prospectName(), command.prospectEmail(), command.prospectDocument(),
                 command.prospectPhone(), priceList.id(), billingCycle, command.validUntil(),
-                command.trialDays(), command.clientRequestId(), lines, now);
+                command.trialDays(), command.clientRequestId(), lines, now, command.aiProposalId());
         return QuoteDto.from(repository.save(quote));
     }
 

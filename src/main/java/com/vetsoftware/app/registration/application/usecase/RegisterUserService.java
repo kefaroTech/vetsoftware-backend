@@ -18,6 +18,8 @@ import com.vetsoftware.app.registration.application.port.out.EmployeeCreator.Emp
 import com.vetsoftware.app.registration.application.port.out.EmployeeRoleAssigner;
 import com.vetsoftware.app.registration.application.port.out.InitialSubscriptionCreator;
 import com.vetsoftware.app.registration.application.port.out.OwnerBranchAssigner;
+import com.vetsoftware.app.registration.application.port.out.ProposalConversionRecorder;
+import com.vetsoftware.app.registration.application.port.out.ProposalConverter;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator;
 import com.vetsoftware.app.registration.application.port.out.RoleCreator.RoleResult;
 import com.vetsoftware.app.registration.application.port.out.RolePermissionInitializationPort;
@@ -54,6 +56,8 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final RolePermissionInitializationPort rolePermissionInitializationPort;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final VerificationEmailSender verificationEmailSender;
+    private final ProposalConverter proposalConverter;
+    private final ProposalConversionRecorder proposalConversionRecorder;
     private final TransactionTemplate transactionTemplate;
     private final long verificationTtlHours;
 
@@ -66,7 +70,8 @@ public class RegisterUserService implements RegisterUserUseCase {
             InitialSubscriptionCreator initialSubscriptionCreator,
             RolePermissionInitializationPort rolePermissionInitializationPort,
             EmailVerificationTokenRepository emailVerificationTokenRepository,
-            VerificationEmailSender verificationEmailSender,
+            VerificationEmailSender verificationEmailSender, ProposalConverter proposalConverter,
+            ProposalConversionRecorder proposalConversionRecorder,
             TransactionTemplate transactionTemplate,
             @Value("${vetsoftware.registration.verification-token-ttl-hours:24}") long verificationTtlHours) {
         this.captchaVerifier = captchaVerifier;
@@ -84,6 +89,8 @@ public class RegisterUserService implements RegisterUserUseCase {
         this.rolePermissionInitializationPort = rolePermissionInitializationPort;
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
         this.verificationEmailSender = verificationEmailSender;
+        this.proposalConverter = proposalConverter;
+        this.proposalConversionRecorder = proposalConversionRecorder;
         this.transactionTemplate = transactionTemplate;
         this.verificationTtlHours = verificationTtlHours;
     }
@@ -132,6 +139,23 @@ public class RegisterUserService implements RegisterUserUseCase {
         // company_entitlements, entra al sistema y no puede hacer nada, sin ningun
         // mensaje que lo explique.
         initialSubscriptionCreator.createInitialContract(company.id(), company.name());
+
+        // DC-2 · el puente propuesta -> empresa, y el unico escritor que
+        // `ai_proposal_conversions` ha tenido nunca.
+        //
+        // Va DENTRO de la transaccion del alta a proposito: tres consultas de la purga
+        // de retencion de `aiproposal` descartan con NOT EXISTS las propuestas que
+        // tienen fila aqui, asi que si el alta confirmara y esto no, la propuesta que
+        // acaba de convertir quedaria expuesta al siguiente barrido. Y la FK va
+        // ON DELETE RESTRICT para que esa proteccion no dependa del WHERE del job.
+        //
+        // Tolerante a lo desconocido y en ese orden: se marca la propuesta y solo si
+        // existe se escribe el puente. Un token de un enlace viejo -o de una propuesta
+        // que la retencion ya se llevo, que es una obligacion legal y corre sola- deja
+        // el Optional vacio y el alta sigue. Perder la atribucion de un embudo es
+        // analitica; negarle el registro a quien viene a pagar, no.
+        proposalConverter.markConverted(command.aiProposalToken()).ifPresent(
+                proposalId -> proposalConversionRecorder.record(proposalId, company.id()));
 
         // Identidad fiscal del emisor: toda venta (incluido el tiquete POS) la
         // requiere. Tipo NIT,

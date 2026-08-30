@@ -107,6 +107,20 @@ public class QuoteJpaEntity {
     @Column(name = "client_request_id", nullable = false, length = 64)
     private String clientRequestId;
 
+    /**
+     * De que propuesta del asistente salio esta oferta (changeset 389). Sin
+     * {@code @ManyToOne} a proposito: es atribucion de embudo, nunca se navega
+     * hacia la propuesta desde aqui, y una asociacion meteria a esta rodaja en el
+     * grafo de alcanzabilidad que miran las reglas de aislamiento sin aportar nada.
+     *
+     * <p>
+     * Su clave foranea va {@code ON DELETE SET NULL}: cuando la retencion se lleve
+     * la propuesta, la cotizacion sigue viva y queda <em>desatribuida</em>, que es
+     * la respuesta honesta a «de que propuesta salio» y no un id que apunta a nada.
+     */
+    @Column(name = "ai_proposal_id")
+    private Long aiProposalId;
+
     @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
     @JoinColumn(name = "quote_id", nullable = false)
     private Set<QuoteLineJpaEntity> lines = new LinkedHashSet<>();
@@ -278,6 +292,14 @@ public class QuoteJpaEntity {
 
     public String getClientRequestId() {
         return clientRequestId;
+    }
+
+    public Long getAiProposalId() {
+        return aiProposalId;
+    }
+
+    public void setAiProposalId(Long aiProposalId) {
+        this.aiProposalId = aiProposalId;
     }
 
     public void setClientRequestId(String clientRequestId) {

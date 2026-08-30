@@ -144,9 +144,9 @@ public class QuoteController {
     @PostMapping("/self-serve")
     @ResponseStatus(HttpStatus.CREATED)
     public QuoteResponse selfServe(@Valid @RequestBody SelfServeQuoteRequest request) {
-        return toResponse(selfServeUseCase.execute(
-                new SelfServeQuoteCommand(request.clientRequestId(), authz.currentCompanyId(),
-                        request.billingCycle(), toSelfServeLineCommands(request.lines()))));
+        return toResponse(selfServeUseCase.execute(new SelfServeQuoteCommand(
+                request.clientRequestId(), authz.currentCompanyId(), request.billingCycle(),
+                toSelfServeLineCommands(request.lines()), request.aiProposalToken())));
     }
 
     /**
