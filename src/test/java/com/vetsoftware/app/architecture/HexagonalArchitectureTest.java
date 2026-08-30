@@ -31,7 +31,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
 
 /**
  * Las reglas del {@code CLAUDE.md}, ejecutables.
@@ -323,15 +322,96 @@ class HexagonalArchitectureTest {
             .because("Pages habla Spring Data: application se queda con PageResult");
 
     /**
-     * Dura: ya no queda ninguna. La búsqueda se detiene en los saltos
-     * {@code @Async}, así que el envío de correos —asíncrono a propósito— no cuenta
-     * como HTTP dentro de la transacción.
+     * Tipos que cuentan como salida HTTP externa, <b>por nombre y no por literal
+     * {@code .class}</b>. Ver {@link VetSoftwareConditions#alcanzarUnClienteHttp}:
+     * un {@code .class} solo se puede escribir si el tipo ya está en el classpath,
+     * de modo que la lista quedaba atada a lo que el POM declara hoy.
+     *
+     * <p>
+     * Van por nombre exacto —y no su paquete entero— los que conviven con
+     * excepciones y tipos de datos que sí es legítimo tocar dentro de una
+     * transacción: {@code org.springframework.web.client} contiene
+     * {@code RestClientResponseException}, que hoy se captura en tres sitios.
+     */
+    private static final List<String> CLIENTES_HTTP = List.of(
+            "org.springframework.web.client.RestClient",
+            "org.springframework.web.client.RestOperations",
+            "org.springframework.web.client.RestTemplate", "java.net.http.HttpClient",
+            "java.net.URL", "java.net.URLConnection", "java.net.HttpURLConnection",
+            "javax.net.ssl.HttpsURLConnection", "okhttp3.OkHttpClient", "okhttp3.Call",
+            "org.apache.hc.client5.http.classic.HttpClient",
+            "org.apache.hc.client5.http.impl.classic.CloseableHttpClient",
+            "org.apache.http.client.HttpClient", "retrofit2.Call", "feign.Client",
+            "jakarta.ws.rs.client.Client");
+
+    /**
+     * Paquetes vetados <b>enteros</b>: los que no se pueden enumerar clase a clase
+     * sin que la lista envejezca mal.
+     *
+     * <p>
+     * <b>Aquí es donde vive la defensa de lo que viene.</b> Una llamada a un modelo
+     * de IA no es un {@code RestClient}: llega con su propio SDK, que expone un
+     * cliente síncrono, uno asíncrono, un builder y un servicio por capacidad. Con
+     * la lista de tipos exactos habría que acertar cuál de ellos usa el autor del
+     * caso de uso —y volver a acertar cada vez que el SDK añada una fachada—. Con
+     * el paquete vetado, cualquiera de ellos dentro de una transacción rompe el
+     * build, que es la diferencia entre imposible y desaconsejado.
+     *
+     * <p>
+     * Ninguno de estos paquetes está hoy en el POM, y eso es justamente lo que la
+     * lista de {@code .class} no podía expresar. {@code bedrockruntime} se nombra
+     * completo a propósito: el proyecto ya usa el SDK de AWS para S3, y vetar
+     * {@code software.amazon.awssdk.} entero marcaría la subida de un fichero.
+     */
+    private static final List<String> PAQUETES_DE_SALIDA_EXTERNA = List.of(
+            "org.springframework.web.reactive.function.client.", "org.springframework.ai.",
+            "com.anthropic.", "com.openai.", "dev.langchain4j.", "io.github.ollama4j.",
+            "software.amazon.awssdk.services.bedrockruntime.");
+
+    /**
+     * Dura: no queda ninguna. La búsqueda se detiene en los saltos {@code @Async},
+     * así que el envío de correos —asíncrono a propósito— no cuenta como HTTP
+     * dentro de la transacción.
+     *
+     * <p>
+     * <b>Se ensanchó por los dos lados, y los dos huecos eran reales.</b>
+     *
+     * <p>
+     * <b>El lado del cliente.</b> La regla solo conocía {@code RestClient.class}, y
+     * no por descuido: un literal {@code .class} exige que el tipo esté en el
+     * classpath de test, así que <em>no se podía escribir</em> el nombre de un
+     * cliente que todavía no es dependencia. Eso la dejaba estructuralmente ciega a
+     * lo único para lo que hace falta de aquí en adelante: la llamada a un modelo
+     * de IA, que llegará con un SDK nuevo. Nombrar los tipos por cadena y vetar
+     * paquetes enteros por prefijo convierte «acuérdate de sacarlo de la
+     * transacción» en «no compila el build». De paso entran los clientes que ya se
+     * podían usar sin que nadie se enterara: el {@code HttpClient} del JDK, un
+     * {@code URL.openStream()}, {@code RestTemplate}, OkHttp, Apache HC.
+     *
+     * <p>
+     * <b>El lado de la transacción.</b> {@code areAnnotatedWith} mira el
+     * <em>método</em>: un método dentro de una clase anotada {@code @Transactional}
+     * a nivel de tipo —que es transaccional en ejecución, porque el proxy de Spring
+     * hereda la anotación del tipo— no lo miraba la regla. Su hermana
+     * {@link #EFECTOS_ASINCRONOS_DESPUES_DEL_COMMIT} ya cubría las dos formas desde
+     * BE-18; esta se había quedado con una. Hoy el árbol tiene <b>cero</b> clases
+     * anotadas a nivel de tipo, así que cerrar el hueco no destapa deuda: es
+     * gratis, y solo lo es mientras siga a cero.
+     *
+     * <p>
+     * <b>Sigue siendo dura y sin {@code freeze(...)}</b>: con las dos mitades
+     * puestas el censo del árbol da cero violaciones. Los cuatro clientes
+     * {@code RestClient} vivos —DIAN, Resend, reCAPTCHA— cuelgan de métodos que no
+     * son transaccionales o cruzan un {@code @Async} antes de llamar.
      */
     @ArchTest
     static final ArchRule SIN_IO_EXTERNO_EN_TRANSACCION = noMethods().that()
+            .areAnnotatedWith(Transactional.class).or().areDeclaredInClassesThat()
             .areAnnotatedWith(Transactional.class)
-            .should(VetSoftwareConditions.alcanzarUnClienteHttp(RestClient.class))
-            .because("una llamada HTTP retiene la conexion y los locks hasta el commit");
+            .should(VetSoftwareConditions.alcanzarUnClienteHttp(CLIENTES_HTTP,
+                    PAQUETES_DE_SALIDA_EXTERNA))
+            .because("una llamada HTTP retiene la conexion y los locks hasta el commit,"
+                    + " y una llamada a un modelo de IA los retiene durante segundos");
 
     /**
      * El cierre de la incidencia #135. Un {@code @RequestBody} sin {@code @Valid}
@@ -564,8 +644,6 @@ class HexagonalArchitectureTest {
             exenta("QuoteLineJpaEntity", E1_APPEND_ONLY,
                     "renglón congelado de la oferta: se escribe con la cotización y ningún"
                             + " caso de uso lo reescribe; el bloqueo vive en quotes, ya versionada"),
-            exenta("QuoteAnswerJpaEntity", E1_APPEND_ONLY,
-                    "respuesta del configurador tal como se dio: se inserta una vez y ahí acaba"),
             exenta("SubscriptionAmendmentJpaEntity", E1_APPEND_ONLY,
                     "documento inmutable del contrato: corregir un otrosí es emitir otro,"
                             + " nunca editarlo"),

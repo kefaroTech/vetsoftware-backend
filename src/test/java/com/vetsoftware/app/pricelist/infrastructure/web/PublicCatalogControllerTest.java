@@ -10,6 +10,7 @@ import com.vetsoftware.app.pricelist.application.dto.PublicCatalogCapacityDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogRequirementDto;
 import com.vetsoftware.app.pricelist.application.port.in.GetPublicCatalogUseCase;
 import com.vetsoftware.app.pricelist.domain.TaxTreatment;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
@@ -52,8 +53,8 @@ class PublicCatalogControllerTest {
     @Test
     @DisplayName("sin tarifa vigente devuelve 200 con las cuatro listas vacias, no un 404")
     void sin_tarifa_vigente_devuelve_doscientos_con_las_listas_vacias() throws Exception {
-        when(useCase.get()).thenReturn(
-                new PublicCatalogDto(null, null, List.of(), List.of(), List.of(), List.of()));
+        when(useCase.get()).thenReturn(new PublicCatalogDto(null, null, List.of(), List.of(),
+                List.of(), List.of(), List.of()));
 
         mockMvc.perform(get("/catalog")).andExpect(status().isOk())
                 .andExpect(content().json("{\"currency\":null,\"priceValidFrom\":null,"
@@ -80,7 +81,9 @@ class PublicCatalogControllerTest {
                 List.of(new PublicCatalogPackDto("PACK_CLINIC", "Clinica", "Para una clinica",
                         new BigDecimal("89000.00"), new BigDecimal("890000.00"),
                         new BigDecimal("150000.00"), new BigDecimal("19.00"), TaxTreatment.TAXED,
-                        List.of("CORE", "SURGERY")))));
+                        List.of("CORE", "SURGERY"))),
+                List.of(new PublicCatalogRequirementDto("ELECTRONIC_INVOICING", "CASH_REGISTER"),
+                        new PublicCatalogRequirementDto("EXTRA_STORAGE", "LAB_IMAGING"))));
 
         mockMvc.perform(get("/catalog")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.currency").value("COP"))
@@ -94,7 +97,10 @@ class PublicCatalogControllerTest {
                 .andExpect(jsonPath("$.capacities[0].annualIncludedQuantity").value(5))
                 .andExpect(jsonPath("$.oneTimeItems[0].selfServiceEligible").value(false))
                 .andExpect(jsonPath("$.packs[0].componentCodes")
-                        .value(org.hamcrest.Matchers.contains("CORE", "SURGERY")));
+                        .value(org.hamcrest.Matchers.contains("CORE", "SURGERY")))
+                .andExpect(jsonPath("$.requirements[0].itemCode").value("ELECTRONIC_INVOICING"))
+                .andExpect(jsonPath("$.requirements[0].requiredItemCode").value("CASH_REGISTER"))
+                .andExpect(jsonPath("$.requirements[1].requiredItemCode").value("LAB_IMAGING"));
     }
 
     /**
@@ -109,7 +115,7 @@ class PublicCatalogControllerTest {
                 List.of(new PublicCatalogItemDto("GROOMING", "Peluqueria", null, false, null,
                         new BigDecimal("29000.00"), null, new BigDecimal("0.00"),
                         new BigDecimal("19.00"), TaxTreatment.TAXED, true)),
-                List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), List.of()));
 
         mockMvc.perform(get("/catalog")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.modules[0].monthlyAmount").value(29000.00))
@@ -128,7 +134,7 @@ class PublicCatalogControllerTest {
                 List.of(new PublicCatalogItemDto("SURGERY", "Cirugia", null, false, null,
                         new BigDecimal("38000.00"), null, new BigDecimal("0.00"),
                         new BigDecimal("19.00"), TaxTreatment.TAXED, true)),
-                List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), List.of()));
 
         mockMvc.perform(get("/catalog")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.priceListId").doesNotExist())

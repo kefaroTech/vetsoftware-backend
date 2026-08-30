@@ -2,6 +2,7 @@ package com.vetsoftware.app.pricelist.application.port.out;
 
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackComponentRowDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogRequirementRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicPlanRowDto;
 import java.util.List;
 
@@ -67,4 +68,28 @@ public interface PublicCatalogQueryPort {
      * pieza suya.
      */
     List<PublicCatalogPackComponentRowDto> findPackComponents(Long priceListId);
+
+    /**
+     * El grafo articulo → lo que necesita para funcionar, solo arcos
+     * {@code REQUIRES} y solo entre articulos vivos.
+     *
+     * <p>
+     * <strong>Sin {@code priceListId}, y no es un olvido.</strong> Una dependencia
+     * no depende de la tarifa: {@code catalog_item_dependencies} no tiene columna
+     * de lista de precios, y meter el parametro para ignorarlo —como hace hoy
+     * {@link #findPackComponents(Long)}— seria escribir una firma que miente.
+     *
+     * <p>
+     * <strong>El predicado es el mismo que aplica el servidor</strong>, columna por
+     * columna: el de
+     * {@code configurator.infrastructure.persistence.JpaCatalogItemDependencyQueryPort},
+     * que es lo que recorre {@code RequiredItemsClosure} al completar un carrito.
+     * Publicar un grafo distinto del que se aplica es prometer una cosa y cobrar
+     * otra, que es el defecto que este endpoint existe para cerrar. Consecuencia
+     * conocida y aceptada: como aquel no filtra por precio, un requisito puede
+     * apuntar a un articulo que no sale en ninguna de las cuatro listas por no
+     * estar tarifado en la tarifa vigente. El servidor lo anadiria igual, asi que
+     * publicarlo es la unica forma de que el front pueda anticiparlo.
+     */
+    List<PublicCatalogRequirementRowDto> findRequirements();
 }

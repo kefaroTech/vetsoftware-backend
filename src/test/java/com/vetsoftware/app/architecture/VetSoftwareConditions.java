@@ -129,22 +129,52 @@ final class VetSoftwareConditions {
      * visto. Cuando el salto es a una interfaz, se siguen también sus
      * implementaciones, que es donde vive la llamada.
      *
-     * @param httpClientTypes
-     *            tipos considerados cliente HTTP (p. ej. {@code RestClient})
+     * <p>
+     * <b>Los tipos se nombran por cadena y no con un literal {@code .class}, y ese
+     * es el cambio que hace útil a la regla.</b> Un {@code Class<?>} solo se puede
+     * escribir si el tipo ya está en el classpath de test, así que la versión
+     * anterior —que solo sabía de {@code RestClient}, el único cliente que el POM
+     * declara hoy— <b>era incapaz de prohibir un cliente que todavía no es
+     * dependencia</b>. Es exactamente el caso que viene: la primera llamada a un
+     * modelo de IA llegará con un SDK nuevo, y una regla que solo puede nombrar lo
+     * que ya existe habría dado verde el día del estreno. Con cadenas, el veto se
+     * escribe <i>antes</i> que la dependencia.
+     *
+     * <p>
+     * <b>Y por eso hay dos listas.</b> Un SDK no expone un único tipo cliente:
+     * expone un cliente síncrono, uno asíncrono, un builder y media docena de
+     * servicios, y enumerarlos clase a clase es una lista que envejece mal —basta
+     * que el autor del SDK añada una fachada para que el veto deje de aplicar sin
+     * que nadie lo note—. Los paquetes se vetan enteros por prefijo; los tipos
+     * sueltos, cuyo paquete contiene además excepciones y DTOs legítimos de
+     * capturar, van por nombre exacto. {@code org.springframework.web.client} es el
+     * ejemplo de por qué la distinción no es cosmética: prohibir el paquete entero
+     * marcaría un {@code RestClientResponseException} en un {@code catch}.
+     *
+     * @param tiposExactos
+     *            nombres completos de tipos considerados cliente HTTP
+     * @param paquetesProhibidos
+     *            prefijos de paquete —con el punto final— cuyos tipos cuentan todos
+     *            como salida externa
      */
-    static ArchCondition<JavaMethod> alcanzarUnClienteHttp(Class<?>... httpClientTypes) {
-        Set<String> clientNames = new HashSet<>();
-        for (Class<?> type : httpClientTypes) {
-            clientNames.add(type.getName());
-        }
-        String description = "alcanzar un cliente HTTP externo (" + String.join(", ", clientNames)
-                + ") directamente o a traves de la cadena de llamadas";
+    static ArchCondition<JavaMethod> alcanzarUnClienteHttp(Collection<String> tiposExactos,
+            Collection<String> paquetesProhibidos) {
+        // LinkedHashSet y no HashSet: la descripcion de la regla se construye con
+        // estos nombres, y con un HashSet el texto cambiaba de orden entre
+        // ejecuciones. Con una sola entrada eso no se notaba; con veinte, una regla
+        // congelada perderia su foto en el store en cuanto el orden bailara.
+        Set<String> tipos = new LinkedHashSet<>(tiposExactos);
+        List<String> paquetes = List.copyOf(paquetesProhibidos);
+        String description = "alcanzar una salida HTTP externa (" + tipos.size() + " tipos y "
+                + paquetes.size() + " paquetes vetados, entre ellos los SDK de IA)"
+                + " directamente o a traves de la cadena de llamadas";
 
         return new ArchCondition<>(description) {
             @Override
             public void check(JavaMethod method, ConditionEvents events) {
                 List<String> path = rutaHasta(method,
-                        call -> clientNames.contains(call.getTargetOwner().getFullName()),
+                        call -> esUnaSalidaExterna(call.getTargetOwner().getFullName(), tipos,
+                                paquetes),
                         VetSoftwareConditions::saltaDeHilo);
                 if (!path.isEmpty()) {
                     events.add(SimpleConditionEvent.satisfied(method, method.getFullName()
@@ -154,10 +184,24 @@ final class VetSoftwareConditions {
         };
     }
 
+    /** Nombre exacto vetado, o dentro de un paquete vetado entero. */
+    private static boolean esUnaSalidaExterna(String owner, Set<String> tipos,
+            List<String> paquetes) {
+        if (tipos.contains(owner)) {
+            return true;
+        }
+        for (String paquete : paquetes) {
+            if (owner.startsWith(paquete)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
-     * La otra mitad de {@link #alcanzarUnClienteHttp(Class...)}, y el cierre de
-     * BE-18: detecta el efecto {@code @Async} que se dispara <em>dentro</em> de una
-     * transacción sin esperar a que confirme.
+     * La otra mitad de {@link #alcanzarUnClienteHttp(Collection, Collection)}, y el
+     * cierre de BE-18: detecta el efecto {@code @Async} que se dispara
+     * <em>dentro</em> de una transacción sin esperar a que confirme.
      *
      * <p>
      * Las dos reglas miran el mismo salto y sacan conclusiones opuestas, a
@@ -321,8 +365,8 @@ final class VetSoftwareConditions {
      * El proxy encola la ejecución en otro pool y devuelve inmediatamente, así que
      * lo que pase al otro lado ya no corre dentro de la transacción del caller. De
      * ahí que las dos reglas que usan este predicado lo lean al revés:
-     * {@link #alcanzarUnClienteHttp(Class...)} <b>corta</b> aquí, porque más allá
-     * del salto ya no se retiene la conexión ni los locks;
+     * {@link #alcanzarUnClienteHttp(Collection, Collection)} <b>corta</b> aquí,
+     * porque más allá del salto ya no se retiene la conexión ni los locks;
      * {@link #alcanzarUnEfectoAsincrono()} <b>reporta</b> aquí, porque más allá del
      * salto el efecto ya no se puede deshacer.
      */

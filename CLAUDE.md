@@ -698,7 +698,73 @@ public interface CreateOwnerUseCase {
 
 ### Rutas públicas
 
-Las rutas que no requieren JWT se declaran en `AuthFilter.PUBLIC_PATHS` como pares `(method, pattern)` con `AntPathMatcher` (e.g. `new PublicRoute("POST", "/auth/login/**")`). No usamos anotaciones por método (`@PublicEndpoint`) — eso requiere consultar el handler mapping desde un filter, lo cual es frágil con el `PathPatternParser` de Spring Boot 3.
+**Esta sección estuvo mal escrita durante meses y ya desvió trabajo**: hablaba de una constante
+`AuthFilter.PUBLIC_PATHS` y de un tipo `PublicRoute` que no existen, y daba a entender que
+declarar la ruta bastaba. Lo de abajo está verificado contra el código, fichero a fichero.
+
+La fuente única es **`auth/infrastructure/config/PublicRoutes`**, no el filtro. Ahí viven tres
+listas: `BUSINESS` (lo que sirve la cadena de negocio), `OTHER_CHAINS` (hoy solo Actuator, que
+tiene su propia cadena y su propio basic) y `JWT_EXCLUDED`, que es la concatenación de las dos y
+es lo que consulta el `AuthFilter`. Existen **dos guardianes sobre las mismas rutas** y tienen
+que decir lo mismo: `AuthFilter.shouldNotFilter` (con `AntPathMatcher`) y la `SecurityFilterChain`
+de `SecurityConfig`, que termina en `anyRequest().authenticated()` (con `PathPattern`). Por eso
+la lista está en una clase compartida y no duplicada en cada una: si las dos se separan, una ruta
+pública devuelve 403 o —peor— una privada queda abierta.
+
+Seguimos sin anotaciones por método (`@PublicEndpoint`): consultar el handler mapping desde un
+filtro es frágil con el `PathPatternParser`.
+
+#### Abrir una ruta al mundo son TRES cosas, no una
+
+Ninguna basta por sí sola, y las tres se comprueban solas:
+
+1. **La ruta literal en `PublicRoutes.BUSINESS`**, como `new Route(HttpMethod.GET, "/catalog")`.
+   Sin esta línea el `AuthFilter` corta con 401 antes de que nadie mire la anotación.
+2. **El puerto de entrada anotado `@NoAuthorizationRequired(reason = "...")`**. Sin ella,
+   `PUERTO_CON_PREAUTHORIZE` (dura) rompe el build. Con la ruta abierta y sin la anotación el
+   puerto queda inalcanzable; con la anotación y sin la ruta, el prospecto se lleva un 401.
+3. **La ruta escrita también en `PublicRoutesTest`**, en el
+   `containsExactlyInAnyOrder` de `business_declara_exactamente_estas_rutas_y_ninguna_mas`. Ese
+   test afirma el inventario **completo** a propósito: abrir un endpoint al mundo tiene que ser
+   una decisión visible en el diff, no una línea más en una lista larga. Añadir la ruta sin
+   tocarlo deja el build rojo.
+
+**Patrón literal, nunca un comodín.** `/catalog/**` habría abierto de paso cualquier
+administración que acabe colgando del mismo prefijo. Es el razonamiento que ya dejaron
+`/configurator`, `/plans` y las seis de `/platform` con sus rutas exactas.
+
+#### Si además es un POST anónimo, son CUATRO
+
+4. **Su propio `RouteLimit` en `LoginRateLimitFilter`**. La prueba
+   `LoginRateLimitFilterTest.toda_ruta_publica_post_esta_limitada` recorre `PublicRoutes.BUSINESS`
+   —no una lista copiada a mano— y falla con cualquier POST público sin límite. La única salida
+   declarada es meter la ruta en `POST_SIN_LIMITE_JUSTIFICADO`, que **hoy está vacío**: no hay
+   ningún POST público perdonado. Un `GET` no le aplica.
+
+#### Si la ruta lleva variable de path
+
+Para un **`GET`** no hace falta nada más que las tres de arriba, y está comprobado:
+
+- Los dos matchers entienden `{var}` igual —`AntPathMatcher` en el filtro y `PathPattern` en
+  Spring Security—, y hay tres rutas vivas que lo demuestran: `/countries/{countryId}/states`,
+  `/states/{stateId}/cities` y `/species/{specieId}/breeds`.
+- **La familia «por id» de BE-COV no se activa**, y no por suerte:
+  `OPERACIONES_POR_ID_SIN_EMPRESA_SOLO_SYSTEM` y `TENANT_DEFENSA_EN_PROFUNDIDAD` llevan las dos
+  `areDeclaredInClassesThat().areNotAnnotatedWith(NoAuthorizationRequired.class)`, así que un
+  puerto público queda fuera **por construcción**. Que el `id` entre por la URL no arrastra
+  ninguna exigencia extra de empresa. Lo que sí sigue en pie es el criterio de fondo: si la fila
+  que ese `id` señala pertenece a una empresa, la ruta **no debería ser pública**, y ahí ya no hay
+  regla que te frene.
+
+Para un **`POST`** con variable de path hay una trampa medida, y hoy no la sufre nadie porque no
+existe ninguna: `LoginRateLimitFilterTest.rutaConcreta` solo sustituye `/**` por `/x` y **deja
+`{var}` tal cual**, de modo que la invariante prueba el path literal `/x/{id}/y`. Como
+`LoginRateLimitFilter.routeLimit` compara con `equals` en todos los límites menos dos, un
+`RouteLimit` normal **no puede casar nunca** y el test queda insatisfacible salvo declarando la
+ruta en `POST_SIN_LIMITE_JUSTIFICADO`, que es justo renunciar a la invariante. Solo funciona si el
+límite se declara en forma de prefijo —`uri.startsWith(path + "/")`, como `LOGIN_LIMIT` y
+`DIAN_WEBHOOK_LIMIT`— y la parte literal va **antes** de la variable. Antes de abrir el primer
+POST público con variable de path, arregla `rutaConcreta`.
 
 ### Anti-patterns auth
 
