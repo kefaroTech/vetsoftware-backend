@@ -816,6 +816,13 @@ class HexagonalArchitectureTest {
                             + " cambiar la de un año cerrado movería los meses en los que se debió"
                             + " declarar y convertiría en extemporáneas declaraciones que se"
                             + " presentaron a tiempo. Se publica por año y no se reescribe"),
+            exenta("LegalDocumentAcceptanceJpaEntity", E1_APPEND_ONLY,
+                    "evidencia de consentimiento (Ley 1581 art. 9): se inserta cuando alguien"
+                            + " acepta y no se corrige nunca -corregirla seria falsificar la"
+                            + " prueba-. La revocacion del art. 8 escribe revoked_at, que es un"
+                            + " hecho posterior y no una edicion de lo que se acepto, y la"
+                            + " escribe su titular sobre su propia fila: no hay dos operadores"
+                            + " que puedan pisarse"),
             exenta("PublicHolidayJpaEntity", E1_APPEND_ONLY,
                     "el calendario se siembra por año completo y un festivo publicado no se"
                             + " edita: si falta uno, la corrección es publicar la fila que falta,"

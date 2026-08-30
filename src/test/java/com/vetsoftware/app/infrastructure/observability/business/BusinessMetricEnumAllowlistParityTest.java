@@ -2,6 +2,12 @@ package com.vetsoftware.app.infrastructure.observability.business;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics;
+import com.vetsoftware.app.aiproposal.domain.GenerationOutcome;
+import com.vetsoftware.app.aiproposal.domain.LineVerdict;
+import com.vetsoftware.app.aiproposal.domain.ProposalPresentation;
+import com.vetsoftware.app.aiproposal.domain.ReasonRejection;
+import com.vetsoftware.app.aiproposal.infrastructure.retention.AiProposalRetentionMetrics;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
 import com.vetsoftware.app.appointment.domain.AppointmentStatus;
 import com.vetsoftware.app.electronicdocument.application.port.out.BillingMetrics;
@@ -445,6 +451,115 @@ class BusinessMetricEnumAllowlistParityTest {
                             + " para el tag <result>. Las dos cosas se tragan la metrica en"
                             + " silencio, y esta es la del dinero que entra.")
                     .isNotNull();
+        }
+    }
+
+    /**
+     * Asistente comercial con IA. Cinco vocabularios, y el que mas duele si se
+     * separa es {@code reason.rule}: es la unica serie que dice si el prompt esta
+     * derivando -«los motivos salen genericos» tiene nueve causas posibles y sin
+     * esta etiqueta no se distingue ninguna-. Si un valor nuevo la denegara, el
+     * medidor entero desaparece y el panel se lee como «el modelo va bien».
+     *
+     * <p>
+     * {@code retention.step} entra aqui porque los dos medidores del barrido se
+     * movieron al prefijo de negocio en la misma fase: antes vivian fuera y su
+     * vocabulario era cerrado por disciplina, sin ninguna barrera que lo
+     * comprobara.
+     */
+    @Nested
+    @DisplayName("los cinco vocabularios del asistente comercial con IA")
+    class EnumsDelAsistenteConIa {
+
+        @ParameterizedTest(name = "Operation.{0}")
+        @EnumSource(AiProposalMetrics.Operation.class)
+        @DisplayName("las dos operaciones del asistente estan permitidas")
+        void toda_operacion_esta_en_la_lista_blanca(AiProposalMetrics.Operation operation) {
+            assertThat(replyFor(BusinessMetricNames.AI_PROPOSAL_GENERATED, "ai.operation",
+                    operation.value()))
+                    .withFailMessage(mensajeHuerfano("ai.operation", operation.value(),
+                            "AiProposalMetrics.Operation." + operation.name() + ".value()"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "Outcome.{0}")
+        @EnumSource(AiProposalMetrics.Outcome.class)
+        @DisplayName("todo desenlace del asistente esta permitido")
+        void todo_desenlace_esta_en_la_lista_blanca(AiProposalMetrics.Outcome outcome) {
+            assertThat(replyFor(BusinessMetricNames.AI_PROPOSAL_GENERATED, "ai.outcome",
+                    outcome.value()))
+                    .withFailMessage(mensajeHuerfano("ai.outcome", outcome.value(),
+                            "AiProposalMetrics.Outcome." + outcome.name() + ".value()"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "GenerationOutcome.{0}")
+        @EnumSource(GenerationOutcome.class)
+        @DisplayName("todo GenerationOutcome del dominio tiene rama en Outcome.from y su salida pasa el filtro")
+        void todo_generation_outcome_se_traduce(GenerationOutcome outcome) {
+            String valor = AiProposalMetrics.Outcome.from(outcome).value();
+
+            assertThat(replyFor(BusinessMetricNames.AI_PROPOSAL_GENERATED, "ai.outcome", valor))
+                    .withFailMessage(
+                            mensajeHuerfano("ai.outcome", valor,
+                                    "AiProposalMetrics.Outcome.from(GenerationOutcome."
+                                            + outcome.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "ProposalPresentation.{0}")
+        @EnumSource(ProposalPresentation.class)
+        @DisplayName("toda forma de presentar la propuesta esta permitida")
+        void toda_presentacion_esta_en_la_lista_blanca(ProposalPresentation presentation) {
+            String valor = lower(presentation);
+
+            assertThat(
+                    replyFor(BusinessMetricNames.AI_PROPOSAL_GENERATED, "ai.presentation", valor))
+                    .withFailMessage(mensajeHuerfano("ai.presentation", valor,
+                            "MicrometerAiProposalMetrics.lower(ProposalPresentation."
+                                    + presentation.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "ReasonRejection.{0}")
+        @EnumSource(ReasonRejection.class)
+        @DisplayName("las nueve reglas del saneador del motivo estan permitidas")
+        void toda_regla_del_saneador_esta_en_la_lista_blanca(ReasonRejection rule) {
+            String valor = lower(rule);
+
+            assertThat(
+                    replyFor(BusinessMetricNames.AI_PROPOSAL_REASON_REJECTED, "reason.rule", valor))
+                    .withFailMessage(
+                            mensajeHuerfano("reason.rule", valor,
+                                    "MicrometerAiProposalMetrics.lower(ReasonRejection."
+                                            + rule.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "LineVerdict.{0}")
+        @EnumSource(LineVerdict.class)
+        @DisplayName("todo veredicto de linea esta permitido, incluido el aceptado que hoy no se emite")
+        void todo_veredicto_esta_en_la_lista_blanca(LineVerdict verdict) {
+            String valor = lower(verdict);
+
+            assertThat(
+                    replyFor(BusinessMetricNames.AI_PROPOSAL_INVALID_LINES, "line.verdict", valor))
+                    .withFailMessage(
+                            mensajeHuerfano("line.verdict", valor,
+                                    "MicrometerAiProposalMetrics.lower(LineVerdict."
+                                            + verdict.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "Paso.{0}")
+        @EnumSource(AiProposalRetentionMetrics.Paso.class)
+        @DisplayName("los seis pasos del barrido de retencion estan permitidos")
+        void todo_paso_de_retencion_esta_en_la_lista_blanca(AiProposalRetentionMetrics.Paso paso) {
+            assertThat(replyFor(BusinessMetricNames.AI_PROPOSAL_RETENTION_ROWS, "retention.step",
+                    paso.etiqueta()))
+                    .withFailMessage(mensajeHuerfano("retention.step", paso.etiqueta(),
+                            "AiProposalRetentionMetrics.Paso." + paso.name() + ".etiqueta()"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
         }
     }
 }

@@ -147,3 +147,90 @@ conventions de OpenTelemetry. Las claves propias se declaran en `MdcKeys`.
 A diferencia de los nombres de observación, aquí el nombre no basta: **cada campo debe declararse
 además en `LogFieldPolicy`**, que es la allowlist de salida. Un campo no declarado se emite como
 `***`. Ver `docs/POLITICA_REDACCION_LOGS.md`.
+
+## Métricas del asistente comercial con IA (`aiproposal`)
+
+Cinco métricas bajo `vetsoftware.business.ai.proposal.*`, más los dos medidores del barrido de
+retención, que se movieron a ese mismo prefijo en esta fase.
+
+| Métrica | Etiquetas | Series | Qué responde a las 3 de la mañana |
+|---|---|---:|---|
+| `vetsoftware.business.ai.proposal.generated` | `ai.operation`(2) · `ai.outcome`(6) · `ai.presentation`(4) | ≤48, ~14 | ¿Convierte el embudo, y por qué camino salió cada propuesta? |
+| `vetsoftware.business.ai.proposal.spend` | — | 1 | ¿Cuánto llevamos gastado? Contador acumulativo, en USD |
+| `vetsoftware.business.ai.proposal.spend.today` | — | 1 | ¿Cuánto queda del cupo de hoy? Gauge que se reinicia al rotar el día |
+| `vetsoftware.business.ai.proposal.reason.rejected` | `reason.rule`(9) | 9 | ¿Está derivando el prompt? Cada regla del saneador por separado |
+| `vetsoftware.business.ai.proposal.invalid.lines` | `line.verdict`(5) | ≤5 | ¿Está alucinando el modelo códigos de catálogo? |
+| `vetsoftware.business.ai.proposal.retention.rows` | `retention.step`(6) | 6 | ¿Movió filas cada paso del barrido, o hay uno plano? |
+| `vetsoftware.business.ai.proposal.retention.batches.exhausted` | — | 1 | ¿El barrido pierde terreno contra el ritmo de entrada? |
+
+**Ni un identificador, y aquí la regla es más dura que en el resto del catálogo**: los valores de
+este bloque los origina un tercero anónimo de internet. El texto libre del prospecto, la prosa del
+modelo, el código de catálogo que el modelo inventó y el `public_token` de 43 caracteres **no son
+etiqueta de nada**. Lo alto de cardinalidad vive donde corresponde: como atributo del span
+(`proposal.id` —el `BIGINT`, nunca el token—, `ai.input.chars`, `proposal.invalid.lines`,
+`proposal.rejected.reasons`), emitido con `highCardinalityKeyValue` para que llegue a la traza y
+**no** a la métrica.
+
+**El desenlace no es el enum de dominio, y no es un descuido.** `AiProposalMetrics.Outcome` tiene
+un valor que `GenerationOutcome` no puede tener —`no_catalog`, cuando no hay tarifa publicada y el
+caso de uso responde 200 con cero líneas sin llegar a invocar nada—. Ese camino no emitía **ninguna
+señal**: el producto respondía vacío a todos los prospectos a la vez y la única evidencia era que
+nadie compraba.
+
+**Dos métricas de gasto y no una**, porque son dos preguntas: el contador sobrevive a un envío OTLP
+perdido (la agregación de Micrometer es acumulativa y el scrape siguiente trae el total) y el gauge
+se reinicia solo al cambiar el día, que es justo lo que un contador no sabe hacer. Las dos las
+publica `InProcessDailySpendGuard`, que es el único punto por el que pasan **todos** los cargos —
+incluido el del intento que falló después de pagar, donde no hay `ModelUsage` que leer.
+
+### Lo que se decidió NO medir, con su motivo
+
+- **Un histograma de latencia del modelo** (`gen_ai.client.operation.duration` del anexo B).
+  `ModelAccessNotEnabledInvoker` es el único invocador desplegado y devuelve `isAvailable() =
+  false`, así que hoy publicaría ~80 series permanentemente a cero (histograma + `LongTaskTimer`
+  `_active_`) y una alerta de p95 que no podría dispararse jamás. La latencia por intento **sí**
+  está, como span `aiproposal.model.invoke` con su `error.type`; convertirla en histograma es un
+  cambio de código, no una migración, y toca cuando entre el cliente de Bedrock.
+- **`ai.input.size` como histograma.** `ProspectText` está acotado a 1.000 caracteres por
+  construcción, así que «alguien está pegando 50 KB» —el escenario que esa métrica existía para
+  separar— lo rechaza el DTO con un 400. La longitud sigue estando, como atributo de span.
+- **`refinement.round` y la conversión (`quoted`, `registered`).** La primera responde una pregunta
+  de producto, no de operación. La segunda **no se puede emitir todavía**: exige persistir el
+  `proposal.id` en la cotización y en el alta de la empresa, y eso es una migración de esquema, no
+  telemetría.
+- **Ninguna alerta nueva en `docker/prometheus-business-alerts.yml`.** Ese fichero no tiene gemelo
+  en la nube por decisión documentada en su cabecera, así que una alerta de coste puesta ahí
+  **parecería configurada y no avisaría a nadie, nunca**. Las tres `critical` de esta rodaja
+  —presupuesto diario superado, ráfaga de gasto anómala y proveedor mal configurado— van a
+  `VetSoftwareIaC/observability/grafana-managed/` con `noDataState: OK`, y las escribe el dueño del
+  repositorio de infraestructura.
+
+### Spans
+
+| Span | Tipo | Estado |
+|---|---|---|
+| `aiproposal.generate` / `aiproposal.refine` | `@Observed` en el caso de uso | **`Unset` siempre.** Una degradación sirvió una propuesta utilizable con HTTP 200; marcarla `Error` haría que la traza contradiga al log, al código de estado y al SLI |
+| `aiproposal.model.invoke` | observación manual, un span **por intento** | `Error` cuando el proveedor falla, con `error.type` del vocabulario cerrado |
+| `aiproposal.suppression` | `@Observed`, ruta `SYSTEM` | — |
+
+**La excepción del proveedor no se registra en el span.** Es la única desviación deliberada de
+«registra la excepción además de fijar el estado», y el motivo es R1: el mensaje de una excepción
+de SDK puede arrastrar el cuerpo de la petición, y el cuerpo lleva el texto del prospecto. Un
+`observation.error(e)` lo escribiría como `exception.message` y `exception.stacktrace` del span, y
+**los spans no pasan por `RedactingAppender`** —es un appender de Logback y las trazas salen por
+OTLP directo—. Lo que sale es el `error.type` cerrado y, en el log, el `failureCode` saneado a
+`[A-Z][A-Z0-9_]` con 40 caracteres de tope, que además neutraliza la inyección de log de ASVS
+V7.3.1.
+
+### Niveles
+
+Lo que decide el nivel es `AiErrorType.esSistemico()`, no la gravedad aparente:
+
+| Caso | Nivel | Por qué |
+|---|---|---|
+| Modelo no disponible / sin hints / catálogo sin publicar | `INFO` **una vez por proceso** | Configuración aplicada, no avería. Un endpoint público recibe tráfico continuo: un evento por petición es la tormenta que enseña a ignorar el canal. El recuento vive en `ai_proposal_generated_total` |
+| Tope de gasto agotado | `WARN` **una vez al día** | Hay camino de recuperación y es una decisión deliberada del sistema. Quien despierta a alguien es la alerta de coste |
+| Timeout / 429 / 5xx / salida ilegible del modelo | `WARN` | Fallo aislado con degradación ya implementada |
+| `unauthorized` · `forbidden` · `invalid_request` · `model_access_not_enabled` · `_other` | **`ERROR`** | Determinista: fallará el 100 % hasta que una persona cambie configuración |
+| Estimación de coste no utilizable | **`ERROR`** | Apaga la IA para todos y nadie lo reintenta |
+| 4xx del endpoint público (texto vacío, JSON roto, token inexistente) | nada / `DEBUG` | El sistema funcionó. Su vigilancia es una métrica de tasa, no un log |
