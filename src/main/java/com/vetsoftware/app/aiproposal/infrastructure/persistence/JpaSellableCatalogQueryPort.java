@@ -208,6 +208,14 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
 
     private final Clock clock;
 
+    /**
+     * Guarda del aviso de «sin tarifa publicada»: una sola vez por proceso. Ver
+     * {@link #avisarUnaVezDeQueNoHayTarifa()}. No necesita volatilidad: repetir el
+     * aviso una vez mas por una carrera entre hilos es inocuo, y sincronizarlo
+     * costaria mas que el problema que evita.
+     */
+    private boolean avisadoSinTarifa;
+
     public JpaSellableCatalogQueryPort(EntityManager entityManager, Clock clock) {
         this.entityManager = entityManager;
         this.clock = clock;
@@ -218,9 +226,71 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
         Query query = entityManager.createNativeQuery(SQL_PUBLISHED_LIST)
                 .setParameter("hoy", LocalDate.now(clock)).setMaxResults(1);
         List<?> filas = query.getResultList();
-        return filas.isEmpty()
-                ? Optional.empty()
-                : Optional.of(((Number) filas.get(0)).longValue());
+        if (filas.isEmpty()) {
+            avisarUnaVezDeQueNoHayTarifa();
+            return Optional.empty();
+        }
+        return Optional.of(((Number) filas.get(0)).longValue());
+    }
+
+    /**
+     * &#9940; <strong>El estado en el que el asistente no puede cotizar NADA, y que
+     * hasta hoy no se declaraba en ninguna parte.</strong>
+     *
+     * <p>
+     * <strong>La cadena.</strong> El changeset 311 solo publica
+     * {@code LISTA-2026-01} {@code AND EXISTS (SELECT 1 FROM system_users WHERE
+     * enabled = TRUE)}, porque {@code chk_price_lists_published} exige una firma
+     * humana y nominal y el propio changeset se niega —con razon— a inventar una
+     * cuenta tecnica para que "funcione". {@code 008_create_system_users} solo crea
+     * la tabla, y la semilla de laboratorio (262) va en
+     * {@code context="local,e2e"}, que los perfiles de produccion y de test filtran
+     * fuera. Sobre una base recien migrada, por tanto: cero cuentas de sistema, la
+     * tarifa se queda en {@code DRAFT}, esta consulta devuelve vacio y el asistente
+     * responde 200 con cero lineas <strong>a todos los prospectos</strong>.
+     *
+     * <p>
+     * <strong>Lo que estaba documentado y lo que no.</strong> El changeset 382
+     * declara por escrito su degradacion: sin {@code system_users} no siembra hints
+     * y la feature nace "muda" —un estado legitimo, con su
+     * {@code GenerationOutcome} ({@code DEGRADED_NO_HINTS}) y su etiqueta de
+     * metrica—, y el carrito determinista sigue saliendo. El 311 documenta que el
+     * alta de empresas queda bloqueada. <strong>Lo que nadie escribio es que la
+     * misma condicion deja al asistente sin poder cotizar en absoluto</strong>, que
+     * es peor que mudo: mudo responde el nucleo y el precio; esto no responde ni
+     * una linea.
+     *
+     * <p>
+     * <strong>Por que esto es un log y no un changeset.</strong> Cualquier
+     * migracion que desbloquee una base nueva tendria que sembrar una cuenta de
+     * sistema, y eso es exactamente el rastro de auditoria falso que 311 prohibe
+     * —la firma de una tarifa tiene que poder atribuirse a una persona—. Ademas no
+     * hay ningun {@code context} que separe produccion del contenedor de tests (los
+     * dos corren con {@code contexts: production}), asi que un changeset que
+     * arregle el primero publicaria tambien {@code LISTA-2026-01} en el contenedor
+     * de Testcontainers y repuntaria alli {@code platform_billing_config},
+     * cambiando el suelo de precios bajo 2 220 pruebas de integracion. La decision
+     * —a quien se atribuye la firma— es del dueno de la plataforma; lo que si es
+     * responsabilidad de este codigo es <strong>no callarselo</strong>.
+     *
+     * <p>
+     * <strong>Una vez por proceso.</strong> Es un endpoint publico: repetir el
+     * aviso en cada peticion lo convertiria en ruido y enseñaria a ignorar el
+     * canal. El recuento por peticion ya vive en
+     * {@code ai_proposal_generated_total} con {@code ai_outcome="no_catalog"}; esto
+     * es el mensaje que le dice a quien lee el log <em>que hacer</em>.
+     */
+    private void avisarUnaVezDeQueNoHayTarifa() {
+        if (avisadoSinTarifa)
+            return;
+        avisadoSinTarifa = true;
+        log.warn("No hay ninguna lista de precios PUBLISHED vigente: el asistente comercial"
+                + " responde sin una sola linea a todos los prospectos. En una base recien"
+                + " migrada esto es lo esperado -el changeset 311 no publica LISTA-2026-01 si"
+                + " no existe ningun system_user habilitado con el que firmarla-. Se resuelve"
+                + " publicando la tarifa desde la consola de plataforma con una cuenta real."
+                + " Se avisa una sola vez por proceso; el recuento por peticion vive en"
+                + " ai_proposal_generated_total con ai_outcome=no_catalog");
     }
 
     /**

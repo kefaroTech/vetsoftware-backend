@@ -72,6 +72,7 @@ public class AiProposalJpaMapper {
         entity.setStopReason(turn.getStopReason());
         entity.setRawResponse(turn.getRawResponse());
         entity.setFailureCode(turn.getFailureCode());
+        entity.setPresentation(turn.getPresentation());
         entity.setClientRequestId(turn.getClientRequestId());
         entity.setCreatedDate(turn.getCreatedDate());
         entity.setCompletedAt(turn.getCompletedAt());
@@ -85,8 +86,8 @@ public class AiProposalJpaMapper {
                 entity.getInputTextChars(), entity.getModelId(), entity.getPromptVersion(),
                 entity.getInputTokens(), entity.getOutputTokens(), entity.getLatencyMs(),
                 entity.getStopReason(), entity.getRawResponse(), entity.getFailureCode(),
-                entity.getClientRequestId(), entity.getCreatedDate(), entity.getCompletedAt(),
-                entity.getVersion());
+                entity.getPresentation(), entity.getClientRequestId(), entity.getCreatedDate(),
+                entity.getCompletedAt(), entity.getVersion());
     }
 
     public AiProposalLineJpaEntity toJpa(ProposalLine line) {

@@ -124,12 +124,23 @@ public class ProposalTurnWriter {
             ProposalGenerationResult resultado, CartResult carrito, List<String> contradichos,
             Map<String, Long> idsPorCodigo) {
         if (resultado.seInvocoAlModelo()) {
+            // El modelo que contesto, que no tiene por que ser el que TX1 escribio
+            // desde la configuracion. Va ANTES de cerrar: cerrarConExito revalida el
+            // arco del CHECK con los valores ya corregidos.
+            turno.registrarModeloQueRespondio(resultado.usage().modelId(),
+                    resultado.usage().promptVersion());
             turno.cerrarConExito(resultado.usage().inputTokens(), resultado.usage().outputTokens(),
                     resultado.usage().latencyMs(), resultado.usage().stopReason(),
                     resultado.usage().rawResponse(), clock);
         } else {
             turno.cerrarConFallo(codigoDeFallo(resultado), resultado.latencyMs(), clock);
         }
+        // La pantalla que se sirvio, en el turno que la sirvio. Se calcula aqui y no
+        // en el caso de uso porque el turno se guarda en esta misma transaccion: si
+        // la resolviera el llamante despues de TX2, la fila quedaria escrita sin ella
+        // en cuanto alguien reordenara dos lineas.
+        turno.registrarPantalla(
+                ProposalAssembler.presentacion(resultado.outcome(), resultado.draft()));
         repository.saveTurn(turno);
         repository.saveLines(lineas(turno.getId(), carrito, contradichos, idsPorCodigo));
         proposal.registrarTurno(tokens(resultado, true), tokens(resultado, false), clock);

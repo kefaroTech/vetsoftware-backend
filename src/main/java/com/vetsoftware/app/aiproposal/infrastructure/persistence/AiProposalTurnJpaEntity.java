@@ -1,5 +1,6 @@
 package com.vetsoftware.app.aiproposal.infrastructure.persistence;
 
+import com.vetsoftware.app.aiproposal.domain.ProposalPresentation;
 import com.vetsoftware.app.aiproposal.domain.TurnStatus;
 import com.vetsoftware.app.aiproposal.domain.TurnType;
 import jakarta.persistence.Column;
@@ -107,6 +108,15 @@ public class AiProposalTurnJpaEntity {
     @Column(name = "failure_code", length = 40)
     private String failureCode;
 
+    /**
+     * El estado de pantalla que se sirvio en este turno (changeset 388). Nulable:
+     * las filas anteriores al changeset no lo tienen, y una edicion del cliente no
+     * lo escribe.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "presentation", length = 20)
+    private ProposalPresentation presentation;
+
     @Column(name = "client_request_id", length = 64)
     private String clientRequestId;
 
@@ -121,6 +131,14 @@ public class AiProposalTurnJpaEntity {
     private Long version;
 
     protected AiProposalTurnJpaEntity() {
+    }
+
+    public ProposalPresentation getPresentation() {
+        return presentation;
+    }
+
+    public void setPresentation(ProposalPresentation presentation) {
+        this.presentation = presentation;
     }
 
     public Long getId() {

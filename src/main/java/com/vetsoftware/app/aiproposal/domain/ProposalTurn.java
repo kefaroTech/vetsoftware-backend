@@ -40,14 +40,15 @@ public class ProposalTurn {
     private TurnStatus status;
     private final String inputText;
     private final Integer inputTextChars;
-    private final String modelId;
-    private final String promptVersion;
+    private String modelId;
+    private String promptVersion;
     private Integer inputTokens;
     private Integer outputTokens;
     private Integer latencyMs;
     private String stopReason;
     private String rawResponse;
     private String failureCode;
+    private ProposalPresentation presentation;
     private final String clientRequestId;
     private final LocalDateTime createdDate;
     private LocalDateTime completedAt;
@@ -57,8 +58,9 @@ public class ProposalTurn {
     public ProposalTurn(Long id, Long proposalId, int turnNumber, TurnType turnType,
             TurnStatus status, String inputText, Integer inputTextChars, String modelId,
             String promptVersion, Integer inputTokens, Integer outputTokens, Integer latencyMs,
-            String stopReason, String rawResponse, String failureCode, String clientRequestId,
-            LocalDateTime createdDate, LocalDateTime completedAt, Long version) {
+            String stopReason, String rawResponse, String failureCode,
+            ProposalPresentation presentation, String clientRequestId, LocalDateTime createdDate,
+            LocalDateTime completedAt, Long version) {
         if (proposalId == null)
             throw new IllegalArgumentException("proposalId is required");
         if (turnType == null)
@@ -86,6 +88,7 @@ public class ProposalTurn {
         this.stopReason = stopReason;
         this.rawResponse = rawResponse;
         this.failureCode = failureCode;
+        this.presentation = presentation;
         this.clientRequestId = clientRequestId;
         this.createdDate = createdDate;
         this.completedAt = completedAt;
@@ -106,8 +109,8 @@ public class ProposalTurn {
             throw new IllegalArgumentException("this factory only builds model turns");
         return new ProposalTurn(null, proposalId, turnNumber, turnType, TurnStatus.PENDING,
                 inputText, inputText == null ? null : inputText.length(), modelId, promptVersion,
-                null, null, null, null, null, null, clientRequestId, LocalDateTime.now(clock), null,
-                null);
+                null, null, null, null, null, null, null, clientRequestId, LocalDateTime.now(clock),
+                null, null);
     }
 
     /**
@@ -119,7 +122,7 @@ public class ProposalTurn {
         LocalDateTime ahora = LocalDateTime.now(clock);
         return new ProposalTurn(null, proposalId, turnNumber, TurnType.CUSTOMER_EDIT,
                 TurnStatus.SUCCEEDED, null, null, null, null, null, null, null, null, null, null,
-                clientRequestId, ahora, ahora, null);
+                null, clientRequestId, ahora, ahora, null);
     }
 
     /** TX2 cuando el modelo respondio. */
@@ -155,6 +158,52 @@ public class ProposalTurn {
         this.failureCode = failureCode;
         this.status = TurnStatus.FAILED;
         this.completedAt = LocalDateTime.now(clock);
+    }
+
+    /**
+     * &#9940; <strong>El modelo que DE VERDAD respondio, no el que estaba
+     * configurado cuando se abrio el turno.</strong>
+     *
+     * <p>
+     * TX1 escribe {@code model_id} con el valor de la configuracion —tiene que
+     * escribir algo: {@code chk_ai_proposal_turns_model_arc} lo exige NOT NULL en
+     * un turno de modelo, y todavia no se ha llamado a nadie—. Pero quien contesta
+     * es el adaptador, y nada obliga a que sea el mismo: un alias de inferencia que
+     * enruta a otra version, un <em>fallback</em> del proveedor o un despliegue que
+     * cambia la propiedad entre TX1 y TX2 dejan el turno <strong>afirmando por
+     * escrito una falsedad</strong>. Hoy los dos valores coinciden, y por eso el
+     * defecto es invisible: el dia que dejen de coincidir, la columna con la que se
+     * compara la calidad y el coste entre modelos estara atribuyendo la respuesta
+     * de uno a otro, y no habra forma de saber desde cuando.
+     *
+     * <p>
+     * <strong>Sin efecto si el argumento no dice nada.</strong> Un {@code null} o
+     * un blanco dejan lo que ya habia: el arco del {@code CHECK} sigue exigiendo
+     * las dos columnas y borrarlas convertiria una imprecision en una violacion de
+     * esquema.
+     */
+    public void registrarModeloQueRespondio(String modelId, String promptVersion) {
+        if (!turnType.invocaAlModelo())
+            throw new IllegalArgumentException("a customer edit never carries model output");
+        if (modelId != null && !modelId.isBlank())
+            this.modelId = modelId;
+        if (promptVersion != null && !promptVersion.isBlank())
+            this.promptVersion = promptVersion;
+    }
+
+    /**
+     * &#9888; <strong>El estado de pantalla, persistido.</strong> Se calcula al
+     * responder y hasta ahora no se guardaba, asi que una relectura solo podia
+     * deducirlo de si quedaba alguna linea aceptada: eso separa
+     * {@link ProposalPresentation#OUT_OF_DOMAIN} de todo lo demas y
+     * <strong>funde</strong> {@link ProposalPresentation#NOT_UNDERSTOOD} con
+     * {@link ProposalPresentation#DETERMINISTIC} y con
+     * {@link ProposalPresentation#PROPOSAL}, porque las tres escriben el carrito
+     * determinista. El prospecto que volvia por su enlace veia otra pantalla que la
+     * que le contesto.
+     */
+    public void registrarPantalla(ProposalPresentation presentation) {
+        this.presentation = presentation;
     }
 
     private void exigirPendiente() {
@@ -280,6 +329,10 @@ public class ProposalTurn {
 
     public String getFailureCode() {
         return failureCode;
+    }
+
+    public ProposalPresentation getPresentation() {
+        return presentation;
     }
 
     public String getClientRequestId() {
