@@ -94,6 +94,66 @@ public final class BusinessMetricNames {
     public static final String SYSTEM_USER_INVITATIONS = PREFIX + "system.user.invitations";
     public static final String SYSTEM_USER_PROVISIONED = PREFIX + "system.user.provisioned";
 
+    // ── Asistente comercial con IA (aiproposal) ────────────────────────────────
+    //
+    // NI UN IDENTIFICADOR Y NI UNA CADENA LIBRE, y aqui la regla es mas dura que
+    // en el resto del catalogo: el texto lo escribe un anonimo de internet. El
+    // texto del prospecto, la prosa del modelo, el codigo de catalogo devuelto y
+    // el public_token de 43 caracteres NO son etiquetas de ninguna de estas
+    // cinco. El token ademas no es telemetria de nada: es el secreto de
+    // autorizacion de la URL, y escribirlo en una etiqueta o en un log lo copia
+    // a un sitio con 31 dias de retencion del que no se puede rotar.
+    //
+    // Las cuatro preguntas que responden, y ninguna otra: si el embudo convierte
+    // (generated), si el modelo se esta degradando (generated + reason.rejected +
+    // invalid.lines) y si el gasto se dispara (spend + spend.today).
+    //
+    // POR QUE EL PREFIJO DE NEGOCIO Y NO `vetsoftware.ai.*`: fuera de
+    // `vetsoftware.business.` no hay NINGUNA barrera de cardinalidad, y este es
+    // el unico bloque del sistema cuyos valores los origina un tercero anonimo.
+    // Es el mismo precio que ya pago system.user.*, y aqui se paga con gusto.
+
+    /** Propuestas servidas, por operacion, desenlace y forma de presentarlas. */
+    public static final String AI_PROPOSAL_GENERATED = PREFIX + "ai.proposal.generated";
+
+    /**
+     * Gasto acumulado estimado en USD. Contador acumulativo a proposito: un envio
+     * OTLP perdido no pierde el incremento, y este es uno de los tres hechos de
+     * esta tuberia que no se pueden perder.
+     */
+    public static final String AI_PROPOSAL_SPEND = PREFIX + "ai.proposal.spend";
+
+    /** Gasto del dia en curso. Gauge: se reinicia solo al rotar el dia. */
+    public static final String AI_PROPOSAL_SPEND_TODAY = PREFIX + "ai.proposal.spend.today";
+
+    /** Motivos que el saneador rechazo, por la regla que disparo. */
+    public static final String AI_PROPOSAL_REASON_REJECTED = PREFIX + "ai.proposal.reason.rejected";
+
+    /** Codigos que propuso el modelo y no se pudieron cotizar, por veredicto. */
+    public static final String AI_PROPOSAL_INVALID_LINES = PREFIX + "ai.proposal.invalid.lines";
+
+    /**
+     * Filas movidas por la politica de retencion, por paso.
+     *
+     * <p>
+     * <b>Vive en este catalogo y bajo el prefijo de negocio desde que la rodaja
+     * tiene telemetria propia.</b> Nacio como {@code vetsoftware.ai.proposal.
+     * retention.rows}, fuera del prefijo, y eso la dejaba fuera de las dos cosas
+     * que hacen operable un medidor en este repositorio: la lista blanca de
+     * {@code BusinessMetricCardinalityFilter} —su etiqueta {@code retention.step}
+     * no la vigilaba nadie— y el contador de descartes pre-registrado a cero, sin
+     * el cual una alerta {@code increase(...) > 0} no funciona hasta que la serie
+     * nace. El renombrado se hace ahora, con la rodaja recien entregada y sin un
+     * solo panel ni alerta que la nombre (comprobado en {@code docker/} y en
+     * {@code VetSoftwareIaC/observability/}); hacerlo despues seria romper
+     * dashboards.
+     */
+    public static final String AI_PROPOSAL_RETENTION_ROWS = PREFIX + "ai.proposal.retention.rows";
+
+    /** Pasos de la ultima pasada de retencion que agotaron su cupo de lotes. */
+    public static final String AI_PROPOSAL_RETENTION_EXHAUSTED = PREFIX
+            + "ai.proposal.retention.batches.exhausted";
+
     private BusinessMetricNames() {
     }
 }
