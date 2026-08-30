@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PROPUESTA IA (docs/db/propuesta-ia-modelo-datos.md S2.4). El puente propuesta -> empresa
+         cuando el prospecto se registra, y DELIBERADAMENTE FUERA DE LA RODAJA `aiproposal`
+         -pertenece a la rodaja `company`, o a la de registro-. Es la salida de S3 del mismo
+         documento: una FK a companies aquí, en vez de en ai_proposals, es lo único que hace que
+         MUTACIONES_SQL_ACOTADAS_POR_EMPRESA no rompa el UPDATE de anonimización por fecha -esa
+         regla se filtra por la entidad del propio JpaRepository, y la entidad de este changeset
+         no es la que ejecuta ese UPDATE-. Cambiar este diseño (mover la FK a ai_proposals) revive
+         el bloqueo: no hay salida limpia, las tres alternativas documentadas en la sección 3.2
+         del modelo de datos son todas "desactivar el gate para que pase el cambio".
+
+         ON DELETE RESTRICT (el que Liquibase deja explícito aquí y que además es el defecto de
+         InnoDB) es una decisión, no una omisión: es lo que impide que el job de retención borre
+         una propuesta que acabó en cliente. La protección del registro comercial no depende del
+         WHERE del job de purga.
+
+         uq_ai_proposal_conversions_company: una empresa nace de UNA sola propuesta. Sin este
+         único, dos propuestas podrían atribuirse la misma alta y el embudo contaría doble.
+         uq_ai_proposal_conversions_proposal: una propuesta convierte una sola vez.
+
+         ai_proposals.status = 'CONVERTED' (383) es un estado denormalizado SIN FK, a propósito,
+         para que el embudo (cuántas propuestas convirtieron) se responda sin salir de la rodaja
+         `aiproposal`; la empresa concreta solo se sabe desde este puente.
+
+         SIN version: E1_APPEND_ONLY -se escribe una vez, en el momento de la conversión, y no se
+         vuelve a tocar-. Queda para la fase de entidades JPA añadir esta tabla a
+         ENTIDADES_EXENTAS_DE_VERSION con ese código. -->
+    <changeSet id="386_create_ai_proposal_conversions" author="orlando">
+        <preConditions onFail="HALT">
+            <not>
+                <tableExists tableName="ai_proposal_conversions"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="ai_proposal_conversions">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="proposal_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="company_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="converted_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE ai_proposal_conversions
+                ADD CONSTRAINT uq_ai_proposal_conversions_proposal
+                    UNIQUE (proposal_id),
+                ADD CONSTRAINT uq_ai_proposal_conversions_company
+                    UNIQUE (company_id)
+        ]]></sql>
+
+        <addForeignKeyConstraint baseTableName="ai_proposal_conversions"
+                                 baseColumnNames="proposal_id"
+                                 referencedTableName="ai_proposals"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_ai_proposal_conversions_proposal"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <addForeignKeyConstraint baseTableName="ai_proposal_conversions"
+                                 baseColumnNames="company_id"
+                                 referencedTableName="companies"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_ai_proposal_conversions_company"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="ai_proposal_conversions"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

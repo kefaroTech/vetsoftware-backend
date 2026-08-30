@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PROPUESTA IA (docs/db/propuesta-ia-modelo-datos.md S2.1). Cabecera de la propuesta
+         anónima. NINGUNA columna de empresa: ni company_id ni asociación a companies. No es una
+         omisión, es la decisión de S3 del mismo documento -una sola entidad de la rodaja
+         `aiproposal` que alcance CompanyJpaEntity enciende las cuatro reglas duras de BE-COV
+         sobre toda la rodaja (VetSoftwareConditions.java:800-880), y MUTACIONES_SQL_ACOTADAS_
+         POR_EMPRESA no tiene salida limpia para el UPDATE de anonimización por fecha: no hay
+         ninguna empresa que nombrar en su WHERE-. El puente hacia companies vive aparte, en
+         386_create_ai_proposal_conversions.xml.
+
+         public_token es la única frontera de seguridad de esta tabla: sin company_id, sin JWT,
+         sin principal, lo único que separa la propuesta de un prospecto de la de otro es que la
+         URL sea imposible de adivinar. 32 bytes de SecureRandom en base64url = 43 caracteres;
+         VARCHAR(43) en ascii_bin, no CHAR(43) en utf8mb4 (172 bytes por fila vs. 44). La
+         propuesta se direcciona por el token, NUNCA por el id.
+
+         SIN consent_store_text: existía en la v1 del documento y se retira por escrito -ningún
+         control de la interfaz lo pone jamás en TRUE (ni el anexo A del plan, ni su S1.4), así
+         que habría quedado FALSE al lado de un input_text poblado: el esquema afirmando que se
+         guardó un texto sin autorización para guardarlo. El tratamiento del texto libre lo ampara
+         la autorización única de la casilla, cuya finalidad declara privacy_notice_version_id.
+         SIN consent_at/consent_ip_hash: la aceptación en sí -que el prospecto consintió, no solo
+         qué texto vio- vive en legal_document_acceptances (387), tabla nueva y con vida propia
+         (revocable, dos documentos -privacidad y transferencia internacional-, y el resto del
+         producto ya la va a necesitar: contratación y alta de empresa). privacy_notice_version_id
+         SÍ vive aquí porque es "qué aviso exacto se le mostró", no "que lo aceptó", y queda fuera
+         de la anonimización: sin ella la recogida del dato no tiene respaldo.
+
+         catalog_snapshot_hash: SHA-256 (calculado en Java, no generado en la base porque depende
+         de una consulta a otra tabla -catalog_item_ai_hints, 381-) sobre los pares ordenados
+         (code, hint_hash) de los artículos vigentes. Invalidar el golden set es una igualdad de
+         64 bytes, sin recorrer ni almacenar el prompt renderizado (~16 KB/turno que NO se
+         guardan; ver 384).
+
+         idempotency_key: el único NO puede ir sobre la columna a secas -la clave la elige el
+         cliente en una cabecera, así que un único global convierte "reenvía una clave vista" en
+         una lectura de la propuesta ajena, respondida con 200-. uq_ai_proposals_idempotency
+         acota la búsqueda a (contact_email_hash, idempotency_key): una clave repetida por otro
+         correo no encuentra nada. MySQL admite múltiples NULL en un índice único, así que la
+         anonimización -que pone las dos columnas a NULL- no colisiona.
+
+         chk_ai_proposals_anonimizado es la constraint más valiosa de la tabla: convierte "el job
+         de retención borró el correo" de promesa de Java en invariante de la base. Las dos ramas
+         van en IS NULL a propósito -MySQL rechaza una fila cuando el CHECK evalúa a FALSE, pero
+         SI EVALÚA A NULL LA ACEPTA (misma trampa que documenta 229)-.
+
+         DESVIACIÓN SOBRE EL DDL LITERAL DEL DOCUMENTO: se añaden dos índices explícitos
+         (ix_ai_proposals_price_list, ix_ai_proposals_privacy_notice) que la sección 2.1 no
+         enumera. Ninguna otra columna cubre esas dos FK por el lado izquierdo, así que sin ellos
+         InnoDB crearía dos índices sin nombre propio; se declaran antes de la FK, mismo patrón
+         que 353 con ix_ldv_published_by, para que la FK reutilice el índice nombrado. -->
+    <changeSet id="383_create_ai_proposals" author="orlando">
+        <preConditions onFail="HALT">
+            <not>
+                <tableExists tableName="ai_proposals"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="ai_proposals">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="public_token" type="VARCHAR(43)"><constraints nullable="false"/></column>
+            <column name="status" type="VARCHAR(20)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="price_list_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="billing_cycle" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="catalog_snapshot_hash" type="CHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="privacy_notice_version_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="idempotency_key" type="CHAR(36)"/>
+            <column name="contact_email" type="VARCHAR(320)"/>
+            <column name="locale" type="VARCHAR(10)" defaultValue="es-CO">
+                <constraints nullable="false"/>
+            </column>
+            <column name="turn_count" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_input_tokens" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_output_tokens" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="first_seen_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="last_activity_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="expires_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="anonymized_at" type="DATETIME(6)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE ai_proposals
+                MODIFY COLUMN public_token VARCHAR(43)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN catalog_snapshot_hash CHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN idempotency_key CHAR(36)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD COLUMN contact_email_hash BINARY(32)
+                    GENERATED ALWAYS AS (
+                        CASE WHEN contact_email IS NULL THEN NULL
+                             ELSE UNHEX(SHA2(LOWER(contact_email), 256)) END) STORED,
+                ADD CONSTRAINT uq_ai_proposals_token
+                    UNIQUE (public_token),
+                ADD CONSTRAINT uq_ai_proposals_idempotency
+                    UNIQUE (contact_email_hash, idempotency_key),
+                ADD CONSTRAINT chk_ai_proposals_status
+                    CHECK (status IN ('DRAFT','PROPOSED','ABANDONED','CONVERTED','EXPIRED')),
+                ADD CONSTRAINT chk_ai_proposals_cycle
+                    CHECK (billing_cycle IN ('MONTHLY','ANNUAL')),
+                ADD CONSTRAINT chk_ai_proposals_snapshot_hash
+                    CHECK (catalog_snapshot_hash REGEXP '^[0-9a-f]{64}$'),
+                ADD CONSTRAINT chk_ai_proposals_counters
+                    CHECK (turn_count >= 0 AND total_input_tokens >= 0
+                           AND total_output_tokens >= 0),
+                ADD CONSTRAINT chk_ai_proposals_timeline
+                    CHECK (last_activity_at >= first_seen_at AND expires_at > first_seen_at),
+                ADD CONSTRAINT chk_ai_proposals_anonimizado
+                    CHECK (anonymized_at IS NULL OR contact_email IS NULL)
+        ]]></sql>
+
+        <createIndex tableName="ai_proposals" indexName="ix_ai_proposals_retencion">
+            <column name="anonymized_at"/>
+            <column name="last_activity_at"/>
+            <column name="id"/>
+        </createIndex>
+        <createIndex tableName="ai_proposals" indexName="ix_ai_proposals_consola">
+            <column name="created_date"/>
+            <column name="id"/>
+        </createIndex>
+        <createIndex tableName="ai_proposals" indexName="ix_ai_proposals_email_hash">
+            <column name="contact_email_hash"/>
+        </createIndex>
+        <createIndex tableName="ai_proposals" indexName="ix_ai_proposals_price_list">
+            <column name="price_list_id"/>
+        </createIndex>
+        <createIndex tableName="ai_proposals" indexName="ix_ai_proposals_privacy_notice">
+            <column name="privacy_notice_version_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="ai_proposals"
+                                 baseColumnNames="price_list_id"
+                                 referencedTableName="price_lists"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_ai_proposals_price_list"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <addForeignKeyConstraint baseTableName="ai_proposals"
+                                 baseColumnNames="privacy_notice_version_id"
+                                 referencedTableName="legal_document_versions"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_ai_proposals_privacy_notice"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="ai_proposals"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -918,4 +918,21 @@
          el propio 380. -->
     <include file="db/changelog/migrations/380_seed_grooming_requires_services.xml"/>
 
+    <!-- PROPUESTA COMERCIAL GENERADA POR IA (docs/db/propuesta-ia-modelo-datos.md +
+         proporsal/plan-implementacion-propuesta-ia.md S5). Cinco tablas en tres rodajas: el
+         texto de prompt versionado (381/382, rodaja catalogitem), la cabecera/turnos/lineas de
+         la propuesta anonima sin company_id (383-385, rodaja aiproposal, a proposito: una FK a
+         companies ahi enciende BE-COV sobre toda la rodaja) y el puente hacia la empresa cuando
+         el prospecto se registra (386, rodaja company). 387 es la evidencia de aceptacion de
+         documentos legales -no depende de nada de aiproposal, es la primera pieza desplegable-.
+         Orden de FK: 381 antes que 382 (la siembra necesita la tabla); 383 antes que 384 antes
+         que 385 antes que 386 (cada uno referencia al anterior); 387 es independiente. -->
+    <include file="db/changelog/migrations/381_create_catalog_item_ai_hints.xml"/>
+    <include file="db/changelog/migrations/382_seed_catalog_item_ai_hints.xml"/>
+    <include file="db/changelog/migrations/383_create_ai_proposals.xml"/>
+    <include file="db/changelog/migrations/384_create_ai_proposal_turns.xml"/>
+    <include file="db/changelog/migrations/385_create_ai_proposal_lines.xml"/>
+    <include file="db/changelog/migrations/386_create_ai_proposal_conversions.xml"/>
+    <include file="db/changelog/migrations/387_create_legal_document_acceptances.xml"/>
+
 </databaseChangeLog>

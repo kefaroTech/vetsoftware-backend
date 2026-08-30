@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PROPUESTA IA (docs/db/propuesta-ia-modelo-datos.md S2.2). Un turno = una llamada al
+         modelo o una edición del cliente. El texto libre original y el de refinamiento van AQUÍ,
+         no en la cabecera: dos columnas en ai_proposals resolverían hoy y obligarían a un ALTER
+         el día que alguien refine dos veces; un turno por entrada lo resuelve para n
+         refinamientos sin cambio de esquema (turno 1 = texto original; turnos 2..n = refinamiento).
+
+         chk_ai_proposal_turns_initial_is_first + uq_ai_proposal_turns_seq garantizan juntas "como
+         mucho un MODEL_INITIAL por propuesta": el CHECK ancla el tipo al número 1 y el UNIQUE
+         impide que haya dos números 1 -invariante entre filas, sin trigger-.
+
+         chk_ai_proposal_turns_model_arc es el arco exclusivo: un turno de modelo lleva model_id y
+         prompt_version; una edición manual del cliente no lleva ninguna de las dos ni consume
+         tokens. Sin él, "tokens consumidos" acaba sumando filas que nunca llamaron a Bedrock.
+
+         TODAS LAS COLUMNAS DE RESULTADO SON NULABLES Y status='PENDING' EXISTE POR UNA REGLA DE
+         ARQUITECTURA, no por comodidad: SIN_IO_EXTERNO_EN_TRANSACCION (HexagonalArchitectureTest,
+         "una llamada HTTP retiene la conexión y los locks hasta el commit") prohíbe invocar
+         Bedrock dentro de una transacción. La secuencia obligada es: TX1 escribe el turno PENDING
+         y commitea -> se llama al modelo fuera de transacción -> TX2 lo cierra a
+         SUCCEEDED/FAILED. Un turno que nunca recibió respuesta es un estado normal del sistema
+         (chk_ai_proposal_turns_closed/_failure), no una anomalía.
+
+         raw_response es JSON, no TEXT -mismo tipo que 213 y 307 para payloads-, se valida al
+         insertar y NO se indexa: es evidencia de corta vida (retención). El PROMPT RENDERIZADO
+         (~16 KB, 52 artículos x ~300 caracteres) deliberadamente NO se guarda: se reconstruye con
+         prompt_version + ai_proposals.catalog_snapshot_hash + el histórico de 381.
+
+         CON version, NO exenta: el turno se escribe una vez y se actualiza una vez
+         (PENDING -> SUCCEEDED/FAILED), así que E1_APPEND_ONLY sería falso por escrito y
+         EXENCIONES_DE_VERSION_AL_DIA existe justo para que el repositorio no afirme algo que no
+         es (ArchUnit, HexagonalArchitectureTest). Queda para la fase de entidades JPA añadir
+         @Version aquí y NO añadir esta tabla a ENTIDADES_EXENTAS_DE_VERSION.
+
+         client_request_id en ascii_bin: es un token de idempotencia de cliente, mismo criterio de
+         colación que public_token/catalog_snapshot_hash en 383 (incidencia #633). -->
+    <changeSet id="384_create_ai_proposal_turns" author="orlando">
+        <preConditions onFail="HALT">
+            <not>
+                <tableExists tableName="ai_proposal_turns"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="ai_proposal_turns">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="proposal_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="turn_number" type="INT"><constraints nullable="false"/></column>
+            <column name="turn_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="input_text" type="VARCHAR(2000)"/>
+            <column name="input_text_chars" type="INT"/>
+            <column name="model_id" type="VARCHAR(120)"/>
+            <column name="prompt_version" type="VARCHAR(20)"/>
+            <column name="input_tokens" type="INT"/>
+            <column name="output_tokens" type="INT"/>
+            <column name="latency_ms" type="INT"/>
+            <column name="stop_reason" type="VARCHAR(30)"/>
+            <column name="raw_response" type="JSON"/>
+            <column name="failure_code" type="VARCHAR(40)"/>
+            <column name="client_request_id" type="VARCHAR(64)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="completed_at" type="DATETIME(6)"/>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE ai_proposal_turns
+                MODIFY COLUMN client_request_id VARCHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                ADD CONSTRAINT uq_ai_proposal_turns_seq
+                    UNIQUE (proposal_id, turn_number),
+                ADD CONSTRAINT uq_ai_proposal_turns_request
+                    UNIQUE (proposal_id, client_request_id),
+                ADD CONSTRAINT chk_ai_proposal_turns_type
+                    CHECK (turn_type IN ('MODEL_INITIAL','MODEL_REFINEMENT','CUSTOMER_EDIT')),
+                ADD CONSTRAINT chk_ai_proposal_turns_status
+                    CHECK (status IN ('PENDING','SUCCEEDED','FAILED')),
+                ADD CONSTRAINT chk_ai_proposal_turns_number
+                    CHECK (turn_number >= 1),
+                ADD CONSTRAINT chk_ai_proposal_turns_initial_is_first
+                    CHECK (turn_type <> 'MODEL_INITIAL' OR turn_number = 1),
+                ADD CONSTRAINT chk_ai_proposal_turns_model_arc
+                    CHECK ((turn_type IN ('MODEL_INITIAL','MODEL_REFINEMENT')
+                            AND model_id IS NOT NULL AND prompt_version IS NOT NULL)
+                        OR (turn_type = 'CUSTOMER_EDIT'
+                            AND model_id IS NULL AND prompt_version IS NULL
+                            AND input_tokens IS NULL AND output_tokens IS NULL
+                            AND raw_response IS NULL AND stop_reason IS NULL)),
+                ADD CONSTRAINT chk_ai_proposal_turns_tokens
+                    CHECK ((input_tokens  IS NULL OR input_tokens  >= 0)
+                       AND (output_tokens IS NULL OR output_tokens >= 0)
+                       AND (latency_ms    IS NULL OR latency_ms    >= 0)),
+                ADD CONSTRAINT chk_ai_proposal_turns_closed
+                    CHECK (status = 'PENDING' OR completed_at IS NOT NULL),
+                ADD CONSTRAINT chk_ai_proposal_turns_failure
+                    CHECK ((status = 'FAILED' AND failure_code IS NOT NULL)
+                        OR (status <> 'FAILED' AND failure_code IS NULL))
+        ]]></sql>
+
+        <addForeignKeyConstraint baseTableName="ai_proposal_turns"
+                                 baseColumnNames="proposal_id"
+                                 referencedTableName="ai_proposals"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_ai_proposal_turns_proposal"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="ai_proposal_turns"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
