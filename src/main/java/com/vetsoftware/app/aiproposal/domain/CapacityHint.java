@@ -31,11 +31,19 @@ public record CapacityHint(int staff, int branches, int terminals) {
      * <p>
      * <strong>No son reglas de negocio</strong> —nada dice que una cadena no pueda
      * tener 200 sedes— sino el limite por encima del cual el numero solo puede
-     * venir de que el modelo leyo mal, y pintarlo hace mas dano que omitirlo. Se
-     * repiten aqui a proposito: el esquema los declara y el proveedor los hace
-     * cumplir con {@code strict: true}, pero <strong>el esquema garantiza forma, no
-     * verdad</strong>, y esta es la unica de las dos comprobaciones que corre en
-     * nuestro proceso.
+     * venir de que el modelo leyo mal, y pintarlo hace mas dano que omitirlo.
+     *
+     * <p>
+     * ⚠️ <strong>Este parrafo decia que «el proveedor los hace cumplir con
+     * {@code strict: true}» y eso nunca ha sido verdad de los rangos.</strong>
+     * {@code strict} valida <em>forma</em> —que el campo este, que sea un entero,
+     * que no sobre ninguno— y hoy si viaja, pero los rangos no se declaran como
+     * palabras clave del esquema: van en la descripcion de cada campo, que el
+     * modelo lee y ningun validador comprueba. Ver {@code ProposalOutputSchema},
+     * que explica por que. Asi que <strong>estas tres lineas no son una segunda
+     * comprobacion: son la unica</strong>, y ademas tienen que seguir corriendo
+     * aunque el modo de salida estructurada baje a {@code PROMPT} y no haya esquema
+     * ninguno.
      */
     private static final int MAX_USUARIOS = 500;
 

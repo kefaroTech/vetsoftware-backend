@@ -33,6 +33,12 @@ import java.time.LocalDateTime;
  */
 public class ProposalTurn {
 
+    /**
+     * Lo que admite {@code ai_proposal_turns.stop_reason}. Ver
+     * {@link #validarStopReason}.
+     */
+    private static final int MAX_STOP_REASON = 30;
+
     private Long id;
     private final Long proposalId;
     private final int turnNumber;
@@ -72,6 +78,7 @@ public class ProposalTurn {
         validarArcoDeModelo(turnType, modelId, promptVersion, inputTokens, outputTokens,
                 rawResponse, stopReason);
         validarMedidas(inputTokens, outputTokens, latencyMs);
+        validarStopReason(stopReason);
         validarCierre(status, failureCode, completedAt);
         this.id = id;
         this.proposalId = proposalId;
@@ -130,6 +137,7 @@ public class ProposalTurn {
             String stopReason, String rawResponse, Clock clock) {
         exigirPendiente();
         validarMedidas(inputTokens, outputTokens, latencyMs);
+        validarStopReason(stopReason);
         validarArcoDeModelo(turnType, modelId, promptVersion, inputTokens, outputTokens,
                 rawResponse, stopReason);
         this.inputTokens = inputTokens;
@@ -243,6 +251,31 @@ public class ProposalTurn {
         if (modelId != null || promptVersion != null || inputTokens != null || outputTokens != null
                 || rawResponse != null || stopReason != null)
             throw new IllegalArgumentException("a customer edit never carries model output");
+    }
+
+    /**
+     * ⛔ <strong>Espejo de la columna {@code stop_reason VARCHAR(30)}, y la razon
+     * por la que existe es dinero.</strong> El motivo de parada lo elige el
+     * proveedor de un vocabulario que crece solo: el mas largo que hoy declara el
+     * SDK de Bedrock es {@code MODEL_CONTEXT_WINDOW_EXCEEDED}, <em>29
+     * caracteres</em>, a uno del limite. Sin esta guarda, un valor nuevo un poco
+     * mas largo —o el vocabulario propio de otra familia de modelo— reventaria el
+     * {@code INSERT} de TX2 <strong>despues de que la llamada al modelo se
+     * cobro</strong>: se paga el modelo y se pierde el turno entero, con el carrito
+     * y todo.
+     *
+     * <p>
+     * <strong>Aqui se rechaza, en la costura se acota</strong>, y las dos cosas son
+     * correctas. {@code BedrockModelInvoker.parada} recorta lo que viene de fuera y
+     * lo cuenta en el log, que es lo unico que no cuesta la llamada. Para cuando el
+     * valor llega hasta aqui ya paso por ahi, asi que un valor largo en este punto
+     * solo puede ser un invocador futuro que se salto ese paso —un error de
+     * programacion, no un dato del proveedor— y esos fallan alto, igual que
+     * {@code inputText} con sus 2000.
+     */
+    private static void validarStopReason(String stopReason) {
+        if (stopReason != null && stopReason.length() > MAX_STOP_REASON)
+            throw new IllegalArgumentException("stopReason must be 30 chars or less");
     }
 
     /** Espejo de {@code chk_ai_proposal_turns_tokens}. */
