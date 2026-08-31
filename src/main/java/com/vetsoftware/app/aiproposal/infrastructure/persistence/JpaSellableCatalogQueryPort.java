@@ -12,6 +12,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -209,12 +211,42 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
     private final Clock clock;
 
     /**
-     * Guarda del aviso de «sin tarifa publicada»: una sola vez por proceso. Ver
-     * {@link #avisarUnaVezDeQueNoHayTarifa()}. No necesita volatilidad: repetir el
-     * aviso una vez mas por una carrera entre hilos es inocuo, y sincronizarlo
-     * costaria mas que el problema que evita.
+     * &#9940; <strong>Cada cuanto puede repetirse el aviso de «sin tarifa
+     * publicada». Esto ERA «una sola vez por proceso», y el cambio es deliberado:
+     * no lo devuelvas a un booleano pensando que ahorras ruido.</strong>
+     *
+     * <p>
+     * <strong>Que fallaba.</strong> Con el aviso unico, un contenedor que lleva
+     * dias arriba tiene el mensaje en el arranque y <em>no</em> en la ventana de la
+     * peticion que falla. Quien depura mira los ultimos minutos de log, no
+     * encuentra nada, y concluye que el asistente esta sano cuando lleva dias
+     * respondiendo sin una sola linea a todos los prospectos. Ya costo un
+     * diagnostico entero: el estado mas grave de esta rodaja era el unico invisible
+     * en la ventana en la que se mira.
+     *
+     * <p>
+     * <strong>El equilibrio que sustituye a aquello.</strong> El mensaje completo
+     * sale como mucho una vez por ventana —un endpoint publico y anonimo bajo
+     * trafico convertiria una linea por peticion en ruido que ensena a ignorar el
+     * canal— y <strong>ninguna peticion se pierde</strong>: las que caen dentro de
+     * la ventana se cuentan y el aviso siguiente dice cuantas fueron, asi que desde
+     * cualquier linea se reconstruye el periodo entero. Cinco minutos es mas corto
+     * que cualquier ventana con la que se mira un incidente y acota el volumen a
+     * 288 lineas al dia en el peor caso.
+     *
+     * <p>
+     * El recuento exacto y por peticion sigue viviendo en
+     * {@code ai_proposal_generated_total} con {@code ai_outcome="no_catalog"}. Esto
+     * no compite con esa serie: es el mensaje que dice <em>que hacer</em>, y tiene
+     * que estar donde alguien lo va a leer.
      */
-    private boolean avisadoSinTarifa;
+    private static final Duration VENTANA_DEL_AVISO = Duration.ofMinutes(5);
+
+    /** Ver {@link #avisarDeQueNoHayTarifa()}. */
+    private final AvisoPorVentana avisoSinTarifa = new AvisoPorVentana();
+
+    /** Ver {@link #avisarDeQueElCatalogoEstaVacio(Long, ProposalBillingCycle)}. */
+    private final AvisoPorVentana avisoCatalogoVacio = new AvisoPorVentana();
 
     public JpaSellableCatalogQueryPort(EntityManager entityManager, Clock clock) {
         this.entityManager = entityManager;
@@ -227,7 +259,7 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
                 .setParameter("hoy", LocalDate.now(clock)).setMaxResults(1);
         List<?> filas = query.getResultList();
         if (filas.isEmpty()) {
-            avisarUnaVezDeQueNoHayTarifa();
+            avisarDeQueNoHayTarifa();
             return Optional.empty();
         }
         return Optional.of(((Number) filas.get(0)).longValue());
@@ -274,23 +306,87 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
      * responsabilidad de este codigo es <strong>no callarselo</strong>.
      *
      * <p>
-     * <strong>Una vez por proceso.</strong> Es un endpoint publico: repetir el
-     * aviso en cada peticion lo convertiria en ruido y enseñaria a ignorar el
-     * canal. El recuento por peticion ya vive en
-     * {@code ai_proposal_generated_total} con {@code ai_outcome="no_catalog"}; esto
-     * es el mensaje que le dice a quien lee el log <em>que hacer</em>.
+     * <strong>Con rastro en la ventana de la peticion que falla, no solo en el
+     * arranque.</strong> Ver {@link #VENTANA_DEL_AVISO}, donde esta escrito por que
+     * esto dejo de ser «una sola vez por proceso» y que se puso en su lugar.
      */
-    private void avisarUnaVezDeQueNoHayTarifa() {
-        if (avisadoSinTarifa)
+    private void avisarDeQueNoHayTarifa() {
+        Long silenciadas = avisoSinTarifa.tocaEscribir(clock.millis());
+        if (silenciadas == null)
             return;
-        avisadoSinTarifa = true;
         log.warn("No hay ninguna lista de precios PUBLISHED vigente: el asistente comercial"
                 + " responde sin una sola linea a todos los prospectos. En una base recien"
                 + " migrada esto es lo esperado -el changeset 311 no publica LISTA-2026-01 si"
                 + " no existe ningun system_user habilitado con el que firmarla-. Se resuelve"
                 + " publicando la tarifa desde la consola de plataforma con una cuenta real."
-                + " Se avisa una sola vez por proceso; el recuento por peticion vive en"
-                + " ai_proposal_generated_total con ai_outcome=no_catalog");
+                + " Otras {} peticiones dieron lo mismo desde el aviso anterior y no se"
+                + " escribieron; este aviso no se repite antes de {} minutos. El recuento"
+                + " exacto por peticion vive en ai_proposal_generated_total con"
+                + " ai_outcome=no_catalog", silenciadas, VENTANA_DEL_AVISO.toMinutes());
+    }
+
+    /**
+     * &#9940; <strong>La tarifa SI esta publicada y aun asi no hay nada que
+     * vender.</strong> Este camino era mudo, y compartia desenlace con el de
+     * arriba: la senal decia «publica la tarifa» a quien ya la tenia publicada, y
+     * quien la recibia perdia el turno comprobando algo que estaba bien.
+     *
+     * <p>
+     * <strong>Lo que hay que mirar cuando aparece</strong> son las tres cosas que
+     * {@code SQL_ITEM_TIERS} exige a la vez y que este mensaje no puede adivinar:
+     * que los articulos esten {@code ACTIVE} y {@code enabled}, que la lista tenga
+     * tramos, y que los tenga <em>para el ciclo de facturacion pedido</em> —una
+     * tarifa solo con tramos anuales deja mudo el asistente para quien pide
+     * mensual, y esa asimetria no se ve mirando la tabla por encima—. Por eso el
+     * mensaje lleva la lista y el ciclo: sin ellos hay que reproducirlo para saber
+     * cual de los dos fallaba.
+     */
+    private void avisarDeQueElCatalogoEstaVacio(Long priceListId,
+            ProposalBillingCycle billingCycle) {
+        Long silenciadas = avisoCatalogoVacio.tocaEscribir(clock.millis());
+        if (silenciadas == null)
+            return;
+        log.warn("La lista de precios {} esta PUBLISHED y vigente pero no cuelga de ella ni un"
+                + " articulo vendible para el ciclo {}: el asistente comercial responde sin una"
+                + " sola linea a todos los prospectos. OJO, NO es el mismo estado que 'no hay"
+                + " tarifa publicada': aqui la tarifa ya esta bien y lo que hay que revisar es"
+                + " el catalogo -articulos en ACTIVE y enabled, y con tramo de precio para ESE"
+                + " ciclo-. Otras {} peticiones dieron lo mismo desde el aviso anterior y no se"
+                + " escribieron; este aviso no se repite antes de {} minutos. El recuento"
+                + " exacto por peticion vive en ai_proposal_generated_total con"
+                + " ai_outcome=empty_catalog", priceListId, billingCycle, silenciadas,
+                VENTANA_DEL_AVISO.toMinutes());
+    }
+
+    /**
+     * La guarda de ruido compartida por los dos avisos de arriba. Ver
+     * {@link #VENTANA_DEL_AVISO} para el porque de la ventana; esto es solo su
+     * mecanica, escrita una vez para que los dos avisos no puedan divergir.
+     */
+    private static final class AvisoPorVentana {
+
+        private final AtomicLong proximo = new AtomicLong(Long.MIN_VALUE);
+
+        private final AtomicLong silenciadas = new AtomicLong();
+
+        /**
+         * @return cuantas peticiones se silenciaron desde el aviso anterior, si toca
+         *         escribir; {@code null} si la ventana sigue abierta y esta peticion
+         *         solo suma al contador
+         */
+        Long tocaEscribir(long ahora) {
+            long previsto = proximo.get();
+            // La ventana la abre UN solo hilo: el que gana el CAS escribe, los demas
+            // suman al contador. Sin el CAS, un pico de peticiones simultaneas
+            // escribiria una linea por hilo justo en el momento de mas trafico, que
+            // es cuando menos falta hace.
+            if (ahora < previsto
+                    || !proximo.compareAndSet(previsto, ahora + VENTANA_DEL_AVISO.toMillis())) {
+                silenciadas.incrementAndGet();
+                return null;
+            }
+            return silenciadas.getAndSet(0);
+        }
     }
 
     /**
@@ -316,8 +412,10 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
         if (priceListId == null || billingCycle == null)
             return Optional.empty();
         Map<String, SellableItem> items = leerArticulos(priceListId, billingCycle);
-        if (items.isEmpty())
+        if (items.isEmpty()) {
+            avisarDeQueElCatalogoEstaVacio(priceListId, billingCycle);
             return Optional.empty();
+        }
         Map<String, Set<String>> componentes = leerComponentesDePaquete();
         return Optional.of(new SellableCatalog(items, leerRequisitos(),
                 construirPaquetes(items, componentes)));
