@@ -26,11 +26,14 @@ import com.vetsoftware.app.aiproposal.domain.LegalDocumentVersionRef;
 import com.vetsoftware.app.aiproposal.domain.ProposalBillingCycle;
 import com.vetsoftware.app.aiproposal.domain.ProposalTurn;
 import com.vetsoftware.app.aiproposal.domain.ProspectText;
+import com.vetsoftware.app.aiproposal.infrastructure.ai.BedrockModelInvoker;
 import com.vetsoftware.app.aiproposal.infrastructure.ai.BedrockProposalGenerator;
 import com.vetsoftware.app.aiproposal.infrastructure.ai.ModelInvoker;
 import com.vetsoftware.app.aiproposal.infrastructure.ai.ProposalPromptBuilder;
+import com.vetsoftware.app.aiproposal.infrastructure.ai.StructuredOutputMode;
 import com.vetsoftware.app.aiproposal.testsupport.ProposalMother;
 import com.vetsoftware.app.aiproposal.testsupport.SellableCatalogMother;
+import com.vetsoftware.app.shared.ai.ModelPricing;
 import io.micrometer.common.KeyValue;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.Observation;
@@ -51,6 +54,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.slf4j.event.KeyValuePair;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
+import software.amazon.awssdk.services.bedrockruntime.model.ValidationException;
 
 /**
  * <b>R1 del anexo B, ejercitada de punta a punta y con la mitad que
@@ -104,6 +110,17 @@ class AiProposalTelemetryLeakTest {
 
     private static final Long ID_TURNO = 70L;
 
+    /**
+     * El generador ya no lleva el precio dentro: se lo dan. Son las cifras por
+     * defecto de {@link ModelPricing}, las mismas que aplica el arranque real.
+     */
+    private static final ModelPricing TARIFA = new ModelPricing(
+            new BigDecimal(ModelPricing.DEFECTO_USD_POR_MILLON_ENTRADA),
+            new BigDecimal(ModelPricing.DEFECTO_USD_POR_MILLON_SALIDA),
+            Integer.parseInt(ModelPricing.DEFECTO_TOKENS_ESTIMADOS_ENTRADA),
+            Integer.parseInt(ModelPricing.DEFECTO_TOKENS_ESTIMADOS_SALIDA),
+            ModelPricing.MODELO_POR_DEFECTO);
+
     private static final Map<String, String> HINTS = Map.of("CORE",
             "El nucleo: clientes y mascotas.", "CLINICAL_HISTORY", "Consultas y evolucion.");
 
@@ -124,6 +141,13 @@ class AiProposalTelemetryLeakTest {
 
     @Mock
     private ModelInvoker invoker;
+
+    /**
+     * El cliente del SDK, para el unico test que pone delante el invocador
+     * <b>real</b>. Ver {@link #el_invocador_real_de_bedrock_no_filtra_nada()}.
+     */
+    @Mock
+    private BedrockRuntimeClient bedrock;
 
     @Mock
     private ProposalLinkEmailSender enlacePorCorreo;
@@ -152,10 +176,19 @@ class AiProposalTelemetryLeakTest {
         logs.start();
         raiz.addAppender(logs);
 
-        BedrockProposalGenerator generator = new BedrockProposalGenerator(invoker,
+        service = servicioCon(invoker);
+    }
+
+    /**
+     * La cadena entera con el invocador que se le pase. Existe porque un test monta
+     * el <b>real</b> y el resto un doble: sin este punto de sustitucion, la unica
+     * forma de cubrir la traduccion del SDK seria duplicar el cableado.
+     */
+    private GenerateProposalService servicioCon(ModelInvoker invocador) {
+        BedrockProposalGenerator generator = new BedrockProposalGenerator(invocador,
                 new ProposalPromptBuilder(), hintQueryPort, spendGuard, ProposalMother.RELOJ,
-                observaciones);
-        service = new GenerateProposalService(catalogQueryPort, legalConsent, generator,
+                observaciones, TARIFA);
+        return new GenerateProposalService(catalogQueryPort, legalConsent, generator,
                 new ProposalTurnWriter(repository, legalConsent, enlacePorCorreo,
                         ProposalMother.RELOJ),
                 new ProposalReader(repository, catalogQueryPort, ProposalMother.RELOJ),
@@ -209,6 +242,30 @@ class AiProposalTelemetryLeakTest {
 
         ningunaSenalLlevaElSenuelo();
         // Y la senal si existe: el span del intento sale marcado, no verde.
+        assertThat(atributoDeSpan("error.type")).isEqualTo("invalid_request");
+    }
+
+    @Test
+    @DisplayName("con el invocador REAL de Bedrock delante: el mensaje del SDK trae el senuelo y no sale por ninguna de las cinco superficies")
+    void el_invocador_real_de_bedrock_no_filtra_nada() {
+        conTodoEnPie();
+        when(spendGuard.reserve(any()))
+                .thenReturn(Optional.of(new SpendReservation("r-1", new BigDecimal("0.0176"))));
+        // La mitad que faltaba. Los otros dos tests lanzan ya una
+        // ModelInvocationException con un codigo seguro, es decir, dan por buena la
+        // traduccion en vez de ejercitarla: con ModelInvoker mockeado entero,
+        // BedrockModelInvoker -que es QUIEN tiene que cortar el mensaje del SDK- no
+        // llega a ejecutarse nunca. Aqui el doble baja un nivel, al cliente del SDK,
+        // y el escenario peligroso se recorre completo.
+        when(bedrock.converse(any(ConverseRequest.class))).thenThrow(ValidationException.builder()
+                .message("400 Bad Request; body={\"prompt\":\"" + DESCRIPCION + "\"}").build());
+        service = servicioCon(new BedrockModelInvoker(bedrock, ProposalMother.MODELO, 1500,
+                StructuredOutputMode.TOOL_STRICT));
+
+        observado(() -> service.generate(comando()));
+
+        ningunaSenalLlevaElSenuelo();
+        // Y la senal si existe: la familia del SDK llego traducida hasta el span.
         assertThat(atributoDeSpan("error.type")).isEqualTo("invalid_request");
     }
 

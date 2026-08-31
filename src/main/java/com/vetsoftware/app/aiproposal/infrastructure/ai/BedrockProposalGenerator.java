@@ -14,10 +14,10 @@ import com.vetsoftware.app.aiproposal.domain.GenerationOutcome;
 import com.vetsoftware.app.aiproposal.domain.ModelProposalPayload;
 import com.vetsoftware.app.aiproposal.domain.ProposalDraft;
 import com.vetsoftware.app.aiproposal.domain.ProposalOutputValidator;
+import com.vetsoftware.app.shared.ai.ModelPricing;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -74,35 +74,6 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
 
     private static final Logger log = LoggerFactory.getLogger(BedrockProposalGenerator.class);
 
-    /** Tarifa de Claude Sonnet, USD por millon de tokens (plan S7.4). */
-    private static final BigDecimal USD_POR_MILLON_ENTRADA = new BigDecimal("2");
-
-    private static final BigDecimal USD_POR_MILLON_SALIDA = new BigDecimal("10");
-
-    private static final BigDecimal UN_MILLON = new BigDecimal("1000000");
-
-    /**
-     * La estimacion que se reserva antes de invocar: el peor caso de S7.2.1, no la
-     * media. El cuarto turno acumulativo ronda los 3.800 de entrada, y el tope de
-     * gasto se dimensiona con lo que un atacante va a producir a proposito.
-     */
-    private static final int TOKENS_ESTIMADOS_ENTRADA = 3_800;
-
-    private static final int TOKENS_ESTIMADOS_SALIDA = 1_000;
-
-    /**
-     * &#9940; <strong>Lo que cuesta una invocacion de pago, y es publico porque hay
-     * otro sitio que tiene que saberlo.</strong> El permiso diario por IP de
-     * {@code LoginRateLimitFilter} se deriva de dividir el tope de gasto por este
-     * numero: si se eligen por separado, se calibra el limite de peticiones por
-     * encima del limite de dinero y una sola IP vacia el presupuesto de toda la
-     * plataforma —que es exactamente lo que pasaba con 20/dia por IP contra un tope
-     * que financiaba 18 llamadas—. {@code LoginRateLimitFilterTest} ata los dos
-     * numeros; sin esta constante publica solo podria copiarlos.
-     */
-    public static final BigDecimal USD_ESTIMADO_POR_LLAMADA = coste(TOKENS_ESTIMADOS_ENTRADA,
-            TOKENS_ESTIMADOS_SALIDA);
-
     /** Vocabulario cerrado de {@code failure_code}; cabe en los 40 del CHECK. */
     private static final String SALIDA_ILEGIBLE = AiErrorType.MODEL_OUTPUT_UNREADABLE.name();
 
@@ -156,16 +127,27 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
 
     private final ObservationRegistry observations;
 
+    /**
+     * &#9940; <strong>La tarifa no se calcula aqui: se pide.</strong> Lo que se
+     * reserva, lo que se cobra y lo que se reconcilia salen de
+     * {@link ModelPricing}, que es tambien de donde {@code LoginRateLimitFilter}
+     * deriva el cupo diario por IP. Volver a poner una constante de precio en esta
+     * clase reabre las dos fuentes que se acaban de cerrar, y el reparto de cupos
+     * se descalibraria en silencio en cuanto se configurara la otra.
+     */
+    private final ModelPricing pricing;
+
     @SuppressWarnings("java:S107")
     public BedrockProposalGenerator(ModelInvoker invoker, ProposalPromptBuilder promptBuilder,
             CatalogHintQueryPort hintQueryPort, SpendGuardPort spendGuard, Clock clock,
-            ObservationRegistry observations) {
+            ObservationRegistry observations, ModelPricing pricing) {
         this.invoker = invoker;
         this.promptBuilder = promptBuilder;
         this.hintQueryPort = hintQueryPort;
         this.spendGuard = spendGuard;
         this.clock = clock;
         this.observations = observations;
+        this.pricing = pricing;
     }
 
     @Override
@@ -188,7 +170,7 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
         if (!invoker.isAvailable())
             return ProposalGenerationResult.degradado(GenerationOutcome.DEGRADED_MODEL_UNAVAILABLE);
 
-        Optional<SpendReservation> reserva = spendGuard.reserve(USD_ESTIMADO_POR_LLAMADA);
+        Optional<SpendReservation> reserva = spendGuard.reserve(pricing.usdPerCall());
         if (reserva.isEmpty())
             return ProposalGenerationResult.degradado(GenerationOutcome.DEGRADED_SPEND_CAP);
 
@@ -210,8 +192,18 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
         try (Observation.Scope alcance = intento.openScope()) {
             ModelInvoker.ModelInvocation invocacion = invoker.invoke(prompt);
             int latencia = (int) Math.max(0, clock.millis() - empezo);
-            BigDecimal coste = coste(invocacion.inputTokens(), invocacion.outputTokens());
+            BigDecimal coste = pricing.costOf(invocacion.inputTokens(), invocacion.outputTokens());
             spendGuard.reconcile(reserva, coste);
+
+            // Un desenlace que el invocador ya declaro -hoy solo el modelo que no
+            // honra la salida estructurada-. Va DESPUES de reconciliar y ANTES de
+            // parsear: el gasto ocurrio, y el cuerpo que trae es prosa que no vale
+            // la pena intentar leer. Se respeta el codigo del invocador en vez de
+            // aplanarlo a SALIDA_ILEGIBLE, que es toda la diferencia entre "una
+            // respuesta salio rara" y "este modelo no sabe hacer esto".
+            if (invocacion.failureCode() != null) {
+                return fallado(registrar(intento, invocacion.failureCode()), latencia);
+            }
 
             Optional<ModelProposalPayload> payload = parsear(invocacion.rawJson());
             if (payload.isEmpty()) {
@@ -228,11 +220,11 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
                             invocacion.stopReason(), invocacion.rawJson(), coste),
                     null, latencia);
         } catch (ModelInvoker.ModelInvocationException fallo) {
-            spendGuard.reconcile(reserva, USD_ESTIMADO_POR_LLAMADA);
+            spendGuard.reconcile(reserva, pricing.usdPerCall());
             return fallado(registrar(intento, fallo.getFailureCode(), fallo),
                     (int) Math.max(0, clock.millis() - empezo));
         } catch (RuntimeException inesperado) {
-            spendGuard.reconcile(reserva, USD_ESTIMADO_POR_LLAMADA);
+            spendGuard.reconcile(reserva, pricing.usdPerCall());
             return fallado(registrar(intento, "MODEL_UNEXPECTED_ERROR", inesperado),
                     (int) Math.max(0, clock.millis() - empezo));
         } finally {
@@ -264,6 +256,23 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
      * no existiria.
      *
      * @return el {@code failureCode} saneado, que es el que se persiste en el turno
+     */
+    private static String registrar(Observation intento, String failureCode) {
+        intento.lowCardinalityKeyValue(ERROR_TYPE, AiErrorType.deFailureCode(failureCode).value());
+        return AiErrorType.codigoSeguro(failureCode);
+    }
+
+    /**
+     * Igual que {@link #registrar(Observation, String)} pero para un fallo que
+     * llego como excepcion, que es el unico caso en el que ademas hay que escribir
+     * el evento aqui.
+     *
+     * <p>
+     * El desenlace declarado <strong>no</strong> pasa por este metodo a proposito:
+     * quien lo detecto —{@code BedrockModelInvoker}— ya escribio su linea con
+     * {@code ERROR}, el modelo, el modo y el runbook. Escribirla otra vez
+     * duplicaria el evento y cualquier contador sobre el log valdria el doble que
+     * la realidad.
      */
     private static String registrar(Observation intento, String failureCode,
             RuntimeException fallo) {
@@ -340,12 +349,32 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
      *
      * <p>
      * <strong>Acepta ademas la forma degradada de una cadena suelta</strong>, y no
-     * por indecision: el esquema se envia con {@code strict: true}, pero
-     * {@code strict} lo hace cumplir el proveedor, no nosotros. Si algun dia se cae
-     * —modelo distinto, ruta de reintento, una version del SDK que no lo propague—
-     * la alternativa a leer el codigo sin motivo es descartar la respuesta entera y
-     * cobrarla igual. El motivo ausente lo resuelve el saneador con
-     * {@code short_description}, que es su trabajo.
+     * por indecision.
+     *
+     * <p>
+     * ⚠️ <strong>Este parrafo afirmaba que «el esquema se envia con
+     * {@code strict: true}» cuando no se enviaba ningun esquema en ninguna
+     * parte.</strong> Era cierto cuando se escribio —el plan lo daba por hecho— y
+     * dejo de serlo sin que nadie lo tocara. Hoy si se envia, pero con dos
+     * condiciones que la frase original no tenia y que cambian por completo en que
+     * se puede confiar:
+     *
+     * <ul>
+     * <li><strong>solo en el modo {@code TOOL_STRICT}</strong>
+     * ({@code StructuredOutputMode}, que es configuracion y por defecto vale ese).
+     * En {@code TOOL} viaja el esquema sin {@code strict} y en {@code PROMPT} no
+     * viaja ninguno, porque el uso de herramientas es una capacidad por modelo y
+     * este adaptador no puede quedar atado a una familia;</li>
+     * <li><strong>y {@code strict} lo hace cumplir el proveedor, no
+     * nosotros.</strong> Garantiza la forma de lo que emite: no puede garantizar
+     * que emita.</li>
+     * </ul>
+     *
+     * <p>
+     * Por eso esta rama se queda. En los tres modos la alternativa a leer un codigo
+     * sin su motivo seria descartar la respuesta entera y cobrarla igual. El motivo
+     * ausente lo resuelve el saneador con {@code short_description}, que es su
+     * trabajo.
      *
      * <p>
      * El {@code putIfAbsent} deja ganar al primero: un codigo repetido entre
@@ -377,18 +406,5 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
      */
     private static Integer entero(JsonNode nodo) {
         return nodo != null && nodo.isIntegralNumber() ? nodo.asInt() : null;
-    }
-
-    /**
-     * Sin tokens declarados se cobra la estimacion completa, no cero: un modelo que
-     * no informa de su consumo <strong>ha consumido igual</strong>, y asumir cero
-     * es exactamente como se vacia un cupo sin que el contador se mueva.
-     */
-    private static BigDecimal coste(Integer entrada, Integer salida) {
-        int tokensEntrada = entrada == null ? TOKENS_ESTIMADOS_ENTRADA : entrada;
-        int tokensSalida = salida == null ? TOKENS_ESTIMADOS_SALIDA : salida;
-        return BigDecimal.valueOf(tokensEntrada).multiply(USD_POR_MILLON_ENTRADA)
-                .add(BigDecimal.valueOf(tokensSalida).multiply(USD_POR_MILLON_SALIDA))
-                .divide(UN_MILLON, 6, RoundingMode.HALF_UP);
     }
 }

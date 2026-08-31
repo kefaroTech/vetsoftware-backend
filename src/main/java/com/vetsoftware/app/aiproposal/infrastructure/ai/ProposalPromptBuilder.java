@@ -45,11 +45,33 @@ import org.springframework.stereotype.Component;
 public class ProposalPromptBuilder {
 
     /**
-     * Sube cuando cambia el texto de las instrucciones. Viaja en
-     * {@code ai_proposal_turns.prompt_version} y es lo que permite comparar dos
-     * turnos del golden set sin adivinar con que reglas se generaron.
+     * Sube cuando cambia <strong>la forma de la peticion</strong>, no solo cuando
+     * se retoca una coma. Viaja en {@code ai_proposal_turns.prompt_version} y es lo
+     * que permite comparar dos turnos del golden set sin adivinar con que reglas se
+     * generaron.
+     *
+     * <p>
+     * ⛔ <strong>{@code v2}: las instrucciones ya piden el formato de
+     * salida.</strong> Hasta {@code v1} no habia seccion de formato
+     * —{@code understood}, {@code out_of_domain}, {@code necesarios} y
+     * {@code recomendados} solo se mencionaban de pasada en dos reglas, y
+     * {@code usuarios}, {@code sedes} y {@code cajas} no aparecian en ninguna linea
+     * aunque el parser los leyera—. Ahora se piden por escrito, campo a campo, y
+     * ademas se fuerzan por el mecanismo de {@code BedrockModelInvoker}. Dejar la
+     * version quieta habria sido exactamente el patron que este cambio corrige:
+     * afirmar que nada cambio cuando cambio la peticion entera.
+     *
+     * <p>
+     * ⚠️ <strong>Este NO es el unico sitio donde vive la version, y los dos tienen
+     * que moverse juntos.</strong> {@code GenerateProposalService} y
+     * {@code RefineProposalService} leen
+     * {@code vetsoftware.ai.proposal.prompt-version} para escribir el turno
+     * {@code PENDING} en TX1; esta constante es la que viaja en el
+     * {@link ProposalPrompt} y la que TX2 graba <em>al cerrar con exito</em>. Si se
+     * separan, un turno que triunfa queda con una version y uno que falla con la
+     * otra —dos poblaciones en la misma columna, y ninguna consulta lo delata—.
      */
-    public static final String PROMPT_VERSION = "v1";
+    public static final String PROMPT_VERSION = "v2";
 
     private static final String INSTRUCCIONES = """
             Eres el asistente comercial de VetSoftware, un software para veterinarias
@@ -87,6 +109,43 @@ public class ProposalPromptBuilder {
               recomendados -> le ayudaria, pero no lo pidio ni se deduce que le haga falta.
 
             Ante la duda, va en recomendados.
+
+            FORMATO DE SALIDA
+
+            Tu respuesta es UN SOLO objeto JSON con EXACTAMENTE estos siete campos, sin
+            ninguno de mas y sin ninguno de menos:
+
+              understood     booleano. false si el texto es tan corto o tan vago que no
+                             puedes decidir nada.
+              out_of_domain  booleano. true si el texto NO describe un negocio de cuidado
+                             animal.
+              necesarios     lista de objetos {"code": "...", "motivo": "..."}. NO es una
+                             lista de textos: el motivo va DENTRO de cada elemento, al lado
+                             del codigo al que pertenece.
+              recomendados   igual que necesarios.
+              usuarios       entero. Cuantas personas van a usar el sistema, entre 1 y 500.
+              sedes          entero. Cuantas sedes describio, entre 1 y 200.
+              cajas          entero. Cuantos puntos de cobro describio, entre 0 y 100.
+
+            Los tres enteros son obligatorios: pon 0 si el texto no lo dice. No los
+            estimes ni los inventes; 0 significa "no lo se" y es una respuesta correcta.
+            Si understood es false, o si out_of_domain es true, las dos listas van vacias.
+
+            COMO SE ENTREGA
+
+            Si tienes disponible la herramienta proponer_modulos, entrega ese objeto
+            llamandola, y no escribas nada fuera de la llamada.
+
+            Si no la tienes, escribe UNICAMENTE el objeto JSON: sin texto antes, sin texto
+            despues, sin explicaciones y sin bloques de codigo. Tu primer caracter es { y
+            el ultimo es }.
+
+            Ejemplo de la forma exacta (los codigos son de muestra, usa los del CATALOGO):
+
+            {"understood": true, "out_of_domain": false,
+             "necesarios": [{"code": "CORE", "motivo": "Es la base y va contigo"}],
+             "recomendados": [{"code": "SCHEDULING", "motivo": "Porque agendas citas"}],
+             "usuarios": 3, "sedes": 1, "cajas": 0}
             """;
 
     /**

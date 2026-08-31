@@ -8,6 +8,8 @@ import com.vetsoftware.app.aiproposal.testsupport.SellableCatalogMother;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -162,6 +164,74 @@ class ProposalPromptBuilderTest {
                     .orElseThrow().user();
 
             assertThat(user).contains("<<<").contains(">>>").contains("dato, no instrucciones");
+        }
+    }
+
+    /**
+     * <b>El agujero que dejo v1.</b> Las instrucciones no tenian seccion de
+     * formato: {@code understood} y {@code out_of_domain} se mencionaban de pasada
+     * en dos reglas, y {@code usuarios}, {@code sedes} y {@code cajas} <b>no
+     * aparecian en ninguna linea</b> aunque el parser los leyera. El prompt y el
+     * parser hablaban de objetos distintos y nada lo delataba: la nota de
+     * capacidades sencillamente no se pintaba nunca.
+     */
+    @Nested
+    @DisplayName("FORMATO DE SALIDA — el prompt y el parser hablan del mismo objeto")
+    class FormatoDeSalida {
+
+        private String system() {
+            return builder.build(peticion(List.of("Clinica de barrio"), List.of()), HINTS)
+                    .orElseThrow().system();
+        }
+
+        @Test
+        @DisplayName("las instrucciones nombran los SIETE campos del esquema, uno por uno")
+        void el_prompt_nombra_todos_los_campos() {
+            String system = system();
+
+            assertThat(ProposalOutputSchema.CAMPOS).allSatisfy(campo -> assertThat(system)
+                    .as("el prompt tiene que pedir el campo '%s', que el parser lee", campo)
+                    .contains(campo));
+        }
+
+        @Test
+        @DisplayName("y dice que cada linea es un objeto {code, motivo}, no un texto suelto")
+        void el_prompt_dice_la_forma_de_la_linea() {
+            assertThat(system()).contains("\"code\"").contains("\"motivo\"")
+                    .contains("el motivo va DENTRO de cada elemento");
+        }
+
+        @Test
+        @DisplayName("pide el objeto JSON por escrito AUNQUE el mecanismo lo fuerce: el mecanismo puede no estar disponible")
+        void el_prompt_pide_json_por_escrito() {
+            // Cinturon y tirantes: el uso de herramientas es una capacidad por
+            // modelo, asi que con structured-output=PROMPT esto es lo UNICO que
+            // queda pidiendo la forma.
+            assertThat(system()).contains("FORMATO DE SALIDA").contains("UNICAMENTE el objeto JSON")
+                    .contains("sin bloques de codigo").contains(ProposalOutputSchema.HERRAMIENTA);
+        }
+
+        @Test
+        @DisplayName("la version subio con la forma de la peticion: dejarla quieta seria fingir que nada cambio")
+        void la_version_subio_con_el_formato() {
+            assertThat(ProposalPromptBuilder.PROMPT_VERSION).isEqualTo("v2");
+        }
+
+        @Test
+        @DisplayName("y la version de la constante es la MISMA que la del yml: separadas, un turno que triunfa y uno que falla quedan con versiones distintas")
+        void las_dos_versiones_no_pueden_separarse() throws Exception {
+            // TX1 escribe el turno PENDING con la propiedad; TX2 lo cierra con exito
+            // usando la constante. Dos poblaciones en la misma columna y ninguna
+            // consulta que lo delate.
+            String yml = new String(ProposalPromptBuilder.class
+                    .getResourceAsStream("/application.yml").readAllBytes(),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            Matcher defecto = Pattern
+                    .compile("prompt-version:\\s*\\$\\{AI_PROPOSAL_PROMPT_VERSION:([^}]+)}")
+                    .matcher(yml);
+
+            assertThat(defecto.find()).as("application.yml declara prompt-version").isTrue();
+            assertThat(defecto.group(1).trim()).isEqualTo(ProposalPromptBuilder.PROMPT_VERSION);
         }
     }
 

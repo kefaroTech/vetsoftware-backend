@@ -242,6 +242,27 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
         </dependency>
+        <!-- S10.1.1. El invocador real del modelo, por Bedrock y NO por la API directa de
+             Anthropic. El contenedor se autentica hoy con el rol de tarea de ECS y sin
+             claves: DefaultCredentialsProvider lee las credenciales del contenedor igual
+             que ya hace S3Config, y lo que la infraestructura concede es un ARN de Bedrock,
+             no una clave de API. com.anthropic:anthropic-java exigiria un secreto nuevo que
+             emitir, guardar y rotar, y dejaria sin usar el permiso que ya existe.
+
+             Sin <version> A PROPOSITO: la version sale del BOM importado mas arriba
+             (aws.sdk.version = 2.49.3), que es una version exacta y no un rango. Fijarla
+             aqui la desincronizaria del resto del SDK a la primera subida del BOM, que es
+             como se llega a dos versiones del mismo SDK en el mismo classpath.
+
+             OJO: SIN_IO_EXTERNO_EN_TRANSACCION veta el paquete
+             software.amazon.awssdk.services.bedrockruntime. ENTERO y sigue la cadena de
+             llamadas completa. Que este artefacto exista en el POM no relaja nada: un
+             @Transactional que alcance a BedrockModelInvoker a cualquier profundidad rompe
+             el build. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>bedrockruntime</artifactId>
+        </dependency>
 
         <!-- #111. Aqui vivia spring-boot-starter-mail, "envio de correo (F4)". Nunca
              se uso: cero referencias a org.springframework.mail, jakarta.mail,

@@ -9,10 +9,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.aiproposal.application.usecase.ProposalReader;
-import com.vetsoftware.app.aiproposal.infrastructure.ai.BedrockProposalGenerator;
 import com.vetsoftware.app.aiproposal.infrastructure.ai.ValkeyDailySpendGuard;
 import com.vetsoftware.app.auth.infrastructure.config.PublicRoutes;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
+import com.vetsoftware.app.shared.ai.ModelPricing;
 import io.github.bucket4j.distributed.BucketProxy;
 import io.github.bucket4j.distributed.proxy.RemoteBucketBuilder;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
@@ -109,9 +109,29 @@ class LoginRateLimitFilterTest {
     }
 
     private LoginRateLimitFilter filtroConTope(String topeUsd) {
+        return filtroCon(topeUsd, ModelPricing.DEFECTO_USD_POR_MILLON_ENTRADA,
+                ModelPricing.DEFECTO_USD_POR_MILLON_SALIDA);
+    }
+
+    /**
+     * ⛔ <b>El precio entra por parámetro, y esa es la mitad nueva de la
+     * invariante.</b> Antes el coste por llamada era un literal de la propia clase
+     * bajo prueba, así que el test solo podía afirmar la relación <i>para el precio
+     * de Claude Sonnet</i>. Con un modelo de otra familia —un DeepSeek, un Opus— la
+     * aritmética seguía corriendo, callada y equivocada, y ningún test lo veía.
+     */
+    private LoginRateLimitFilter filtroCon(String topeUsd, String usdPorMillonEntrada,
+            String usdPorMillonSalida) {
         return new LoginRateLimitFilter(proxyManager, new ObjectMapper(), auditLogger,
-                new BigDecimal(topeUsd),
-                new BigDecimal(LoginRateLimitFilter.DEFECTO_USD_POR_LLAMADA_DE_PAGO));
+                new BigDecimal(topeUsd), tarifa(usdPorMillonEntrada, usdPorMillonSalida));
+    }
+
+    private static ModelPricing tarifa(String usdPorMillonEntrada, String usdPorMillonSalida) {
+        return new ModelPricing(new BigDecimal(usdPorMillonEntrada),
+                new BigDecimal(usdPorMillonSalida),
+                Integer.parseInt(ModelPricing.DEFECTO_TOKENS_ESTIMADOS_ENTRADA),
+                Integer.parseInt(ModelPricing.DEFECTO_TOKENS_ESTIMADOS_SALIDA),
+                ModelPricing.MODELO_POR_DEFECTO);
     }
 
     @Nested
@@ -773,13 +793,38 @@ class LoginRateLimitFilterTest {
     @DisplayName("El límite por IP se deriva del límite de dinero")
     class ElLimitePorIpSeDerivaDelDinero {
 
-        @ParameterizedTest(name = "tope {0} USD")
-        @ValueSource(strings = {"0.33", "0.50", "1.00", "2.50", "5.00", "10.00", "50.00", "100.00"})
+        /**
+         * ⛔ <b>Y ahora el precio también es un parámetro.</b> La versión anterior
+         * recorría ocho topes contra <i>un solo</i> precio —el de Sonnet, compilado
+         * dentro del filtro—, así que afirmaba la relación para el modelo de hoy y para
+         * ninguno más. Aquí van tres familias con órdenes de magnitud distintos: la
+         * cara (15/75 USD por millón), la de hoy (2/10) y una barata (0,14/0,28). La
+         * invariante tiene que aguantarlas todas, porque lo que se está probando es la
+         * aritmética, no la cifra.
+         *
+         * <p>
+         * <b>El presupuesto de cada caso financia al menos una sesión por origen</b>, y
+         * no es un detalle: por debajo de eso entra el suelo deliberado de
+         * {@code limitesDePago}, que sube el cupo por IP al mínimo útil precisamente
+         * porque ahí quien corta es el guardián de gasto y no este filtro. Esa rama la
+         * cubre {@code un_tope_de_juguete_no_deja_cupos_a_cero}; mezclarlas aquí haría
+         * que la invariante fuese falsa por diseño.
+         */
+        @ParameterizedTest(name = "tope {0} USD con tarifas {1}/{2} USD por millón")
+        @CsvSource({"0.33, 2, 10", "0.50, 2, 10", "1.00, 2, 10", "5.00, 2, 10", "100.00, 2, 10",
+                "2.50, 15, 75", "10.00, 15, 75", "50.00, 15, 75", "0.05, 0.14, 0.28",
+                "0.33, 0.14, 0.28", "1.00, 0.14, 0.28", "0.33, 0.05, 0.10"})
         @DisplayName("lo que una IP puede gastar en las dos rutas de pago nunca supera lo que el"
-                + " tope financia")
-        void el_cupo_por_ip_nunca_supera_lo_que_el_tope_financia(String tope) {
-            LoginRateLimitFilter conTope = filtroConTope(tope);
+                + " tope financia, sea cual sea el precio del modelo")
+        void el_cupo_por_ip_nunca_supera_lo_que_el_tope_financia(String tope, String usdEntrada,
+                String usdSalida) {
+            LoginRateLimitFilter conTope = filtroCon(tope, usdEntrada, usdSalida);
 
+            assertThat(conTope.llamadasDePagoQueFinanciaElTope())
+                    .as("el caso tiene que estar por encima del suelo de una sesión por origen, o"
+                            + " la invariante no aplica y el test estaría comprobando otra cosa")
+                    .isGreaterThanOrEqualTo(LoginRateLimitFilter.ORIGENES_PARA_VACIAR_EL_DIA
+                            * LoginRateLimitFilter.LLAMADAS_DE_PAGO_POR_SESION);
             assertThat(conTope.cupoDiarioPorIpDeLasRutasDePago())
                     .as("llamadas de pago que una IP puede consumir en un día")
                     .isLessThanOrEqualTo(conTope.llamadasDePagoQueFinanciaElTope());
@@ -794,6 +839,45 @@ class LoginRateLimitFilterTest {
         void subir_el_tope_sube_el_cupo() {
             assertThat(filtroConTope("5.00").cupoDiarioPorIpDeLasRutasDePago())
                     .isGreaterThan(filtroConTope("0.33").cupoDiarioPorIpDeLasRutasDePago());
+        }
+
+        /**
+         * ⛔ <b>La prueba que exige que el precio sea de verdad configuración.</b> Con
+         * el mismo presupuesto, un modelo diez veces más caro tiene que dejar menos
+         * llamadas por IP y uno diez veces más barato tiene que dejar más. Si alguien
+         * devuelve el coste por llamada a un literal —o lo cablea a las tarifas de
+         * Sonnet— los tres números se igualan y esto se pone rojo, que es exactamente
+         * el fallo que hoy no avisaba: cortar por un número de llamadas calculado con
+         * un precio que ya no existe.
+         */
+        @Test
+        @DisplayName("cambiar el precio del modelo cambia el cupo por IP en consecuencia")
+        void un_modelo_mas_caro_deja_menos_cupo_por_ip() {
+            int conSonnet = filtroCon("5.00", "2", "10").cupoDiarioPorIpDeLasRutasDePago();
+            int diezVecesMasCaro = filtroCon("5.00", "20", "100").cupoDiarioPorIpDeLasRutasDePago();
+            int diezVecesMasBarato = filtroCon("5.00", "0.2", "1")
+                    .cupoDiarioPorIpDeLasRutasDePago();
+
+            assertThat(diezVecesMasCaro).as("un modelo más caro financia menos invocaciones")
+                    .isLessThan(conSonnet);
+            assertThat(diezVecesMasBarato).as("uno más barato financia más")
+                    .isGreaterThan(conSonnet);
+        }
+
+        /**
+         * Entrada y salida son dos números y no uno, y esto lo hace exigible: mover
+         * <i>solo</i> una de las dos tarifas tiene que mover el cupo. Un cálculo que
+         * ignorase cualquiera de las dos pasaría el test de arriba y caería aquí.
+         */
+        @Test
+        @DisplayName("la tarifa de entrada y la de salida cuentan por separado")
+        void las_dos_tarifas_cuentan_por_separado() {
+            int base = filtroCon("5.00", "2", "10").cupoDiarioPorIpDeLasRutasDePago();
+
+            assertThat(filtroCon("5.00", "20", "10").cupoDiarioPorIpDeLasRutasDePago())
+                    .as("subir solo la entrada").isLessThan(base);
+            assertThat(filtroCon("5.00", "2", "100").cupoDiarioPorIpDeLasRutasDePago())
+                    .as("subir solo la salida").isLessThan(base);
         }
 
         @Test
@@ -818,13 +902,6 @@ class LoginRateLimitFilterTest {
             assertThat(conTope.cupoDiarioGlobal())
                     .as("el techo de la plataforma se apagaría justo cuando no hay presupuesto")
                     .isPositive();
-        }
-
-        @Test
-        @DisplayName("el coste por llamada que declara el filtro es el que cobra el generador")
-        void el_coste_declarado_es_el_que_se_cobra() {
-            assertThat(new BigDecimal(LoginRateLimitFilter.DEFECTO_USD_POR_LLAMADA_DE_PAGO))
-                    .isEqualByComparingTo(BedrockProposalGenerator.USD_ESTIMADO_POR_LLAMADA);
         }
 
         @Test
