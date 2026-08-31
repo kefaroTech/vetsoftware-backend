@@ -38,6 +38,34 @@ public enum ProposalPresentation {
     /**
      * Sin lectura del texto libre. El carrito es el determinista -nucleo, cierre de
      * dependencias y precio por tramos-, que es una propuesta correcta.
+     *
+     * <p>
+     * &#9940; <strong>Lleva lineas, siempre.</strong> Ese es justo el limite con
+     * {@link #NO_CATALOG}, y confundirlos fue lo que mando un diagnostico entero en
+     * la direccion equivocada: ver alli.
      */
-    DETERMINISTIC
+    DETERMINISTIC,
+
+    /**
+     * &#9940; <strong>No se sirvio NADA: ni el determinista ni el modelo llegaron a
+     * correr.</strong> No hay lista de precios {@code PUBLISHED} vigente, asi que
+     * no hay catalogo que cotizar; la respuesta es 200 con cero lineas, sin token y
+     * sin nada persistido, porque no se abrio ningun turno.
+     *
+     * <p>
+     * <strong>Existe porque {@link #DETERMINISTIC} tenia dos lecturas
+     * incompatibles</strong> —«hubo degradacion del modelo, con lineas reales» y
+     * «no se genero nada»— y el mismo valor no puede significar las dos: quien mira
+     * la respuesta no puede distinguir un catalogo vacio de un modelo caido, y el
+     * estado peor de los dos se lee como el mejor. El emisor es
+     * {@code ProposalViewDto.sinCatalogo()}, y su unico camino son los dos returns
+     * tempranos de {@code GenerateProposalService.generate}, antes del generador.
+     *
+     * <p>
+     * <strong>No se persiste jamas.</strong> {@code ai_proposal_turns.presentation}
+     * solo se escribe al cerrar un turno, y por este camino no hay turno que
+     * cerrar; por eso la relectura de {@code ProposalReader} no puede devolverlo y
+     * no hace falta ningun changeset.
+     */
+    NO_CATALOG
 }
