@@ -1,6 +1,7 @@
 package com.vetsoftware.app.auth.infrastructure.filter;
 
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
+import com.vetsoftware.app.shared.ai.ModelPricing;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.BucketProxy;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
@@ -213,13 +214,6 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     static final String DEFECTO_TOPE_DE_GASTO_DIARIO_USD = "0.33";
 
     /**
-     * Lo que cuesta, estimado, una invocacion de pago. Tiene que ser el mismo
-     * numero que {@code BedrockProposalGenerator.USD_ESTIMADO_POR_LLAMADA}, que
-     * vive en otra rodaja; el test lo comprueba contra la constante real.
-     */
-    static final String DEFECTO_USD_POR_LLAMADA_DE_PAGO = "0.0176";
-
-    /**
      * &#9940; <b>La clave del cubo diario global NO lleva el prefijo de la
      * ruta.</b> Con {@code routeLimit.keyPrefix() + "day:global"}, el cubo llamado
      * "global" era en realidad uno por ruta: la propuesta inicial y el
@@ -242,17 +236,26 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     /** Cuantas invocaciones de pago financia el tope de gasto del dia. */
     private final int llamadasQueFinanciaElTope;
 
+    /**
+     * &#9940; <b>El coste por llamada NO se declara aqui: se pide.</b> Hasta hoy
+     * era un literal {@code "0.0176"} en esta clase, copiado de la constante de
+     * {@code BedrockProposalGenerator} y atado a ella por un test. Un literal atado
+     * por un test sigue siendo una segunda fuente —solo esta vigilada—, y sobre
+     * todo obligaba a que el precio fuese una constante compilada: el dia que se
+     * cambiara de modelo, este filtro repartiria cupos contra un precio que ya no
+     * existe. {@link ModelPricing} es ahora la unica fuente, y se la piden los dos
+     * consumidores: el que cobra y el que reparte.
+     */
     public LoginRateLimitFilter(LettuceBasedProxyManager<String> loginRateLimitProxyManager,
             ObjectMapper objectMapper, AuditLogger auditLogger,
             @Value("${vetsoftware.ai.proposal.daily-spend-cap-usd:"
                     + DEFECTO_TOPE_DE_GASTO_DIARIO_USD + "}") BigDecimal topeDeGastoDiarioUsd,
-            @Value("${vetsoftware.ai.proposal.usd-per-paid-call:" + DEFECTO_USD_POR_LLAMADA_DE_PAGO
-                    + "}") BigDecimal usdPorLlamadaDePago) {
+            ModelPricing modelPricing) {
         this.proxyManager = loginRateLimitProxyManager;
         this.objectMapper = objectMapper;
         this.auditLogger = auditLogger;
         this.llamadasQueFinanciaElTope = llamadasQueFinanciaElTope(topeDeGastoDiarioUsd,
-                usdPorLlamadaDePago);
+                modelPricing.usdPerCall());
         LimitesDePago limites = limitesDePago(this.llamadasQueFinanciaElTope);
         this.aiProposalLimit = new RouteLimit("ai-proposal-rl:", "/assistant/proposal", 5,
                 Duration.ofHours(1), "AI_PROPOSAL_RATE_LIMITED",

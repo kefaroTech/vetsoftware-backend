@@ -8,10 +8,12 @@ import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.auth.infrastructure.security.JwtProvider;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.web.GlobalExceptionHandler;
+import com.vetsoftware.app.shared.ai.ModelPricing;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.tracing.Tracer;
+import java.math.BigDecimal;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -128,5 +130,27 @@ public class WebMvcSliceConfig {
     @Bean
     LettuceBasedProxyManager<String> loginRateLimitProxyManager() {
         return mock(LettuceBasedProxyManager.class);
+    }
+
+    /**
+     * ⛔ <b>Tarifa real, no un mock, y por el mismo motivo que
+     * {@link #meterRegistry()}.</b> {@code LoginRateLimitFilter} deriva el cupo
+     * diario por IP dividiendo el tope de gasto entre {@code usdPerCall()} <b>en su
+     * constructor</b>; un doble devolveria {@code null} ahi y la rodaja fallaria al
+     * arrancar, no al ejercitar el limite. Y como el precio del modelo ya no es una
+     * constante compilada sino un bean, sin esta pieza el contexto no resuelve el
+     * filtro y <b>ninguna de las 92 rodajas web arranca</b>.
+     *
+     * <p>
+     * Los valores son los de {@code application.yml}, que es lo que estas rodajas
+     * quieren ejercitar: la misma derivacion de limites que corre en produccion.
+     */
+    @Bean
+    ModelPricing modelPricing() {
+        return new ModelPricing(new BigDecimal(ModelPricing.DEFECTO_USD_POR_MILLON_ENTRADA),
+                new BigDecimal(ModelPricing.DEFECTO_USD_POR_MILLON_SALIDA),
+                Integer.parseInt(ModelPricing.DEFECTO_TOKENS_ESTIMADOS_ENTRADA),
+                Integer.parseInt(ModelPricing.DEFECTO_TOKENS_ESTIMADOS_SALIDA),
+                ModelPricing.MODELO_POR_DEFECTO);
     }
 }
