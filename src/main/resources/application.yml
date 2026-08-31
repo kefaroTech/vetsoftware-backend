@@ -471,6 +471,29 @@ vetsoftware:
         # publico y anonimo hasta que se rinda el socket. Tiene defecto, asi que la propiedad se
         # lee siempre; publicar la variable de entorno solo hace falta para moverla por entorno.
         timeout: ${AI_PROPOSAL_BEDROCK_TIMEOUT:45s}
+        # LA CONVERSACION CON EL MODELO, ESCRITA EN EL LOG: el prompt que se manda y el cuerpo
+        # que contesta. Existe para depurar por que el modelo elige lo que elige, y para poder
+        # comparar dos modelos leyendo lo mismo que leyeron ellos.
+        #
+        # APAGADO POR DEFECTO Y ESE ES EL ESTADO NORMAL. El prompt lleva el texto libre que
+        # escribio el prospecto, asi que encender esto convierte un log operativo en un almacen
+        # de datos personales bajo la Ley 1581, con su propia retencion y su propia superficie
+        # de acceso. Se enciende para mirar y se apaga; no se deja puesto.
+        #
+        # ES UN INTERRUPTOR Y NO EL NIVEL DEL LOGGER, a proposito: un nivel se sube de paso
+        # mientras se depura otra cosa, y esto no puede encenderse sin querer. Con false no se
+        # construye ni la cadena del mensaje.
+        #
+        # DONDE ACABA LO ESCRITO LO DECIDE logback-spring.xml, no esta clave. El logger se llama
+        # AI_PAYLOAD: en local va sin redactar a consola -additivity=false, igual que
+        # DEV_EMAIL_PREVIEW-, y en dev y prod NO se declara, asi que cae en la raiz y sale por
+        # RedactingAppender como cualquier otro evento. Es decir: en local se lee entero; en dev
+        # se ve la forma de la conversacion con los datos personales redactados. Que en dev salga
+        # redactado no es un defecto: es docs/POLITICA_REDACCION_LOGS.md aplicandose.
+        #
+        # INDEPENDIENTE DE bedrock.enabled: aquel decide si se invoca, este si se cuenta lo que
+        # se invoco. Atarlos dejaria sin depuracion justo al encender la invocacion real.
+        log-payloads: ${AI_PROPOSAL_BEDROCK_LOG_PAYLOADS:false}
       # Vigencia del enlace de la propuesta. YA SE APLICA: ProposalReader.exigir devuelve 404
       # cuando expires_at quedo atras, en las tres rutas que leen o mutan. Antes se escribia en
       # la fila, se renderizaba en el correo ("caduca el DD/MM/YYYY") y no lo comprobaba nadie:

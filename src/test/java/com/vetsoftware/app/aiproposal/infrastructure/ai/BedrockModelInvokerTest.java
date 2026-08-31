@@ -116,7 +116,7 @@ class BedrockModelInvokerTest {
 
     @BeforeEach
     void montar() {
-        invocador = new BedrockModelInvoker(cliente, MODEL_ID, MAX_TOKENS, MODO);
+        invocador = new BedrockModelInvoker(cliente, MODEL_ID, MAX_TOKENS, MODO, false);
         // En la RAIZ y no en el logger de la clase: la fuga que se busca es la que
         // escribe alguien que no sabe que existe esta regla.
         raiz = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
@@ -534,7 +534,7 @@ class BedrockModelInvokerTest {
         @DisplayName("TOOL manda el esquema SIN strict: para un modelo con herramientas que rechaza el esquema estricto")
         void el_escalon_intermedio() {
             BedrockModelInvoker sinStrict = new BedrockModelInvoker(cliente, MODEL_ID, MAX_TOKENS,
-                    StructuredOutputMode.TOOL);
+                    StructuredOutputMode.TOOL, false);
             when(cliente.converse(any(ConverseRequest.class)))
                     .thenReturn(conHerramienta(entradaCompleta(), StopReason.TOOL_USE));
 
@@ -549,7 +549,7 @@ class BedrockModelInvokerTest {
         @DisplayName("PROMPT no manda toolConfig NINGUNO y lee el texto: es la unica via que funciona en cualquier modelo")
         void el_escalon_universal() {
             BedrockModelInvoker porInstruccion = new BedrockModelInvoker(cliente, MODEL_ID,
-                    MAX_TOKENS, StructuredOutputMode.PROMPT);
+                    MAX_TOKENS, StructuredOutputMode.PROMPT, false);
             when(cliente.converse(any(ConverseRequest.class))).thenReturn(respuesta(
                     "{\"understood\": true, \"necesarios\": []}", 10, 20, StopReason.END_TURN));
 
@@ -566,7 +566,7 @@ class BedrockModelInvokerTest {
         @DisplayName("PROMPT quita el envoltorio de bloque de codigo: tres caracteres de adorno tumbarian la feature entera")
         void el_envoltorio_de_bloque_de_codigo() {
             BedrockModelInvoker porInstruccion = new BedrockModelInvoker(cliente, MODEL_ID,
-                    MAX_TOKENS, StructuredOutputMode.PROMPT);
+                    MAX_TOKENS, StructuredOutputMode.PROMPT, false);
             when(cliente.converse(any(ConverseRequest.class))).thenReturn(
                     respuesta("```json\n{\"understood\": true}\n```", 10, 20, StopReason.END_TURN));
 
@@ -580,7 +580,7 @@ class BedrockModelInvokerTest {
         @DisplayName("pero PROMPT tampoco rescata un JSON de dentro de la prosa: eso haria pasar «no se {} nada» como objeto vacio")
         void ni_siquiera_en_prompt_se_rescata_de_la_prosa() {
             BedrockModelInvoker porInstruccion = new BedrockModelInvoker(cliente, MODEL_ID,
-                    MAX_TOKENS, StructuredOutputMode.PROMPT);
+                    MAX_TOKENS, StructuredOutputMode.PROMPT, false);
             when(cliente.converse(any(ConverseRequest.class))).thenReturn(
                     respuesta("No estoy seguro {} de lo que pides", 10, 20, StopReason.END_TURN));
 
@@ -678,6 +678,72 @@ class BedrockModelInvokerTest {
                         List.of(Document.mapBuilder().putString("code", "SCHEDULING")
                                 .putString("motivo", "Porque agendas citas").build()))
                 .putNumber("usuarios", 3).putNumber("sedes", 1).putNumber("cajas", 0).build();
+    }
+
+    @Nested
+    @DisplayName("La conversacion con el modelo, escrita en el log")
+    class LogDeLaConversacion {
+
+        @Test
+        @DisplayName("apagado por defecto: no escribe ni el prompt ni la respuesta")
+        void apagado_no_escribe_nada() {
+            when(cliente.converse(any(ConverseRequest.class)))
+                    .thenReturn(respuesta("{\"understood\":true}", 10, 20, StopReason.END_TURN));
+
+            invocador.invoke(PROMPT);
+
+            assertThat(lineasDelPayload()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("encendido: escribe lo que se manda y lo que contesta, enteros")
+        void encendido_escribe_las_dos_mitades() {
+            BedrockModelInvoker conLog = new BedrockModelInvoker(cliente, MODEL_ID, MAX_TOKENS,
+                    MODO, true);
+            when(cliente.converse(any(ConverseRequest.class)))
+                    .thenReturn(respuesta("{\"understood\":true}", 3200, 900, StopReason.END_TURN));
+
+            conLog.invoke(PROMPT);
+
+            assertThat(lineasDelPayload()).hasSize(2);
+            assertThat(lineasDelPayload().getFirst()).contains(PROMPT.system())
+                    .contains(PROMPT.user()).contains(MODEL_ID);
+            assertThat(lineasDelPayload().get(1)).contains("{\"understood\":true}")
+                    .contains("end_turn").contains("3200").contains("900");
+        }
+
+        /**
+         * &#9940; El prompt se escribe ANTES de invocar, y esta prueba es la razon: si
+         * el SDK revienta o se agota el timeout, lo que se mando es lo unico que
+         * explica por que. Escribirlo despues lo perderia justo en el caso que se esta
+         * depurando.
+         */
+        @Test
+        @DisplayName("si la invocacion falla, lo que se mando ya quedo escrito")
+        void la_peticion_sobrevive_al_fallo() {
+            BedrockModelInvoker conLog = new BedrockModelInvoker(cliente, MODEL_ID, MAX_TOKENS,
+                    MODO, true);
+            when(cliente.converse(any(ConverseRequest.class)))
+                    .thenThrow(SdkClientException.create("boom"));
+
+            assertThatThrownBy(() -> conLog.invoke(PROMPT))
+                    .isInstanceOf(ModelInvocationException.class);
+
+            assertThat(lineasDelPayload()).hasSize(1);
+            assertThat(lineasDelPayload().getFirst()).contains(PROMPT.user());
+        }
+
+        /**
+         * Filtrado por NOMBRE de logger y no por contenido: el canal tiene que ser
+         * {@code AI_PAYLOAD} y solo ese, porque es lo que permite a
+         * {@code logback-spring.xml} enrutarlo aparte -sin redactar en local, por la
+         * raiz redactada en dev-. Si alguien lo escribiera por el logger de la clase,
+         * estas aserciones seguirian pasando por contenido y el enrutado seria mentira.
+         */
+        private java.util.List<String> lineasDelPayload() {
+            return logs.list.stream().filter(evento -> "AI_PAYLOAD".equals(evento.getLoggerName()))
+                    .map(ILoggingEvent::getFormattedMessage).toList();
+        }
     }
 
     private static ConverseResponse conHerramienta(Document entrada, StopReason parada) {

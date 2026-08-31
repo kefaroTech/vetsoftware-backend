@@ -130,18 +130,41 @@ public class BedrockInvokerConfig {
      */
     private final StructuredOutputMode structuredOutput;
 
+    /**
+     * &#9940; <strong>Escribe en el log el prompt entero y la respuesta entera, y
+     * por eso nace apagado.</strong> El prompt lleva el texto libre que escribio el
+     * prospecto: encender esto convierte un log operativo en un almacen de datos
+     * personales bajo la Ley 1581, con su propia retencion y su propia superficie
+     * de acceso. Es para depurar la conversacion con el modelo —ver que se manda,
+     * ver que contesta— no para dejarlo puesto.
+     *
+     * <p>
+     * <strong>Es independiente de {@code bedrock.enabled} a proposito.</strong>
+     * Aquel decide si se invoca; este, si se cuenta lo que se invoco. Atarlos
+     * dejaria sin depuracion justo al encender la invocacion real, que es cuando
+     * hace falta.
+     *
+     * <p>
+     * Donde acaba lo escrito lo decide {@code logback-spring.xml} y no esta clase:
+     * en local el logger {@code AI_PAYLOAD} va sin redactar a consola, y en dev y
+     * prod no se declara, asi que cae en la raiz y pasa por el redactor.
+     */
+    private final boolean logPayloads;
+
     public BedrockInvokerConfig(
             @Value("${vetsoftware.ai.proposal.model-id:" + ModelPricing.MODELO_POR_DEFECTO
                     + "}") String modelId,
             @Value("${vetsoftware.ai.proposal.bedrock.region:}") String region,
             @Value("${vetsoftware.ai.proposal.bedrock.max-output-tokens:1500}") int maxOutputTokens,
             @Value("${vetsoftware.ai.proposal.bedrock.timeout:45s}") Duration timeout,
-            @Value("${vetsoftware.ai.proposal.bedrock.structured-output:TOOL_STRICT}") String structuredOutput) {
+            @Value("${vetsoftware.ai.proposal.bedrock.structured-output:TOOL_STRICT}") String structuredOutput,
+            @Value("${vetsoftware.ai.proposal.bedrock.log-payloads:false}") boolean logPayloads) {
         this.modelId = modelId;
         this.region = region;
         this.maxOutputTokens = maxOutputTokens;
         this.timeout = timeout;
         this.structuredOutput = StructuredOutputMode.of(structuredOutput);
+        this.logPayloads = logPayloads;
     }
 
     /**
@@ -189,6 +212,7 @@ public class BedrockInvokerConfig {
     @Bean
     @Primary
     ModelInvoker bedrockModelInvoker(BedrockRuntimeClient cliente) {
-        return new BedrockModelInvoker(cliente, modelId.trim(), maxOutputTokens, structuredOutput);
+        return new BedrockModelInvoker(cliente, modelId.trim(), maxOutputTokens, structuredOutput,
+                logPayloads);
     }
 }
