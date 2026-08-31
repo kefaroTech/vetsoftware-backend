@@ -465,7 +465,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             // hay nada que ganar distinguiendolos y si algo que perder, porque seria
             // un oraculo de existencia sobre un identificador que alguien puede estar
             // probando.
-            com.vetsoftware.app.aiproposal.domain.AiProposalNotFoundException.class})
+            com.vetsoftware.app.aiproposal.domain.AiProposalNotFoundException.class,
+            // Las dos ausencias de la pista del asistente, y son distintas: la
+            // primera dice que el articulo no tiene pista vigente -el camino es
+            // publicar-, la segunda que el articulo no existe -no hay nada que
+            // hacer-. Fundirlas dejaria a la consola sin poder distinguirlas.
+            com.vetsoftware.app.catalogitemaihint.domain.CatalogItemAiHintNotFoundException.class,
+            com.vetsoftware.app.catalogitemaihint.domain.HintCatalogItemNotFoundException.class})
     public ProblemDetail handleNotFound(RuntimeException ex) {
         log.info("Resource not found: {}", ex.getMessage());
         return problem(HttpStatus.NOT_FOUND, errorCode(ex), ex.getMessage());
@@ -540,7 +546,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             com.vetsoftware.app.accountingexport.domain.AccountingExportAlreadyResolvedException.class,
             com.vetsoftware.app.taxreturn.domain.TaxReturnNotEditableException.class,
             com.vetsoftware.app.taxreturn.domain.TaxReturnCannotCorrectItselfException.class,
-            com.vetsoftware.app.supplierwithholding.domain.SupplierWithholdingCertificateAlreadyIssuedException.class})
+            com.vetsoftware.app.supplierwithholding.domain.SupplierWithholdingCertificateAlreadyIssuedException.class,
+            // Los tres choques de catalog_item_ai_hints, uno por indice unico:
+            // uq_..._current (ya hay vigente), la sucesion doble sobre la misma
+            // revision, y uq_..._text (ese texto exacto ya se publico). Los tres
+            // son 409 y no 400: el cuerpo esta bien formado -eso lo rechaza @Valid
+            // antes- y lo que choca es el estado del historial.
+            com.vetsoftware.app.catalogitemaihint.domain.CatalogItemAiHintAlreadyPublishedException.class,
+            com.vetsoftware.app.catalogitemaihint.domain.CatalogItemAiHintAlreadySupersededException.class,
+            com.vetsoftware.app.catalogitemaihint.domain.CatalogItemAiHintTextAlreadyPublishedException.class})
     public ProblemDetail handleCollectionConflict(RuntimeException ex) {
         log.info("Collection conflict: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, errorCode(ex), ex.getMessage());
