@@ -379,22 +379,22 @@ vetsoftware:
       # el coste evita una tercera fuente que descalibre el reparto de cupos en silencio. Se
       # mueven aqui, en el mismo PR en el que se mueva `model-id`, y nunca por separado.
       pricing:
-        # Tarifas de us.anthropic.claude-sonnet-5, USD por millon de tokens (plan S7.4). El
+        # Tarifas de us.anthropic.claude-haiku-4-5-20251001-v1:0, USD por millon de tokens (plan S7.4). El
         # modelo va escrito al lado y en `priced-model-id` de aqui abajo: un precio sin decir de
         # que modelo es se convierte en otra cifra huerfana dentro de seis meses.
-        usd-per-million-input-tokens: ${AI_PROPOSAL_USD_PER_MILLION_INPUT_TOKENS:2}
-        usd-per-million-output-tokens: ${AI_PROPOSAL_USD_PER_MILLION_OUTPUT_TOKENS:10}
+        usd-per-million-input-tokens: ${AI_PROPOSAL_USD_PER_MILLION_INPUT_TOKENS:1}
+        usd-per-million-output-tokens: ${AI_PROPOSAL_USD_PER_MILLION_OUTPUT_TOKENS:5}
         # El peor caso de S7.2.1, no la media: el cuarto turno acumulativo ronda los 3.800 de
         # entrada, y el tope de gasto se dimensiona con lo que un atacante va a producir a
-        # proposito. Con estas cuatro cifras, una invocacion de pago cuesta 0,017600 USD y el
-        # tope de 0,33 financia 18 al dia.
+        # proposito. Con estas cuatro cifras, una invocacion de pago cuesta 0,008800 USD y el
+        # tope de 0,33 financia 37 al dia.
         estimated-input-tokens: ${AI_PROPOSAL_ESTIMATED_INPUT_TOKENS:3800}
         estimated-output-tokens: ${AI_PROPOSAL_ESTIMATED_OUTPUT_TOKENS:1000}
         # DE QUE MODELO SON LAS TARIFAS DE ARRIBA. Tiene que ser el mismo que `model-id`; si no
         # lo es, ModelPricing lo dice con un WARN en el arranque nombrando los dos. Avisa y no
         # revienta a proposito: prod recibe `model-id` desde Terraform, y un arranque fatal
         # convertiria un cambio de version del perfil de inferencia en una caida.
-        priced-model-id: ${AI_PROPOSAL_PRICED_MODEL_ID:us.anthropic.claude-sonnet-5}
+        priced-model-id: ${AI_PROPOSAL_PRICED_MODEL_ID:us.anthropic.claude-haiku-4-5-20251001-v1:0}
       # ES A LA VEZ LA ETIQUETA DE AUDITORIA Y EL IDENTIFICADOR QUE SE INVOCA. AI_PROPOSAL_MODEL_ID
       # se publica al contenedor derivada de la misma variable que compone el ARN del permiso de
       # Bedrock, asi que esta cadena es literalmente aquella para la que hay permiso concedido, en
@@ -408,7 +408,7 @@ vetsoftware:
       # al declarar la transferencia internacional. El defecto de aqui y el de los dos @Value
       # llevaban el modelo base pelado -sin prefijo-, asi que el arranque local y los tests corrian
       # con un identificador distinto del desplegado; ya estan alineados.
-      model-id: ${AI_PROPOSAL_MODEL_ID:us.anthropic.claude-sonnet-5}
+      model-id: ${AI_PROPOSAL_MODEL_ID:us.anthropic.claude-haiku-4-5-20251001-v1:0}
       # v2 desde S10.4. LOS DOS SITIOS TIENEN QUE MOVERSE JUNTOS: esta propiedad es la que
       # GenerateProposalService y RefineProposalService escriben en el turno PENDING (TX1), y
       # ProposalPromptBuilder.PROMPT_VERSION es la que viaja en el prompt y la que TX2 graba al

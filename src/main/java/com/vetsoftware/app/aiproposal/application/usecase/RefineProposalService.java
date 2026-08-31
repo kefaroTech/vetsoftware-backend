@@ -19,6 +19,7 @@ import com.vetsoftware.app.aiproposal.domain.ProposalTurn;
 import com.vetsoftware.app.aiproposal.domain.ProspectText;
 import com.vetsoftware.app.aiproposal.domain.SellableCatalog;
 import io.micrometer.observation.annotation.Observed;
+import com.vetsoftware.app.shared.ai.ModelPricing;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -74,7 +75,8 @@ public class RefineProposalService implements RefineProposalUseCase {
     public RefineProposalService(SellableCatalogQueryPort catalogQueryPort,
             ProposalGeneratorPort generator, ProposalTurnWriter writer, ProposalReader reader,
             AiProposalMetrics metrics,
-            @Value("${vetsoftware.ai.proposal.model-id:us.anthropic.claude-sonnet-5}") String modelId,
+            @Value("${vetsoftware.ai.proposal.model-id:" + ModelPricing.MODELO_POR_DEFECTO
+                    + "}") String modelId,
             @Value("${vetsoftware.ai.proposal.prompt-version:v1}") String promptVersion) {
         this.catalogQueryPort = catalogQueryPort;
         this.generator = generator;

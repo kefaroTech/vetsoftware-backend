@@ -1,5 +1,6 @@
 package com.vetsoftware.app.aiproposal.infrastructure.ai;
 
+import com.vetsoftware.app.shared.ai.ModelPricing;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -130,7 +131,8 @@ public class BedrockInvokerConfig {
     private final StructuredOutputMode structuredOutput;
 
     public BedrockInvokerConfig(
-            @Value("${vetsoftware.ai.proposal.model-id:us.anthropic.claude-sonnet-5}") String modelId,
+            @Value("${vetsoftware.ai.proposal.model-id:" + ModelPricing.MODELO_POR_DEFECTO
+                    + "}") String modelId,
             @Value("${vetsoftware.ai.proposal.bedrock.region:}") String region,
             @Value("${vetsoftware.ai.proposal.bedrock.max-output-tokens:1500}") int maxOutputTokens,
             @Value("${vetsoftware.ai.proposal.bedrock.timeout:45s}") Duration timeout,
