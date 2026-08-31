@@ -507,6 +507,25 @@ class BusinessMetricEnumAllowlistParityTest {
                     .isEqualTo(MeterFilterReply.NEUTRAL);
         }
 
+        /**
+         * &#9940; <b>Incluye {@code NONE}, y no es un descuido.</b> La etiqueta se
+         * emite en <b>todas</b> las muestras del contador —Prometheus exige el mismo
+         * juego de claves—, asi que el camino feliz tambien la lleva. Si {@code none}
+         * faltara en la lista blanca, el filtro denegaria el <b>medidor entero</b> y el
+         * panel se quedaria vacio de forma indistinguible de «no hubo prospectos»: el
+         * fallo exacto contra el que existe esta clase.
+         */
+        @ParameterizedTest(name = "FailureKind.{0}")
+        @EnumSource(AiProposalMetrics.FailureKind.class)
+        @DisplayName("las dos clases de fallo, y el camino feliz, estan permitidas")
+        void toda_clase_de_fallo_esta_en_la_lista_blanca(AiProposalMetrics.FailureKind kind) {
+            assertThat(replyFor(BusinessMetricNames.AI_PROPOSAL_GENERATED, "ai.failure.kind",
+                    kind.value()))
+                    .withFailMessage(mensajeHuerfano("ai.failure.kind", kind.value(),
+                            "AiProposalMetrics.FailureKind." + kind.name() + ".value()"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
         @ParameterizedTest(name = "ProposalPresentation.{0}")
         @EnumSource(ProposalPresentation.class)
         @DisplayName("toda forma de presentar la propuesta esta permitida")

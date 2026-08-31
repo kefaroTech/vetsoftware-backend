@@ -28,13 +28,13 @@ import java.util.regex.Pattern;
  *
  * <p>
  * <strong>Las ocho ramas del proveedor todavia no las emite nadie.</strong> Hoy
- * el unico invocador desplegado es {@link ModelAccessNotEnabledInvoker} y el
- * unico codigo real es {@link #MODEL_ACCESS_NOT_ENABLED}. Estan escritas igual
- * porque son el contrato que tiene que cumplir el cliente de Bedrock cuando
- * entre: si devuelve {@code THROTTLING_EXCEPTION} en vez de
- * {@code MODEL_RATE_LIMITED}, cae en {@link #OTHER}, sube el contador de
- * sistemicos y alguien lo ve. Un vocabulario que falla hacia el lado ruidoso es
- * un vocabulario que se arregla; uno que falla hacia el lado silencioso, no.
+ * el unico invocador desplegado es {@link BedrockDisabledInvoker} y el unico
+ * codigo real es {@link #MODEL_ACCESS_NOT_ENABLED}. Estan escritas igual porque
+ * son el contrato que tiene que cumplir el cliente de Bedrock cuando entre: si
+ * devuelve {@code THROTTLING_EXCEPTION} en vez de {@code MODEL_RATE_LIMITED},
+ * cae en {@link #OTHER}, sube el contador de sistemicos y alguien lo ve. Un
+ * vocabulario que falla hacia el lado ruidoso es un vocabulario que se arregla;
+ * uno que falla hacia el lado silencioso, no.
  */
 public enum AiErrorType {
 

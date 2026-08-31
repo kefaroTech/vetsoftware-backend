@@ -1,6 +1,7 @@
 package com.vetsoftware.app.aiproposal.infrastructure.observability;
 
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics;
+import com.vetsoftware.app.aiproposal.infrastructure.ai.AiErrorType;
 import com.vetsoftware.app.infrastructure.observability.business.BusinessMetricNames;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Meter;
@@ -51,6 +52,28 @@ public class MicrometerAiProposalMetrics implements AiProposalMetrics {
 
     static final String PRESENTATION_TAG = "ai.presentation";
 
+    /**
+     * &#9940; <strong>La clase del fallo del modelo: {@code none},
+     * {@code transient} o {@code systemic}, y nada mas.</strong>
+     *
+     * <p>
+     * Se llama asi —y no {@code ai.error.type}— por dos motivos. Uno: sigue la
+     * forma de las otras tres etiquetas de este medidor ({@code ai.operation},
+     * {@code ai.outcome}, {@code ai.presentation}), asi que en Prometheus sale
+     * {@code ai_failure_kind} y se lee en la misma linea que las demas. Dos: deja
+     * libre {@code ai.failure.code}, que ya es el atributo del span con el codigo
+     * exacto —trece valores— y que <strong>no</strong> es esto: aquello se consulta
+     * de una traza en una, esto se agrega en una alerta.
+     *
+     * <p>
+     * <strong>Se emite SIEMPRE, tambien en el camino feliz.</strong> Ver
+     * {@link FailureKind#NONE}: Prometheus exige el mismo juego de claves en todas
+     * las muestras de un medidor, y omitir la etiqueta reventaria el registro. Lo
+     * comprueba {@code MicrometerAiProposalMetricsTest}, que monta un
+     * {@code PrometheusMeterRegistry} justamente para eso.
+     */
+    static final String FAILURE_KIND_TAG = "ai.failure.kind";
+
     static final String RULE_TAG = "reason.rule";
 
     static final String VERDICT_TAG = "line.verdict";
@@ -96,10 +119,9 @@ public class MicrometerAiProposalMetrics implements AiProposalMetrics {
 
     @Override
     public void proposalServed(ServedProposal served) {
-        generated
-                .withTags(OPERATION_TAG, served.operation().value(), OUTCOME_TAG,
-                        served.outcome().value(), PRESENTATION_TAG, lower(served.presentation()))
-                .increment();
+        generated.withTags(OPERATION_TAG, served.operation().value(), OUTCOME_TAG,
+                served.outcome().value(), PRESENTATION_TAG, lower(served.presentation()),
+                FAILURE_KIND_TAG, claseDelFallo(served).value()).increment();
         served.rejectedReasons()
                 .forEach(regla -> reasonRejected.withTag(RULE_TAG, lower(regla)).increment());
         served.rejectedLines().forEach(
@@ -137,6 +159,30 @@ public class MicrometerAiProposalMetrics implements AiProposalMetrics {
             actual.highCardinalityKeyValue(PROPOSAL_ID_ATTRIBUTE,
                     Long.toString(served.proposalId()));
         }
+    }
+
+    /**
+     * &#9940; <strong>La traduccion vive AQUI y no en el puerto, y eso es una regla
+     * de arquitectura y no una preferencia.</strong> {@link AiErrorType} —quien
+     * sabe si un codigo se cura solo— es {@code infrastructure.ai};
+     * {@code AiProposalMetrics} es {@code application}. Que el puerto lo importara
+     * invertiria la direccion de dependencias y lo tumbaria ArchUnit. Por eso
+     * {@code ServedProposal} viaja con el {@code failureCode} en crudo y el mapa a
+     * dos ramas se hace en este adaptador, que si es infraestructura.
+     *
+     * <p>
+     * <strong>Lo desconocido cae en {@code systemic}</strong>, porque
+     * {@code AiErrorType.deFailureCode} manda a {@code OTHER} lo que no reconoce y
+     * {@code OTHER} es sistemico a proposito: un codigo sin rama es una rama que
+     * falta, y fallar hacia el lado ruidoso es lo que hace que alguien lo arregle.
+     */
+    private static FailureKind claseDelFallo(ServedProposal served) {
+        if (served.failureCode() == null) {
+            return FailureKind.NONE;
+        }
+        return AiErrorType.deFailureCode(served.failureCode()).esSistemico()
+                ? FailureKind.SYSTEMIC
+                : FailureKind.TRANSIENT;
     }
 
     private static String lower(Enum<?> value) {

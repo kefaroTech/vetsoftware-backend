@@ -8,6 +8,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.vetsoftware.app.aiproposal.application.dto.ProposalGenerationRequest;
 import com.vetsoftware.app.aiproposal.application.dto.ProposalGenerationResult;
 import com.vetsoftware.app.aiproposal.application.port.out.CatalogHintQueryPort;
@@ -26,6 +31,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,6 +40,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 
 /**
  * El adaptador entero, sin red.
@@ -158,6 +165,111 @@ class BedrockProposalGeneratorTest {
             when(hintQueryPort.findCurrentHints()).thenReturn(Map.of());
 
             assertThat(generator.generate(peticion).draft()).isNotNull();
+        }
+    }
+
+    /**
+     * &#9940; <b>La puerta del modelo apagado era MUDA, y eso costo tres revisiones
+     * de la definicion de tarea.</b> Devolvia la degradacion sin escribir una sola
+     * linea: la unica evidencia de que el producto llevaba dias vendiendo sin IA
+     * era una etiqueta de metrica que nadie consulta, asi que se depuro contra la
+     * consola de AWS pidiendo un acceso que ya estaba concedido.
+     *
+     * <p>
+     * El sumidero va enganchado al logger de la clase y no a la raiz, por el mismo
+     * motivo que en {@code BedrockModelInvokerTest}: una rodaja de Spring del mismo
+     * fork puede haber cargado {@code logback-spring.xml} y cambiado la propagacion
+     * bajo los pies de la prueba.
+     */
+    @Nested
+    @DisplayName("La palanca apagada deja rastro en el log")
+    class ElModeloApagadoSeAnuncia {
+
+        private Logger canal;
+
+        private ListAppender<ILoggingEvent> logs;
+
+        @BeforeEach
+        void engancharElSumidero() {
+            LoggerContext contexto = (LoggerContext) LoggerFactory.getILoggerFactory();
+            canal = contexto.getLogger(BedrockProposalGenerator.class);
+            logs = new ListAppender<>();
+            logs.setContext(contexto);
+            logs.start();
+            canal.addAppender(logs);
+        }
+
+        @AfterEach
+        void soltarElSumidero() {
+            canal.detachAppender(logs);
+            logs.stop();
+        }
+
+        @Test
+        @DisplayName("escribe ERROR nombrando la propiedad y la variable de entorno")
+        void escribe_error_con_la_propiedad_y_la_variable() {
+            when(hintQueryPort.findCurrentHints()).thenReturn(HINTS);
+            when(invoker.isAvailable()).thenReturn(false);
+
+            generator.generate(peticion);
+
+            assertThat(deLaPalanca()).singleElement().satisfies(evento -> {
+                assertThat(evento.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(evento.getFormattedMessage())
+                        .contains("vetsoftware.ai.proposal.bedrock.enabled")
+                        .contains("AI_PROPOSAL_BEDROCK_ENABLED");
+            });
+        }
+
+        /**
+         * &#9940; <b>Que NO afirme nada sobre AWS es la mitad del arreglo.</b> Es el
+         * defecto del #693 en su otra forma: un mensaje que culpa a la cuenta de algo
+         * que este proceso no consulta manda el diagnostico al sitio equivocado.
+         */
+        @Test
+        @DisplayName("no culpa a la cuenta de AWS de algo que no comprueba")
+        void no_culpa_a_la_cuenta_de_aws() {
+            when(hintQueryPort.findCurrentHints()).thenReturn(HINTS);
+            when(invoker.isAvailable()).thenReturn(false);
+
+            generator.generate(peticion);
+
+            assertThat(deLaPalanca()).singleElement()
+                    .satisfies(evento -> assertThat(evento.getFormattedMessage())
+                            .doesNotContain("no esta habilitado en esta cuenta"));
+        }
+
+        @Test
+        @DisplayName("una sola vez por proceso: un endpoint publico no puede escribir una linea"
+                + " por peticion")
+        void una_sola_vez_por_proceso() {
+            when(hintQueryPort.findCurrentHints()).thenReturn(HINTS);
+            when(invoker.isAvailable()).thenReturn(false);
+
+            generator.generate(peticion);
+            generator.generate(peticion);
+            generator.generate(peticion);
+
+            assertThat(deLaPalanca()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("con el modelo disponible no escribe nada: una linea falsa es peor que"
+                + " ninguna")
+        void con_el_modelo_disponible_no_escribe_nada() {
+            when(hintQueryPort.findCurrentHints()).thenReturn(HINTS);
+            when(invoker.isAvailable()).thenReturn(true);
+            when(spendGuard.reserve(any())).thenReturn(Optional.empty());
+
+            generator.generate(peticion);
+
+            assertThat(deLaPalanca()).isEmpty();
+        }
+
+        private List<ILoggingEvent> deLaPalanca() {
+            return logs.list.stream().filter(
+                    evento -> evento.getFormattedMessage().contains("AI_PROPOSAL_BEDROCK_ENABLED"))
+                    .toList();
         }
     }
 
@@ -476,13 +588,13 @@ class BedrockProposalGeneratorTest {
     @Test
     @DisplayName("el invocador que se despliega hoy declara que no hay modelo")
     void el_invocador_de_hoy() {
-        ModelAccessNotEnabledInvoker deHoy = new ModelAccessNotEnabledInvoker();
+        BedrockDisabledInvoker deHoy = new BedrockDisabledInvoker();
 
         assertThat(deHoy.isAvailable()).isFalse();
         assertThatThrownBy(() -> deHoy.invoke(null))
                 .isInstanceOf(ModelInvoker.ModelInvocationException.class)
                 .extracting(
                         fallo -> ((ModelInvoker.ModelInvocationException) fallo).getFailureCode())
-                .isEqualTo(ModelAccessNotEnabledInvoker.FAILURE_CODE);
+                .isEqualTo(BedrockDisabledInvoker.FAILURE_CODE);
     }
 }

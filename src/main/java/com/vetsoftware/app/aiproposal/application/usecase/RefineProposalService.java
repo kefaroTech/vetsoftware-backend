@@ -121,8 +121,8 @@ public class RefineProposalService implements RefineProposalUseCase {
                 carrito, draft.contradictedCodes(), catalogQueryPort.findItemIdsByCode());
         ProposalPresentation presentacion = ProposalAssembler.presentacion(resultado.outcome(),
                 draft);
-        metrics.proposalServed(ServedProposal.de(Operation.REFINE, resultado.outcome(),
-                presentacion, draft, carrito, texto.length(), guardada.getId()));
+        metrics.proposalServed(ServedProposal.de(Operation.REFINE, resultado, presentacion, carrito,
+                texto.length(), guardada.getId()));
 
         // Aqui vivia el suelo de latencia aleatorio de la ruta degradada. Se retiro:
         // el bit que ocultaba lo publica la respuesta. Ver

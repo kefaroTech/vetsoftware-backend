@@ -242,7 +242,7 @@ public class BedrockModelInvoker implements ModelInvoker {
      * <strong>Siempre {@code true}: la disponibilidad se decide al cablear, no
      * aqui.</strong> Este bean solo existe cuando
      * {@code vetsoftware.ai.proposal.bedrock.enabled} vale {@code true}; sin el,
-     * quien responde al puerto es {@link ModelAccessNotEnabledInvoker}, que declara
+     * quien responde al puerto es {@link BedrockDisabledInvoker}, que declara
      * {@code false}. Vaciar esa variable de entorno es el kill switch de S10.4 y
      * devuelve el sistema al camino determinista sin tocar codigo.
      *
@@ -667,8 +667,8 @@ public class BedrockModelInvoker implements ModelInvoker {
      * Bedrock lo entrega como un {@link AccessDeniedException} corriente y lo unico
      * que lo distingue de un permiso de IAM mal puesto es el texto del mensaje —que
      * es justo lo que no se puede leer—. Ese codigo se queda como lo que siempre
-     * fue: el estado <em>declarado</em> de {@link ModelAccessNotEnabledInvoker}, no
-     * una inferencia sobre una cadena.
+     * fue: el estado <em>declarado</em> de {@link BedrockDisabledInvoker}, no una
+     * inferencia sobre una cadena.
      */
     static String codigoDe(Throwable fallo) {
         for (Throwable actual = fallo; actual != null; actual = actual.getCause()) {

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -22,6 +23,8 @@ import com.vetsoftware.app.aiproposal.application.port.out.ProposalGeneratorPort
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalLinkEmailSender;
 import com.vetsoftware.app.aiproposal.application.port.out.SellableCatalogQueryPort;
 import com.vetsoftware.app.aiproposal.domain.AiProposal;
+import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics.Outcome;
+import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics.ServedProposal;
 import com.vetsoftware.app.aiproposal.domain.GenerationOutcome;
 import com.vetsoftware.app.aiproposal.domain.LegalDocumentVersionRef;
 import com.vetsoftware.app.aiproposal.domain.LineVerdict;
@@ -371,9 +374,15 @@ class GenerateProposalServiceTest {
     @DisplayName("Sin catalogo que cotizar")
     class SinCatalogo {
 
+        /**
+         * &#9940; <b>NO_CATALOG y no DETERMINISTIC.</b> Por aqui no corrio ni el
+         * determinista ni el modelo -el {@code return} es anterior al generador-, asi
+         * que anunciar la pantalla determinista decia "hubo degradacion del modelo y
+         * estas son sus lineas" sin una sola linea. Es el defecto del #692 y esta es su
+         * prueba.
+         */
         @Test
-        @DisplayName("sin tarifa publicada se responde la vista deterministica y no se persiste"
-                + " nada")
+        @DisplayName("sin tarifa publicada se responde NO_CATALOG y no se persiste nada")
         void sin_tarifa_publicada_no_se_persiste_nada() {
             when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
                     .thenReturn(Optional.empty());
@@ -381,7 +390,7 @@ class GenerateProposalServiceTest {
 
             ProposalViewDto vista = service.generate(comandoMensual(ProposalMother.CLAVE));
 
-            assertThat(vista.presentation()).isEqualTo(ProposalPresentation.DETERMINISTIC);
+            assertThat(vista.presentation()).isEqualTo(ProposalPresentation.NO_CATALOG);
             assertThat(vista.publicToken()).isNull();
             assertThat(vista.lines()).isEmpty();
             verifyNoInteractions(generator, legalConsent);
@@ -400,9 +409,65 @@ class GenerateProposalServiceTest {
                     .thenReturn(Optional.of(new SellableCatalog(Map.of(), Map.of(), List.of())));
 
             assertThat(service.generate(comandoMensual(ProposalMother.CLAVE)).presentation())
-                    .isEqualTo(ProposalPresentation.DETERMINISTIC);
+                    .isEqualTo(ProposalPresentation.NO_CATALOG);
             verifyNoInteractions(generator, legalConsent);
             noEscribioNada();
+        }
+
+        /**
+         * &#9940; <b>La otra mitad del #692: el valor tiene que SEPARAR.</b> Sin esta
+         * asercion, cambiar {@code sinCatalogo()} de vuelta a {@code DETERMINISTIC}
+         * dejaria verdes las dos pruebas de arriba el dia que alguien "unifique" los
+         * dos caminos, que es exactamente como nacio el defecto.
+         */
+        @Test
+        @DisplayName("NO_CATALOG no se confunde con la degradacion del modelo, que si lleva"
+                + " lineas")
+        void no_catalog_no_es_la_pantalla_de_la_degradacion() {
+            when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
+                    .thenReturn(Optional.empty());
+            when(catalogQueryPort.findPublishedPriceListId()).thenReturn(Optional.empty());
+
+            ProposalViewDto vista = service.generate(comandoMensual(ProposalMother.CLAVE));
+
+            assertThat(vista.presentation()).isNotEqualTo(ProposalPresentation.DETERMINISTIC);
+            assertThat(vista.presentation()).isNotNull();
+            assertThat(vista.lines()).isEmpty();
+        }
+
+        /**
+         * &#9940; <b>Los dos caminos mudos NO comparten desenlace, y la diferencia solo
+         * se ve en la metrica.</b> El prospecto ve lo mismo -200 con cero lineas- pero
+         * la accion es la contraria: sin tarifa hay que publicarla, con la tarifa ya
+         * publicada hay que mirar por que no cuelga de ella ningun articulo. Con los
+         * dos colapsados, la alerta mandaba a publicar una tarifa que ya estaba
+         * publicada.
+         */
+        @Test
+        @DisplayName("sin tarifa cuenta no_catalog; con tarifa publicada y vacia cuenta"
+                + " empty_catalog")
+        void los_dos_caminos_mudos_no_comparten_desenlace() {
+            when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
+                    .thenReturn(Optional.empty());
+            when(catalogQueryPort.findPublishedPriceListId()).thenReturn(Optional.empty());
+
+            service.generate(comandoMensual(ProposalMother.CLAVE));
+
+            ArgumentCaptor<ServedProposal> sinTarifa = ArgumentCaptor.captor();
+            verify(metrics).proposalServed(sinTarifa.capture());
+            assertThat(sinTarifa.getValue().outcome()).isEqualTo(Outcome.NO_CATALOG);
+
+            reset(metrics);
+            when(catalogQueryPort.findPublishedPriceListId())
+                    .thenReturn(Optional.of(ProposalMother.ID_TARIFA));
+            when(catalogQueryPort.loadCatalog(ProposalMother.ID_TARIFA,
+                    ProposalBillingCycle.MONTHLY)).thenReturn(Optional.empty());
+
+            service.generate(comandoMensual(ProposalMother.CLAVE));
+
+            ArgumentCaptor<ServedProposal> vacio = ArgumentCaptor.captor();
+            verify(metrics).proposalServed(vacio.capture());
+            assertThat(vacio.getValue().outcome()).isEqualTo(Outcome.EMPTY_CATALOG);
         }
     }
 

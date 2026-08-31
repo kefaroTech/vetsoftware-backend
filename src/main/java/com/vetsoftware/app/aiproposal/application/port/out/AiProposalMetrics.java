@@ -1,5 +1,6 @@
 package com.vetsoftware.app.aiproposal.application.port.out;
 
+import com.vetsoftware.app.aiproposal.application.dto.ProposalGenerationResult;
 import com.vetsoftware.app.aiproposal.domain.CartLine;
 import com.vetsoftware.app.aiproposal.domain.CartResult;
 import com.vetsoftware.app.aiproposal.domain.GenerationOutcome;
@@ -98,8 +99,29 @@ public interface AiProposalMetrics {
 
         MODEL_FAILED("model_failed"),
 
-        /** No hay lista de precios publicada: no se llego a invocar nada. */
-        NO_CATALOG("no_catalog");
+        /**
+         * &#9940; <strong>No hay ninguna lista de precios {@code PUBLISHED}
+         * vigente.</strong> No se llego a invocar nada. La accion es <em>publicar la
+         * tarifa</em> desde la consola de plataforma con una cuenta real.
+         */
+        NO_CATALOG("no_catalog"),
+
+        /**
+         * &#9940; <strong>Hay lista publicada, pero el catalogo vendible sale
+         * vacio.</strong> Tampoco se invoca nada y el prospecto ve lo mismo —cero
+         * lineas—, pero <strong>la accion es la contraria</strong>: la tarifa ya esta
+         * publicada, asi que lo que hay que averiguar es por que no cuelga de ella
+         * ningun articulo vendible (todos deshabilitados, todos fuera de
+         * {@code ACTIVE}, o ninguno con tramo para el ciclo pedido).
+         *
+         * <p>
+         * <strong>Separado de {@link #NO_CATALOG} justamente por eso.</strong> Con los
+         * dos caminos colapsados en un mismo valor, la alerta diria «publica la tarifa»
+         * a quien ya la tiene publicada, y quien la recibe pierde el turno comprobando
+         * algo que ya esta bien. Dos poblaciones con dueno y con remedio distintos no
+         * pueden compartir desenlace.
+         */
+        EMPTY_CATALOG("empty_catalog");
 
         private final String value;
 
@@ -128,8 +150,82 @@ public interface AiProposalMetrics {
     }
 
     /**
+     * &#9940; <strong>La particion del fallo del modelo en las DOS poblaciones que
+     * tienen dueno distinto, y solo dos.</strong>
+     *
+     * <p>
+     * {@code ai_outcome="model_failed"} colapsa hoy dos cosas que se atienden al
+     * reves: un tiempo agotado o un limite de tasa fallan peticiones sueltas y se
+     * curan solos —no hay nadie a quien despertar—, mientras que unas credenciales
+     * o un permiso mal puestos fallan el <strong>100 %</strong> de las propuestas
+     * hasta que una persona cambie configuracion. La distincion ya existia, pero
+     * <em>solo en el nivel del log</em>: quien mira el contador no podia verla.
+     *
+     * <p>
+     * <strong>Dos valores utiles y no los trece de {@code AiErrorType}.</strong> El
+     * arbol de decision de quien recibe la alerta tiene exactamente dos ramas
+     * —«espera» o «entra a mirar configuracion»—, y multiplicar la cardinalidad de
+     * la serie por trece para responder una pregunta binaria es pagar
+     * almacenamiento por ruido. El codigo exacto sigue estando donde se puede
+     * consultar de uno en uno: {@code error.type} en el span del intento.
+     *
+     * <p>
+     * ⛔ <strong>{@link #NONE} existe por una razon tecnica, no de negocio, y no se
+     * puede quitar.</strong> {@code PrometheusMeterRegistry} exige que todas las
+     * muestras de un mismo medidor lleven <em>el mismo juego de claves de
+     * etiqueta</em>: emitir la etiqueta solo en los turnos que fallaron reventaria
+     * el registro. Es el mismo motivo por el que {@code AiErrorType.NONE} existe
+     * para {@code error.type}. Una alerta que quiera solo fallos filtra
+     * {@code ai_failure_kind="systemic"}.
+     *
+     * <p>
+     * Que esto se comprueba de verdad no es suerte:
+     * {@code MicrometerAiProposalMetricsTest} monta un
+     * {@code PrometheusMeterRegistry} y no un {@code SimpleMeterRegistry}, que es
+     * lo unico que hace que la incoherencia de claves salte en la prueba y no en el
+     * primer arranque de produccion.
+     */
+    enum FailureKind {
+
+        /** No hubo fallo del modelo en este turno. El camino normal. */
+        NONE("none"),
+
+        /**
+         * Se curara solo: tiempo agotado, limite de tasa, error del servidor, salida
+         * ilegible. No hay nadie a quien despertar; lo que se vigila es la
+         * <em>tasa</em>, no el evento.
+         */
+        TRANSIENT("transient"),
+
+        /**
+         * No se cura solo. Credenciales, permisos, acceso al modelo, peticion invalida,
+         * o un codigo sin rama. Falla el 100 % hasta que alguien cambie configuracion,
+         * asi que un solo evento ya es accionable.
+         */
+        SYSTEMIC("systemic");
+
+        private final String value;
+
+        FailureKind(String value) {
+            this.value = value;
+        }
+
+        public String value() {
+            return value;
+        }
+    }
+
+    /**
      * Un turno servido, medido.
      *
+     * @param failureCode
+     *            el {@code failureCode} crudo del generador, o {@code null} en el
+     *            camino normal. &#9940; <strong>Viaja como cadena y no como
+     *            {@code AiErrorType} a proposito</strong>: ese enum vive en
+     *            {@code infrastructure.ai} y este puerto es de {@code application},
+     *            asi que importarlo invertiria la direccion de dependencias y rompe
+     *            ArchUnit. Quien lo traduce a {@link FailureKind} es el adaptador
+     *            de metricas, que si es infraestructura
      * @param rejectedReasons
      *            una entrada por motivo que el saneador toco, con la regla que
      *            disparo. Es vocabulario cerrado de nueve valores, nunca el texto:
@@ -149,8 +245,8 @@ public interface AiProposalMetrics {
      *            de la URL y no se registra en ninguna senal
      */
     record ServedProposal(Operation operation, Outcome outcome, ProposalPresentation presentation,
-            List<ReasonRejection> rejectedReasons, List<LineVerdict> rejectedLines, int inputChars,
-            Long proposalId) {
+            String failureCode, List<ReasonRejection> rejectedReasons,
+            List<LineVerdict> rejectedLines, int inputChars, Long proposalId) {
 
         public ServedProposal {
             Objects.requireNonNull(operation, "operation es obligatoria");
@@ -167,10 +263,46 @@ public interface AiProposalMetrics {
          * El turno que no se pudo cotizar porque no hay tarifa publicada. Se cuenta
          * igual: es el unico camino del asistente que responde 200 con cero lineas a
          * todos los prospectos a la vez.
+         *
+         * <p>
+         * &#9940; <strong>La etiqueta {@code ai.presentation} vale {@code no_catalog},
+         * no {@code deterministic}.</strong> Con la anterior, la serie decia que se
+         * habia servido el carrito determinista —el que SI lleva lineas— justo en el
+         * unico camino donde no se sirvio ninguna, y un panel filtrado por presentacion
+         * contaba estas peticiones dentro de la poblacion sana. Ahora las dos etiquetas
+         * del contador dicen lo mismo y se pueden cruzar sin que una desmienta a la
+         * otra.
          */
         public static ServedProposal sinCatalogo(Operation operation, int inputChars) {
-            return new ServedProposal(operation, Outcome.NO_CATALOG,
-                    ProposalPresentation.DETERMINISTIC, List.of(), List.of(), inputChars, null);
+            return sinCotizar(operation, Outcome.NO_CATALOG, inputChars);
+        }
+
+        /**
+         * El turno con la tarifa <strong>ya publicada</strong> y ni un articulo
+         * vendible colgando de ella.
+         *
+         * <p>
+         * &#9940; <strong>Mismo sintoma que {@link #sinCatalogo}, remedio
+         * contrario.</strong> El prospecto ve lo mismo —200 con cero lineas—, pero
+         * quien recibe la alerta tiene que hacer lo opuesto: alli hay que publicar la
+         * tarifa, aqui la tarifa ya esta publicada y lo que falta es averiguar por que
+         * no cuelga de ella ningun articulo. Compartir desenlace mandaba a esa persona
+         * a comprobar algo que ya estaba bien.
+         */
+        public static ServedProposal catalogoVacio(Operation operation, int inputChars) {
+            return sinCotizar(operation, Outcome.EMPTY_CATALOG, inputChars);
+        }
+
+        /**
+         * Los dos caminos en los que <strong>no se cotizo nada</strong>. La
+         * presentacion es {@code NO_CATALOG} en los dos porque describe lo que el
+         * prospecto ve —nada—, y lo que los separa es el {@code outcome}, que es lo que
+         * describe que hay que hacer.
+         */
+        private static ServedProposal sinCotizar(Operation operation, Outcome outcome,
+                int inputChars) {
+            return new ServedProposal(operation, outcome, ProposalPresentation.NO_CATALOG, null,
+                    List.of(), List.of(), inputChars, null);
         }
 
         /**
@@ -183,17 +315,27 @@ public interface AiProposalMetrics {
          * puso el modelo. Los que arrastra el cierre de dependencias no son calidad del
          * modelo sino del grafo del catalogo, y mezclarlos contaminaria la unica serie
          * que mide si el modelo alucina.
+         *
+         * <p>
+         * &#9940; <strong>Recibe el {@link ProposalGenerationResult} entero y ya no el
+         * par {@code outcome} + {@code draft} suelto.</strong> El {@code failureCode}
+         * vive en ese mismo objeto, y pasarlo como un tercer parametro invitaba a que
+         * un llamante futuro olvidara justo ese: el desenlace habria seguido saliendo
+         * bien y la clase del fallo habria caido en silencio a {@code none}, que es una
+         * mentira que no rompe nada. Con el resultado completo no hay forma de
+         * despareja los tres.
          */
-        public static ServedProposal de(Operation operation, GenerationOutcome outcome,
-                ProposalPresentation presentation, ProposalDraft draft, CartResult cart,
-                int inputChars, Long proposalId) {
+        public static ServedProposal de(Operation operation, ProposalGenerationResult resultado,
+                ProposalPresentation presentation, CartResult cart, int inputChars,
+                Long proposalId) {
+            ProposalDraft draft = resultado.draft();
             List<ReasonRejection> reglas = draft.reasons().values().stream()
                     .filter(SanitizedReason::hayQueRegistrar).map(SanitizedReason::rule).toList();
             List<LineVerdict> veredictos = cart.lineas().stream()
                     .filter(linea -> !linea.verdict().esAceptado())
                     .filter(linea -> linea.source().exigeMotivo()).map(CartLine::verdict).toList();
-            return new ServedProposal(operation, Outcome.from(outcome), presentation, reglas,
-                    veredictos, inputChars, proposalId);
+            return new ServedProposal(operation, Outcome.from(resultado.outcome()), presentation,
+                    resultado.failureCode(), reglas, veredictos, inputChars, proposalId);
         }
     }
 }

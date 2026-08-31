@@ -127,9 +127,9 @@ public final class ProposalOutputValidator {
      * {@link #contradichos(ModelProposalPayload)} ya lo hacia y su javadoc explica
      * exactamente este motivo; lo que faltaba era aplicarlo tambien al camino
      * bueno, que es el que corre siempre. <strong>Hoy no es alcanzable</strong>
-     * porque {@code ModelAccessNotEnabledInvoker} deja todo borrador sin lineas: se
-     * arma sola el dia que se habilite Bedrock, que es lo que la hace mas urgente y
-     * no menos.
+     * porque {@code BedrockDisabledInvoker} deja todo borrador sin lineas: se arma
+     * sola el dia que se habilite Bedrock, que es lo que la hace mas urgente y no
+     * menos.
      *
      * <p>
      * <strong>Lo que se pierde</strong>: la linea {@code DUPLICATE} que el motor

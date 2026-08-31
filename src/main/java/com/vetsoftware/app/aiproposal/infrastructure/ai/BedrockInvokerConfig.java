@@ -19,14 +19,14 @@ import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClientBuilde
  *
  * <p>
  * ⛔ <strong>{@link #ACTIVO} es la unica condicion, y su negacion exacta es lo
- * que deja vivo a {@link ModelAccessNotEnabledInvoker}.</strong> Las dos
- * anotaciones comparten literalmente esta constante para que no puedan ser
- * falsas a la vez: si lo fueran no habria ningun bean de {@link ModelInvoker},
- * el contexto de Spring no levantaria y con el se caerian las 93 rodajas de
- * integracion del repositorio —que es exactamente el desastre que
- * {@link ModelAccessNotEnabledInvoker} existe para evitar—. Escritas por
- * separado las dos expresiones, ese acoplamiento seria invisible y se romperia
- * en la primera edicion descuidada.
+ * que deja vivo a {@link BedrockDisabledInvoker}.</strong> Las dos anotaciones
+ * comparten literalmente esta constante para que no puedan ser falsas a la vez:
+ * si lo fueran no habria ningun bean de {@link ModelInvoker}, el contexto de
+ * Spring no levantaria y con el se caerian las 93 rodajas de integracion del
+ * repositorio —que es exactamente el desastre que
+ * {@link BedrockDisabledInvoker} existe para evitar—. Escritas por separado las
+ * dos expresiones, ese acoplamiento seria invisible y se romperia en la primera
+ * edicion descuidada.
  *
  * <p>
  * ⛔ <strong>El interruptor NO es {@code model-id}, y esa separacion es

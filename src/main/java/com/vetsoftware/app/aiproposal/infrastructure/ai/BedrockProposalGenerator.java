@@ -105,6 +105,30 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
      */
     private final AtomicBoolean sinHintsAnunciado = new AtomicBoolean();
 
+    /**
+     * &#9940; <strong>Que ya se anuncio que la invocacion del modelo esta
+     * apagada.</strong> Este camino era <strong>mudo</strong>: devolvia la
+     * degradacion sin escribir una sola linea, y la unica evidencia de que el
+     * producto llevaba dias vendiendo sin IA era una etiqueta de metrica que nadie
+     * consulta.
+     *
+     * <p>
+     * <strong>Y eso ya costo caro, medido.</strong> La variable
+     * {@code AI_PROPOSAL_BEDROCK_ENABLED} falto en <strong>tres revisiones
+     * seguidas</strong> de la definicion de tarea, y en los logs no habia nada que
+     * buscar: se depuro contra la consola de AWS —pidiendo un acceso al modelo que
+     * ya estaba concedido— porque el sistema no decia lo que le pasaba. Un estado
+     * que no se anuncia es indistinguible de que no exista.
+     *
+     * <p>
+     * <strong>Una vez por proceso, y aqui si es lo correcto</strong>, a diferencia
+     * del aviso de «sin tarifa»: aquello depende del contenido de la base de datos
+     * y puede cambiar con el sistema en marcha; esto depende de una propiedad que
+     * se lee al arrancar y no se mueve en toda la vida del proceso. Repetirlo por
+     * ventana solo repetiria el mismo hecho inmutable.
+     */
+    private final AtomicBoolean modeloApagadoAnunciado = new AtomicBoolean();
+
     private final ModelInvoker invoker;
 
     private final ProposalPromptBuilder promptBuilder;
@@ -167,14 +191,51 @@ public class BedrockProposalGenerator implements ProposalGeneratorPort {
         if (prompt.isEmpty())
             return ProposalGenerationResult.degradado(GenerationOutcome.DEGRADED_NO_HINTS);
 
-        if (!invoker.isAvailable())
+        if (!invoker.isAvailable()) {
+            anunciarQueElModeloEstaApagado();
             return ProposalGenerationResult.degradado(GenerationOutcome.DEGRADED_MODEL_UNAVAILABLE);
+        }
 
         Optional<SpendReservation> reserva = spendGuard.reserve(pricing.usdPerCall());
         if (reserva.isEmpty())
             return ProposalGenerationResult.degradado(GenerationOutcome.DEGRADED_SPEND_CAP);
 
         return invocar(request, prompt.get(), reserva.get());
+    }
+
+    /**
+     * &#9940; <strong>{@code ERROR} y no {@code WARN}, que es lo unico discutible
+     * de este metodo.</strong> El criterio del repositorio —ver
+     * {@link AiErrorType}— es que {@code ERROR} se reserva a lo que va a fallar el
+     * <strong>100 % de las peticiones hasta que una persona cambie
+     * configuracion</strong>, y esto lo cumple exactamente: mientras la propiedad
+     * no valga {@code true}, ni una sola propuesta usara el modelo. No es ruido
+     * repetido porque va una vez por proceso.
+     *
+     * <p>
+     * <strong>Nombra la propiedad Y la variable de entorno</strong> porque son dos
+     * sitios distintos y el fallo real estuvo en el segundo: la propiedad tenia su
+     * defecto correcto en {@code application.yml} y lo que faltaba era la variable
+     * en la definicion de tarea de ECS. Un mensaje que solo nombrara la propiedad
+     * habria mandado a mirar el fichero que estaba bien.
+     *
+     * <p>
+     * <strong>No dice nada sobre el acceso al modelo en la cuenta de AWS</strong>,
+     * porque este proceso no lo consulta. Ese es el error que se corrigio en
+     * {@link BedrockDisabledInvoker} y no se va a reintroducir aqui.
+     */
+    private void anunciarQueElModeloEstaApagado() {
+        if (!modeloApagadoAnunciado.compareAndSet(false, true))
+            return;
+        log.error("La invocacion del modelo esta apagada y el asistente comercial servira el"
+                + " 100 % de las propuestas por el camino determinista, sin leer el texto del"
+                + " prospecto. La propiedad es vetsoftware.ai.proposal.bedrock.enabled y la"
+                + " publica la variable de entorno AI_PROPOSAL_BEDROCK_ENABLED: si no aparece"
+                + " en la definicion de tarea, no vale 'true' y este es el resultado. NO dice"
+                + " nada sobre el acceso al modelo en la cuenta de AWS, que este proceso no"
+                + " consulta. Se avisa una sola vez por proceso -la propiedad se lee al"
+                + " arrancar y no cambia-; el recuento por peticion vive en"
+                + " ai_proposal_generated_total con ai_outcome=degraded_model_unavailable");
     }
 
     /**

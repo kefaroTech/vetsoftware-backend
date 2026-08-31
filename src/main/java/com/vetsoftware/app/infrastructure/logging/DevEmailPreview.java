@@ -11,14 +11,22 @@ import org.slf4j.LoggerFactory;
  * restablecimiento sin buzón.
  *
  * <p>
- * <b>Es el único canal de log sin redacción del sistema</b>, y por eso está
- * acotado por construcción y no por confianza: escribe al logger
- * {@code DEV_EMAIL_PREVIEW}, que {@code
+ * <b>Es uno de los dos únicos canales de log sin redacción del sistema</b> —el
+ * otro es {@code AI_PAYLOAD}, la conversación con el modelo, ver
+ * {@code BedrockModelInvoker}—, y por eso está acotado por construcción y no
+ * por confianza: escribe al logger {@code DEV_EMAIL_PREVIEW}, que {@code
  * logback-spring.xml} declara <em>solo</em> en el perfil local, con
  * {@code additivity="false"} y un único appender de consola. No hay ninguna
  * ruta desde este logger hasta el appender de OpenTelemetry, así que su
  * contenido no puede llegar a archivos ni a Loki. Fuera de local el logger no
  * está declarado y sus eventos caen en la raíz, que sí está redactada.
+ *
+ * <p>
+ * <b>Los dos, y solo los dos.</b> La lista es cerrada y la sostiene
+ * {@code LogbackRedactionConfigTest}: un tercer logger con appender crudo, o
+ * cualquiera de estos dos declarado fuera del perfil local, rompe el build. Al
+ * añadir el segundo canal este javadoc decía «el único» y ya era falso; esa es
+ * la razón de que la prueba compruebe ahora la lista entera y no un nombre.
  *
  * <p>
  * Usarlo únicamente para material efímero de desarrollo. Cualquier otro log de

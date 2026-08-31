@@ -67,9 +67,20 @@ public record ProposalViewDto(String publicToken, ProposalPresentation presentat
      * {@code DRAFT} y {@code 311} solo la publica si existe una cuenta de sistema
      * real-, asi que se responde 200 con la propuesta vacia y sin token: no se
      * persistio nada que releer.
+     *
+     * <p>
+     * &#9940; <strong>{@link ProposalPresentation#NO_CATALOG} y NO
+     * {@code DETERMINISTIC}, que es lo que devolvia hasta hoy.</strong> Por este
+     * camino no corrio ni el determinista ni el modelo —{@code
+     * GenerateProposalService.generate} vuelve en sus dos returns tempranos, antes
+     * del generador—, asi que anunciar la pantalla determinista era decir «hubo
+     * degradacion del modelo y estas son sus lineas» cuando no hay ni motor que
+     * degradar ni una sola linea. Un mismo valor con dos lecturas incompatibles
+     * hace exactamente lo que hizo: mandar el diagnostico a buscar el modelo caido
+     * en vez de la tarifa sin publicar.
      */
     public static ProposalViewDto sinCatalogo() {
-        return new ProposalViewDto(null, ProposalPresentation.DETERMINISTIC, null, null, List.of(),
+        return new ProposalViewDto(null, ProposalPresentation.NO_CATALOG, null, null, List.of(),
                 List.of(), 0, null, null, null, null, null, null, 0, false);
     }
 }
