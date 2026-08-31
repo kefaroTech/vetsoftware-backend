@@ -12,7 +12,7 @@ import com.vetsoftware.app.aiproposal.domain.ProposalDraft;
 import com.vetsoftware.app.aiproposal.domain.ProposalOutputValidator;
 import com.vetsoftware.app.aiproposal.domain.ProposalPresentation;
 import com.vetsoftware.app.aiproposal.domain.SellableCatalog;
-import com.vetsoftware.app.aiproposal.infrastructure.ai.ModelAccessNotEnabledInvoker;
+import com.vetsoftware.app.aiproposal.infrastructure.ai.BedrockDisabledInvoker;
 import com.vetsoftware.app.aiproposal.testsupport.CasoDorado;
 import com.vetsoftware.app.aiproposal.testsupport.CatalogoComercial2026;
 import com.vetsoftware.app.aiproposal.testsupport.GoldenSetDeClinicasColombianas;
@@ -34,10 +34,10 @@ import org.junit.jupiter.params.provider.MethodSource;
  * <p>
  * &#9940; <b>Lo que fija cada caso es la propuesta, no el camino por el que se
  * llega.</b> Hoy el acceso al modelo no esta habilitado —
- * {@link ModelAccessNotEnabledInvoker} devuelve {@code isAvailable() == false}
- * y todo borrador sale sin lineas—, asi que la lectura del texto libre la
- * aporta el propio caso, como dato. El dia que se encienda Bedrock esa lectura
- * la producira el modelo de verdad y <b>este test no cambia</b>: lo que compara
+ * {@link BedrockDisabledInvoker} devuelve {@code isAvailable() == false} y todo
+ * borrador sale sin lineas—, asi que la lectura del texto libre la aporta el
+ * propio caso, como dato. El dia que se encienda Bedrock esa lectura la
+ * producira el modelo de verdad y <b>este test no cambia</b>: lo que compara
  * sigue siendo la propuesta esperada contra la que sale del motor determinista.
  * Un golden set escrito al reves —fijando la llamada al modelo— habria que
  * tirarlo entero ese dia, que es justo cuando mas falta hace.
@@ -335,7 +335,7 @@ class PropuestaGoldenSetTest {
         @Test
         @DisplayName("el invocador declara que no esta disponible, asi que nadie llama a Bedrock")
         void el_invocador_no_esta_disponible() {
-            assertThat(new ModelAccessNotEnabledInvoker().isAvailable()).isFalse();
+            assertThat(new BedrockDisabledInvoker().isAvailable()).isFalse();
         }
 
         /**

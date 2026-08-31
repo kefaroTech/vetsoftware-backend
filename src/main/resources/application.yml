@@ -422,7 +422,7 @@ vetsoftware:
       prompt-version: ${AI_PROPOSAL_PROMPT_VERSION:v2}
       # S10.1.1 - El invocador real contra Bedrock. APAGADO POR DEFECTO Y ESO ES EL ESTADO NORMAL:
       # con enabled=false no se construye ni el cliente de AWS ni el invocador, y quien responde al
-      # puerto es ModelAccessNotEnabledInvoker (camino determinista, 200, sin lectura del texto
+      # puerto es BedrockDisabledInvoker (camino determinista, 200, sin lectura del texto
       # libre). Apagarlo es el kill switch de S10.4 y no necesita tocar codigo.
       #
       # EL INTERRUPTOR ES ESTE Y NO model-id, a proposito: model-id siempre trae valor -lo publica

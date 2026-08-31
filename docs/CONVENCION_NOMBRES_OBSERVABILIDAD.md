@@ -186,7 +186,7 @@ incluido el del intento que falló después de pagar, donde no hay `ModelUsage` 
 ### Lo que se decidió NO medir, con su motivo
 
 - **Un histograma de latencia del modelo** (`gen_ai.client.operation.duration` del anexo B).
-  `ModelAccessNotEnabledInvoker` es el único invocador desplegado y devuelve `isAvailable() =
+  `BedrockDisabledInvoker` es el único invocador desplegado y devuelve `isAvailable() =
   false`, así que hoy publicaría ~80 series permanentemente a cero (histograma + `LongTaskTimer`
   `_active_`) y una alerta de p95 que no podría dispararse jamás. La latencia por intento **sí**
   está, como span `aiproposal.model.invoke` con su `error.type`; convertirla en histograma es un

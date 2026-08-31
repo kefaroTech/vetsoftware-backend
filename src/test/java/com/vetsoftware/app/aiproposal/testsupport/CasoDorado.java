@@ -13,12 +13,12 @@ import java.util.Map;
  * <p>
  * &#9940; <b>Lo que fija el caso es {@link #aceptados}, no
  * {@link #lectura}.</b> La lectura es como se representa hoy lo que el modelo
- * entendio del texto —contra el doble, porque
- * {@code ModelAccessNotEnabledInvoker} devuelve {@code isAvailable() == false}
- * y ningun borrador lleva lineas—. El dia que se habilite Bedrock, esa lectura
- * la producira el modelo de verdad y <b>este fichero no cambia</b>: lo que se
- * compara sigue siendo la propuesta. Por eso la lectura vive aqui como dato y
- * no como un {@code when(...)} dentro de un test.
+ * entendio del texto —contra el doble, porque {@code BedrockDisabledInvoker}
+ * devuelve {@code isAvailable() == false} y ningun borrador lleva lineas—. El
+ * dia que se habilite Bedrock, esa lectura la producira el modelo de verdad y
+ * <b>este fichero no cambia</b>: lo que se compara sigue siendo la propuesta.
+ * Por eso la lectura vive aqui como dato y no como un {@code when(...)} dentro
+ * de un test.
  *
  * <p>
  * <b>Lo aceptado y lo recomendado son cosas distintas y por eso son dos
