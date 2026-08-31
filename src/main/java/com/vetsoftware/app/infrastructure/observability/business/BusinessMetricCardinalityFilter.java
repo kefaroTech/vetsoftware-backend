@@ -179,17 +179,38 @@ public final class BusinessMetricCardinalityFilter implements MeterFilter, Meter
             // ENTERO -no esa serie suelta- y el hueco del panel es
             // indistinguible de «no hubo prospectos».
             //
-            // Cardinalidad, contada: generated = 2 x 6 x 4 = 48 en el peor caso
-            // teorico, ~14 reales porque presentation esta determinado por
-            // outcome salvo cuando el modelo respondio; reason.rejected = 9;
-            // invalid.lines = 5; retention.rows = 6; spend y spend.today no
-            // llevan etiqueta. Total <= 70 series, ~35 reales.
+            // Cardinalidad, contada: generated = 2 x 7 x 5 x 3 = 210 en el peor
+            // caso teorico, ~18 reales, y el peor caso teorico no lo alcanza nadie
+            // porque las cuatro etiquetas estan fuertemente correlacionadas:
+            // presentation esta determinado por outcome salvo cuando el modelo
+            // respondio, y failure.kind solo deja de valer "none" cuando
+            // outcome=model_failed (2 combinaciones mas, no 3 x lo anterior).
+            // reason.rejected = 9; invalid.lines = 5; retention.rows = 6; spend y
+            // spend.today no llevan etiqueta. Total <= 232 series, ~39 reales.
+            //
+            // El quinto valor de ai.presentation es no_catalog, y no anade
+            // combinaciones reales: solo lo emiten ServedProposal.sinCatalogo y
+            // .catalogoVacio, que fijan a la vez el outcome. Antes ese camino se
+            // etiquetaba deterministic y se mezclaba con las degradaciones del
+            // modelo, que SI sirven lineas.
+            //
+            // El septimo valor de ai.outcome es empty_catalog, y existe porque
+            // no_catalog colapsaba dos estados con remedios opuestos: alli hay que
+            // publicar la tarifa, aqui la tarifa ya esta publicada.
             Map.entry("ai.operation", Set.of("propose", "refine")),
-            Map.entry("ai.outcome",
-                    Set.of("succeeded", "degraded_spend_cap", "degraded_no_hints",
-                            "degraded_model_unavailable", "model_failed", "no_catalog")),
+            Map.entry("ai.outcome", Set.of("succeeded", "degraded_spend_cap", "degraded_no_hints",
+                    "degraded_model_unavailable", "model_failed", "no_catalog", "empty_catalog")),
             Map.entry("ai.presentation",
-                    Set.of("proposal", "not_understood", "out_of_domain", "deterministic")),
+                    Set.of("proposal", "not_understood", "out_of_domain", "deterministic",
+                            "no_catalog")),
+            // La clase del fallo del modelo, en dos ramas utiles mas el camino
+            // feliz. NO son los trece valores de AiErrorType: quien recibe la
+            // alerta decide entre "espera, se cura solo" y "entra a mirar
+            // configuracion", y el codigo exacto sigue estando en el span del
+            // intento (error.type), que se consulta de una traza en una. "none" va
+            // porque Prometheus exige el mismo juego de claves en todas las
+            // muestras del medidor -ver AiProposalMetrics.FailureKind-.
+            Map.entry("ai.failure.kind", Set.of("none", "transient", "systemic")),
             Map.entry("reason.rule",
                     Set.of("r1_corto", "r2_largo", "r3_cifra", "r4_dinero", "r5_marcado",
                             "r6_enlace", "r7_codigo", "r8_contacto", "r9_repetido")),

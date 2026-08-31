@@ -123,11 +123,11 @@ public class GenerateProposalService implements GenerateProposalUseCase {
 
         Optional<Long> priceListId = catalogQueryPort.findPublishedPriceListId();
         if (priceListId.isEmpty())
-            return sinCatalogo(texto);
+            return sinCotizar(ServedProposal.sinCatalogo(Operation.PROPOSE, texto.length()));
         Optional<SellableCatalog> catalogo = catalogQueryPort.loadCatalog(priceListId.get(),
                 command.billingCycle());
         if (catalogo.isEmpty() || catalogo.get().items().isEmpty())
-            return sinCatalogo(texto);
+            return sinCotizar(ServedProposal.catalogoVacio(Operation.PROPOSE, texto.length()));
         SellableCatalog catalog = catalogo.get();
 
         List<LegalDocumentVersionRef> aceptadas = resolverConsentimiento(command.acceptances());
@@ -159,8 +159,8 @@ public class GenerateProposalService implements GenerateProposalUseCase {
                 carrito, draft.contradictedCodes(), catalogQueryPort.findItemIdsByCode());
         ProposalPresentation presentacion = ProposalAssembler.presentacion(resultado.outcome(),
                 draft);
-        metrics.proposalServed(ServedProposal.de(Operation.PROPOSE, resultado.outcome(),
-                presentacion, draft, carrito, texto.length(), guardada.getId()));
+        metrics.proposalServed(ServedProposal.de(Operation.PROPOSE, resultado, presentacion,
+                carrito, texto.length(), guardada.getId()));
 
         // Aqui vivia el suelo de latencia aleatorio de la ruta degradada. Se retiro:
         // el bit que ocultaba lo publica la respuesta. Ver
@@ -169,15 +169,26 @@ public class GenerateProposalService implements GenerateProposalUseCase {
     }
 
     /**
-     * Sin tarifa publicada no hay nada que cotizar, y hasta hoy ese camino no
-     * emitia <strong>ni una senal</strong>: el asistente respondia 200 con cero
-     * lineas a todos los prospectos a la vez y la unica evidencia era que nadie
-     * compraba. Se cuenta con {@code ai.outcome="no_catalog"}, que es el valor que
-     * {@code GenerationOutcome} no puede tener porque el generador no llega a
-     * verlo.
+     * Los dos caminos en los que <strong>no hay nada que cotizar</strong>, y hasta
+     * hoy ninguno emitia <strong>ni una senal</strong>: el asistente respondia 200
+     * con cero lineas a todos los prospectos a la vez y la unica evidencia era que
+     * nadie compraba. Se cuentan con los valores que {@code GenerationOutcome} no
+     * puede tener, porque el generador no llega a verlos.
+     *
+     * <p>
+     * &#9940; <strong>Son DOS desenlaces y no uno, aunque el prospecto vea lo
+     * mismo.</strong> {@code no_catalog} es «no hay lista de precios
+     * {@code PUBLISHED} vigente» —hay que publicar la tarifa—; {@code
+     * empty_catalog} es «la lista esta publicada y no cuelga de ella ni un articulo
+     * vendible» —la tarifa ya esta bien y hay que mirar el catalogo—. Colapsados en
+     * un valor, la alerta mandaba a publicar una tarifa que ya estaba publicada.
+     *
+     * <p>
+     * La presentacion es {@code NO_CATALOG} en los dos: describe lo que el
+     * prospecto ve —nada—, y quien dice que hacer es el {@code outcome}.
      */
-    private ProposalViewDto sinCatalogo(ProspectText texto) {
-        metrics.proposalServed(ServedProposal.sinCatalogo(Operation.PROPOSE, texto.length()));
+    private ProposalViewDto sinCotizar(ServedProposal medida) {
+        metrics.proposalServed(medida);
         return ProposalViewDto.sinCatalogo();
     }
 
