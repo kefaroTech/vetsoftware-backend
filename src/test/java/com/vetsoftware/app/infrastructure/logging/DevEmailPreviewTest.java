@@ -14,9 +14,18 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link DevEmailPreview} es el único canal de log <b>sin</b> redacción del
- * sistema (ver su javadoc), así que esta prueba afirma sobre el mensaje tal
- * cual sale, sin pasar por {@link RedactingAppender}.
+ * {@link DevEmailPreview} es uno de los dos canales de log <b>sin</b> redacción
+ * del sistema —el otro es {@code AI_PAYLOAD}; la lista cerrada la sostiene
+ * {@link LogbackRedactionConfigTest}—, así que esta prueba afirma sobre el
+ * mensaje tal cual sale, sin pasar por {@link RedactingAppender}.
+ *
+ * <p>
+ * El sumidero va enganchado al <b>propio logger</b> y no a la raíz, y con el
+ * nivel fijado a mano: {@code logback-spring.xml} declara este canal con
+ * {@code additivity="false"}, así que en cuanto una rodaja de Spring del mismo
+ * fork carga esa configuración, sus eventos dejan de propagar hacia arriba.
+ * Leerlo desde la raíz sería una medición que se cae sola según con quién
+ * comparta JVM.
  */
 class DevEmailPreviewTest {
 

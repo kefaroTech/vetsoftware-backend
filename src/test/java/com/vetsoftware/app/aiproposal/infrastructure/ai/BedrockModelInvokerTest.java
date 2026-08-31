@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -114,22 +115,58 @@ class BedrockModelInvokerTest {
 
     private Logger raiz;
 
+    private ListAppender<ILoggingEvent> delPayload;
+
+    private Logger canalDelPayload;
+
+    private Level nivelPrevioDelCanal;
+
     @BeforeEach
     void montar() {
         invocador = new BedrockModelInvoker(cliente, MODEL_ID, MAX_TOKENS, MODO, false);
+        LoggerContext contexto = (LoggerContext) LoggerFactory.getILoggerFactory();
+
         // En la RAIZ y no en el logger de la clase: la fuga que se busca es la que
         // escribe alguien que no sabe que existe esta regla.
         raiz = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
         logs = new ListAppender<>();
-        logs.setContext((LoggerContext) LoggerFactory.getILoggerFactory());
+        logs.setContext(contexto);
         logs.start();
         raiz.addAppender(logs);
+
+        // ⛔ EL CANAL DEL PAYLOAD SE LEE DE SU PROPIO LOGGER, NO DE LA RAIZ, y esto no
+        // es una preferencia de estilo: es el fallo que puso `develop` en rojo.
+        //
+        // logback-spring.xml declara AI_PAYLOAD con additivity="false" -es lo que
+        // impide que el prompt del prospecto alcance el pipeline exportado, y
+        // LogbackRedactionConfigTest lo exige-. En cuanto CUALQUIER rodaja de Spring
+        // del mismo fork carga esa configuracion -y solo dos clases del arbol fijan
+        // @ActiveProfiles, asi que casa el perfil local-, los eventos del canal dejan
+        // de propagar a la raiz PARA EL RESTO DE LA JVM. Leyendolos desde la raiz,
+        // estas pruebas pasaban en aislamiento y contaban CERO en la suite completa,
+        // que es exactamente el peor modo de fallar: verde cuando se depura, rojo
+        // cuando se integra, y el sintoma -"el log no escribe nada"- señalando a una
+        // implementacion que funciona.
+        //
+        // Enganchado al propio logger, el resultado no depende ya de que otra clase
+        // haya reconfigurado el contexto antes. Mismo patron que DevEmailPreviewTest,
+        // el otro canal sin redaccion, que por eso nunca sufrio esto.
+        canalDelPayload = contexto.getLogger("AI_PAYLOAD");
+        nivelPrevioDelCanal = canalDelPayload.getLevel();
+        canalDelPayload.setLevel(Level.INFO);
+        delPayload = new ListAppender<>();
+        delPayload.setContext(contexto);
+        delPayload.start();
+        canalDelPayload.addAppender(delPayload);
     }
 
     @AfterEach
     void desmontar() {
         raiz.detachAppender(logs);
         logs.stop();
+        canalDelPayload.detachAppender(delPayload);
+        canalDelPayload.setLevel(nivelPrevioDelCanal);
+        delPayload.stop();
     }
 
     @Nested
@@ -329,7 +366,7 @@ class BedrockModelInvokerTest {
         @Test
         @DisplayName("las dos condiciones son complementarias exactas: si las dos fallaran, el contexto no levanta")
         void las_condiciones_son_complementarias() {
-            String delFallback = ModelAccessNotEnabledInvoker.class.getAnnotation(
+            String delFallback = BedrockDisabledInvoker.class.getAnnotation(
                     org.springframework.boot.autoconfigure.condition.ConditionalOnExpression.class)
                     .value();
 
@@ -739,10 +776,32 @@ class BedrockModelInvokerTest {
          * {@code logback-spring.xml} enrutarlo aparte -sin redactar en local, por la
          * raiz redactada en dev-. Si alguien lo escribiera por el logger de la clase,
          * estas aserciones seguirian pasando por contenido y el enrutado seria mentira.
+         *
+         * <p>
+         * El sumidero es el del propio canal y no el de la raiz. El porque esta en
+         * {@code montar()}, y es la diferencia entre medir y creer que se mide.
          */
         private java.util.List<String> lineasDelPayload() {
-            return logs.list.stream().filter(evento -> "AI_PAYLOAD".equals(evento.getLoggerName()))
+            return delPayload.list.stream()
+                    .filter(evento -> "AI_PAYLOAD".equals(evento.getLoggerName()))
                     .map(ILoggingEvent::getFormattedMessage).toList();
+        }
+
+        /**
+         * &#9940; <strong>El andamiaje no da falsos verdes.</strong> Las tres pruebas
+         * de arriba se apoyan en que el sumidero VE lo que el canal escribe; si dejara
+         * de verlo -exactamente lo que pasaba leyendo desde la raiz-,
+         * {@code apagado_no_escribe_nada} seguiria verde y las otras dos dirian "la
+         * funcion no escribe nada" sobre una implementacion intacta. Esto separa las
+         * dos lecturas.
+         */
+        @Test
+        @DisplayName("el sumidero del canal ve lo que el canal escribe, este quien este"
+                + " enganchado a la raiz")
+        void el_sumidero_del_canal_no_depende_de_la_raiz() {
+            org.slf4j.LoggerFactory.getLogger("AI_PAYLOAD").info("sonda del andamiaje");
+
+            assertThat(lineasDelPayload()).containsExactly("sonda del andamiaje");
         }
     }
 
