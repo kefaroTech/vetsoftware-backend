@@ -101,5 +101,23 @@
         <logger name="DEV_EMAIL_PREVIEW" level="INFO" additivity="false">
             <appender-ref ref="CONSOLE"/>
         </logger>
+
+        <!--
+          La conversacion con el modelo -el prompt que se manda y el cuerpo que contesta- cuando
+          vetsoftware.ai.proposal.bedrock.log-payloads esta encendido. Mismo trato y mismo motivo
+          que DEV_EMAIL_PREVIEW: additivity="false" + solo CONSOLE, asi que se lee entero en la
+          terminal y NO puede alcanzar el pipeline exportado a Loki.
+
+          FUERA DE LOCAL ESTE LOGGER NO SE DECLARA, y eso es la decision y no un olvido: en dev y
+          prod sus eventos caen en la raiz y pasan por RedactingAppender, de modo que se ve la
+          forma de la conversacion con los datos personales del prospecto redactados. Declararlo
+          tambien alli publicaria texto libre de terceros en CloudWatch y en Grafana Cloud, que es
+          justo lo que la politica de redaccion existe para impedir.
+
+          El interruptor sigue siendo la propiedad: sin ella encendida aqui no llega ni un evento.
+        -->
+        <logger name="AI_PAYLOAD" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+        </logger>
     </springProfile>
 </configuration>

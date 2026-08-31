@@ -135,6 +135,37 @@ public class BedrockModelInvoker implements ModelInvoker {
     private static final Logger log = LoggerFactory.getLogger(BedrockModelInvoker.class);
 
     /**
+     * &#9940; <strong>El unico canal por el que el texto del prospecto y la prosa
+     * del modelo pueden salir de este proceso, y por eso tiene nombre propio en vez
+     * de usar {@link #log}.</strong>
+     *
+     * <p>
+     * Un logger aparte es lo que permite enrutarlo distinto en {@code
+     * logback-spring.xml} sin tocar codigo. En local se declara con
+     * {@code additivity="false"} contra {@code CONSOLE} —igual que
+     * {@code DEV_EMAIL_PREVIEW}, que es el precedente— asi que se lee entero y no
+     * alcanza el pipeline exportado. <strong>En dev y prod NO se declara</strong>,
+     * de modo que sus eventos caen en la raiz y pasan por {@code RedactingAppender}
+     * como cualquier otro: se ve la forma de la conversacion, con los datos
+     * personales redactados. Es la misma politica que ya tiene escrita
+     * {@code docs/POLITICA_REDACCION_LOGS.md}, no una excepcion nueva.
+     *
+     * <p>
+     * Si se usara {@link #log}, que cuelga de {@code com.vetsoftware}, no habria
+     * forma de apagar esto sin apagar tambien el aviso de fallo de la invocacion.
+     */
+    private static final Logger PAYLOAD = LoggerFactory.getLogger("AI_PAYLOAD");
+
+    /**
+     * El salto que parte el log en bloques legibles. Se declara en vez de
+     * escribirse dentro del formato porque un mensaje multilinea es exactamente lo
+     * que hace ilegible un log estructurado, y aqui esta puesto a proposito: lo que
+     * se depura es texto largo que hay que LEER, no un campo que haya que
+     * consultar.
+     */
+    private static final String SALTO = System.lineSeparator();
+
+    /**
      * Determinismo antes que variedad. Dos turnos del golden set con el mismo
      * {@code prompt_version} y el mismo {@code catalog_snapshot_hash} tienen que
      * poder compararse; con temperatura por defecto la diferencia entre dos
@@ -184,12 +215,27 @@ public class BedrockModelInvoker implements ModelInvoker {
 
     private final StructuredOutputMode modo;
 
+    /**
+     * &#9940; <strong>APAGADO POR DEFECTO Y ESE ES EL ESTADO NORMAL.</strong>
+     * Encenderlo escribe en el log el prompt entero —que lleva el texto libre del
+     * prospecto— y el cuerpo entero de la respuesta. Eso es dato personal bajo la
+     * Ley 1581, asi que convierte un log operativo en un almacen de datos
+     * personales con su propia retencion y su propia superficie de acceso.
+     *
+     * <p>
+     * Es un interruptor explicito y no el nivel del logger a proposito: un nivel se
+     * sube de paso al depurar otra cosa, y esto no puede encenderse sin querer. Con
+     * {@code false} no se construye ni la cadena del mensaje.
+     */
+    private final boolean logPayloads;
+
     public BedrockModelInvoker(BedrockRuntimeClient cliente, String modelId, int maxOutputTokens,
-            StructuredOutputMode modo) {
+            StructuredOutputMode modo, boolean logPayloads) {
         this.cliente = Objects.requireNonNull(cliente, "cliente");
         this.modelId = Objects.requireNonNull(modelId, "modelId");
         this.maxOutputTokens = maxOutputTokens;
         this.modo = Objects.requireNonNull(modo, "modo");
+        this.logPayloads = logPayloads;
     }
 
     /**
@@ -214,10 +260,14 @@ public class BedrockModelInvoker implements ModelInvoker {
     @Override
     public ModelInvocation invoke(ProposalPrompt prompt) {
         Objects.requireNonNull(prompt, "prompt");
+        // ANTES de invocar, no despues: si la llamada revienta o se agota el
+        // timeout, lo que se mando sigue siendo lo unico que explica por que.
+        registrarPeticion(prompt);
         try {
             ConverseResponse respuesta = cliente.converse(peticion(prompt));
             String parada = parada(respuesta);
             Cuerpo cuerpo = cuerpo(respuesta, parada);
+            registrarRespuesta(cuerpo.rawJson(), parada, respuesta);
             return new ModelInvocation(modelId, cuerpo.rawJson(), tokensDeEntrada(respuesta),
                     tokensDeSalida(respuesta), parada, cuerpo.failureCode());
         } catch (RuntimeException fallo) {
@@ -226,6 +276,45 @@ public class BedrockModelInvoker implements ModelInvoker {
             throw new ModelInvocationException(codigo,
                     "la invocacion del modelo fallo; ver ai.failure.code");
         }
+    }
+
+    /**
+     * Lo que el backend le manda al modelo, literal.
+     *
+     * <p>
+     * &#9940; <strong>Los campos se leen uno a uno y NO se usa
+     * {@code prompt.toString()}.</strong> Ese {@code toString} esta escrito a
+     * proposito para no imprimir el texto —solo version, hash y numero de
+     * caracteres— y {@code BedrockProposalGeneratorTest} lo fija. Pasarlo por aqui
+     * daria un log vacio de contenido y la sensacion de que la traza funciona.
+     */
+    private void registrarPeticion(ProposalPrompt prompt) {
+        if (!logPayloads)
+            return;
+        PAYLOAD.info(
+                "AI >>> peticion modelo={} version={} catalogo={} modo={}" + SALTO
+                        + "--- system ---" + SALTO + "{}" + SALTO + "--- user ---" + SALTO + "{}",
+                modelId, prompt.promptVersion(), prompt.catalogSnapshotHash(), modo,
+                prompt.system(), prompt.user());
+    }
+
+    /**
+     * Lo que el modelo contesto, y los tres datos con los que se interpreta.
+     *
+     * <p>
+     * {@code stop} es lo primero que hay que mirar cuando el JSON no parsea: un
+     * {@code max_tokens} dice que la respuesta salio truncada y que el problema
+     * esta en {@code max-output-tokens}, no en el modelo. Los tokens van al lado
+     * porque son con lo que se cobra: al comparar dos modelos, esta linea es la
+     * medicion.
+     */
+    private void registrarRespuesta(String rawJson, String parada, ConverseResponse respuesta) {
+        if (!logPayloads)
+            return;
+        PAYLOAD.info(
+                "AI <<< respuesta modelo={} stop={} tokens_entrada={} tokens_salida={}" + SALTO
+                        + "--- body ---" + SALTO + "{}",
+                modelId, parada, tokensDeEntrada(respuesta), tokensDeSalida(respuesta), rawJson);
     }
 
     /** Lo que se saca de la respuesta: el cuerpo y, si lo hay, su desenlace. */

@@ -260,7 +260,7 @@ class AiProposalTelemetryLeakTest {
         when(bedrock.converse(any(ConverseRequest.class))).thenThrow(ValidationException.builder()
                 .message("400 Bad Request; body={\"prompt\":\"" + DESCRIPCION + "\"}").build());
         service = servicioCon(new BedrockModelInvoker(bedrock, ProposalMother.MODELO, 1500,
-                StructuredOutputMode.TOOL_STRICT));
+                StructuredOutputMode.TOOL_STRICT, false));
 
         observado(() -> service.generate(comando()));
 
