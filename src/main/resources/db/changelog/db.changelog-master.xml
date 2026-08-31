@@ -996,4 +996,20 @@
          propio 392. -->
     <include file="db/changelog/migrations/392_create_ai_proposal_suppression_requests.xml"/>
 
+    <!-- 393: LA FIRMA QUE FALTABA EN 381: QUIEN RETIRO UNA PISTA. `supersede` sirve a corregir
+         (publica revision nueva con su propio firmante) y a retirar (RetireCatalogItemAiHintService,
+         sucede sin sucesora): solo el primero quedaba firmado, la fila retirada conservaba el
+         published_by_system_user_id de quien PUBLICO, no de quien la APAGO -justo el dato que
+         le dice al modelo que dejo de recomendar un articulo, sin constancia de quien lo decidio-.
+         superseded_by_system_user_id es NULABLE a proposito -vigente no tiene retirador, y las
+         revisiones sucedidas antes de este changeset no tienen a quien atribuirse, inventarles
+         firmante seria peor que NULL-, con chk_catalog_item_ai_hints_superseded_by exigiendo
+         superseded_at cuando SI hay firmante. FK RESTRICT en ambos sentidos, mismo criterio que
+         fk_ldv_published_by (353/387) y el actor de 392: la evidencia que si existe no se puede
+         quedar sin actor. Sin indice explicito: la pregunta "que retiro esta persona" no es ruta
+         caliente y la FK ya obliga a InnoDB a mantener uno. Ninguna columna generada de 381
+         (hint_hash, current_hint_marker) depende de esta columna. Detalle completo en el propio
+         393. -->
+    <include file="db/changelog/migrations/393_add_superseded_by_to_catalog_item_ai_hints.xml"/>
+
 </databaseChangeLog>

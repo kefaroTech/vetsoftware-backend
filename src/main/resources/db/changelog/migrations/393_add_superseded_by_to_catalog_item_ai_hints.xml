@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PROPUESTA IA. LA FIRMA QUE FALTABA: QUIEN RETIRO UNA PISTA.
+
+         381 ya audita quien PUBLICA (published_by_system_user_id, NOT NULL, RESTRICT): toda
+         revision nace con firmante. Pero `supersede` (CatalogItemAiHint.java:167) sirve a DOS
+         casos de negocio con la misma escritura -corregir, que sucede y publica una revision
+         nueva con SU PROPIO firmante, y retirar, que sucede SIN sucesora
+         (RetireCatalogItemAiHintService)- y solo el primero queda firmado: la fila retirada
+         conserva el `published_by_system_user_id` de quien la publico, no de quien la apago. Es
+         exactamente el generador de recomendaciones a un prospecto anonimo el que queda sin
+         constancia de quien decidio que un articulo dejara de proponerse.
+
+         NULABLE A PROPOSITO, Y ES LA DECISION DE FONDO, no una concesion:
+          - Una revision VIGENTE (superseded_at IS NULL) no la ha retirado nadie: exigir un
+            valor aqui mentiria sobre las filas vivas -las 14 que siembra 382 hoy mismo-.
+          - Las revisiones ya sucedidas ANTES de este changeset no tienen a quien atribuirse: el
+            actor real no quedo escrito en ningun sitio (381 no lo preveia) y no hay forma de
+            reconstruirlo. Inventarles un firmante seria peor que dejarlas en NULL: convertiria
+            una laguna conocida en un dato falso indistinguible de una firma real.
+
+         CHECK DE COHERENCIA, Y NO SOLO LA FK. Que la columna sea nulable no significa que valga
+         cualquier combinacion: un firmante sin fecha de retiro no tiene sentido -no se puede
+         saber QUIEN retiro algo que sigue vigente-. chk_catalog_item_ai_hints_superseded_by lo
+         impone SIN caer en la trampa de que un CHECK que evalua a NULL acepta la fila: con
+         `superseded_by_system_user_id IS NULL` la condicion es TRUE de inmediato -vigente o
+         historica-sin-firma, las dos legitimas- y solo cuando hay firmante se evalua la segunda
+         rama, que exige `superseded_at IS NOT NULL`. Ninguna rama depende de una comparacion con
+         NULL que se cuele como aceptada.
+
+         ON DELETE/UPDATE RESTRICT EN AMBOS SENTIDOS, MISMO CRITERIO QUE fk_ldv_published_by
+         (353/387) Y fk_ai_proposal_suppression_requests_actor (392): "la evidencia no puede
+         quedarse sin actor". La nulabilidad cubre la ausencia LEGITIMA de firma (vigente, o
+         anterior a este changeset); RESTRICT cubre la firma que SI existe: en cuanto una fila
+         tiene `superseded_by_system_user_id`, ese valor es evidencia de que una persona concreta
+         decidio apagar la pista, y un SET NULL la borraria en silencio -la fila seguiria
+         mostrando "retirada" pero por nadie, indistinguible de una fila anterior a este
+         changeset-. RESTRICT impide que se borre o renumere un system_user que firmo un retiro
+         sin que alguien decida antes que hacer con esa evidencia. No es el mismo caso que
+         fk_quotes_ai_proposal (389, SET NULL): alli la retencion legal de `ai_proposals` no
+         puede quedar bloqueada por una cotizacion; aqui no hay job de purga que dependa de poder
+         borrar un `system_user`, asi que no hay tension entre RESTRICT y ninguna otra obligacion.
+
+         SIN INDICE EXPLICITO, Y ES DELIBERADO. La pregunta que se va a hacer -"que retiro esta
+         persona"- no es ruta de acceso caliente (mismo argumento que 388 con `presentation`:
+         cuatro valores, se lee siempre junto a la fila). Ademas InnoDB EXIGE un indice para
+         respaldar la FK y lo crea el solo, sin nombre, si no se declara uno explicito -a
+         diferencia de 381/392, aqui no hay ninguna consulta que necesite ese indice con un
+         nombre propio para nada mas-, asi que declarar uno aparte anadiria mantenimiento de
+         escritura sin ganar ninguna capacidad que la FK no traiga ya de fabrica.
+
+         NINGUNA COLUMNA GENERADA SE ROMPE. `hint_hash` deriva solo de `hint_text`
+         (SHA2(hint_text,256)) y `current_hint_marker` solo de `superseded_at` y
+         `catalog_item_id` (381): ninguna de las dos lee `superseded_by_system_user_id`, asi que
+         un ALTER ADD COLUMN corriente no las toca ni las recalcula.
+
+         IMPACTO: `catalog_item_ai_hints` tiene hoy 14 filas (una por articulo de catalogo activo,
+         382). Un ADD COLUMN nulable sin valor por defecto sobre una tabla de ese tamano es
+         instantaneo en cualquier escenario -con o sin ALGORITHM=INSTANT-; no hace falta ventana
+         de mantenimiento.
+
+         Restriccion en bloque ALTER TABLE aparte del addColumn, mismo patron que 388/392: en
+         este esquema las restricciones no viven junto a su columna. -->
+    <changeSet id="393_add_superseded_by_to_catalog_item_ai_hints" author="orlando">
+        <preConditions onFail="HALT">
+            <not>
+                <columnExists tableName="catalog_item_ai_hints"
+                              columnName="superseded_by_system_user_id"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="catalog_item_ai_hints">
+            <column name="superseded_by_system_user_id" type="BIGINT" afterColumn="superseded_at"/>
+        </addColumn>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_item_ai_hints
+                ADD CONSTRAINT chk_catalog_item_ai_hints_superseded_by
+                    CHECK (superseded_by_system_user_id IS NULL OR superseded_at IS NOT NULL)
+        ]]></sql>
+
+        <addForeignKeyConstraint baseTableName="catalog_item_ai_hints"
+                                 baseColumnNames="superseded_by_system_user_id"
+                                 referencedTableName="system_users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_catalog_item_ai_hints_superseded_by"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="catalog_item_ai_hints"
+                                      constraintName="fk_catalog_item_ai_hints_superseded_by"/>
+            <sql>
+                ALTER TABLE catalog_item_ai_hints
+                    DROP CONSTRAINT chk_catalog_item_ai_hints_superseded_by;
+            </sql>
+            <dropColumn tableName="catalog_item_ai_hints"
+                        columnName="superseded_by_system_user_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
