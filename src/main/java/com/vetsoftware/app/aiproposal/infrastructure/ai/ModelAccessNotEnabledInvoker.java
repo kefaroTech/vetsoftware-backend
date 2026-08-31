@@ -3,6 +3,7 @@ package com.vetsoftware.app.aiproposal.infrastructure.ai;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,13 +28,33 @@ import org.springframework.stereotype.Component;
  * averia.
  *
  * <p>
- * <strong>Como se sustituye.</strong> El dia que el acceso se habilite y entre
- * la dependencia {@code com.anthropic:anthropic-java}, la implementacion real
- * se declara {@code @Primary} o esta se condiciona a su ausencia. Nada mas del
- * adaptador cambia: el prompt, la validacion, el saneador y el tope de gasto ya
- * estan probados contra esta costura.
+ * <strong>Como se sustituye. Ya paso, y por las dos vias a la vez.</strong> La
+ * implementacion real es {@link BedrockModelInvoker} —por Bedrock y no por
+ * {@code com.anthropic:anthropic-java}, porque el contenedor se autentica con
+ * el rol de tarea de ECS y lo que la infraestructura concede es un ARN de
+ * Bedrock—, se declara {@code @Primary} <em>y</em> esta se condiciona a su
+ * ausencia. Nada mas del adaptador cambio: el prompt, la validacion, el
+ * saneador y el tope de gasto ya estaban probados contra esta costura.
+ *
+ * <p>
+ * ⛔ <strong>La condicion es la negacion exacta de
+ * {@link BedrockInvokerConfig#ACTIVO}, y comparte su constante a
+ * proposito.</strong> Este bean tiene que existir siempre que no exista el
+ * otro: si las dos condiciones fueran falsas a la vez no habria ningun
+ * {@link ModelInvoker}, el contexto no levantaria y se caerian las 93 rodajas
+ * de integracion —el desastre entero que esta clase existe para evitar—.
+ * Compartir el literal es lo que impide que las dos expresiones se separen en
+ * una edicion descuidada.
+ *
+ * <p>
+ * <strong>Y por eso mismo se condiciona en vez de dejarse suelta con un
+ * {@code @Primary} delante.</strong> Con Bedrock cableado, este bean seguiria
+ * anunciando al arrancar que «el acceso al modelo no esta habilitado» sin ser
+ * ya verdad; una linea de arranque falsa es peor que ninguna, porque es la
+ * primera que se lee a las tres de la manana.
  */
 @Component
+@ConditionalOnExpression("!(" + BedrockInvokerConfig.ACTIVO + ")")
 public class ModelAccessNotEnabledInvoker implements ModelInvoker {
 
     private static final Logger log = LoggerFactory.getLogger(ModelAccessNotEnabledInvoker.class);

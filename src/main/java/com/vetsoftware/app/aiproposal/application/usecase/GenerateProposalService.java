@@ -92,7 +92,7 @@ public class GenerateProposalService implements GenerateProposalUseCase {
             LegalConsentPort legalConsent, ProposalGeneratorPort generator,
             ProposalTurnWriter writer, ProposalReader reader, AiProposalMetrics metrics,
             Clock clock,
-            @Value("${vetsoftware.ai.proposal.model-id:anthropic.claude-sonnet-5}") String modelId,
+            @Value("${vetsoftware.ai.proposal.model-id:us.anthropic.claude-sonnet-5}") String modelId,
             @Value("${vetsoftware.ai.proposal.prompt-version:v1}") String promptVersion,
             @Value("${vetsoftware.ai.proposal.validity-days:14}") int diasDeVigencia,
             @Value("${vetsoftware.ai.proposal.locale:es-CO}") String locale) {

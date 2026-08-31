@@ -344,12 +344,14 @@ vetsoftware:
   # efectivos eran los defaults de los @Value, es decir que el tope de gasto de produccion era
   # un literal escondido en la firma de un constructor y nadie lo habia elegido.
   #
-  # LAS DOS PRIMERAS CLAVES ESTAN ACOPLADAS Y NO SE TOCAN POR SEPARADO. LoginRateLimitFilter
-  # divide el tope entre el coste por llamada para saber cuantas invocaciones de pago financia
-  # el dia, y de ahi deriva el cupo diario por IP de las dos rutas que pagan. Elegirlos por
-  # separado es como se llego a permitir 20 peticiones por IP contra un tope que financiaba 18:
-  # una sola IP vaciaba el presupuesto de toda la plataforma sin agotar su propio limite.
-  # LoginRateLimitFilterTest fija esa relacion; si cambias una, corre ese test.
+  # EL TOPE DE GASTO Y LA TARIFA DEL MODELO ESTAN ACOPLADOS Y NO SE TOCAN POR SEPARADO.
+  # LoginRateLimitFilter divide el tope entre el coste por llamada -que le da ModelPricing a
+  # partir de `pricing`- para saber cuantas invocaciones de pago financia el dia, y de ahi
+  # deriva el cupo diario por IP de las dos rutas que pagan. Elegirlos por separado es como se
+  # llego a permitir 20 peticiones por IP contra un tope que financiaba 18: una sola IP vaciaba
+  # el presupuesto de toda la plataforma sin agotar su propio limite. LoginRateLimitFilterTest
+  # fija esa relacion PARA CUALQUIER PRECIO, no solo para el de hoy; si cambias una, corre ese
+  # test.
   ai:
     proposal:
       # Techo de gasto diario para TODA la plataforma. Es fail-closed: agotado, el asistente
@@ -357,14 +359,118 @@ vetsoftware:
       # 0,33 USD financian 18 invocaciones al dia; es el minimo con el que la feature funciona
       # de verdad, no una cifra de produccion. Se sube por entorno, mas abajo.
       daily-spend-cap-usd: ${AI_PROPOSAL_DAILY_SPEND_CAP_USD:0.33}
-      # Coste estimado de UNA invocacion de pago, en USD. Espejo de
-      # BedrockProposalGenerator.USD_ESTIMADO_POR_LLAMADA (3.800 tokens de entrada a 2 USD/M mas
-      # 1.000 de salida a 10 USD/M). Si cambia la tarifa del modelo o la estimacion de tokens,
-      # este numero se mueve con ellos o el limite por IP se calibra contra un coste que ya no
-      # es el real. El test lo compara contra la constante, no contra un literal copiado.
-      usd-per-paid-call: ${AI_PROPOSAL_USD_PER_PAID_CALL:0.0176}
-      model-id: ${AI_PROPOSAL_MODEL_ID:anthropic.claude-sonnet-5}
-      prompt-version: ${AI_PROPOSAL_PROMPT_VERSION:v1}
+      # LA TARIFA DEL MODELO, QUE YA NO ES UNA CONSTANTE COMPILADA. Antes vivia como cuatro
+      # `private static final` dentro de BedrockProposalGenerator -las tarifas de Sonnet y dos
+      # estimaciones de tokens-, y la clave que habia aqui, `usd-per-paid-call`, era su espejo:
+      # un segundo numero, atado por un test, que habia que mover a mano con el primero. Ya no
+      # existe. Quien manda es shared/ai/ModelPricing, y la piden LOS DOS consumidores: el
+      # generador, que cobra, y LoginRateLimitFilter, que reparte cupos con lo que cuesta cobrar.
+      #
+      # ENTRADA Y SALIDA SON DOS NUMEROS Y NO UNO: la relacion entre ambas varia mucho entre
+      # familias -Sonnet cobra la salida cinco veces mas cara que la entrada, otras casi igual-,
+      # asi que un unico "precio por llamada" volveria a mentir en cuanto cambiara la mezcla.
+      #
+      # EL CERO Y LOS NEGATIVOS IMPIDEN ARRANCAR, a proposito. Un precio de cero divide por cero
+      # al derivar el cupo por IP y hace que una invocacion parezca gratis; ademas el cero ya
+      # mordio una vez significando "sin limite" en el cubo global del filtro, que es donde peor
+      # podia significarlo. El interruptor del asistente es `bedrock.enabled`, no el precio.
+      #
+      # LA INFRAESTRUCTURA NO PUBLICA ESTAS VARIABLES, y esa decision es deliberada: no publicar
+      # el coste evita una tercera fuente que descalibre el reparto de cupos en silencio. Se
+      # mueven aqui, en el mismo PR en el que se mueva `model-id`, y nunca por separado.
+      pricing:
+        # Tarifas de us.anthropic.claude-sonnet-5, USD por millon de tokens (plan S7.4). El
+        # modelo va escrito al lado y en `priced-model-id` de aqui abajo: un precio sin decir de
+        # que modelo es se convierte en otra cifra huerfana dentro de seis meses.
+        usd-per-million-input-tokens: ${AI_PROPOSAL_USD_PER_MILLION_INPUT_TOKENS:2}
+        usd-per-million-output-tokens: ${AI_PROPOSAL_USD_PER_MILLION_OUTPUT_TOKENS:10}
+        # El peor caso de S7.2.1, no la media: el cuarto turno acumulativo ronda los 3.800 de
+        # entrada, y el tope de gasto se dimensiona con lo que un atacante va a producir a
+        # proposito. Con estas cuatro cifras, una invocacion de pago cuesta 0,017600 USD y el
+        # tope de 0,33 financia 18 al dia.
+        estimated-input-tokens: ${AI_PROPOSAL_ESTIMATED_INPUT_TOKENS:3800}
+        estimated-output-tokens: ${AI_PROPOSAL_ESTIMATED_OUTPUT_TOKENS:1000}
+        # DE QUE MODELO SON LAS TARIFAS DE ARRIBA. Tiene que ser el mismo que `model-id`; si no
+        # lo es, ModelPricing lo dice con un WARN en el arranque nombrando los dos. Avisa y no
+        # revienta a proposito: prod recibe `model-id` desde Terraform, y un arranque fatal
+        # convertiria un cambio de version del perfil de inferencia en una caida.
+        priced-model-id: ${AI_PROPOSAL_PRICED_MODEL_ID:us.anthropic.claude-sonnet-5}
+      # ES A LA VEZ LA ETIQUETA DE AUDITORIA Y EL IDENTIFICADOR QUE SE INVOCA. AI_PROPOSAL_MODEL_ID
+      # se publica al contenedor derivada de la misma variable que compone el ARN del permiso de
+      # Bedrock, asi que esta cadena es literalmente aquella para la que hay permiso concedido, en
+      # la region desde la que se invoca; un test de contrato de Terraform lo ata y se pone rojo si
+      # alguien publica el modelo base. La escriben GenerateProposalService y RefineProposalService
+      # en ai_proposal_turns.model_id al abrir el turno, y BedrockInvokerConfig se la pasa VERBATIM
+      # a Converse.
+      #
+      # EL PREFIJO REGIONAL (us.) NO SE QUITA NI SE NORMALIZA EN NINGUN SITIO: es lo que hace que
+      # atienda un perfil de inferencia de las regiones que el consentimiento del prospecto nombra
+      # al declarar la transferencia internacional. El defecto de aqui y el de los dos @Value
+      # llevaban el modelo base pelado -sin prefijo-, asi que el arranque local y los tests corrian
+      # con un identificador distinto del desplegado; ya estan alineados.
+      model-id: ${AI_PROPOSAL_MODEL_ID:us.anthropic.claude-sonnet-5}
+      # v2 desde S10.4. LOS DOS SITIOS TIENEN QUE MOVERSE JUNTOS: esta propiedad es la que
+      # GenerateProposalService y RefineProposalService escriben en el turno PENDING (TX1), y
+      # ProposalPromptBuilder.PROMPT_VERSION es la que viaja en el prompt y la que TX2 graba al
+      # cerrar con exito. Separadas, un turno que triunfa queda con una version y uno que falla
+      # con la otra: dos poblaciones en la misma columna y ninguna consulta que lo delate.
+      #
+      # Subio porque cambio la FORMA de la peticion, no una coma: las instrucciones ya piden el
+      # formato de salida campo a campo y ademas se fuerza con la herramienta de Converse. Todo
+      # turno anterior a este cambio es v1 y NO es comparable con uno v2, que es exactamente para
+      # lo que existe la columna.
+      prompt-version: ${AI_PROPOSAL_PROMPT_VERSION:v2}
+      # S10.1.1 - El invocador real contra Bedrock. APAGADO POR DEFECTO Y ESO ES EL ESTADO NORMAL:
+      # con enabled=false no se construye ni el cliente de AWS ni el invocador, y quien responde al
+      # puerto es ModelAccessNotEnabledInvoker (camino determinista, 200, sin lectura del texto
+      # libre). Apagarlo es el kill switch de S10.4 y no necesita tocar codigo.
+      #
+      # EL INTERRUPTOR ES ESTE Y NO model-id, a proposito: model-id siempre trae valor -lo publica
+      # el contenedor y ademas tiene defecto arriba-, asi que condicionar sobre el encenderia
+      # Bedrock en local y en cada rodaja de integracion, justo donde no hay credenciales ni region
+      # que resolver.
+      bedrock:
+        enabled: ${AI_PROPOSAL_BEDROCK_ENABLED:false}
+        # Vacia deja resolver la region a la cadena por defecto del SDK (AWS_REGION), que es como
+        # esta hoy. Se declara igualmente porque el perfil de inferencia y la region tienen que
+        # corresponderse: el permiso se concedio para esa pareja.
+        region: ${AI_PROPOSAL_BEDROCK_REGION:}
+        # COMO SE LE EXIGE AL MODELO QUE LA SALIDA SEA JSON. Tres escalones, de mas a menos
+        # acoplado a la familia del modelo:
+        #
+        #   TOOL_STRICT  herramienta forzada con esquema estricto. El proveedor VALIDA la salida
+        #                contra el esquema antes de emitirla. Es el unico que garantiza algo, y
+        #                el mas acoplado: no todo el catalogo de Bedrock lo admite.
+        #   TOOL         herramienta forzada sin strict. Para un modelo que sabe llamar
+        #                herramientas pero rechaza el esquema estricto.
+        #   PROMPT       sin herramienta: el formato se pide por escrito y se lee del texto.
+        #                Funciona en CUALQUIER modelo que Bedrock sirva por Converse.
+        #
+        # ES CONFIGURACION Y NO CODIGO A PROPOSITO: el uso de herramientas es una capacidad POR
+        # MODELO, no de la API. Converse unifica la interfaz, no lo que sabe hacer cada familia.
+        # Cambiar de modelo a uno sin herramientas y no poder bajar de escalon convertiria ese
+        # cambio en una rotura total en vez de una degradacion, y haria falta un despliegue.
+        # Las instrucciones piden el objeto JSON por escrito en LOS TRES: el mecanismo puede no
+        # estar disponible, el prompt siempre lo esta.
+        #
+        # SI EL MODELO CONFIGURADO NO ADMITE EL MECANISMO ACTIVO, se entera en la primera llamada
+        # y no tres semanas despues: o Bedrock rechaza la peticion (MODEL_INVALID_REQUEST, ERROR,
+        # y el log dice que se baje de escalon), o la respuesta llega sin el bloque de la
+        # herramienta y eso tiene su propio desenlace declarado -MODEL_STRUCTURED_OUTPUT_UNSUPPORTED,
+        # sistemico y con su propia etiqueta en el SLI-. Un valor que no sea uno de los tres
+        # revienta el arranque con el valor dentro del mensaje.
+        structured-output: ${AI_PROPOSAL_BEDROCK_STRUCTURED_OUTPUT:TOOL_STRICT}
+        # TIENE QUE QUEDAR POR ENCIMA DE `pricing.estimated-output-tokens` (1.000): esa cifra
+        # dimensiona la reserva de gasto, y cortar la generacion justo ahi convierte cada
+        # respuesta un poco larga en un JSON truncado que no parsea, es decir una llamada
+        # cobrada y tirada. Al cambiar de modelo se mueven las dos o ninguna; hoy nada las ata,
+        # asi que bajar esta por debajo de aquella no rompe ningun test.
+        max-output-tokens: ${AI_PROPOSAL_BEDROCK_MAX_OUTPUT_TOKENS:1500}
+        # Corte duro de la llamada, y HACE FALTA porque el apiCallTimeout por defecto del AWS SDK
+        # v2 es ILIMITADO: sin el, un modelo colgado retiene un hilo de Tomcat en un endpoint
+        # publico y anonimo hasta que se rinda el socket. Tiene defecto, asi que la propiedad se
+        # lee siempre; publicar la variable de entorno solo hace falta para moverla por entorno.
+        timeout: ${AI_PROPOSAL_BEDROCK_TIMEOUT:45s}
       # Vigencia del enlace de la propuesta. YA SE APLICA: ProposalReader.exigir devuelve 404
       # cuando expires_at quedo atras, en las tres rutas que leen o mutan. Antes se escribia en
       # la fila, se renderizaba en el correo ("caduca el DD/MM/YYYY") y no lo comprobaba nadie:

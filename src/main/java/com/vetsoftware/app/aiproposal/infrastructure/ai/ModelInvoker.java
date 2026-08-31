@@ -43,11 +43,28 @@ public interface ModelInvoker {
 
     /**
      * @param rawJson
-     *            el cuerpo tal cual. Va a {@code ai_proposal_turns.raw_response},
-     *            que no se serializa jamas y se borra a los 90 dias
+     *            el cuerpo del modelo. Va a {@code ai_proposal_turns.raw_response}
+     *            —que no se serializa jamas y se borra a los 90 dias— <strong>solo
+     *            si el parser lo puede leer</strong>: el camino de fallo cierra el
+     *            turno sin el
+     * @param failureCode
+     *            ⛔ <strong>un desenlace declarado con la llamada ya
+     *            cobrada</strong>, o {@code null} en el camino normal. Existe
+     *            porque hay fallos que no pueden viajar como excepcion sin tirar
+     *            los contadores de una invocacion que ya se pago: hoy el unico es
+     *            {@code MODEL_STRUCTURED_OUTPUT_UNSUPPORTED}, el modelo que no
+     *            honra el mecanismo de salida estructurada. El generador lo traduce
+     *            a {@code MODEL_FAILED} con este codigo <em>despues</em> de
+     *            reconciliar el gasto real
      */
     record ModelInvocation(String modelId, String rawJson, Integer inputTokens,
-            Integer outputTokens, String stopReason) {
+            Integer outputTokens, String stopReason, String failureCode) {
+
+        /** El camino normal: hubo respuesta y no hay nada declarado que contar. */
+        public ModelInvocation(String modelId, String rawJson, Integer inputTokens,
+                Integer outputTokens, String stopReason) {
+            this(modelId, rawJson, inputTokens, outputTokens, stopReason, null);
+        }
     }
 
     /** Fallo de invocacion. Sin causa encadenada hacia arriba a proposito. */

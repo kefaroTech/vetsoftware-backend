@@ -60,6 +60,21 @@ public enum AiErrorType {
      */
     MODEL_OUTPUT_UNREADABLE("output_unreadable", false),
 
+    /**
+     * ⛔ <strong>El modelo configurado no honra el mecanismo de salida
+     * estructurada.</strong> Se pidio la herramienta de
+     * {@code ProposalOutputSchema} con {@code toolChoice} forzado y la respuesta no
+     * trajo su bloque. <strong>Sistemico, y esa es toda la razon de que exista una
+     * rama propia</strong>: el uso de herramientas es una capacidad por modelo, asi
+     * que un modelo que la ignora la va a ignorar en el 100 % de las propuestas
+     * hasta que alguien mueva {@code structured-output}. Sin esta rama caeria en
+     * {@code MODEL_OUTPUT_UNREADABLE}, que es <em>aislado</em> y se escribe con
+     * {@code WARN}: el dia que se cambiara de familia de modelo, la averia total se
+     * esconderia detras del ruido normal y el panel diria «algunas respuestas salen
+     * mal» durante semanas.
+     */
+    MODEL_STRUCTURED_OUTPUT_UNSUPPORTED("structured_output_unsupported", true),
+
     MODEL_UNAUTHORIZED("unauthorized", true),
 
     MODEL_FORBIDDEN("forbidden", true),
