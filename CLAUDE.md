@@ -1006,7 +1006,10 @@ mvn verify                    # además comprueba el suelo de cobertura
   el mismo PR a `0.25`.
 - El `pom.xml` fija un **trinquete**: `jacoco.line.minimum` es un suelo global que **solo
   puede subir**. Se sube a mano cuando un PR lo supera de forma estable. **Bajarlo requiere
-  justificarlo en el PR** — es la única forma de que la cifra signifique algo.
+  justificarlo en el PR** — es la única forma de que la cifra signifique algo. Se ha bajado
+  **una vez**, el 2026-08-24, con la justificación escrita al lado de la propiedad; ver la
+  entrada de esa fecha más abajo. **El valor vigente es `0.90`**: no cites de memoria ningún
+  otro, léelo del `pom.xml`.
 - **Tras las rodajas de persistencia y web de BE-10 (2026-08-16): 53,15 % de línea**
   (14.828/27.898) y 43,32 % de rama, sobre **3.978 tests de surefire y 428 de failsafe**,
   cero fallos. El suelo global **se queda en `0.33`**: es un salto de casi 28 puntos de una
@@ -1017,7 +1020,8 @@ mvn verify                    # además comprueba el suelo de cobertura
   cero errores, con `checkstyle`, `spotless:check` y `OpenApiContractIT` en verde. Los
   ficheros de test pasan de 382 a **1.809** y las rodajas `*IT` de 27 a **93**. El suelo
   global **sube a `0.98`**: esta vez sí se mueve el trinquete, porque el número lo produce la
-  suite entera ejecutándose de verdad y no una medición parcial.
+  suite entera ejecutándose de verdad y no una medición parcial. **Ese 0.98 ya no es el valor
+  vigente** — ver la entrada de 2026-08-24 más abajo.
   - **La cifra no se persiguió, se encontró.** Lo que se escribió fueron las rodajas que
     faltaban; el 98 % es la consecuencia. Por el camino la campaña destapó **~65 fugas de
     aislamiento entre empresas en 27 de las 94 features** —tres de escalada de privilegios y
@@ -1034,6 +1038,26 @@ mvn verify                    # además comprueba el suelo de cobertura
     índice, y un `SchemaSeed` que llevaba tiempo aparentando sembrar geografía sin sembrarla.
     Mientras la cascada tapaba el resultado, el 25 % de las `*IT` no arrancaba y la cobertura
     que se leía era honesta pero incompleta.
+- ⚠️ **BAJADA DELIBERADA A `0.90` (2026-08-24), y es el valor vigente hoy.** Decidida por el
+  usuario y justificada por escrito en el propio `pom.xml`, junto a la propiedad — es el único
+  sitio que manda: **si este documento y el `pom.xml` discrepan, gana el `pom.xml`**. El resumen
+  de la razón:
+  - El modelo de suscripciones añadió **diez slices verticales y 26 tablas de una sola vez**
+    —catálogo, precios, configurador, cotizaciones, contratos, entitlements y la capa de dinero—
+    y eliminó el concepto de membresía. La medición real tras esa entrega es **93,93 %**
+    (31.374/33.400 líneas), con el déficit concentrado en lo nuevo: `subscription` 0,73 ·
+    `configurator` 0,51 · `subscriptionbilling` 0,75 · `quote` 0,82 · `entitlement` 0,77. Los
+    slices preexistentes siguen altos.
+  - **El 0,98 anterior no se perdió: cambió el denominador.** Lo sostenían 10.771 tests
+    unitarios y 1.130 de integración sobre 28.214 líneas medidas; hoy son 11.022 y 1.082 sobre
+    33.400. Comparar los dos porcentajes sin mirar el denominador lleva a la conclusión
+    equivocada.
+  - **Lo que hay que vigilar:** `0.90` queda **por debajo** del 0,9393 medido, así que el suelo
+    deja tres puntos de holgura y la cobertura puede degradarse sin que el build lo note —que es
+    exactamente lo que el trinquete existe para impedir—. Es una concesión temporal mientras se
+    escriben los tests de los slices nuevos, **no el nivel al que este proyecto aspira**.
+  - **Cómo se deshace:** cuando la suite de los slices nuevos esté escrita, subir el suelo al
+    valor medido y estable, y volver a la regla de que solo puede subir.
 - **Umbrales por paquete de riesgo: evaluados con datos y NO añadidos.** La condición de
   llegar al 70 % ya se cumple si se agrega por feature —inventory 97,77 %, cashregister
   96,98 %, goodsreceipt 94,77 %, purchaseorder 89,53 %, supplierinvoice 75,61 %— pero **esa
