@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 @DisplayName("ModelPricingConfig — la tarifa del modelo sale de configuración")
 class ModelPricingConfigTest {
 
-    private static final String SONNET = ModelPricing.MODELO_POR_DEFECTO;
+    private static final String MODELO = ModelPricing.MODELO_POR_DEFECTO;
 
     private final ModelPricingConfig config = new ModelPricingConfig();
 
@@ -63,9 +63,9 @@ class ModelPricingConfigTest {
                     new BigDecimal(ModelPricing.DEFECTO_USD_POR_MILLON_ENTRADA),
                     new BigDecimal(ModelPricing.DEFECTO_USD_POR_MILLON_SALIDA),
                     Integer.parseInt(ModelPricing.DEFECTO_TOKENS_ESTIMADOS_ENTRADA),
-                    Integer.parseInt(ModelPricing.DEFECTO_TOKENS_ESTIMADOS_SALIDA), SONNET, SONNET);
+                    Integer.parseInt(ModelPricing.DEFECTO_TOKENS_ESTIMADOS_SALIDA), MODELO, MODELO);
 
-            assertThat(tarifa.usdPerCall()).isEqualByComparingTo(new BigDecimal("0.0176"));
+            assertThat(tarifa.usdPerCall()).isEqualByComparingTo(new BigDecimal("0.0088"));
         }
 
         @Test
@@ -85,7 +85,7 @@ class ModelPricingConfigTest {
         @Test
         @DisplayName("un precio de cero impide arrancar en vez de caer al defecto")
         void un_precio_de_cero_impide_arrancar() {
-            assertThatThrownBy(() -> tarifa("0", "10", SONNET, SONNET))
+            assertThatThrownBy(() -> tarifa("0", "10", MODELO, MODELO))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -102,17 +102,17 @@ class ModelPricingConfigTest {
         @Test
         @DisplayName("avisa nombrando los dos modelos cuando las tarifas no son del que se invoca")
         void avisa_cuando_la_tarifa_no_es_del_modelo_invocado() {
-            tarifa("2", "10", SONNET, "deepseek.v3");
+            tarifa("2", "10", MODELO, "deepseek.v3");
 
             assertThat(eventos.list).filteredOn(evento -> evento.getLevel() == Level.WARN)
                     .singleElement().satisfies(evento -> assertThat(evento.getFormattedMessage())
-                            .contains(SONNET).contains("deepseek.v3"));
+                            .contains(MODELO).contains("deepseek.v3"));
         }
 
         @Test
         @DisplayName("cuando coinciden no avisa: un canal que grita siempre se deja de mirar")
         void no_avisa_cuando_coinciden() {
-            tarifa("2", "10", SONNET, SONNET);
+            tarifa("2", "10", MODELO, MODELO);
 
             assertThat(eventos.list).filteredOn(evento -> evento.getLevel() == Level.WARN)
                     .isEmpty();

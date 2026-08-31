@@ -206,8 +206,8 @@ class BedrockProposalGeneratorTest {
 
             ArgumentCaptor<BigDecimal> coste = ArgumentCaptor.forClass(BigDecimal.class);
             verify(spendGuard).reconcile(any(), coste.capture());
-            // 3200 x 2/1M + 900 x 10/1M = 0,0064 + 0,009 = 0,0154
-            assertThat(coste.getValue()).isEqualByComparingTo("0.015400");
+            // 3200 x 1/1M + 900 x 5/1M = 0,0032 + 0,0045 = 0,0077
+            assertThat(coste.getValue()).isEqualByComparingTo("0.007700");
         }
 
         @Test
@@ -312,7 +312,7 @@ class BedrockProposalGeneratorTest {
             // sus contadores, que es justo por lo que esto no viaja como excepcion.
             ArgumentCaptor<BigDecimal> coste = ArgumentCaptor.forClass(BigDecimal.class);
             verify(spendGuard).reconcile(any(), coste.capture());
-            assertThat(coste.getValue()).isEqualByComparingTo("0.015400");
+            assertThat(coste.getValue()).isEqualByComparingTo("0.007700");
         }
 
         @Test
@@ -366,8 +366,8 @@ class BedrockProposalGeneratorTest {
 
             ArgumentCaptor<BigDecimal> coste = ArgumentCaptor.forClass(BigDecimal.class);
             verify(spendGuard).reconcile(any(), coste.capture());
-            // 3800 x 2/1M + 1000 x 10/1M = 0,0076 + 0,01 = 0,0176
-            assertThat(coste.getValue()).isEqualByComparingTo("0.017600");
+            // 3800 x 1/1M + 1000 x 5/1M = 0,0038 + 0,005 = 0,0088
+            assertThat(coste.getValue()).isEqualByComparingTo("0.008800");
         }
 
         @Test

@@ -881,9 +881,9 @@ class LoginRateLimitFilterTest {
         }
 
         @Test
-        @DisplayName("con el tope por defecto, 0,33 USD financian 18 invocaciones")
-        void el_tope_por_defecto_financia_dieciocho() {
-            assertThat(filter.llamadasDePagoQueFinanciaElTope()).isEqualTo(18);
+        @DisplayName("con el tope por defecto, 0,33 USD financian 37 invocaciones")
+        void el_tope_por_defecto_financia_treinta_y_siete() {
+            assertThat(filter.llamadasDePagoQueFinanciaElTope()).isEqualTo(37);
         }
 
         /**

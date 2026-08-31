@@ -40,12 +40,12 @@ class ModelPricingTest {
         /**
          * El único test que fija una cifra concreta, y fija la de hoy a propósito:
          * trasladar las cuatro constantes a configuración no podía mover ni un decimal.
-         * 3.800 × 2 + 1.000 × 10 = 17.600 millonésimas de dólar.
+         * 3.800 × 1 + 1.000 × 5 = 8.800 millonésimas de dólar.
          */
         @Test
-        @DisplayName("con los valores por defecto una llamada de pago cuesta 0,0176 USD")
-        void el_defecto_son_0176_milesimas() {
-            assertThat(porDefecto().usdPerCall()).isEqualByComparingTo(new BigDecimal("0.0176"));
+        @DisplayName("con los valores por defecto una llamada de pago cuesta 0,0088 USD")
+        void el_defecto_son_0088_milesimas() {
+            assertThat(porDefecto().usdPerCall()).isEqualByComparingTo(new BigDecimal("0.0088"));
         }
 
         @Test
@@ -99,7 +99,7 @@ class ModelPricingTest {
         @DisplayName("con los tokens que declaró el modelo se cobra lo que consumió")
         void cobra_los_tokens_declarados() {
             assertThat(porDefecto().costOf(1_000, 500))
-                    .isEqualByComparingTo(new BigDecimal("0.007000"));
+                    .isEqualByComparingTo(new BigDecimal("0.003500"));
         }
 
         /**

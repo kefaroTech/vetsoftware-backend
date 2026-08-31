@@ -14,7 +14,7 @@ import java.math.RoundingMode;
  * gasto reserva con el, lo reconcilia con el, el tope diario se traduce en
  * «cuantas llamadas financia» dividiendo por el, y el cupo diario por IP de
  * {@code LoginRateLimitFilter} se deriva de esa division. <strong>Cambiar de
- * modelo —Sonnet hoy, un DeepSeek manana— dejaba esa aritmetica callada y
+ * modelo —Haiku 4.5 hoy, un DeepSeek manana— dejaba esa aritmetica callada y
  * equivocada</strong>: el sistema seguiria cortando por un numero de llamadas
  * calculado con un precio que ya no existe. Ni falla ni avisa; el tope
  * simplemente deja de significar lo que dice.
@@ -81,10 +81,10 @@ public record ModelPricing(BigDecimal usdPerMillionInputTokens,
     /**
      * Tarifas de {@link #MODELO_POR_DEFECTO}, USD por millon de tokens (plan S7.4).
      */
-    public static final String DEFECTO_USD_POR_MILLON_ENTRADA = "2";
+    public static final String DEFECTO_USD_POR_MILLON_ENTRADA = "1";
 
     /** Tarifa de salida de {@link #MODELO_POR_DEFECTO}. */
-    public static final String DEFECTO_USD_POR_MILLON_SALIDA = "10";
+    public static final String DEFECTO_USD_POR_MILLON_SALIDA = "5";
 
     /**
      * El peor caso de S7.2.1, no la media: el cuarto turno acumulativo ronda los
@@ -98,9 +98,9 @@ public record ModelPricing(BigDecimal usdPerMillionInputTokens,
     /**
      * El modelo al que corresponden las cuatro cifras de arriba, y el mismo defecto
      * que {@code vetsoftware.ai.proposal.model-id}. Con estos valores una
-     * invocacion de pago cuesta {@code 0.017600} USD.
+     * invocacion de pago cuesta {@code 0.008800} USD.
      */
-    public static final String MODELO_POR_DEFECTO = "us.anthropic.claude-sonnet-5";
+    public static final String MODELO_POR_DEFECTO = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
 
     /**
      * Seis decimales, que es la escala con la que nacio la estimacion. Bajarla
