@@ -19,6 +19,7 @@ import com.vetsoftware.app.aiproposal.application.dto.ProposalViewDto;
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics;
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalRepository;
 import com.vetsoftware.app.aiproposal.application.port.out.LegalConsentPort;
+import com.vetsoftware.app.aiproposal.application.port.out.PaidInvocationSignalPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalGeneratorPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalLinkEmailSender;
 import com.vetsoftware.app.aiproposal.application.port.out.SellableCatalogQueryPort;
@@ -96,6 +97,9 @@ class GenerateProposalServiceTest {
     @Mock
     private AiProposalMetrics metrics;
 
+    @Mock
+    private PaidInvocationSignalPort paidInvocationSignal;
+
     private GenerateProposalService service;
 
     @BeforeEach
@@ -104,7 +108,8 @@ class GenerateProposalServiceTest {
                 new ProposalTurnWriter(repository, legalConsent, enlacePorCorreo,
                         ProposalMother.RELOJ),
                 new ProposalReader(repository, catalogQueryPort, ProposalMother.RELOJ), metrics,
-                ProposalMother.RELOJ, ProposalMother.MODELO, ProposalMother.PROMPT, 14, "es-CO");
+                paidInvocationSignal, ProposalMother.RELOJ, ProposalMother.MODELO,
+                ProposalMother.PROMPT, 14, "es-CO");
     }
 
     private GenerateProposalCommand comandoMensual(String clave) {
@@ -687,6 +692,122 @@ class GenerateProposalServiceTest {
             assertThat(GenerationOutcome.values()).extracting(Enum::name).containsExactlyInAnyOrder(
                     "SUCCEEDED", "DEGRADED_SPEND_CAP", "DEGRADED_NO_HINTS",
                     "DEGRADED_MODEL_UNAVAILABLE", "MODEL_FAILED");
+        }
+    }
+
+    /**
+     * &#9940; <b>El defecto que este bloque cierra, con su evidencia.</b> Tres
+     * {@code POST /assistant/proposal} murieron en "no hay lista de precios", sin
+     * invocar al modelo y con coste cero, y aun asi agotaron el cupo del dia de su
+     * autor. {@code LoginRateLimitFilter} dice en negrita que lo que reparte son
+     * <em>llamadas de pago, no peticiones</em>, pero es un filtro de servlet: cobra
+     * antes de que exista un desenlace y no lo devuelve nunca. Este caso de uso es
+     * el emisor del bit que le faltaba.
+     *
+     * <p>
+     * <b>Las dos ramas se prueban, y la segunda es la que importa.</b> Un test que
+     * solo comprobara la devolucion pasaria igual con un {@code signal(false)}
+     * incondicional, que es exactamente el fallo que convierte el cupo en
+     * decorativo.
+     */
+    @Nested
+    @DisplayName("Cupo diario: quien no invoca al modelo recupera su intento")
+    class CupoDiario {
+
+        @Test
+        @DisplayName("sin tarifa publicada consta que NO hubo invocacion de pago")
+        void sin_tarifa_publicada_consta_que_no_hubo_invocacion() {
+            when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
+                    .thenReturn(Optional.empty());
+            when(catalogQueryPort.findPublishedPriceListId()).thenReturn(Optional.empty());
+
+            service.generate(comandoMensual(ProposalMother.CLAVE));
+
+            verify(paidInvocationSignal).signal(false);
+        }
+
+        @Test
+        @DisplayName("una tarifa publicada y vacia tambien: el modelo no llego a arrancar")
+        void una_tarifa_vacia_tambien_consta_como_sin_invocacion() {
+            when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
+                    .thenReturn(Optional.empty());
+            when(catalogQueryPort.findPublishedPriceListId())
+                    .thenReturn(Optional.of(ProposalMother.ID_TARIFA));
+            when(catalogQueryPort.loadCatalog(ProposalMother.ID_TARIFA,
+                    ProposalBillingCycle.MONTHLY))
+                    .thenReturn(Optional.of(new SellableCatalog(Map.of(), Map.of(), List.of())));
+
+            service.generate(comandoMensual(ProposalMother.CLAVE));
+
+            verify(paidInvocationSignal).signal(false);
+        }
+
+        @ParameterizedTest
+        @CsvSource({"DEGRADED_SPEND_CAP", "DEGRADED_NO_HINTS", "DEGRADED_MODEL_UNAVAILABLE"})
+        @DisplayName("las tres degradaciones se deciden antes de llamar: el intento se devuelve")
+        void las_tres_degradaciones_devuelven_el_intento(GenerationOutcome outcome) {
+            conUnaGeneracionQueTermina(outcome);
+
+            service.generate(comandoMensual(ProposalMother.CLAVE));
+
+            verify(paidInvocationSignal).signal(false);
+        }
+
+        @Test
+        @DisplayName("una generacion correcta consume el intento")
+        void una_generacion_correcta_consume_el_intento() {
+            conUnaGeneracionQueTermina(GenerationOutcome.SUCCEEDED);
+
+            service.generate(comandoMensual(ProposalMother.CLAVE));
+
+            verify(paidInvocationSignal).signal(true);
+        }
+
+        /**
+         * &#9940; <b>El filo del predicado.</b> Se invoco, se pago y no sirvio:
+         * {@code BedrockProposalGenerator} reconcilia el gasto tambien en sus dos
+         * {@code catch}, asi que devolver el cupo aqui seria regalar dinero que ya
+         * salio. Y no se puede escribir como {@code usage != null}:
+         * {@code seInvocoAlModelo()} es esa comparacion y responde {@code false} para
+         * este desenlace, porque una invocacion que revienta no trae medidas.
+         */
+        @Test
+        @DisplayName("una invocacion FALLIDA consume igual: se pago lo mismo")
+        void una_invocacion_fallida_consume_igual() {
+            conUnaGeneracionQueTermina(GenerationOutcome.MODEL_FAILED);
+
+            service.generate(comandoMensual(ProposalMother.CLAVE));
+
+            verify(paidInvocationSignal).signal(true);
+        }
+
+        /**
+         * Aqui tampoco hay invocacion, y aun asi se cobra: lo que se sirve es la
+         * propuesta entera que el prospecto ya tiene. Sin marca el filtro cobra —ese es
+         * el estado por defecto y esta prueba lo fija.
+         */
+        @Test
+        @DisplayName("la repeticion idempotente no se marca: sin marca, el filtro cobra")
+        void la_repeticion_idempotente_no_se_marca() {
+            AiProposal yaVista = ProposalMother.propuestaConVersion(ProposalMother.ID_PROPUESTA,
+                    2L);
+            when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
+                    .thenReturn(Optional.of(yaVista));
+            conVistaReleible(yaVista);
+
+            service.generate(comandoMensual(ProposalMother.CLAVE));
+
+            verifyNoInteractions(paidInvocationSignal);
+        }
+
+        private void conUnaGeneracionQueTermina(GenerationOutcome outcome) {
+            when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
+                    .thenReturn(Optional.empty());
+            conTarifaPublicada();
+            conConsentimientoResoluble();
+            conEscrituraQueFunciona();
+            when(generator.generate(any())).thenReturn(ProposalMother.resultadoDe(outcome,
+                    ProposalMother.borrador(List.of("CORE"), List.of())));
         }
     }
 }

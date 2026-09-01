@@ -48,6 +48,33 @@ public enum GenerationOutcome {
      */
     MODEL_FAILED;
 
+    /**
+     * &#9940; <strong>Si este desenlace costo dinero.</strong> Es lo que decide si
+     * la peticion consume su cupo diario o se lo devuelven: el javadoc de
+     * {@code LoginRateLimitFilter} dice que lo que reparte son <em>llamadas de
+     * pago, no peticiones</em>, y hasta hoy no tenia forma de saber cuales lo eran.
+     *
+     * <p>
+     * <strong>{@link #MODEL_FAILED} cuenta como invocacion, y ahi esta el filo del
+     * predicado.</strong> Se invoco, se pago y no sirvio; el guardian de gasto lo
+     * reconcilia como gasto real —ver {@code BedrockProposalGenerator.invocar}, que
+     * llama a {@code reconcile} tambien en los dos {@code catch}— asi que devolver
+     * aqui el cupo seria regalar dinero que ya salio. Las tres degradaciones son lo
+     * contrario: se decidieron <em>antes</em> de llamar, y la reserva se libera
+     * entera.
+     *
+     * <p>
+     * <strong>No se puede escribir como {@code usage != null}.</strong>
+     * {@code ProposalGenerationResult.seInvocoAlModelo()} es exactamente esa
+     * comparacion y responde {@code false} para {@link #MODEL_FAILED}, porque una
+     * invocacion que revienta no trae medidas que guardar en el turno. Sirve para
+     * lo suyo —decidir que columnas escribir— y seria una respuesta equivocada para
+     * esta pregunta.
+     */
+    public boolean huboInvocacionDePago() {
+        return this == SUCCEEDED || this == MODEL_FAILED;
+    }
+
     // ⛔ Aqui vivia esDegradacionSinLlamada(): las tres degradaciones que no
     // llegaron a llamar al modelo y por tanto responden en milisegundos. Su unico
     // consumidor era el suelo de latencia de S4.2.3, que se retiro porque el bit

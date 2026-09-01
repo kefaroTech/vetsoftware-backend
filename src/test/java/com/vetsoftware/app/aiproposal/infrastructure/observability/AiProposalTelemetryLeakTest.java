@@ -193,7 +193,10 @@ class AiProposalTelemetryLeakTest {
                         ProposalMother.RELOJ),
                 new ProposalReader(repository, catalogQueryPort, ProposalMother.RELOJ),
                 new MicrometerAiProposalMetrics(new SimpleMeterRegistry(), observaciones),
-                ProposalMother.RELOJ, ProposalMother.MODELO, ProposalMother.PROMPT, 14, "es-CO");
+                // Sin peticion HTTP que marcar: este test mira lo que se emite por
+                // telemetria, no el reparto de cupo.
+                huboInvocacion -> {
+                }, ProposalMother.RELOJ, ProposalMother.MODELO, ProposalMother.PROMPT, 14, "es-CO");
     }
 
     @AfterEach
