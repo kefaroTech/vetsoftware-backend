@@ -22,7 +22,17 @@ public class CorsConfig {
         config.setAllowedOrigins(List.of(allowedOrigins));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setExposedHeaders(List.of("Authorization", "X-Trace-Id", "X-Request-Id"));
+        // ⛔ Retry-After: el valor YA viaja y ya es correcto -LoginRateLimitFilter lo
+        // escribe con la ventana que rechazo, 3600 o 86400- pero sin exponerlo el
+        // navegador lo descarta en una peticion cross-origin y el front solo puede
+        // decir "vuelve mas tarde". Exponerlo no concede ninguna informacion nueva:
+        // convierte una adivinanza en "dentro de una hora" o "manana".
+        //
+        // Lo que NO se expone, y es deliberado: el cupo restante. Un
+        // X-RateLimit-Remaining convertiria el endpoint en un oraculo del estado de
+        // los cubos para quien pruebe a ciegas.
+        config.setExposedHeaders(
+                List.of("Authorization", "X-Trace-Id", "X-Request-Id", "Retry-After"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 

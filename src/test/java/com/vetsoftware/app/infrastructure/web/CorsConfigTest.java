@@ -42,8 +42,12 @@ class CorsConfigTest {
         assertThat(effective.getAllowedMethods()).containsExactlyInAnyOrder("GET", "POST", "PUT",
                 "PATCH", "DELETE", "OPTIONS");
         assertThat(effective.getAllowedHeaders()).containsExactly("*");
-        assertThat(effective.getExposedHeaders()).containsExactlyInAnyOrder("Authorization",
-                "X-Trace-Id", "X-Request-Id");
+        assertThat(effective.getExposedHeaders())
+                .as("Retry-After entra al inventario: sin exponerlo, el navegador lo descarta y"
+                        + " la pantalla del 429 no puede decir si la espera es de una hora o de"
+                        + " un dia")
+                .containsExactlyInAnyOrder("Authorization", "X-Trace-Id", "X-Request-Id",
+                        "Retry-After");
         assertThat(effective.getAllowCredentials()).isTrue();
         assertThat(effective.getMaxAge()).isEqualTo(3600L);
     }
