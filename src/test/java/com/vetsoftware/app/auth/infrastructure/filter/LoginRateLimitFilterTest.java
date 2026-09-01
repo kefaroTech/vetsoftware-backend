@@ -13,6 +13,7 @@ import com.vetsoftware.app.aiproposal.infrastructure.ai.ValkeyDailySpendGuard;
 import com.vetsoftware.app.auth.infrastructure.config.PublicRoutes;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.shared.ai.ModelPricing;
+import com.vetsoftware.app.shared.ai.PaidInvocationMark;
 import io.github.bucket4j.distributed.BucketProxy;
 import io.github.bucket4j.distributed.proxy.RemoteBucketBuilder;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
@@ -21,7 +22,9 @@ import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
@@ -916,6 +919,181 @@ class LoginRateLimitFilterTest {
         void una_sesion_son_cuatro_llamadas() {
             assertThat(LoginRateLimitFilter.LLAMADAS_DE_PAGO_POR_SESION)
                     .isEqualTo(ProposalReader.MAX_TURNOS_DE_MODELO);
+        }
+    }
+
+    /**
+     * &#9940; <b>El defecto, con su evidencia.</b> Tres
+     * {@code POST /assistant/proposal} murieron en "no hay lista de precios" sin
+     * invocar al modelo -coste cero- y aun asi agotaron el cupo diario de su autor.
+     * El javadoc de este filtro afirma en negrita que <em>lo que se reparte son
+     * llamadas de pago, no peticiones</em>, y era falso por construccion: un filtro
+     * de servlet cobra antes de que exista un desenlace. Ahora envuelve la cadena y
+     * decide al volver, cuando el desenlace ya se conoce.
+     *
+     * <p>
+     * <b>El cubo horario no entra en esto, y es la asercion que mas veces se repite
+     * aqui.</b> Es antiinundacion: si contara solo lo que acabo costando dinero, la
+     * forma barata de tumbar el servicio -la peticion que se degrada en
+     * milisegundos- dejaria de contar contra nada.
+     */
+    @Nested
+    @DisplayName("El cupo diario se devuelve cuando no hubo invocacion de pago")
+    class DevolucionDelCupoDiario {
+
+        private static final String IP = "127.0.0.1";
+
+        private static final String CUERPO = "{\"email\":\"a@b.com\"}";
+
+        @Mock
+        private RemoteBucketBuilder<String> remoteBucketBuilder;
+        @Mock
+        private FilterChain chain;
+
+        private final Map<String, BucketProxy> cubos = new LinkedHashMap<>();
+
+        /** Ver {@link #si_valkey_revienta_al_devolver_no_hay_500()}. */
+        private boolean valkeyRevientaAlDevolver;
+
+        @BeforeEach
+        void unCuboPorClave() {
+            when(proxyManager.builder()).thenReturn(remoteBucketBuilder);
+            when(remoteBucketBuilder.build(anyString(),
+                    org.mockito.ArgumentMatchers.<java.util.function.Supplier<io.github.bucket4j.BucketConfiguration>>any()))
+                    .thenAnswer(invocacion -> cubos.computeIfAbsent(invocacion.getArgument(0),
+                            clave -> cuboQueSiempreTieneCupo()));
+        }
+
+        private BucketProxy cuboQueSiempreTieneCupo() {
+            BucketProxy cubo = org.mockito.Mockito.mock(BucketProxy.class, org.mockito.Mockito
+                    .withSettings().strictness(org.mockito.quality.Strictness.LENIENT));
+            when(cubo.tryConsume(1)).thenReturn(true);
+            if (valkeyRevientaAlDevolver)
+                org.mockito.Mockito.doThrow(new IllegalStateException("valkey caido")).when(cubo)
+                        .addTokens(1);
+            return cubo;
+        }
+
+        /** Las claves cuyo cubo recibio el token de vuelta. */
+        private List<String> clavesDevueltas() {
+            return cubos.entrySet().stream()
+                    .filter(entrada -> org.mockito.Mockito.mockingDetails(entrada.getValue())
+                            .getInvocations().stream()
+                            .anyMatch(llamada -> "addTokens".equals(llamada.getMethod().getName())))
+                    .map(Map.Entry::getKey).toList();
+        }
+
+        private void laCadenaDeclara(Boolean huboInvocacion) throws Exception {
+            org.mockito.Mockito.doAnswer(invocacion -> {
+                if (huboInvocacion != null)
+                    PaidInvocationMark.marcar(invocacion.getArgument(0), huboInvocacion);
+                return null;
+            }).when(chain).doFilter(any(), any());
+        }
+
+        private MockHttpServletRequest propuestaInicial() {
+            MockHttpServletRequest peticion = requestConCuerpo("POST", "/assistant/proposal",
+                    CUERPO);
+            peticion.setRemoteAddr(IP);
+            return peticion;
+        }
+
+        @Test
+        @DisplayName("sin invocacion se devuelven los TRES cupos diarios: por IP, por correo y el"
+                + " presupuesto de la plataforma")
+        void sin_invocacion_se_devuelven_los_tres_cupos_diarios() throws Exception {
+            laCadenaDeclara(false);
+
+            filter.doFilterInternal(propuestaInicial(), new MockHttpServletResponse(), chain);
+
+            assertThat(clavesDevueltas())
+                    .contains("ai-proposal-rl:day:ai-proposal-rl:ip:" + IP,
+                            LoginRateLimitFilter.CLAVE_DIARIA_GLOBAL_DE_PAGO)
+                    .anyMatch(
+                            clave -> clave.startsWith("ai-proposal-rl:day:ai-proposal-rl:account:"))
+                    .hasSize(3);
+        }
+
+        /**
+         * &#9940; Lo que separa esto de un {@code finally} que devuelva siempre. Si
+         * esta prueba se pone verde con la anterior en verde tambien, el filtro esta
+         * repartiendo peticiones otra vez.
+         */
+        @Test
+        @DisplayName("con invocacion NO se devuelve nada: hubo llamada al modelo y se pago")
+        void con_invocacion_no_se_devuelve_nada() throws Exception {
+            laCadenaDeclara(true);
+
+            filter.doFilterInternal(propuestaInicial(), new MockHttpServletResponse(), chain);
+
+            assertThat(clavesDevueltas()).isEmpty();
+        }
+
+        /**
+         * El estado por defecto, y el que cubre la peticion que revienta antes de que
+         * nadie decida nada: sin marca se cobra. El sesgo contrario apagaria el cupo en
+         * silencio el dia que un camino nuevo se olvidara de marcar.
+         */
+        @Test
+        @DisplayName("sin marca no se devuelve nada: un desenlace desconocido se cobra")
+        void sin_marca_no_se_devuelve_nada() throws Exception {
+            laCadenaDeclara(null);
+
+            filter.doFilterInternal(propuestaInicial(), new MockHttpServletResponse(), chain);
+
+            assertThat(clavesDevueltas()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("el cubo HORARIO no se devuelve nunca: es antiinundacion y cuenta todo")
+        void el_cubo_horario_no_se_devuelve_nunca() throws Exception {
+            laCadenaDeclara(false);
+
+            filter.doFilterInternal(propuestaInicial(), new MockHttpServletResponse(), chain);
+
+            assertThat(clavesDevueltas()).as("una clave sin el segmento day: es la ventana horaria")
+                    .allMatch(clave -> clave.contains("day:")
+                            || clave.equals(LoginRateLimitFilter.CLAVE_DIARIA_GLOBAL_DE_PAGO));
+            assertThat(cubos).containsKey("ai-proposal-rl:ip:" + IP);
+            assertThat(clavesDevueltas()).doesNotContain("ai-proposal-rl:ip:" + IP);
+        }
+
+        /**
+         * El refinamiento sale del mismo presupuesto: cupo diario por IP y el mismo
+         * cubo global. No declara cupo por cuenta -su unico identificador es el token,
+         * y meterlo en una clave de Redis seria publicarlo-, asi que ahi no hay nada
+         * que devolver.
+         */
+        @Test
+        @DisplayName("el refinamiento devuelve su cupo diario por IP y el presupuesto, y no"
+                + " inventa uno por cuenta")
+        void el_refinamiento_devuelve_su_cupo_diario() throws Exception {
+            laCadenaDeclara(false);
+            MockHttpServletRequest peticion = request("POST", "/assistant/proposal/refine");
+            peticion.setRemoteAddr(IP);
+
+            filter.doFilterInternal(peticion, new MockHttpServletResponse(), chain);
+
+            assertThat(clavesDevueltas()).containsExactlyInAnyOrder(
+                    "ai-proposal-refine-rl:day:ai-proposal-refine-rl:ip:" + IP,
+                    LoginRateLimitFilter.CLAVE_DIARIA_GLOBAL_DE_PAGO);
+        }
+
+        /**
+         * Un fallo de Valkey al devolver un token no puede convertir en un 500 la
+         * respuesta que el usuario ya tiene: la cadena termino y el estado esta
+         * escrito.
+         */
+        @Test
+        @DisplayName("si Valkey revienta al devolver, la respuesta no se convierte en un 500")
+        void si_valkey_revienta_al_devolver_no_hay_500() throws Exception {
+            laCadenaDeclara(false);
+            valkeyRevientaAlDevolver = true;
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(propuestaInicial(), response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(200);
         }
     }
 }

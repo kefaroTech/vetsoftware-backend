@@ -8,6 +8,7 @@ import com.vetsoftware.app.aiproposal.application.port.in.RefineProposalUseCase;
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics;
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics.Operation;
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics.ServedProposal;
+import com.vetsoftware.app.aiproposal.application.port.out.PaidInvocationSignalPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalGeneratorPort;
 import com.vetsoftware.app.aiproposal.application.port.out.SellableCatalogQueryPort;
 import com.vetsoftware.app.aiproposal.domain.AiProposal;
@@ -67,6 +68,8 @@ public class RefineProposalService implements RefineProposalUseCase {
 
     private final AiProposalMetrics metrics;
 
+    private final PaidInvocationSignalPort paidInvocationSignal;
+
     private final String modelId;
 
     private final String promptVersion;
@@ -74,7 +77,7 @@ public class RefineProposalService implements RefineProposalUseCase {
     @SuppressWarnings("java:S107")
     public RefineProposalService(SellableCatalogQueryPort catalogQueryPort,
             ProposalGeneratorPort generator, ProposalTurnWriter writer, ProposalReader reader,
-            AiProposalMetrics metrics,
+            AiProposalMetrics metrics, PaidInvocationSignalPort paidInvocationSignal,
             @Value("${vetsoftware.ai.proposal.model-id:" + ModelPricing.MODELO_POR_DEFECTO
                     + "}") String modelId,
             @Value("${vetsoftware.ai.proposal.prompt-version:v1}") String promptVersion) {
@@ -83,6 +86,7 @@ public class RefineProposalService implements RefineProposalUseCase {
         this.writer = writer;
         this.reader = reader;
         this.metrics = metrics;
+        this.paidInvocationSignal = paidInvocationSignal;
         this.modelId = modelId;
         this.promptVersion = promptVersion;
     }
@@ -93,6 +97,10 @@ public class RefineProposalService implements RefineProposalUseCase {
         reader.exigirVersion(proposal, command.expectedVersion());
 
         List<ProposalTurn> turnos = reader.turnos(proposal);
+        // Sin marca a proposito, y por tanto se cobra. No hay invocacion, pero se
+        // devuelve la propuesta intacta -hay valor servido- y es el tope de turnos
+        // haciendo su trabajo. Devolver el cupo aqui daria relecturas gratis e
+        // ilimitadas por la ruta que paga, que es justo la que hay que proteger.
         if (reader.turnosDeModelo(turnos) >= ProposalReader.MAX_TURNOS_DE_MODELO)
             return reader.vista(proposal, false);
 
@@ -110,6 +118,8 @@ public class RefineProposalService implements RefineProposalUseCase {
 
         ProposalGenerationResult resultado = generator.generate(
                 new ProposalGenerationRequest(textos, reader.codigosAceptados(vigente), catalog));
+
+        paidInvocationSignal.signal(resultado.outcome().huboInvocacionDePago());
 
         ProposalDraft draft = resultado.draft();
         CartResult carrito = draft.outOfDomain()

@@ -17,6 +17,7 @@ import com.vetsoftware.app.aiproposal.application.dto.ProposalViewDto;
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics;
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalRepository;
 import com.vetsoftware.app.aiproposal.application.port.out.LegalConsentPort;
+import com.vetsoftware.app.aiproposal.application.port.out.PaidInvocationSignalPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalGeneratorPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalLinkEmailSender;
 import com.vetsoftware.app.aiproposal.application.port.out.SellableCatalogQueryPort;
@@ -41,6 +42,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -88,6 +91,9 @@ class RefineProposalServiceTest {
     @Mock
     private AiProposalMetrics metrics;
 
+    @Mock
+    private PaidInvocationSignalPort paidInvocationSignal;
+
     private RefineProposalService service;
 
     @BeforeEach
@@ -96,7 +102,7 @@ class RefineProposalServiceTest {
                 new ProposalTurnWriter(repository, legalConsent, enlacePorCorreo,
                         ProposalMother.RELOJ),
                 new ProposalReader(repository, catalogQueryPort, ProposalMother.RELOJ), metrics,
-                ProposalMother.MODELO, ProposalMother.PROMPT);
+                paidInvocationSignal, ProposalMother.MODELO, ProposalMother.PROMPT);
     }
 
     /** Ver el javadoc del mismo bloque en {@code GetProposalServiceTest}. */
@@ -385,6 +391,61 @@ class RefineProposalServiceTest {
 
             assertThat(service.refine(comando(null)).presentation())
                     .isEqualTo(ProposalPresentation.DETERMINISTIC);
+        }
+    }
+
+    /**
+     * <b>El refinamiento sale del mismo presupuesto y paga lo mismo</b>: su
+     * {@code RouteLimit} declara cupo diario por IP y comparte el cubo global con
+     * la propuesta inicial. Asi que le aplica el mismo arreglo, y por los mismos
+     * tres desenlaces: las degradaciones las emite el generador, que es comun.
+     *
+     * <p>
+     * Lo que <b>no</b> le aplica es la pareja "sin catalogo / catalogo vacio": aqui
+     * la tarifa ya esta elegida y persistida en la propuesta, y si dejara de leerse
+     * {@code ProposalReader.catalogo} lanza —una excepcion, no un desenlace—, que
+     * sin marca se cobra.
+     */
+    @Nested
+    @DisplayName("Cupo diario: quien no invoca al modelo recupera su intento")
+    class CupoDiario {
+
+        @ParameterizedTest
+        @CsvSource({"DEGRADED_SPEND_CAP", "DEGRADED_NO_HINTS", "DEGRADED_MODEL_UNAVAILABLE"})
+        @DisplayName("las tres degradaciones devuelven el intento tambien al refinar")
+        void las_tres_degradaciones_devuelven_el_intento(GenerationOutcome outcome) {
+            conUnRefinamientoQueTermina(outcome);
+
+            service.refine(comando(null));
+
+            verify(paidInvocationSignal).signal(false);
+        }
+
+        @Test
+        @DisplayName("un refinamiento correcto consume el intento")
+        void un_refinamiento_correcto_consume_el_intento() {
+            conUnRefinamientoQueTermina(GenerationOutcome.SUCCEEDED);
+
+            service.refine(comando(null));
+
+            verify(paidInvocationSignal).signal(true);
+        }
+
+        @Test
+        @DisplayName("una invocacion FALLIDA consume igual: se pago lo mismo")
+        void una_invocacion_fallida_consume_igual() {
+            conUnRefinamientoQueTermina(GenerationOutcome.MODEL_FAILED);
+
+            service.refine(comando(null));
+
+            verify(paidInvocationSignal).signal(true);
+        }
+
+        private void conUnRefinamientoQueTermina(GenerationOutcome outcome) {
+            conPropuestaYaRefinable();
+            conEscrituraQueFunciona();
+            when(generator.generate(any())).thenReturn(ProposalMother.resultadoDe(outcome,
+                    ProposalMother.borrador(List.of("CORE"), List.of())));
         }
     }
 }

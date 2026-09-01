@@ -2,6 +2,7 @@ package com.vetsoftware.app.auth.infrastructure.filter;
 
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.shared.ai.ModelPricing;
+import com.vetsoftware.app.shared.ai.PaidInvocationMark;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.BucketProxy;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
@@ -368,6 +369,11 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         // cuenta. Una ruta que no declara ninguno lo es por vacuidad. Ver
         // cobraPresupuestoDiario.
         boolean identificable = true;
+        // Se guardan porque hay que poder DESHACER lo que se consumio: el cupo
+        // diario por cuenta se devuelve sobre la misma clave que lo gasto, y
+        // recalcularla despues de la cadena significaria volver a leer un cuerpo
+        // que ya se consumio.
+        List<String> cuentasQueGastaronCupoDiario = List.of();
         if (leeElCuerpo(routeLimit)) {
             byte[] body = request.getInputStream().readNBytes(MAX_ACCOUNT_BODY_BYTES + 1);
             if (body.length > MAX_ACCOUNT_BODY_BYTES) {
@@ -379,6 +385,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             requestForChain = new CachedBodyRequest(request, body);
             List<String> accountKeys = bodyAccountKeys(body, routeLimit);
             identificable = routeLimit.accountFields().isEmpty() || !accountKeys.isEmpty();
+            cuentasQueGastaronCupoDiario = accountKeys;
             for (String accountKey : accountKeys) {
                 if (!tryConsume(routeLimit, accountKey)) {
                     writeRateLimited(response, routeLimit, routeLimit.window());
@@ -402,10 +409,74 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         }
 
         chain.doFilter(requestForChain, response);
+        // &#9940; Aqui, y solo aqui, este filtro cumple lo que su javadoc afirma
+        // desde el primer dia: que lo que reparte son llamadas de pago y no
+        // peticiones. Antes de la cadena eso era indecidible -no se sabe si habra
+        // invocacion hasta que la hay-, asi que el cupo se cobraba siempre y no se
+        // devolvia nunca. Al volver, el desenlace ya se conoce.
+        if (PaidInvocationMark.constaQueNoHuboInvocacion(request)) {
+            devolverCuposDelDia(routeLimit, request, cuentasQueGastaronCupoDiario,
+                    cobraPresupuesto);
+            return;
+        }
         // Llegar aqui con cobraPresupuesto significa que el token se consumio: la
         // rama de arriba se lleva el caso contrario.
         if (cobraPresupuesto)
             devolverPresupuestoSiNoPasoLaValidacion(routeLimit, response);
+    }
+
+    /**
+     * &#9940; <b>Se devuelven los cupos DIARIOS y ninguno mas.</b> La ventana
+     * horaria de la ruta -5/h en la propuesta inicial, 10/h en el refinamiento- es
+     * antiinundacion: existe para que nadie haga trabajar al servidor a ritmo de
+     * rafaga, y ese trabajo lo hubo igual -se leyo el catalogo, se abrio un turno,
+     * se escribio en la base-. Un cubo antiinundacion que solo contara lo que acabo
+     * costando dinero no protegeria de nada, porque la forma barata de tumbar esto
+     * es justamente la peticion que se degrada en milisegundos. Los diarios son
+     * otra cosa: reparten el presupuesto de un dia, se derivan del tope de gasto y
+     * su unidad es la invocacion de pago.
+     *
+     * <p>
+     * <b>Se devuelve sobre las mismas claves que se gastaron</b>, construidas por
+     * {@link #claveDiaria} en los dos sentidos. Recalcularlas por separado es la
+     * forma en que este tipo de arreglo se rompe en silencio: se abona un cubo que
+     * nadie consumio y el que si se gasto se queda bajo.
+     *
+     * <p>
+     * <b>El global solo si de verdad se cobro.</b> Una peticion no identificable
+     * -sin el campo de cuenta que la ruta declara- ni siquiera lo toca, y abonarle
+     * un token subiria el techo de la plataforma por encima del presupuesto.
+     */
+    private void devolverCuposDelDia(RouteLimit routeLimit, HttpServletRequest request,
+            List<String> cuentas, boolean cobroElPresupuesto) {
+        if (routeLimit.dailyPerIp() > 0)
+            devolverUnToken(claveDiaria(routeLimit, ipKey(request, routeLimit)),
+                    routeLimit.dailyPerIp(), "el cupo diario por IP");
+        if (routeLimit.dailyPerAccount() > 0)
+            for (String cuenta : cuentas)
+                devolverUnToken(claveDiaria(routeLimit, cuenta), routeLimit.dailyPerAccount(),
+                        "el cupo diario por cuenta");
+        if (cobroElPresupuesto)
+            devolverUnToken(CLAVE_DIARIA_GLOBAL_DE_PAGO, routeLimit.dailyGlobal(),
+                    "el presupuesto diario de la plataforma");
+    }
+
+    /**
+     * <b>Y nunca lanza.</b> Un fallo de Valkey devolviendo un token no puede
+     * convertir en un 500 la respuesta que el usuario ya tiene: la cadena termino y
+     * el estado esta escrito. El precio de tragarselo es que el cupo del dia queda
+     * mas bajo de lo real, que es el lado seguro del error y por eso se avisa.
+     */
+    private void devolverUnToken(String clave, int cupo, String cual) {
+        try {
+            proxyManager.builder().build(clave, () -> bucketConfiguration(cupo, UN_DIA))
+                    .addTokens(1);
+        } catch (RuntimeException fallo) {
+            log.warn(
+                    "No se pudo devolver {} de una peticion que no invoco al modelo; queda mas"
+                            + " bajo de lo real hasta que rote el dia: {}",
+                    cual, fallo.getMessage());
+        }
     }
 
     /**
@@ -466,17 +537,8 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             HttpServletResponse response) {
         if (response.getStatus() != HttpStatus.BAD_REQUEST.value())
             return;
-        try {
-            proxyManager.builder()
-                    .build(CLAVE_DIARIA_GLOBAL_DE_PAGO,
-                            () -> bucketConfiguration(routeLimit.dailyGlobal(), UN_DIA))
-                    .addTokens(1);
-        } catch (RuntimeException fallo) {
-            log.warn(
-                    "No se pudo devolver al presupuesto diario el token de una peticion que no"
-                            + " paso la validacion; el cupo del dia queda mas bajo de lo real: {}",
-                    fallo.getMessage());
-        }
+        devolverUnToken(CLAVE_DIARIA_GLOBAL_DE_PAGO, routeLimit.dailyGlobal(),
+                "el presupuesto diario de la plataforma");
     }
 
     private RouteLimit routeLimit(HttpServletRequest request) {
@@ -596,7 +658,17 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     private boolean consumirDiario(RouteLimit routeLimit, int cupo, String claveBase) {
         if (cupo <= 0)
             return true;
-        return tryConsume(routeLimit.keyPrefix() + "day:" + claveBase, cupo, UN_DIA);
+        return tryConsume(claveDiaria(routeLimit, claveBase), cupo, UN_DIA);
+    }
+
+    /**
+     * La clave del cubo diario de una ruta. Existe como metodo, y no como
+     * concatenacion repetida, porque ahora hay dos sentidos -consumir y devolver- y
+     * una diferencia de un caracter entre ellos no rompe nada de forma visible:
+     * abona un cubo que no existia y deja sin devolver el que si se gasto.
+     */
+    private static String claveDiaria(RouteLimit routeLimit, String claveBase) {
+        return routeLimit.keyPrefix() + "day:" + claveBase;
     }
 
     /**

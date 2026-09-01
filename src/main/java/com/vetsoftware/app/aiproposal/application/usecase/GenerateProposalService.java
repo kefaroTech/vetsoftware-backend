@@ -10,6 +10,7 @@ import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics;
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics.Operation;
 import com.vetsoftware.app.aiproposal.application.port.out.AiProposalMetrics.ServedProposal;
 import com.vetsoftware.app.aiproposal.application.port.out.LegalConsentPort;
+import com.vetsoftware.app.aiproposal.application.port.out.PaidInvocationSignalPort;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalGeneratorPort;
 import com.vetsoftware.app.aiproposal.application.port.out.SellableCatalogQueryPort;
 import com.vetsoftware.app.aiproposal.domain.AiProposal;
@@ -78,6 +79,8 @@ public class GenerateProposalService implements GenerateProposalUseCase {
 
     private final AiProposalMetrics metrics;
 
+    private final PaidInvocationSignalPort paidInvocationSignal;
+
     private final Clock clock;
 
     private final String modelId;
@@ -92,7 +95,7 @@ public class GenerateProposalService implements GenerateProposalUseCase {
     public GenerateProposalService(SellableCatalogQueryPort catalogQueryPort,
             LegalConsentPort legalConsent, ProposalGeneratorPort generator,
             ProposalTurnWriter writer, ProposalReader reader, AiProposalMetrics metrics,
-            Clock clock,
+            PaidInvocationSignalPort paidInvocationSignal, Clock clock,
             @Value("${vetsoftware.ai.proposal.model-id:" + ModelPricing.MODELO_POR_DEFECTO
                     + "}") String modelId,
             @Value("${vetsoftware.ai.proposal.prompt-version:v1}") String promptVersion,
@@ -104,6 +107,7 @@ public class GenerateProposalService implements GenerateProposalUseCase {
         this.writer = writer;
         this.reader = reader;
         this.metrics = metrics;
+        this.paidInvocationSignal = paidInvocationSignal;
         this.clock = clock;
         this.modelId = modelId;
         this.promptVersion = promptVersion;
@@ -115,6 +119,11 @@ public class GenerateProposalService implements GenerateProposalUseCase {
     public ProposalViewDto generate(GenerateProposalCommand command) {
         Optional<AiProposal> previa = reader.porIdempotencia(command.contactEmail(),
                 command.idempotencyKey());
+        // Sin marca a proposito, y por tanto se cobra. Tampoco aqui se invoca al
+        // modelo, pero lo que se sirve es la propuesta entera que el prospecto ya
+        // tiene: hay valor devuelto y hay una fila que releer. Devolverle el cupo
+        // convertiria una clave de idempotencia valida en un GET sin cupo diario, y
+        // ese endpoint ya existe -GET /assistant/proposal- con su propio limite.
         if (previa.isPresent() && previa.get().getBillingCycle() == command.billingCycle())
             return reader.vista(previa.get(), false);
         String clave = claveUtilizable(command, previa);
@@ -148,6 +157,8 @@ public class GenerateProposalService implements GenerateProposalUseCase {
 
         ProposalGenerationResult resultado = generator
                 .generate(new ProposalGenerationRequest(List.of(texto), List.of(), catalog));
+
+        paidInvocationSignal.signal(resultado.outcome().huboInvocacionDePago());
 
         ProposalDraft draft = resultado.draft();
         CartResult carrito = draft.outOfDomain()
@@ -188,6 +199,11 @@ public class GenerateProposalService implements GenerateProposalUseCase {
      * prospecto ve —nada—, y quien dice que hacer es el {@code outcome}.
      */
     private ProposalViewDto sinCotizar(ServedProposal medida) {
+        // El desenlace por el que existe este cambio: el dueno gasto sus tres
+        // intentos del dia aqui, sin que el modelo llegara a arrancar. Los dos
+        // caminos vuelven antes del generador, asi que se afirma desde aqui lo
+        // que el generador nunca llego a decir.
+        paidInvocationSignal.signal(false);
         metrics.proposalServed(medida);
         return ProposalViewDto.sinCatalogo();
     }
