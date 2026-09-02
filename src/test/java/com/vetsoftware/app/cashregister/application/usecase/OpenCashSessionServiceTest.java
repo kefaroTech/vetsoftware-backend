@@ -59,7 +59,9 @@ class OpenCashSessionServiceTest {
         assertThat(view.openingFloat()).isEqualByComparingTo("100");
         assertThat(view.terminalId()).isEqualTo(TERMINAL);
         assertThat(view.terminal()).isEqualTo("CAJA-2");
-        assertThat(repo.existsOpen(CO, BR, "CAJA-2")).isTrue();
+        // Se abrio por identificador: se comprueba por identificador. Preguntar por la
+        // cadena era usar el camino ambiguo para verificar el bueno.
+        assertThat(repo.existsOpenByTerminalId(CO, BR, TERMINAL)).isTrue();
     }
 
     @Test

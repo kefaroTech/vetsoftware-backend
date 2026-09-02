@@ -73,10 +73,12 @@ public class CreditNoteReversalApplier {
                 // re-compensa).
                 if (original.getOpenAccountId() == null) {
                     inventoryLedger.reversePosSale(original.getId(), original.getCompanyId(), null);
-                    // Compensa el cobro en la caja OPEN actual (VOID_OUT por método). Idempotente;
-                    // no-op si la
-                    // sede no tiene caja abierta (no se compensa contra un cajón ya
-                    // cerrado/arqueado).
+                    // Compensa el cobro (VOID_OUT por método) EN LA CAJA DONDE ENTRO EL
+                    // DINERO, que CashLedgerService localiza por la referencia del ingreso.
+                    // Por eso este llamador no pasa actor y no le hace falta: la nota credito
+                    // puede emitirla alguien que no tenga caja abierta, o ninguna persona
+                    // -llega por el webhook de la DIAN-. Si esa caja ya se arqueo, no se
+                    // asienta y queda avisado en el log; el documento fiscal se emite igual.
                     List<CashPort.PaymentLine> payments = original.getPayments().stream()
                             .map(p -> new CashPort.PaymentLine(p.getPaymentMeans(), p.getAmount()))
                             .toList();

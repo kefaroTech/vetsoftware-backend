@@ -3,6 +3,7 @@ package com.vetsoftware.app.cashregister.application.port.out;
 import com.vetsoftware.app.cashregister.application.command.SearchCashSessionsQuery;
 import com.vetsoftware.app.cashregister.application.dto.CashSessionView;
 import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.cashregister.domain.CashReferenceType;
 import com.vetsoftware.app.cashregister.domain.CashSession;
 import java.util.List;
 import java.util.Optional;
@@ -31,10 +32,23 @@ public interface CashSessionRepository {
     Optional<CashSession> findOpen(Long companyId, Long branchId, String terminal);
 
     /**
-     * Resumen de la sesión OPEN de la terminal, incluyendo nombres de sede y
-     * responsable.
+     * <b>La sesión donde entró el dinero que ahora se devuelve.</b> Busca la caja
+     * que contiene el movimiento de ingreso orquestado ({@code SALE_IN} /
+     * {@code OPEN_ACCOUNT_IN}) de esa referencia.
+     *
+     * <p>
+     * Es la única respuesta trazable a «¿contra qué caja compenso esta anulación?»:
+     * una nota crédito revierte una venta concreta, y esa venta ya tiene su sesión.
+     * Compensar ahí cuadra el mismo arqueo que se descuadró, y no depende de que la
+     * operación traiga actor ni de la cadena mutable del terminal —que es lo que
+     * antes elegía una caja arbitraria cuando dos terminales compartían código—.
+     *
+     * <p>
+     * Devuelve la sesión en cualquier estado: si está cerrada, quien llama tiene
+     * que decidir y decirlo, no caer a otra caja en silencio.
      */
-    Optional<CashSessionView> findOpenSummary(Long companyId, Long branchId, String terminal);
+    Optional<CashSession> findSessionOfReferencedInflow(Long companyId,
+            CashReferenceType referenceType, Long referenceId);
 
     /** Resumen de la sesión OPEN asociada a la entidad terminal. */
     Optional<CashSessionView> findOpenSummaryByTerminalId(Long companyId, Long branchId,

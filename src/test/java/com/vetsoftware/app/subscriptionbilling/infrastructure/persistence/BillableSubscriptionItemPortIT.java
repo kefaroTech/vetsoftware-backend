@@ -381,16 +381,19 @@ class BillableSubscriptionItemPortIT extends AbstractDataJpaTest {
     }
 
     private void articulo(Long id, String code, String name) {
-        entityManager.createNativeQuery("""
-                INSERT INTO catalog_items (id, code, name, item_type, capacity_unit, is_core,
-                                           min_quantity, max_quantity, sort_order, status,
-                                           trial_eligibility, default_trial_days, trial_outcome,
-                                           service_nature, created_date, enabled, version)
-                VALUES (:id, :code, :name, 'MODULE', NULL, false, 1, NULL, 0, 'ACTIVE',
-                        'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
-                        '2026-01-01 00:00:00', true, 0)
-                ON DUPLICATE KEY UPDATE id = id
-                """).setParameter("id", id).setParameter("code", code).setParameter("name", name)
+        entityManager
+                .createNativeQuery(
+                        """
+                                INSERT INTO catalog_items (id, code, name, item_type, capacity_unit, structural_minimum,
+                                                           min_quantity, max_quantity, sort_order, status,
+                                                           trial_eligibility, default_trial_days, trial_outcome,
+                                                           service_nature, created_date, enabled, version)
+                                VALUES (:id, :code, :name, 'MODULE', NULL, false, 1, NULL, 0, 'ACTIVE',
+                                        'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
+                                        '2026-01-01 00:00:00', true, 0)
+                                ON DUPLICATE KEY UPDATE id = id
+                                """)
+                .setParameter("id", id).setParameter("code", code).setParameter("name", name)
                 .executeUpdate();
     }
 

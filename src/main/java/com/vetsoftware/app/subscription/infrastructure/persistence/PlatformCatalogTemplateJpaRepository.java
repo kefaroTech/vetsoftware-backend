@@ -55,10 +55,10 @@ public interface PlatformCatalogTemplateJpaRepository
                    AND pl.published_at IS NOT NULL
                    AND pl.enabled      = TRUE
               JOIN catalog_items ci
-                   ON  ci.code    = 'CORE'
-                   AND ci.is_core = TRUE
-                   AND ci.status  = 'ACTIVE'
-                   AND ci.enabled = TRUE
+                   ON  ci.code               = 'CORE'
+                   AND ci.structural_minimum = TRUE
+                   AND ci.status             = 'ACTIVE'
+                   AND ci.enabled            = TRUE
               JOIN catalog_prices cp
                    ON  cp.price_list_id   = pl.id
                    AND cp.catalog_item_id = ci.id
@@ -77,7 +77,8 @@ public interface PlatformCatalogTemplateJpaRepository
     /**
      * Las capacidades del minimo estructural: <strong>todos</strong> los
      * {@code catalog_items} de tipo {@code CAPACITY} marcados
-     * {@code is_core = TRUE} que tengan tramo publicado para el ciclo pedido.
+     * {@code structural_minimum = TRUE} que tengan tramo publicado para el ciclo
+     * pedido.
      *
      * <p>
      * <strong>Por que es una consulta aparte y no un {@code UNION} con la de
@@ -90,12 +91,13 @@ public interface PlatformCatalogTemplateJpaRepository
      * justamente la que no se puede debilitar.
      *
      * <p>
-     * <strong>Aqui {@code is_core} se usa como predicado de conjunto</strong>, que
-     * es lo que la columna significa: «forma parte del minimo estructural». La
-     * consulta del nucleo la usa junto a {@code code = 'CORE'} y un {@code LIMIT 1}
-     * porque alli busca <em>el</em> articulo que abre las pantallas base; esa
-     * confusion entre «el articulo CORE» y «el conjunto de articulos del nucleo» es
-     * la que hacia nacer empresas sin una sola capacidad (#490).
+     * <strong>Aqui {@code structural_minimum} se usa como predicado de
+     * conjunto</strong>, que es lo que la columna significa: «forma parte del
+     * minimo estructural». La consulta del nucleo la usa junto a
+     * {@code code = 'CORE'} y un {@code LIMIT 1} porque alli busca <em>el</em>
+     * articulo que abre las pantallas base; esa confusion entre «el articulo CORE»
+     * y «el conjunto de articulos del nucleo» es la que hacia nacer empresas sin
+     * una sola capacidad (#490).
      *
      * <p>
      * Devuelve lista, posiblemente vacia. Quien decide si eso basta es el caso de
@@ -122,11 +124,11 @@ public interface PlatformCatalogTemplateJpaRepository
                    AND pl.published_at IS NOT NULL
                    AND pl.enabled      = TRUE
               JOIN catalog_items ci
-                   ON  ci.is_core       = TRUE
-                   AND ci.item_type     = 'CAPACITY'
-                   AND ci.capacity_unit IS NOT NULL
-                   AND ci.status        = 'ACTIVE'
-                   AND ci.enabled       = TRUE
+                   ON  ci.structural_minimum = TRUE
+                   AND ci.item_type          = 'CAPACITY'
+                   AND ci.capacity_unit      IS NOT NULL
+                   AND ci.status             = 'ACTIVE'
+                   AND ci.enabled            = TRUE
               JOIN catalog_prices cp
                    ON  cp.price_list_id   = pl.id
                    AND cp.catalog_item_id = ci.id

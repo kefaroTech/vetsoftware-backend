@@ -28,7 +28,7 @@ import java.util.Optional;
  * propuesta», que este fichero ya sostenia para la divisa, y esta escrita como
  * invariante y no como un {@code Optional} por lo que costo la version
  * anterior: el nucleo se resolvia con un {@code findFirst()} sobre los
- * articulos con {@code is_core}, el llamante lo filtraba por
+ * articulos con {@code structural_minimum}, el llamante lo filtraba por
  * {@code esCotizable} y el {@code Optional} vacio resultante <em>se ignoraba en
  * silencio</em>. Ni linea de rechazo, ni log, ni contador: 200 con el carrito
  * vacio. Un contrato total no admite esa lectura.
@@ -36,8 +36,8 @@ import java.util.Optional;
  * @param nucleo
  *            el articulo que todo carrito arrastra, <strong>ya resuelto por el
  *            adaptador</strong> y garantizado cotizable. El dominio no ve
- *            {@code is_core}: ver {@link SellableItem} y la capa anticorrupcion
- *            de {@code JpaSellableCatalogQueryPort}
+ *            {@code structural_minimum}: ver {@link SellableItem} y la capa
+ *            anticorrupcion de {@code JpaSellableCatalogQueryPort}
  */
 public record SellableCatalog(Map<String, SellableItem> items, Map<String, List<String>> requires,
         List<PackOffer> packs, SellableItem nucleo) {

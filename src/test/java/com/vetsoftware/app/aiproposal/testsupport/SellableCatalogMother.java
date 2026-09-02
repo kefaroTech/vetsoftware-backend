@@ -97,9 +97,9 @@ public final class SellableCatalogMother {
     }
 
     /**
-     * <b>Ya no recibe el {@code is_core}</b>: {@link SellableItem} dejo de llevarlo
-     * cuando la traduccion de esa columna bajo al adaptador. Quien sea el nucleo lo
-     * decide ahora el cuarto componente de {@link SellableCatalog}.
+     * <b>Ya no recibe el {@code structural_minimum}</b>: {@link SellableItem} dejo
+     * de llevarlo cuando la traduccion de esa columna bajo al adaptador. Quien sea
+     * el nucleo lo decide ahora el cuarto componente de {@link SellableCatalog}.
      */
     public static SellableItem modulo(String code, String nombre, int precio, int diasDePrueba) {
         return new SellableItem(code, nombre, "Descripcion de " + nombre, SellableItemKind.MODULE,

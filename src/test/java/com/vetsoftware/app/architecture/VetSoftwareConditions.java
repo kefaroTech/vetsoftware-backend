@@ -2777,9 +2777,10 @@ final class VetSoftwareConditions {
      * booleana que nadie sabe convertir al extraer el resultado— y la primera solo
      * cazaba la que ya nos había mordido.
      * {@code ContractItemJpaRepository.findModuleLines} no tiene un solo literal en
-     * su proyección: proyecta {@code sm.read_only_capable} y {@code ci.is_core},
-     * dos columnas reales, con el alias correcto. Pasaba la regla vieja limpiamente
-     * y aun así tumbaba el alta de empresa entera.
+     * su proyección: proyecta {@code sm.read_only_capable} y
+     * {@code ci.structural_minimum}, dos columnas reales, con el alias correcto.
+     * Pasaba la regla vieja limpiamente y aun así tumbaba el alta de empresa
+     * entera.
      *
      * <p>
      * <b>Por qué falla.</b> MySQL no tiene tipo booleano. El CLAUDE.md exige

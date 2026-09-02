@@ -28,7 +28,7 @@ import java.math.BigDecimal;
  * despues parece aditivo y rompe los bindings de los dos fronts.
  *
  * <p>
- * &#9940; <strong>NO lleva {@code is_core}, y esa ausencia es
+ * &#9940; <strong>NO lleva {@code structural_minimum}, y esa ausencia es
  * deliberada.</strong> Esa columna es un bit compartido por dos contextos que
  * la leen distinto: el alta de plataforma la usa como <em>predicado de
  * conjunto</em> —«forma parte del minimo estructural», y en el catalogo real

@@ -222,13 +222,13 @@ class GetPublicCatalogServiceTest {
     class NucleoObligatorio {
 
         /**
-         * {@code mandatory} sale de {@code catalog_items.is_core} y esa columna no es
-         * una opinion comercial:
+         * {@code mandatory} sale de {@code catalog_items.structural_minimum} y esa
+         * columna no es una opinion comercial:
          * {@code PlatformCatalogTemplateJpaRepository.findInitialContractTemplate}
          * monta el contrato inicial de toda empresa con un {@code JOIN} interno sobre
-         * {@code code = 'CORE' AND is_core = TRUE}, y sin esa fila el alta falla
-         * entera. No existe empresa sin nucleo, asi que el front no puede pintarlo como
-         * una casilla que se desmarque.
+         * {@code code = 'CORE' AND structural_minimum = TRUE}, y sin esa fila el alta
+         * falla entera. No existe empresa sin nucleo, asi que el front no puede
+         * pintarlo como una casilla que se desmarque.
          */
         @Test
         @DisplayName("el nucleo sale marcado obligatorio y el resto no")
@@ -245,10 +245,10 @@ class GetPublicCatalogServiceTest {
 
         /**
          * Los contadores del minimo estructural tambien lo llevan: son
-         * {@code is_core = TRUE} en la semilla y {@code findInitialCapacityTemplates}
-         * los usa como predicado de conjunto. Confundir «el articulo CORE» con «el
-         * conjunto del nucleo» es lo que hizo nacer empresas sin una sola capacidad
-         * (#490).
+         * {@code structural_minimum = TRUE} en la semilla y
+         * {@code findInitialCapacityTemplates} los usa como predicado de conjunto.
+         * Confundir «el articulo CORE» con «el conjunto del nucleo» es lo que hizo
+         * nacer empresas sin una sola capacidad (#490).
          */
         @Test
         @DisplayName("un contador del nucleo tambien sale obligatorio")

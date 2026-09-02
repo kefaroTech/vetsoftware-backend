@@ -32,9 +32,9 @@ import java.math.BigDecimal;
  *            dominio de otra feature; el reparto en las tres listas de la
  *            respuesta lo hace el servicio con este campo.
  * @param mandatory
- *            {@code catalog_items.is_core}. No es «recomendado»: es el minimo
- *            estructural, el conjunto sin el cual una empresa no puede existir.
- *            Ver {@code PublicCatalogItemDto#mandatory()}.
+ *            {@code catalog_items.structural_minimum}. No es «recomendado»: es
+ *            el minimo estructural, el conjunto sin el cual una empresa no
+ *            puede existir. Ver {@code PublicCatalogItemDto#mandatory()}.
  * @param trialDays
  *            ya filtrado por politica —nulo salvo {@code trial_eligibility =
  *            'ELIGIBLE'}—, por lo mismo que en

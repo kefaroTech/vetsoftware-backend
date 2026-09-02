@@ -36,17 +36,18 @@ public class PlatformCatalogNotConfiguredForSubscriptionException extends Runtim
      * <p>
      * Es un mensaje distinto porque es un fallo distinto y se arregla en otro
      * sitio: alli falta el articulo {@code CORE} o su tarifa; aqui falta un
-     * {@code catalog_items} de tipo {@code CAPACITY} con {@code is_core = TRUE}
-     * para cada unidad que se nombra. Sin este mensaje, el sintoma llegaba tres
-     * pasos mas adelante como un {@code 404 COMPANY_CAPACITY_NOT_FOUND} contra una
-     * empresa que ya no existia por el rollback, y no señalaba al catalogo (#490).
+     * {@code catalog_items} de tipo {@code CAPACITY} con
+     * {@code structural_minimum = TRUE} para cada unidad que se nombra. Sin este
+     * mensaje, el sintoma llegaba tres pasos mas adelante como un
+     * {@code 404 COMPANY_CAPACITY_NOT_FOUND} contra una empresa que ya no existia
+     * por el rollback, y no señalaba al catalogo (#490).
      */
     public PlatformCatalogNotConfiguredForSubscriptionException(Long companyId,
             Set<String> missingUnits) {
         super("The platform catalog grants no core capacity for " + missingUnits
                 + ", so the initial contract of company " + companyId
                 + " would not let it create its own first branch or user: seed one ACTIVE"
-                + " catalog_items with item_type = 'CAPACITY', is_core = TRUE and capacity_unit set"
+                + " catalog_items with item_type = 'CAPACITY', structural_minimum = TRUE and capacity_unit set"
                 + " to that limit_dimensions.code, plus its published catalog_prices tier");
     }
 }

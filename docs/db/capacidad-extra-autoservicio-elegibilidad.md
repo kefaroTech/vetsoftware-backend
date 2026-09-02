@@ -262,7 +262,7 @@ resuelve aquí.**
 
 1. **[Bloqueante para el objetivo del dueño] Comprar capacidad extra no subiría el techo de
    nadie.** No existe el eslabón cotización aceptada → suscripción (javadoc de
-   `SelfServeQuoteService`), y el alta inicial solo aprovisiona capacidades `is_core = TRUE`
+   `SelfServeQuoteService`), y el alta inicial solo aprovisiona capacidades `structural_minimum = TRUE`
    (`PlatformCatalogTemplateJpaRepository.java:125`). El techo sale de
    `included_quantity + quantity` sobre `subscription_items`
    (`ContractItemJpaRepository.java:130`, `CapacityGrantLine.java:62`). Sin ese camino, marcar los
@@ -270,7 +270,7 @@ resuelve aquí.**
    elegibilidad es condición necesaria y no suficiente.
 2. **[Grave] Los packs publican una terminal incluida que nadie concede.** `CAPACITY_TERMINAL` es
    componente de los tres packs con `quantity = 1` (309:229-262) y se publica como `included = 1`;
-   pero es `is_core = FALSE` (308:246 y ss.), así que no lo aprovisiona el alta inicial, y
+   pero es `structural_minimum = FALSE` (308:246 y ss.), así que no lo aprovisiona el alta inicial, y
    `catalog_item_limits` le fija `limit_quantity = 0` (313:160). Es exactamente el mismo defecto
    que la opción elegida multiplicaría por cuatro.
 3. **[Menor] `EXTRA_STORAGE` es incomprable con `PACK_CLINIC`.** Requiere `LAB_IMAGING`, que solo

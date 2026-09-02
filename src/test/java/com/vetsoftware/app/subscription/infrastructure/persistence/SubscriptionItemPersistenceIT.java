@@ -96,16 +96,19 @@ class SubscriptionItemPersistenceIT extends AbstractDataJpaTest {
     }
 
     private void insertarArticuloExtra() {
-        entityManager.createNativeQuery("""
-                INSERT INTO catalog_items (id, code, name, item_type, is_core, min_quantity,
-                                           max_quantity, sort_order, status, trial_eligibility,
-                                           default_trial_days, trial_outcome, service_nature,
-                                           created_date, enabled, version)
-                VALUES (:id, 'EXTRA', 'Modulo extra', 'MODULE', false, 1, 1, 1, 'ACTIVE',
-                        'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
-                        '2026-01-01 00:00:00', true, 0)
-                ON DUPLICATE KEY UPDATE id = id
-                """).setParameter("id", ARTICULO_EXTRA).executeUpdate();
+        entityManager
+                .createNativeQuery(
+                        """
+                                INSERT INTO catalog_items (id, code, name, item_type, structural_minimum, min_quantity,
+                                                           max_quantity, sort_order, status, trial_eligibility,
+                                                           default_trial_days, trial_outcome, service_nature,
+                                                           created_date, enabled, version)
+                                VALUES (:id, 'EXTRA', 'Modulo extra', 'MODULE', false, 1, 1, 1, 'ACTIVE',
+                                        'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
+                                        '2026-01-01 00:00:00', true, 0)
+                                ON DUPLICATE KEY UPDATE id = id
+                                """)
+                .setParameter("id", ARTICULO_EXTRA).executeUpdate();
     }
 
     private SubscriptionItem lineaDeNucleo(EffectivePeriod periodo) {

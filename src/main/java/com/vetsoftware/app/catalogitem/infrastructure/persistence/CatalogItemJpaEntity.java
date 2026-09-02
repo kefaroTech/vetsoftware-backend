@@ -75,7 +75,7 @@ public class CatalogItemJpaEntity {
     @Column(name = "capacity_unit", length = 50)
     private String capacityUnit;
 
-    @Column(name = "is_core", nullable = false)
+    @Column(name = "structural_minimum", nullable = false)
     private boolean core;
 
     @Column(name = "min_quantity", nullable = false)

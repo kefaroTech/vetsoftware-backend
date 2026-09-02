@@ -29,8 +29,8 @@ public interface PlatformCatalogPort {
 
     /**
      * Las capacidades que el minimo estructural concede: los articulos
-     * {@code CAPACITY} marcados {@code is_core}, con su tramo publicado para el
-     * ciclo pedido.
+     * {@code CAPACITY} marcados {@code structural_minimum}, con su tramo publicado
+     * para el ciclo pedido.
      *
      * <p>
      * <strong>Sin esto un contrato inicial no abre nada que se pueda
