@@ -74,7 +74,7 @@ class ContractSnapshotPersistenceIT extends AbstractDataJpaTest {
                 assertThat(linea.subscriptionItemId()).isEqualTo(SchemaSeed.SUBSCRIPTION_ITEM_ID);
                 assertThat(linea.subModule().id()).isEqualTo(SchemaSeed.SUB_MODULE_ID);
                 // Las dos columnas TINYINT del defecto: sub_modules.read_only_capable
-                // y catalog_items.is_core, sembradas a 1.
+                // y catalog_items.structural_minimum, sembradas a 1.
                 assertThat(linea.readOnlyCapable()).isTrue();
                 assertThat(linea.core()).isTrue();
             });
@@ -87,7 +87,9 @@ class ContractSnapshotPersistenceIT extends AbstractDataJpaTest {
                     .createNativeQuery(
                             "UPDATE sub_modules SET read_only_capable = 0 WHERE id = :id")
                     .setParameter("id", SchemaSeed.SUB_MODULE_ID).executeUpdate();
-            entityManager.createNativeQuery("UPDATE catalog_items SET is_core = 0 WHERE id = :id")
+            entityManager
+                    .createNativeQuery(
+                            "UPDATE catalog_items SET structural_minimum = 0 WHERE id = :id")
                     .setParameter("id", nucleo).executeUpdate();
             entityManager.flush();
             entityManager.clear();

@@ -295,7 +295,7 @@ está en
 **Nada funciona, y hay que decidir cómo falla.** Las semillas están aplazadas a un PR posterior
 (`suscripciones-datos-semilla.md`), así que el día del despliegue:
 
-- No hay ningún `catalog_items` con `is_core = TRUE`.
+- No hay ningún `catalog_items` con `structural_minimum = TRUE`.
 - No hay ninguna `price_lists` en `PUBLISHED`.
 - Ningún `sub_modules` tiene `is_sellable = TRUE` (default `FALSE`, §3).
 - Por lo tanto **`company_entitlements` nace vacía para toda empresa nueva**, y una empresa recién
@@ -373,7 +373,7 @@ INSERT IGNORE INTO sub_modules (id, name, code, module_id, created_date, enabled
 VALUES (980, 'Submodulo de prueba', 'TEST_SUB_MODULE', 981, NOW(), true, 0, true, true);
 
 -- ── 3. Catálogo mínimo: un artículo núcleo ────────────────────────────────
-INSERT IGNORE INTO catalog_items (id, code, name, item_type, is_core, min_quantity,
+INSERT IGNORE INTO catalog_items (id, code, name, item_type, structural_minimum, min_quantity,
                                   max_quantity, sort_order, status, created_date, enabled, version)
 VALUES (960, 'CORE', 'Nucleo de prueba', 'MODULE', true, 1, 1, 0, 'ACTIVE', NOW(), true, 0);
 

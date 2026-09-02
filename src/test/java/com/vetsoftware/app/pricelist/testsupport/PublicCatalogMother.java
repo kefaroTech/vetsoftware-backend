@@ -18,7 +18,7 @@ import java.math.BigDecimal;
  */
 public final class PublicCatalogMother {
 
-    /** El nucleo: {@code is_core = TRUE}. Ver {@link #nucleo()}. */
+    /** El nucleo: {@code structural_minimum = TRUE}. Ver {@link #nucleo()}. */
     public static final String CORE = "CORE";
 
     public static final String MODULO = "SURGERY";
@@ -31,7 +31,7 @@ public final class PublicCatalogMother {
 
     /**
      * <b>El minimo estructural.</b> {@code mandatory = true} es
-     * {@code catalog_items.is_core}, la misma columna con la que
+     * {@code catalog_items.structural_minimum}, la misma columna con la que
      * {@code PlatformCatalogTemplateJpaRepository} monta el contrato inicial de
      * toda empresa: sin esa fila el alta falla entera. No es «recomendado».
      */

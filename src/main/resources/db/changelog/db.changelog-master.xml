@@ -444,7 +444,7 @@
 
          El orden es de dependencia estricta, no de gusto:
            308 los 26 artículos      nada depende de ellos todavía; 265 ya sembró dos de los tres
-                                     `is_core`, aquí se completan y se corrigen sus valores
+                                     del mínimo estructural, aquí se completan y se corrigen
            309 las tres tablas puente necesitan artículo (308) y submódulo (258/272); retira además
                                      el puente CORE -> AGENDA que 263 puso como apaño
            310 la tarifa y 64 precios necesitan artículo (308). Nace en DRAFT: publicarla exige un
@@ -456,10 +456,11 @@
          LAS OCHO CONDICIONES DEL ALTA DE UNA EMPRESA quedan cubiertas por 308+310+311, y son las que
          PlatformCatalogTemplateJpaRepository exige en sus dos consultas: fila singleton de
          platform_billing_config apuntando a una lista PUBLISHED con published_at y enabled; el
-         artículo CORE ACTIVE, enabled e is_core; su precio en el ciclo pedido con tier_min = 1 y
-         enabled; al menos una fila de catalog_item_sub_modules para CORE con enabled; y ADEMÁS los
-         artículos CAPACITY is_core para USER y BRANCH con su propio tramo publicado. SON TRES
-         ARTÍCULOS DE NÚCLEO, NO UNO -CORE, CAPACITY_USER y CAPACITY_BRANCH-: `is_core` se usa en
+         artículo CORE ACTIVE, enabled y structural_minimum; su precio en el ciclo pedido con
+         tier_min = 1 y enabled; al menos una fila de catalog_item_sub_modules para CORE con
+         enabled; y ADEMÁS los artículos CAPACITY structural_minimum para USER y BRANCH con su
+         propio tramo publicado. SON TRES ARTÍCULOS DE NÚCLEO, NO UNO -CORE, CAPACITY_USER y
+         CAPACITY_BRANCH-: `structural_minimum` (llamada `is_core` hasta la 394) se usa en
          findInitialCapacityTemplates como predicado de conjunto («forma parte del mínimo
          estructural»), y confundir «el artículo CORE» con «el conjunto de artículos del núcleo» es
          lo que hacía nacer empresas sin una sola capacidad (#490).
@@ -1011,5 +1012,36 @@
          (hint_hash, current_hint_marker) depende de esta columna. Detalle completo en el propio
          393. -->
     <include file="db/changelog/migrations/393_add_superseded_by_to_catalog_item_ai_hints.xml"/>
+
+    <!-- 394: EL NOMBRE DE LA COLUMNA MENTIA. `is_core` se lee «es EL nucleo» y significa
+         «pertenece al minimo estructural», que es un CONJUNTO de TRES articulos -CORE,
+         CAPACITY_USER y CAPACITY_BRANCH-, no uno. Esa confusion es la causa de #490. Pasa a
+         llamarse `structural_minimum`, vocabulario que ya estaba en la 308, en
+         PlatformCatalogTemplateJpaRepository y en la clase de dominio StructuralCapacityMinimum,
+         y sin el prefijo `is_` que el esquema no usa. El campo Java sigue llamandose `core`, asi
+         que api/openapi.json NO se mueve. La columna se redeclara entera (TINYINT NOT NULL
+         DEFAULT 0) porque un CHANGE de MySQL descarta lo que no se vuelva a nombrar, y ddl-auto:
+         validate no notaria la perdida del NOT NULL. Se despliega con dev apagado: con la
+         reversion automatica de ECS, volver a la imagen vieja con la columna ya renombrada es una
+         caida total. Los changesets ya aplicados (229, 263, 265, 308, 382) conservan `is_core` en
+         su texto y NO se editan: reescribirlos rompe el checksum. -->
+    <include file="db/changelog/migrations/394_rename_catalog_items_is_core_to_structural_minimum.xml"/>
+
+    <!-- 395: LA OTRA MITAD DE LA 394, Y EL MOTIVO NO SE VE DESDE EL DIFF DE AQUELLA. Las semillas de
+         laboratorio 263 y 265 nombran `is_core` en su INSERT y van con context="local,e2e", asi que
+         application.yml -que cierra a `production`- las deja PENDIENTES en dev, en produccion y en
+         el perfil de test. Una migracion pendiente se ejecuta el dia que alguien abre ese contexto,
+         y para entonces la 394 ya renombro: `Unknown column 'is_core' in 'field list'` y la
+         aplicacion no arranca. Le pasa a cualquiera que abra application-local.yml sobre una base
+         creada antes bajo el perfil de produccion, y salto en el contenedor unico de la fase
+         failsafe. Ningun nombre literal sirve en los dos ordenes, asi que 263/265 llevan ahora una
+         precondicion que las salta cuando la columna vieja ya no existe, y la 395 resiembra con el
+         nombre nuevo. Resiembra la CADENA ENTERA -articulos, submodulos, dependencias, componentes
+         del pack, precios y capacidades- porque un changeSet que se ejecuta queda marcado aunque
+         inserte cero filas: al saltarse los articulos, todo lo que hace JOIN contra ellos se marcaba
+         vacio para siempre y el alta seguiria muriendo con PLATFORM_CATALOG_NOT_CONFIGURED un paso
+         mas adelante. Todo va con WHERE NOT EXISTS, asi que en una base nueva no inserta nada. El
+         checksum de 263/265 se mueve, y esta asumido: no estan aplicadas en dev ni en produccion. -->
+    <include file="db/changelog/migrations/395_reseed_local_e2e_catalog_after_structural_minimum_rename.xml"/>
 
 </databaseChangeLog>

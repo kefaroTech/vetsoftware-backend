@@ -97,7 +97,7 @@ de una empresa necesita para existir.
 ## 2. `catalog_items` — el estante propuesto
 
 **Todas las filas de esta sección son [COMERCIAL] en su nombre, descripción y orden, y
-[ESTRUCTURAL] en su `code`, `item_type`, `is_core` y `min/max_quantity`.**
+[ESTRUCTURAL] en su `code`, `item_type`, `structural_minimum` y `min/max_quantity`.**
 
 Los `code` son la parte que **no puede cambiar después**: el código va congelado en
 `subscription_items.item_code` de cada contrato firmado, y renombrarlo rompe la trazabilidad. Los
@@ -105,7 +105,7 @@ nombres comerciales sí pueden cambiar cuando se quiera; para eso existe la sepa
 
 ### 2.1 Módulos funcionales (`item_type = 'MODULE'`)
 
-| `code` | `name` [COMERCIAL] | `is_core` | `min` | `max` | `sort_order` | `status` | Bloqueo |
+| `code` | `name` [COMERCIAL] | `structural_minimum` | `min` | `max` | `sort_order` | `status` | Bloqueo |
 |---|---|---|---|---|---|---|---|
 | `CORE` | Núcleo: clientes y mascotas | **`TRUE`** | 1 | 1 | 10 | `ACTIVE` | **[BLOQUEADO]** — falta el `sub_modules` |
 | `SCHEDULING` | Agenda de citas | `FALSE` | 1 | 1 | 20 | `ACTIVE` | **[BLOQUEADO]** |
@@ -116,7 +116,7 @@ nombres comerciales sí pueden cambiar cuando se quiera; para eso existe la sepa
 | `PURCHASES` | Compras y proveedores | `FALSE` | 1 | 1 | 70 | `ACTIVE` | ✅ mapeable a `PURCHASES` |
 | `ELECTRONIC_INVOICING` | Facturación electrónica DIAN | `FALSE` | 1 | 1 | 80 | `ACTIVE` | **[BLOQUEADO]** |
 
-**`is_core = TRUE` solo en `CORE`, y esto es [ESTRUCTURAL].** El configurador no deja quitarlo y la
+**`structural_minimum = TRUE` solo en `CORE`, y esto es [ESTRUCTURAL].** El configurador no deja quitarlo y la
 baja lo rechaza. Evita que alguien se quede con una cuenta sin clientes ni mascotas. Marcar un
 segundo artículo como núcleo cambia el significado de «lo mínimo que se puede comprar» y es una
 decisión comercial con consecuencia técnica: se convierte en obligatorio para todos los contratos
@@ -395,7 +395,7 @@ desplegar nada. Estas seis son la propuesta inicial y están escritas para el ca
 | `PETSHOP` | «Tienda de mascotas» | `ADD CORE`, `ADD INVENTORY`, `ADD CASH_REGISTER` |
 | `MIXED` | «Un poco de todo» | `ADD CORE`, `ADD SCHEDULING` |
 
-**Las cuatro opciones añaden `CORE`.** Es redundante —`is_core = TRUE` ya lo hace obligatorio— pero
+**Las cuatro opciones añaden `CORE`.** Es redundante —`structural_minimum = TRUE` ya lo hace obligatorio— pero
 explícito, y el configurador debe poder mostrarlo en el carrito desde la primera respuesta.
 
 ### P2 · `MEDICAL_CONSULTATIONS`

@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      POR QUE EXISTE ESTE FICHERO. La 394 renombro catalog_items.is_core a
+      structural_minimum. Las semillas de laboratorio 263 y 265 nombran esa columna en su INSERT y
+      van marcadas context="local,e2e", asi que NO se aplican con el contexto `production` que fija
+      application.yml -el de dev, el de produccion y el del perfil de test-. Quedan PENDIENTES, no
+      marcadas. Y una migracion pendiente se ejecuta el dia que alguien abre ese contexto, contra el
+      esquema que haya en ese momento.
+
+      EL ORDEN NO ES EL QUE PARECE. En una base nueva con el contexto abierto, Liquibase va en orden
+      de fichero: 229 crea `is_core`, 263/265 siembran, y la 394 renombra al final. Todo cuadra. Pero
+      en una base que ya migro con `contexts: production` -o el contenedor unico de la fase failsafe,
+      que es donde salto- la 394 YA renombro, y 263/265 siguen pendientes: al abrir el contexto se
+      ejecutan contra una columna que ya no se llama asi y el arranque muere con
+      `Unknown column 'is_core' in 'field list'`. No es un artefacto de test: le pasa a cualquiera que
+      arranque con application-local.yml sobre una base creada antes bajo el perfil de produccion.
+
+      LA SALIDA, Y POR QUE ESTA. Ningun nombre literal funciona en los dos ordenes a la vez, asi que
+      263 y 265 llevan ahora una precondicion que las salta -MARK_RAN- cuando `is_core` ya no existe,
+      y este fichero vuelve a sembrar lo mismo con el nombre nuevo. Editar 263/265 mueve su checksum,
+      y esta asumido: van con context="local,e2e" y application.yml cierra a `production`, asi que no
+      estan aplicadas ni en dev ni en produccion -solo en bases locales y en contenedores e2e
+      desechables, donde el coste de un `clearCheckSums` o de recrear la base es nulo-.
+
+      POR QUE SE RESIEMBRA TODA LA CADENA Y NO SOLO LOS DOS INSERT. Un changeSet que se ejecuta queda
+      marcado aunque inserte CERO filas. En la base mixta, 263_..._catalog_items se salta, y entonces
+      263_..._sub_modules, 263_..._dependencies, 263_..._bundle_components, 264_..._catalog_prices,
+      265_..._capacity_catalog_prices y 269 se ejecutan igual, hacen JOIN contra unos catalog_items
+      que no existen todavia, insertan cero filas y quedan marcados para siempre. Por eso aqui esta
+      la cadena entera y no solo los articulos: si no, el alta de empresa seguiria muriendo con
+      PLATFORM_CATALOG_NOT_CONFIGURED, solo que un paso mas adelante.
+
+      TODO ES IDEMPOTENTE, y de ahi que sea seguro. Cada sentencia conserva el `WHERE NOT EXISTS` del
+      original, asi que en una base nueva -donde 263/265 SI corrieron en su sitio- estos changeSets
+      se ejecutan y no insertan nada. Es el mismo criterio con el que se escribieron las semillas de
+      laboratorio, que ya avisaban de convivir con filas sembradas a mano.
+
+      LOS ROLLBACK VAN VACIOS A PROPOSITO. Estas filas son de 263/265/264/269 y su rollback ya las
+      borra. Que este fichero las borrase tambien significaria que revertir la 395 se lleva por
+      delante un catalogo sembrado por otro changeSet, que es justo lo que no debe pasar.
+    -->
+
+    <changeSet id="395_01_reseed_local_e2e_catalog_items" author="orlando" context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_items
+                    (code, name, short_description, item_type, structural_minimum, min_quantity,
+                     max_quantity, sort_order, status,
+                     trial_eligibility, default_trial_days, trial_outcome, service_nature)
+            SELECT seed.code, seed.name, seed.short_description, seed.item_type,
+                   seed.structural_minimum, seed.min_quantity, seed.max_quantity, seed.sort_order,
+                   'ACTIVE',
+                   seed.trial_eligibility, seed.default_trial_days, seed.trial_outcome,
+                   'SOFTWARE_LICENSING'
+              FROM (
+                SELECT 'CORE' AS code, 'Nucleo: clientes y mascotas' AS name,
+                       'Gestion de clientes y sus mascotas (laboratorio)' AS short_description,
+                       'MODULE' AS item_type, TRUE AS structural_minimum, 1 AS min_quantity,
+                       1 AS max_quantity, 10 AS sort_order,
+                       'ELIGIBLE' AS trial_eligibility, 30 AS default_trial_days,
+                       'LIMITED' AS trial_outcome
+                UNION ALL SELECT 'SCHEDULING', 'Agenda de citas',
+                       'Agenda y citas (laboratorio)', 'MODULE', FALSE, 1, 1, 20,
+                       'ELIGIBLE', 30, 'LIMITED'
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'Historia clinica y consultas',
+                       'Historia clinica (laboratorio)', 'MODULE', FALSE, 1, 1, 30,
+                       'ELIGIBLE', 30, 'LIMITED'
+                UNION ALL SELECT 'CASH_REGISTER', 'Caja y punto de venta',
+                       'Caja (laboratorio)', 'MODULE', FALSE, 1, 1, 50,
+                       'ELIGIBLE', 14, 'READ_ONLY'
+                UNION ALL SELECT 'ELECTRONIC_INVOICING', 'Facturacion electronica DIAN',
+                       'Facturacion electronica (laboratorio)', 'MODULE', FALSE, 1, 1, 80,
+                       'NEVER_FREE', NULL, NULL
+                UNION ALL SELECT 'PACK_CLINIC', 'Pack Clinica',
+                       'Nucleo + agenda + historia clinica + caja (laboratorio)',
+                       'BUNDLE', FALSE, 1, 1, 320,
+                       'NEVER_FREE', NULL, NULL
+              ) seed
+             WHERE NOT EXISTS (SELECT 1 FROM catalog_items x WHERE x.code = seed.code);
+        ]]></sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="395_02_reseed_local_e2e_catalog_item_sub_modules" author="orlando"
+               context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_sub_modules (catalog_item_id, sub_module_id)
+            SELECT ci.id, sm.id
+              FROM (
+                SELECT 'CORE' AS item_code, 'AGENDA' AS sub_module_code
+                UNION ALL SELECT 'SCHEDULING', 'AGENDA'
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'CLINICAL_HISTORY'
+                UNION ALL SELECT 'CASH_REGISTER', 'CASH'
+                UNION ALL SELECT 'ELECTRONIC_INVOICING', 'BILLING'
+              ) seed
+              JOIN catalog_items ci ON ci.code = seed.item_code
+              JOIN sub_modules sm ON sm.code = seed.sub_module_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM catalog_item_sub_modules x
+                  WHERE x.catalog_item_id = ci.id AND x.sub_module_id = sm.id);
+        ]]></sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="395_03_reseed_local_e2e_catalog_item_dependencies" author="orlando"
+               context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_dependencies
+                    (catalog_item_id, related_item_id, relation_type, note)
+            SELECT a.id, b.id, seed.relation_type, seed.note
+              FROM (
+                SELECT 'ELECTRONIC_INVOICING' AS item_code, 'CASH_REGISTER' AS related_code,
+                       'REQUIRES' AS relation_type,
+                       'Facturar electronicamente necesita el modulo de Caja' AS note
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'SCHEDULING', 'RECOMMENDS',
+                       'La historia clinica se llena sola desde las citas'
+              ) seed
+              JOIN catalog_items a ON a.code = seed.item_code
+              JOIN catalog_items b ON b.code = seed.related_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM catalog_item_dependencies x
+                  WHERE x.catalog_item_id = a.id AND x.related_item_id = b.id
+                    AND x.relation_type = seed.relation_type);
+        ]]></sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="395_04_reseed_local_e2e_bundle_components" author="orlando" context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO bundle_components (bundle_item_id, component_item_id, quantity)
+            SELECT bundle.id, comp.id, 1
+              FROM catalog_items bundle
+              JOIN catalog_items comp
+                ON comp.code IN ('CORE','SCHEDULING','CLINICAL_HISTORY','CASH_REGISTER')
+             WHERE bundle.code = 'PACK_CLINIC'
+               AND NOT EXISTS (
+                   SELECT 1 FROM bundle_components x
+                    WHERE x.bundle_item_id = bundle.id AND x.component_item_id = comp.id);
+        ]]></sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="395_05_reseed_local_e2e_catalog_prices" author="orlando" context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_prices
+                    (price_list_id, catalog_item_id, billing_cycle, tier_min, tier_max,
+                     included_quantity, unit_amount, setup_amount, tax_rate, tax_treatment)
+            SELECT pl.id, ci.id, 'MONTHLY', 1, NULL, seed.included_qty, seed.unit_amount,
+                   0.00, 19.00, 'TAXED'
+              FROM price_lists pl
+              JOIN (
+                SELECT 'CORE' AS code, 2 AS included_qty, 50000.00 AS unit_amount
+                UNION ALL SELECT 'SCHEDULING', 0, 30000.00
+                UNION ALL SELECT 'CLINICAL_HISTORY', 0, 40000.00
+                UNION ALL SELECT 'CASH_REGISTER', 0, 35000.00
+                UNION ALL SELECT 'ELECTRONIC_INVOICING', 0, 60000.00
+              ) seed ON 1 = 1
+              JOIN catalog_items ci ON ci.code = seed.code
+             WHERE pl.code = 'LISTA-LOCAL-LAB'
+               AND NOT EXISTS (
+                   SELECT 1 FROM catalog_prices x
+                    WHERE x.price_list_id = pl.id AND x.catalog_item_id = ci.id
+                      AND x.billing_cycle = 'MONTHLY' AND x.tier_min = 1);
+        ]]></sql>
+        <rollback/>
+    </changeSet>
+
+    <!-- chk_catalog_items_capacity_unit (229) exige capacity_unit NO NULA cuando
+         item_type='CAPACITY' y NULA en cualquier otro caso, de ahi que aqui se nombre
+         la columna y en 395_01 no. Mismo motivo que en la 265 original. -->
+    <changeSet id="395_06_reseed_local_e2e_capacity_catalog_items" author="orlando"
+               context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_items
+                    (code, name, short_description, item_type, capacity_unit, structural_minimum,
+                     min_quantity, max_quantity, sort_order, status,
+                     trial_eligibility, default_trial_days, trial_outcome, service_nature)
+            SELECT seed.code, seed.name, seed.short_description, 'CAPACITY',
+                   seed.capacity_unit, TRUE, 1, NULL, seed.sort_order, 'ACTIVE',
+                   'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING'
+              FROM (
+                SELECT 'CAPACITY_BRANCH' AS code, 'Sede incluida' AS name,
+                       'Una sede de trabajo (laboratorio)' AS short_description,
+                       'BRANCH' AS capacity_unit, 11 AS sort_order
+                UNION ALL SELECT 'CAPACITY_USER', 'Usuario incluido',
+                       'Un usuario de acceso (laboratorio)', 'USER', 12
+              ) seed
+             WHERE NOT EXISTS (SELECT 1 FROM catalog_items x WHERE x.code = seed.code);
+        ]]></sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="395_07_reseed_local_e2e_capacity_catalog_prices" author="orlando"
+               context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_prices
+                    (price_list_id, catalog_item_id, billing_cycle, tier_min, tier_max,
+                     included_quantity, unit_amount, setup_amount, tax_rate, tax_treatment)
+            SELECT pl.id, ci.id, 'MONTHLY', 1, NULL, 0, seed.unit_amount, 0.00, 19.00, 'TAXED'
+              FROM price_lists pl
+              JOIN (
+                SELECT 'CAPACITY_BRANCH' AS code, 25000.00 AS unit_amount
+                UNION ALL SELECT 'CAPACITY_USER', 15000.00
+              ) seed ON 1 = 1
+              JOIN catalog_items ci ON ci.code = seed.code
+             WHERE pl.code = 'LISTA-LOCAL-LAB'
+               AND NOT EXISTS (
+                   SELECT 1 FROM catalog_prices x
+                    WHERE x.price_list_id = pl.id AND x.catalog_item_id = ci.id
+                      AND x.billing_cycle = 'MONTHLY' AND x.tier_min = 1);
+        ]]></sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="395_08_reseed_local_e2e_core_structural_submodules" author="orlando"
+               context="local,e2e">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_sub_modules (catalog_item_id, sub_module_id)
+            SELECT ci.id, sm.id
+              FROM (
+                SELECT 'CORE' AS item_code, 'BRANCH' AS sub_module_code
+                UNION ALL SELECT 'CORE', 'EMPLOYEES'
+                UNION ALL SELECT 'CORE', 'ROLES'
+              ) seed
+              JOIN catalog_items ci ON ci.code = seed.item_code
+              JOIN sub_modules sm ON sm.code = seed.sub_module_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM catalog_item_sub_modules x
+                  WHERE x.catalog_item_id = ci.id AND x.sub_module_id = sm.id);
+        ]]></sql>
+        <rollback/>
+    </changeSet>
+
+</databaseChangeLog>

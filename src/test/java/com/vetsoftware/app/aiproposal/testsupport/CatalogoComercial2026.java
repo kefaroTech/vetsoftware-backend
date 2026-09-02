@@ -29,14 +29,14 @@ import java.util.Set;
  *
  * <ul>
  * <li><b>308</b>: los codigos, cuales son modulos y cuales capacidades, quien
- * es {@code is_core}, quien se puede contratar por autoservicio y los dias de
- * prueba (30 en los modulos clinicos; 14 en los cuatro de la caja y el
- * inventario; cero en {@code ELECTRONIC_INVOICING}, que es
+ * es {@code structural_minimum}, quien se puede contratar por autoservicio y
+ * los dias de prueba (30 en los modulos clinicos; 14 en los cuatro de la caja y
+ * el inventario; cero en {@code ELECTRONIC_INVOICING}, que es
  * {@code NEVER_FREE}).</li>
  * <li><b>310</b>: que {@code CAPACITY_USER}, {@code CAPACITY_BRANCH} y
  * {@code CAPACITY_TERMINAL} tienen tramo publicado a importe cero, y por lo
  * tanto <b>llegan al motor</b>: {@code SQL_ITEM_TIERS} hace {@code JOIN} contra
- * {@code catalog_prices} y no filtra por {@code is_core}.</li>
+ * {@code catalog_prices} y no filtra por {@code structural_minimum}.</li>
  * <li><b>309</b>: los nueve arcos {@code REQUIRES} y los componentes de los
  * tres paquetes. Los cuatro {@code RECOMMENDS} <b>no</b> se copian: el arco no
  * existe en {@link SellableCatalog} a proposito, para que el cierre no pueda
@@ -54,21 +54,21 @@ import java.util.Set;
  * golden set solo por su veredicto {@code NOT_SELF_SERVICE}—.
  *
  * <p>
- * &#9940; <b>SON TRES LOS ARTICULOS {@code is_core}, NO UNO</b>: {@code CORE},
- * {@code CAPACITY_USER} y {@code CAPACITY_BRANCH} (308:41-49). Esta clase tuvo
- * uno solo durante toda su vida, y esa <b>unica</b> divergencia con la semilla
- * —justo en el campo que este javadoc afirma copiar— es la que dejo verde el
- * golden set mientras produccion devolvia un carrito vacio a quien escribia
- * «tengo una veterinaria»: {@code SellableCatalog.core()} resolvia con un
- * {@code findFirst()} sobre un {@code Map.copyOf}, cuyo orden de iteracion
- * cambia entre JVM, y las dos capacidades <b>no son cotizables</b> —no cuelgan
- * de ningun {@code BUNDLE}, asi que {@code selfServiceEligible} es
+ * &#9940; <b>SON TRES LOS ARTICULOS {@code structural_minimum}, NO UNO</b>:
+ * {@code CORE}, {@code CAPACITY_USER} y {@code CAPACITY_BRANCH} (308:41-49).
+ * Esta clase tuvo uno solo durante toda su vida, y esa <b>unica</b> divergencia
+ * con la semilla —justo en el campo que este javadoc afirma copiar— es la que
+ * dejo verde el golden set mientras produccion devolvia un carrito vacio a
+ * quien escribia «tengo una veterinaria»: {@code SellableCatalog.core()}
+ * resolvia con un {@code findFirst()} sobre un {@code Map.copyOf}, cuyo orden
+ * de iteracion cambia entre JVM, y las dos capacidades <b>no son cotizables</b>
+ * —no cuelgan de ningun {@code BUNDLE}, asi que {@code selfServiceEligible} es
  * {@code false}—. Con un unico core aqui, ese sorteo no existia y el defecto
  * era invisible.
  *
  * <p>
- * <b>No las desmarques para «simplificar»</b>: {@code is_core} tiene dos
- * lecturas legitimas en el mismo bit, y la de
+ * <b>No las desmarques para «simplificar»</b>: {@code structural_minimum} tiene
+ * dos lecturas legitimas en el mismo bit, y la de
  * {@code PlatformCatalogTemplateJpaRepository.findInitialCapacityTemplates} es
  * un <b>predicado de conjunto</b> del que depende que el alta de una empresa no
  * devuelva {@code PLATFORM_CATALOG_NOT_CONFIGURED}. Lo ata
@@ -187,12 +187,12 @@ public final class CatalogoComercial2026 {
     }
 
     /**
-     * &#9940; <b>{@code is_core = TRUE} y {@code selfServiceEligible = false} a la
-     * vez</b>, que es la combinacion que rompio produccion. Lo primero lo dice
-     * {@code 308:129-131}; lo segundo sale del {@code EXISTS} de
-     * {@code SQL_ITEM_TIERS}, y {@code 309} no mete esta capacidad en ninguno de
-     * los tres paquetes. Su tramo a importe cero (310:149) es lo que la trae al
-     * motor.
+     * &#9940; <b>{@code structural_minimum = TRUE} y
+     * {@code selfServiceEligible = false} a la vez</b>, que es la combinacion que
+     * rompio produccion. Lo primero lo dice {@code 308:129-131}; lo segundo sale
+     * del {@code EXISTS} de {@code SQL_ITEM_TIERS}, y {@code 309} no mete esta
+     * capacidad en ninguno de los tres paquetes. Su tramo a importe cero (310:149)
+     * es lo que la trae al motor.
      */
     public static SellableItem capacidadDeUsuario() {
         return new SellableItem("CAPACITY_USER", "Usuario incluido",

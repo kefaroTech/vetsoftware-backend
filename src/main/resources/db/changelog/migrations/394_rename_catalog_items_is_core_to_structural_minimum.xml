@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!--
+      El nombre mentia. `is_core` se lee como «es EL nucleo» y significa «pertenece al minimo
+      estructural», que es un CONJUNTO: la 308 marca TRES articulos -CORE, CAPACITY_USER y
+      CAPACITY_BRANCH- y findInitialCapacityTemplates la usa como predicado de conjunto. Confundir
+      «el articulo CORE» con «el conjunto del nucleo» es exactamente lo que hacia nacer empresas sin
+      una sola capacidad (#490). El vocabulario nuevo no se inventa aqui: «minimo estructural» ya
+      esta en la 308, en PlatformCatalogTemplateJpaRepository, en dos @Schema publicas y en la clase
+      de dominio StructuralCapacityMinimum. Y sin prefijo `is_`, que el esquema no usa (23 a 5).
+
+      NO se toca el campo Java, que ya se llama `core`, asi que el contrato de la API no se mueve:
+      lo que publica es `core`, no `is_core`. Solo cambia el @Column(name = ...).
+
+      LA COLUMNA SE REDECLARA ENTERA, Y NO ES REDUNDANTE. Liquibase traduce <renameColumn> a
+      `ALTER TABLE ... CHANGE <vieja> <nueva> <columnDataType>` y MySQL, en un CHANGE, se queda
+      SOLO con lo que la sentencia vuelve a nombrar: lo que no se repita -el NOT NULL y el
+      DEFAULT 0 que declaro la 229- se pierde en silencio, sin error y sin que ddl-auto: validate
+      lo note, porque Hibernate valida el tipo y no la nulabilidad. Por eso el columnDataType lleva
+      la definicion completa y no solo `TINYINT`.
+
+      TINYINT pelado, nunca TINYINT(1): con el display width el Connector/J reporta la columna como
+      Types#BIT y revienta el arranque con ddl-auto: validate (ver CLAUDE.md). Es el mismo tipo que
+      la 229 materializo desde type="BOOLEAN".
+
+      Se despliega con dev apagado, no con expand/contract. Con la reversion automatica de ECS, una
+      tarea nueva que no arrancara devolveria el servicio a la imagen VIEJA con la columna ya
+      renombrada, y esa imagen no arranca contra ddl-auto: validate: caida total provocada por el
+      propio mecanismo de seguridad. A cero tareas ese modo de fallo no existe.
+    -->
+    <changeSet id="394_01_rename_catalog_items_is_core_to_structural_minimum" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="catalog_items" columnName="is_core"/>
+        </preConditions>
+        <renameColumn tableName="catalog_items"
+                      oldColumnName="is_core"
+                      newColumnName="structural_minimum"
+                      columnDataType="TINYINT NOT NULL DEFAULT 0"/>
+        <rollback>
+            <renameColumn tableName="catalog_items"
+                          oldColumnName="structural_minimum"
+                          newColumnName="is_core"
+                          columnDataType="TINYINT NOT NULL DEFAULT 0"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

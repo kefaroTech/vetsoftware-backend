@@ -56,15 +56,36 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
      * politica de descuento por volumen y no se publica.
      *
      * <p>
-     * <b>La ultima columna es el gate, proyectado.</b> Ese {@code EXISTS} es
-     * <em>literalmente</em> la rama del componente de
-     * {@code JpaPublishedCatalogItemQueryPort.SQL_PUBLISHED_ID_BY_CODE}: el
-     * articulo cuelga de algun paquete {@code ACTIVE} publicado. Junto con «tiene
-     * importe en el ciclo pedido» —que el consumidor lee de los dos importes— es la
-     * condicion exacta que la autocontratacion va a evaluar. Se publica en vez de
-     * filtrar por ella para que un {@code ONE_TIME} pueda aparecer con su precio de
-     * lista sin ser ofrecido como linea de autoservicio, que es lo que el gate
-     * rechazaria.
+     * <b>La ultima columna es el gate, proyectado.</b> Ese {@code CASE} replica el
+     * conjunto de aceptacion de
+     * {@code JpaPublishedCatalogItemQueryPort.SQL_PUBLISHED_ID_BY_CODE}, que es el
+     * paso vinculante: o el articulo es un {@code BUNDLE}, o es un {@code MODULE} o
+     * una {@code CAPACITY} que cuelga de algun paquete {@code ACTIVE} publicado.
+     * Junto con "tiene importe en el ciclo pedido", que el consumidor lee de los
+     * dos importes, es la condicion exacta que la autocontratacion va a evaluar.
+     *
+     * <p>
+     * <b>El {@code item_type IN ('MODULE', 'CAPACITY')} es lo que sostiene la
+     * promesa del contrato publico.</b> El {@code WHERE} exterior deja pasar
+     * {@code ONE_TIME}, que es justo la clase que el paso vinculante excluye, y la
+     * {@code @Schema} de esta columna promete por escrito que un cargo unico sale
+     * como no contratable porque se negocia. Sin este predicado, esa promesa la
+     * sostenia la semilla -ningun {@code ONE_TIME} es hoy componente de un paquete-
+     * y no el SQL: el dia que alguien metiera uno dentro de un pack, la portada lo
+     * anunciaria como autocontratable y el prospecto se estrellaria en el paso 6,
+     * ya registrado y con el correo verificado.
+     *
+     * <p>
+     * <b>La rama del {@code BUNDLE} no se puede disparar hoy</b> -el {@code WHERE}
+     * exterior no admite ese tipo, los paquetes salen por {@code SQL_PACKS}- y se
+     * escribe igualmente para que las tres copias del gate sean el mismo texto. Si
+     * manana ese {@code WHERE} se ampliara, su ausencia marcaria todo paquete como
+     * no contratable, en silencio y sin que nada fallara.
+     *
+     * <p>
+     * Se proyecta en vez de filtrar por ella para que un {@code ONE_TIME} pueda
+     * aparecer con su precio de lista sin ser ofrecido como linea de autoservicio,
+     * que es lo que el gate rechazaria.
      *
      * <p>
      * <b>El {@code CASE} sobre {@code trial_eligibility}</b> es lo que impide
@@ -83,7 +104,7 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
                    ci.name,
                    ci.short_description,
                    ci.item_type,
-                   ci.is_core,
+                   ci.structural_minimum,
                    ci.capacity_unit,
                    CASE WHEN ci.trial_eligibility = 'ELIGIBLE'
                         THEN ci.default_trial_days END,
@@ -94,14 +115,16 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
                    COALESCE(pm.setup_amount, pa.setup_amount),
                    COALESCE(pm.tax_rate, pa.tax_rate),
                    COALESCE(pm.tax_treatment, pa.tax_treatment),
-                   CASE WHEN EXISTS (SELECT 1
-                                       FROM bundle_components bc
-                                       JOIN catalog_items b ON b.id = bc.bundle_item_id
-                                      WHERE bc.component_item_id = ci.id
-                                        AND bc.enabled = TRUE
-                                        AND b.enabled = TRUE
-                                        AND b.item_type = 'BUNDLE'
-                                        AND b.status = 'ACTIVE')
+                   CASE WHEN ci.item_type = 'BUNDLE'
+                             OR (ci.item_type IN ('MODULE', 'CAPACITY')
+                                 AND EXISTS (SELECT 1
+                                               FROM bundle_components bc
+                                               JOIN catalog_items b ON b.id = bc.bundle_item_id
+                                              WHERE bc.component_item_id = ci.id
+                                                AND bc.enabled = TRUE
+                                                AND b.enabled = TRUE
+                                                AND b.item_type = 'BUNDLE'
+                                                AND b.status = 'ACTIVE'))
                         THEN 1 ELSE 0 END
               FROM catalog_items ci
               LEFT JOIN catalog_prices pm

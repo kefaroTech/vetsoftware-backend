@@ -285,18 +285,21 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
      * mas tarde disfrazado de fila ausente.
      */
     private void capacidadesDelNucleo() {
-        entityManager.createNativeQuery("""
-                INSERT INTO catalog_items (id, code, name, item_type, capacity_unit, is_core,
-                                           min_quantity, max_quantity, sort_order, status,
-                                           trial_eligibility, default_trial_days, trial_outcome,
-                                           service_nature, created_date, enabled, version)
-                VALUES (:sedeId, 'CAP_BRANCH', 'Sede incluida', 'CAPACITY', 'BRANCH', true,
-                        1, NULL, 5, 'ACTIVE', 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
-                        NOW(), true, 0),
-                       (:usuarioId, 'CAP_USER', 'Usuario incluido', 'CAPACITY', 'USER', true,
-                        1, NULL, 6, 'ACTIVE', 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
-                        NOW(), true, 0)
-                """).setParameter("sedeId", CAPACIDAD_SEDE_ID)
+        entityManager
+                .createNativeQuery(
+                        """
+                                INSERT INTO catalog_items (id, code, name, item_type, capacity_unit, structural_minimum,
+                                                           min_quantity, max_quantity, sort_order, status,
+                                                           trial_eligibility, default_trial_days, trial_outcome,
+                                                           service_nature, created_date, enabled, version)
+                                VALUES (:sedeId, 'CAP_BRANCH', 'Sede incluida', 'CAPACITY', 'BRANCH', true,
+                                        1, NULL, 5, 'ACTIVE', 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
+                                        NOW(), true, 0),
+                                       (:usuarioId, 'CAP_USER', 'Usuario incluido', 'CAPACITY', 'USER', true,
+                                        1, NULL, 6, 'ACTIVE', 'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
+                                        NOW(), true, 0)
+                                """)
+                .setParameter("sedeId", CAPACIDAD_SEDE_ID)
                 .setParameter("usuarioId", CAPACIDAD_USUARIO_ID).executeUpdate();
         entityManager.createNativeQuery("""
                 INSERT INTO catalog_prices (id, price_list_id, catalog_item_id, billing_cycle,
@@ -371,12 +374,14 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
         @Test
         @DisplayName("una capacidad que no es del núcleo no entra en el mínimo")
         void laCapacidadQueNoEsDelNucleoNoEntra() {
-            // is_core es la pertenencia al minimo estructural. Una capacidad vendible
+            // structural_minimum es la pertenencia al minimo estructural. Una capacidad
+            // vendible
             // aparte -mas terminales, mas almacenamiento- no se regala en el alta.
             configuracionDePlataforma();
             capacidadesDelNucleo();
             entityManager
-                    .createNativeQuery("UPDATE catalog_items SET is_core = false WHERE id = :id")
+                    .createNativeQuery(
+                            "UPDATE catalog_items SET structural_minimum = false WHERE id = :id")
                     .setParameter("id", CAPACIDAD_USUARIO_ID).executeUpdate();
             entityManager.flush();
             entityManager.clear();

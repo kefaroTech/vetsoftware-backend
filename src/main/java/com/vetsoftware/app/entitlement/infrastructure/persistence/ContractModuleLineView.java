@@ -50,7 +50,9 @@ public interface ContractModuleLineView {
 
     LocalDate getEffectiveTo();
 
-    /** {@code catalog_items.is_core} en crudo: 0 o 1, nunca un booleano. */
+    /**
+     * {@code catalog_items.structural_minimum} en crudo: 0 o 1, nunca un booleano.
+     */
     Byte getCore();
 
     /**

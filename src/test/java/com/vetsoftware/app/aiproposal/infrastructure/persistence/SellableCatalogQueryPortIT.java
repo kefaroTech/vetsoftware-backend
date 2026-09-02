@@ -49,7 +49,7 @@ import org.springframework.context.annotation.Import;
  * porque publican un precio "desde"— haga desaparecer el articulo del catalogo
  * y ponga el test en rojo. Comprobar solo el importe no serviria: para una
  * unidad, el tramo de entrada y la escalera completa dan lo mismo.</li>
- * <li><b>Que {@code is_core} llegue como {@code Byte} y no como
+ * <li><b>Que {@code structural_minimum} llegue como {@code Byte} y no como
  * {@code Boolean}</b>. MySQL entrega {@code TINYINT} asi y nadie lo convierte
  * solo: es la clase de defecto de #472, que tumbo el alta de empresa
  * entera.</li>
@@ -232,6 +232,48 @@ class SellableCatalogQueryPortIT extends AbstractDataJpaTest {
         void el_paquete_se_vende() {
             assertThat(articuloDePrueba(COD_PACK).selfServiceEligible()).isTrue();
         }
+
+        /**
+         * &#9940; <b>La divergencia que este {@code CASE} tenia con el paso
+         * vinculante.</b> {@code SQL_ITEM_TIERS} no filtra por {@code item_type} en su
+         * {@code WHERE} —a proposito: un articulo inactivo tiene que llegar al motor
+         * para dar {@code NOT_SELLABLE} y no {@code UNKNOWN_CODE}—, asi que un
+         * {@code ONE_TIME} entra al catalogo igual que cualquier otro. Con el
+         * {@code EXISTS} a secas, colgarlo de un pack lo marcaba contratable;
+         * {@code JpaCatalogQueryPorts.SQL_PUBLISHED_ID_BY_CODE}, que es quien decide de
+         * verdad, exige {@code MODULE} o {@code CAPACITY} y lo habria rechazado en el
+         * paso 6, con el prospecto ya registrado.
+         *
+         * <p>
+         * <b>{@code TESTAI_CAP} es el probe exacto.</b> Cuelga del pack, asi que su
+         * {@code EXISTS} da verdadero, y hoy sale contratable por ser {@code CAPACITY}:
+         * lo unico que cambia al mutarla es el tipo. Si el veredicto no se moviera, el
+         * predicado nuevo no estaria haciendo nada.
+         *
+         * <p>
+         * La mutacion va por SQL nativo y la revierte el rollback del test.
+         * {@code capacity_unit} se anula en la misma sentencia porque
+         * {@code chk_catalog_items_capacity_unit} (229) exige unidad si y solo si el
+         * tipo es {@code CAPACITY}: cambiar solo el tipo viola el CHECK.
+         */
+        @Test
+        @DisplayName("un cargo unico colgado de un pack NO es contratable, aunque el EXISTS de verdadero")
+        void un_one_time_colgado_del_pack_no_es_contratable() {
+            assertThat(articuloDePrueba(COD_CAP).selfServiceEligible())
+                    .as("precondicion: como CAPACITY del pack si es contratable").isTrue();
+
+            entityManager
+                    .createNativeQuery("UPDATE catalog_items SET item_type = 'ONE_TIME',"
+                            + " capacity_unit = NULL WHERE id = :id")
+                    .setParameter("id", CAP_EN_PACK).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(articuloDePrueba(COD_CAP).selfServiceEligible())
+                    .as("un ONE_TIME lo rechaza la contratacion: prometerlo aqui es cotizar"
+                            + " una linea que se cae despues del registro")
+                    .isFalse();
+        }
     }
 
     @Nested
@@ -302,28 +344,28 @@ class SellableCatalogQueryPortIT extends AbstractDataJpaTest {
         }
 
         /**
-         * &#9940; <b>La capa anticorrupcion, contra MySQL real.</b> {@code is_core} ya
-         * no llega al dominio: lo traduce {@code resolverNucleo} en el adaptador. La
-         * conversion del {@code TINYINT} —que el driver entrega como {@code Byte}—
-         * sigue comprobandose aqui, solo que por su efecto: si se leyera mal, ningun
-         * articulo saldria marcado, el catalogo no tendria nucleo y {@code loadCatalog}
-         * devolveria vacio, asi que {@link #catalogo()} reventaria en el
-         * {@code orElseThrow}.
+         * &#9940; <b>La capa anticorrupcion, contra MySQL real.</b>
+         * {@code structural_minimum} ya no llega al dominio: lo traduce
+         * {@code resolverNucleo} en el adaptador. La conversion del {@code TINYINT}
+         * —que el driver entrega como {@code Byte}— sigue comprobandose aqui, solo que
+         * por su efecto: si se leyera mal, ningun articulo saldria marcado, el catalogo
+         * no tendria nucleo y {@code loadCatalog} devolveria vacio, asi que
+         * {@link #catalogo()} reventaria en el {@code orElseThrow}.
          */
         @Test
-        @DisplayName("is_core se lee bien -TINYINT como Byte- y resuelve el nucleo del catalogo")
+        @DisplayName("structural_minimum se lee bien -TINYINT como Byte- y resuelve el nucleo del catalogo")
         void el_tinyint_se_convierte() {
             assertThat(catalogo().nucleo().code()).isEqualTo(COD_EN_PACK);
         }
 
         /**
          * &#9940; <b>EL DEFECTO DE PRODUCCION, REPRODUCIDO CONTRA LA BASE DE
-         * VERDAD.</b> En el catalogo real son TRES los articulos con {@code is_core}
-         * —{@code CORE}, {@code CAPACITY_USER} y {@code CAPACITY_BRANCH}— porque el
-         * alta de plataforma lee ese bit como predicado de conjunto. Las dos
-         * capacidades no cuelgan de ningun {@code BUNDLE}, asi que no son cotizables;
-         * el codigo viejo las metia en el sorteo y, cuando salia una, el prospecto
-         * recibia un 200 con el carrito vacio.
+         * VERDAD.</b> En el catalogo real son TRES los articulos con
+         * {@code structural_minimum} —{@code CORE}, {@code CAPACITY_USER} y
+         * {@code CAPACITY_BRANCH}— porque el alta de plataforma lee ese bit como
+         * predicado de conjunto. Las dos capacidades no cuelgan de ningun
+         * {@code BUNDLE}, asi que no son cotizables; el codigo viejo las metia en el
+         * sorteo y, cuando salia una, el prospecto recibia un 200 con el carrito vacio.
          *
          * <p>
          * <b>{@code TESTAI_CAP} es el probe perfecto y no por casualidad</b>: cuelga
@@ -336,9 +378,11 @@ class SellableCatalogQueryPortIT extends AbstractDataJpaTest {
          * La mutacion va por SQL nativo y la revierte el rollback del test.
          */
         @Test
-        @DisplayName("una capacidad marcada is_core no puede convertirse en el nucleo")
-        void una_capacidad_is_core_no_es_el_nucleo() {
-            entityManager.createNativeQuery("UPDATE catalog_items SET is_core = 1 WHERE id = :id")
+        @DisplayName("una capacidad marcada structural_minimum no puede convertirse en el nucleo")
+        void una_capacidad_structural_minimum_no_es_el_nucleo() {
+            entityManager
+                    .createNativeQuery(
+                            "UPDATE catalog_items SET structural_minimum = 1 WHERE id = :id")
                     .setParameter("id", CAP_EN_PACK).executeUpdate();
             entityManager.flush();
             entityManager.clear();
@@ -347,17 +391,18 @@ class SellableCatalogQueryPortIT extends AbstractDataJpaTest {
         }
 
         /**
-         * Y la otra mitad: si el unico {@code is_core} que queda es esa capacidad, el
-         * catalogo <b>no se puede cotizar</b> y el adaptador lo dice devolviendo vacio.
-         * Eso enruta la peticion a {@code ai_outcome=empty_catalog}, que tiene alerta
-         * critica, en vez de servir un carrito vacio en silencio.
+         * Y la otra mitad: si el unico {@code structural_minimum} que queda es esa
+         * capacidad, el catalogo <b>no se puede cotizar</b> y el adaptador lo dice
+         * devolviendo vacio. Eso enruta la peticion a {@code ai_outcome=empty_catalog},
+         * que tiene alerta critica, en vez de servir un carrito vacio en silencio.
          */
         @Test
-        @DisplayName("sin ningun modulo is_core cotizable el catalogo no se carga")
+        @DisplayName("sin ningun modulo structural_minimum cotizable el catalogo no se carga")
         void sin_modulo_nucleo_no_hay_catalogo() {
             entityManager
-                    .createNativeQuery("UPDATE catalog_items SET is_core = CASE WHEN id = :cap"
-                            + " THEN 1 ELSE 0 END WHERE code LIKE 'TESTAI\\_%'")
+                    .createNativeQuery(
+                            "UPDATE catalog_items SET structural_minimum = CASE WHEN id = :cap"
+                                    + " THEN 1 ELSE 0 END WHERE code LIKE 'TESTAI\\_%'")
                     .setParameter("cap", CAP_EN_PACK).executeUpdate();
             entityManager.flush();
             entityManager.clear();
@@ -453,16 +498,19 @@ class SellableCatalogQueryPortIT extends AbstractDataJpaTest {
     private void articulo(Long id, String code, String name, String itemType, String capacityUnit,
             boolean core, int sortOrder, String status, String trialEligibility,
             Integer trialDays) {
-        entityManager.createNativeQuery("""
-                INSERT INTO catalog_items (id, code, name, short_description, item_type,
-                                           capacity_unit, is_core, min_quantity, max_quantity,
-                                           sort_order, status, trial_eligibility,
-                                           default_trial_days, trial_outcome, service_nature,
-                                           created_date, enabled, version)
-                VALUES (:id, :code, :name, :descripcion, :itemType, :capacityUnit, :core, 1,
-                        NULL, :sortOrder, :status, :elegibilidad, :dias, :desenlace,
-                        'SOFTWARE_LICENSING', '2026-01-01 00:00:00', TRUE, 0)
-                """).setParameter("id", id).setParameter("code", code).setParameter("name", name)
+        entityManager
+                .createNativeQuery(
+                        """
+                                INSERT INTO catalog_items (id, code, name, short_description, item_type,
+                                                           capacity_unit, structural_minimum, min_quantity, max_quantity,
+                                                           sort_order, status, trial_eligibility,
+                                                           default_trial_days, trial_outcome, service_nature,
+                                                           created_date, enabled, version)
+                                VALUES (:id, :code, :name, :descripcion, :itemType, :capacityUnit, :core, 1,
+                                        NULL, :sortOrder, :status, :elegibilidad, :dias, :desenlace,
+                                        'SOFTWARE_LICENSING', '2026-01-01 00:00:00', TRUE, 0)
+                                """)
+                .setParameter("id", id).setParameter("code", code).setParameter("name", name)
                 .setParameter("descripcion", "Descripcion de " + name)
                 .setParameter("itemType", itemType).setParameter("capacityUnit", capacityUnit)
                 .setParameter("core", core).setParameter("sortOrder", sortOrder)

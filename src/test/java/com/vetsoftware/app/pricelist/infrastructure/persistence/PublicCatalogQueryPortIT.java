@@ -36,10 +36,10 @@ import org.springframework.context.annotation.Import;
  * fija son las cuatro cosas que un mock no puede comprobar:
  *
  * <ul>
- * <li><b>{@code is_core} llega como {@code Byte}, no como {@code Boolean}.</b>
- * MySQL entrega {@code TINYINT} asi y nadie lo convierte solo: es la clase de
- * defecto de #472, que tumbo el alta de empresa entera. Un mock devuelve el
- * booleano que le pidas y no ve nada.</li>
+ * <li><b>{@code structural_minimum} llega como {@code Byte}, no como
+ * {@code Boolean}.</b> MySQL entrega {@code TINYINT} asi y nadie lo convierte
+ * solo: es la clase de defecto de #472, que tumbo el alta de empresa entera. Un
+ * mock devuelve el booleano que le pidas y no ve nada.</li>
  * <li><b>El {@code EXISTS} que decide {@code selfServiceEligible}</b> tiene que
  * dar el mismo veredicto que el gate de la autocontratacion. Se siembra un
  * modulo que cuelga de un paquete publicado y otro que no cuelga de
@@ -225,8 +225,8 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
          * si comparase mal, {@code mandatory} saldria invertido.
          */
         @Test
-        @DisplayName("is_core llega como TINYINT y se convierte: el del nucleo sale obligatorio")
-        void is_core_se_convierte_desde_tinyint() {
+        @DisplayName("structural_minimum llega como TINYINT y se convierte: el del nucleo sale obligatorio")
+        void structural_minimum_se_convierte_desde_tinyint() {
             assertThat(articulosDePrueba()).filteredOn(f -> COD_CAP_NUCLEO.equals(f.code()))
                     .singleElement().satisfies(f -> assertThat(f.mandatory()).isTrue());
             assertThat(articulosDePrueba()).filteredOn(f -> COD_MOD_SUELTO.equals(f.code()))
@@ -245,6 +245,65 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
                     .singleElement().satisfies(f -> assertThat(f.selfServiceEligible()).isTrue());
             assertThat(articulosDePrueba()).filteredOn(f -> COD_MOD_SUELTO.equals(f.code()))
                     .singleElement().satisfies(f -> assertThat(f.selfServiceEligible()).isFalse());
+        }
+
+        /**
+         * &#9940; <b>El agujero que las tres copias del gate no tapaban, y el motivo de
+         * que el {@code CASE} lleve ahora {@code item_type IN ('MODULE',
+         * 'CAPACITY')}.</b>
+         *
+         * <p>
+         * El {@code WHERE} exterior de {@code SQL_ITEMS} admite {@code ONE_TIME} —y
+         * tiene que admitirlo: la portada publica el precio de lista de la implantacion
+         * y de la migracion—, mientras que el paso vinculante,
+         * {@code JpaPublishedCatalogItemQueryPort.SQL_PUBLISHED_ID_BY_CODE}, <b>no lo
+         * admite</b>: su rama del componente exige {@code MODULE} o {@code CAPACITY}.
+         * Sin este predicado bastaba con que alguien metiera un cargo unico dentro de
+         * un pack para que el {@code EXISTS} lo marcara contratable.
+         *
+         * <p>
+         * <b>La direccion del error es lo que lo hace caro.</b> Un
+         * {@code selfServiceEligible} conservador de mas pierde una venta y el
+         * prospecto se entera <em>antes</em>; uno optimista lo estrella
+         * <em>despues</em>, en el paso 6, cuando ya se registro y verifico el correo,
+         * con un texto que ni siquiera le dice que linea sobra. Y esta columna viaja al
+         * contrato publico con una {@code @Schema} que promete por escrito que los
+         * cargos unicos salen fuera «porque se negocian».
+         *
+         * <p>
+         * <b>Este estado hay que sembrarlo a proposito.</b> Ninguna semilla mete hoy un
+         * {@code ONE_TIME} dentro de un paquete —la 309 solo cuelga trece
+         * {@code MODULE} y un {@code CAPACITY}—, que es justo lo que hacia que la
+         * promesa la sostuviera el dato y no el SQL, y por lo que ninguna fila real
+         * podia delatar el defecto.
+         */
+        @Test
+        @DisplayName("un cargo unico dentro de un paquete NO es contratable por autoservicio")
+        void un_one_time_dentro_de_un_paquete_no_es_contratable() {
+            linea(2731L, PACK, ONE_TIME, 1, true);
+
+            assertThat(articulosDePrueba()).filteredOn(f -> COD_ONE_TIME.equals(f.code()))
+                    .singleElement()
+                    .satisfies(f -> assertThat(f.selfServiceEligible())
+                            .as("el paso vinculante rechaza los ONE_TIME: anunciarlo aqui como"
+                                    + " contratable estrella al prospecto DESPUES de registrarse")
+                            .isFalse());
+        }
+
+        /**
+         * La otra mitad del mismo predicado: apretar el gate no puede haber dejado
+         * fuera a nadie que la contratacion si acepta. Un {@code MODULE} y una
+         * {@code CAPACITY} que cuelgan del mismo paquete siguen saliendo contratables,
+         * que es lo que separa «alinear» de «romper».
+         */
+        @Test
+        @DisplayName("apretar el gate no saca a los MODULE ni a las CAPACITY del paquete")
+        void el_gate_apretado_no_excluye_modulos_ni_capacidades() {
+            linea(2732L, PACK, CAP_NUCLEO, 1, true);
+
+            assertThat(articulosDePrueba()).filteredOn(
+                    f -> COD_MOD_EN_PACK.equals(f.code()) || COD_CAP_NUCLEO.equals(f.code()))
+                    .hasSize(2).allSatisfy(f -> assertThat(f.selfServiceEligible()).isTrue());
         }
 
         @Test
@@ -424,16 +483,19 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
     private void articulo(Long id, String code, String name, String itemType, String capacityUnit,
             boolean core, int minQuantity, int sortOrder, String status, String trialEligibility,
             Integer trialDays, String trialOutcome) {
-        entityManager.createNativeQuery("""
-                INSERT INTO catalog_items (id, code, name, short_description, item_type,
-                                           capacity_unit, is_core, min_quantity, max_quantity,
-                                           sort_order, status, trial_eligibility,
-                                           default_trial_days, trial_outcome, service_nature,
-                                           created_date, enabled, version)
-                VALUES (:id, :code, :name, NULL, :itemType, :capacityUnit, :core, :minQuantity,
-                        NULL, :sortOrder, :status, :elegibilidad, :dias, :desenlace,
-                        'SOFTWARE_LICENSING', '2026-01-01 00:00:00', TRUE, 0)
-                """).setParameter("id", id).setParameter("code", code).setParameter("name", name)
+        entityManager
+                .createNativeQuery(
+                        """
+                                INSERT INTO catalog_items (id, code, name, short_description, item_type,
+                                                           capacity_unit, structural_minimum, min_quantity, max_quantity,
+                                                           sort_order, status, trial_eligibility,
+                                                           default_trial_days, trial_outcome, service_nature,
+                                                           created_date, enabled, version)
+                                VALUES (:id, :code, :name, NULL, :itemType, :capacityUnit, :core, :minQuantity,
+                                        NULL, :sortOrder, :status, :elegibilidad, :dias, :desenlace,
+                                        'SOFTWARE_LICENSING', '2026-01-01 00:00:00', TRUE, 0)
+                                """)
+                .setParameter("id", id).setParameter("code", code).setParameter("name", name)
                 .setParameter("itemType", itemType).setParameter("capacityUnit", capacityUnit)
                 .setParameter("core", core).setParameter("minQuantity", minQuantity)
                 .setParameter("sortOrder", sortOrder).setParameter("status", status)
@@ -442,16 +504,19 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
     }
 
     private void articuloDeBaja(Long id, String code, String name) {
-        entityManager.createNativeQuery("""
-                INSERT INTO catalog_items (id, code, name, short_description, item_type,
-                                           capacity_unit, is_core, min_quantity, max_quantity,
-                                           sort_order, status, trial_eligibility,
-                                           default_trial_days, trial_outcome, service_nature,
-                                           created_date, enabled, version)
-                VALUES (:id, :code, :name, NULL, 'MODULE', NULL, FALSE, 1, NULL, 20, 'ACTIVE',
-                        'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
-                        '2026-01-01 00:00:00', FALSE, 0)
-                """).setParameter("id", id).setParameter("code", code).setParameter("name", name)
+        entityManager
+                .createNativeQuery(
+                        """
+                                INSERT INTO catalog_items (id, code, name, short_description, item_type,
+                                                           capacity_unit, structural_minimum, min_quantity, max_quantity,
+                                                           sort_order, status, trial_eligibility,
+                                                           default_trial_days, trial_outcome, service_nature,
+                                                           created_date, enabled, version)
+                                VALUES (:id, :code, :name, NULL, 'MODULE', NULL, FALSE, 1, NULL, 20, 'ACTIVE',
+                                        'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
+                                        '2026-01-01 00:00:00', FALSE, 0)
+                                """)
+                .setParameter("id", id).setParameter("code", code).setParameter("name", name)
                 .executeUpdate();
     }
 

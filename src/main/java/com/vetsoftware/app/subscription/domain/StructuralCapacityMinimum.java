@@ -50,11 +50,12 @@ import java.util.Set;
  * <strong>El suelo se contrata, no se regala.</strong> Lo que esta clase
  * declara es que estas unidades han de venir del catalogo —de un
  * {@code catalog_items} con {@code item_type = 'CAPACITY'} e
- * {@code is_core = TRUE}—, no que el codigo las invente. Un techo que no sale
- * de ninguna linea de contrato seria el unico numero del modelo sin origen
- * auditable, y el modelo ya tiene nombre y mecanismo para las concesiones que
- * no derivan de un contrato ({@code EntitlementSource.MANUAL_GRANT})
- * precisamente para que dejen constancia.
+ * {@code structural_minimum = TRUE}—, no que el codigo las invente. Un techo
+ * que no sale de ninguna linea de contrato seria el unico numero del modelo sin
+ * origen auditable, y el modelo ya tiene nombre y mecanismo para las
+ * concesiones que no derivan de un contrato
+ * ({@code EntitlementSource.MANUAL_GRANT}) precisamente para que dejen
+ * constancia.
  */
 public final class StructuralCapacityMinimum {
 

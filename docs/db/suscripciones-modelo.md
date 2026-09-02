@@ -670,7 +670,7 @@ porque el aplazamiento tiene una consecuencia funcional inmediata.
 
 Con las 26 tablas creadas y **vacías**:
 
-- No existe **ningún** `catalog_items`, y por tanto ninguno con `is_core = TRUE`.
+- No existe **ningún** `catalog_items`, y por tanto ninguno con `structural_minimum = TRUE`.
 - No existe **ninguna** `price_lists` en estado `PUBLISHED`, y por tanto ningún `catalog_prices`.
 - `platform_billing_config` no tiene fila, o la tiene con `default_price_list_id` nulo.
 
@@ -691,7 +691,7 @@ completarse. Es el suelo, no el catálogo comercial:
 
 | Orden | Tabla | Filas mínimas | Contenido obligatorio |
 |---|---|---|---|
-| 1 | `catalog_items` | **1** | `code = 'CORE'`, `item_type = 'MODULE'`, `is_core = TRUE`, `status = 'ACTIVE'`, `min_quantity = 1`, `max_quantity = 1` |
+| 1 | `catalog_items` | **1** | `code = 'CORE'`, `item_type = 'MODULE'`, `structural_minimum = TRUE`, `status = 'ACTIVE'`, `min_quantity = 1`, `max_quantity = 1` |
 | 2 | `catalog_item_sub_modules` | **≥ 1** | Al menos una fila que ate `CORE` a un `sub_modules` real. Con el árbol de hoy, los cuatro códigos disponibles son `BRANCH`, `INVENTORY`, `CASH`, `PURCHASES` — y ninguno es "núcleo" en sentido comercial. Esto es exactamente el problema, ver §6.4 |
 | 3 | `price_lists` | **1** | `code`, `currency = 'COP'`, `valid_from`, `status = 'PUBLISHED'`, `published_at`, `published_by_system_user_id` |
 | 4 | `catalog_prices` | **1 por ciclo** | `(price_list_id, catalog_item_id = CORE, billing_cycle = 'MONTHLY', tier_min = 1)` con `unit_amount`, `tax_rate`, `tax_treatment`. Idealmente también la fila `ANNUAL` |
@@ -723,7 +723,7 @@ Las tres capas, de más barata a más cara, y las tres se recomiendan:
    <preConditions onFail="HALT" onError="HALT">
        <sqlCheck expectedResult="1">
            SELECT COUNT(*) FROM catalog_items
-            WHERE is_core = TRUE AND status = 'ACTIVE' AND enabled = TRUE
+            WHERE structural_minimum = TRUE AND status = 'ACTIVE' AND enabled = TRUE
        </sqlCheck>
    </preConditions>
    ```

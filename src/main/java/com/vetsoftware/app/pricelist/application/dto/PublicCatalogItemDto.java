@@ -9,16 +9,17 @@ import java.math.BigDecimal;
  *
  * <p>
  * <strong>{@code mandatory} sale del modelo, no de una opinion.</strong> Es
- * {@code catalog_items.is_core}, y esa columna significa «forma parte del
- * minimo estructural». Que sea cierto para {@code CORE} no es una convencion
- * comercial:
+ * {@code catalog_items.structural_minimum}, y esa columna significa «forma
+ * parte del minimo estructural». Que sea cierto para {@code CORE} no es una
+ * convencion comercial:
  * {@code PlatformCatalogTemplateJpaRepository.findInitialContractTemplate}
  * monta el contrato inicial de toda empresa con un {@code JOIN}
- * <em>interno</em> sobre {@code ci.code = 'CORE' AND ci.is_core = TRUE}, y si
- * esa fila falta el alta entera falla con
- * {@code PlatformCatalogNotConfiguredException}. Ademas los tres paquetes
- * sembrados lo llevan dentro. Dicho de otro modo: no existe empresa sin nucleo,
- * asi que el front no debe pintarlo como una casilla que se pueda desmarcar.
+ * <em>interno</em> sobre
+ * {@code ci.code = 'CORE' AND ci.structural_minimum = TRUE}, y si esa fila
+ * falta el alta entera falla con {@code PlatformCatalogNotConfiguredException}.
+ * Ademas los tres paquetes sembrados lo llevan dentro. Dicho de otro modo: no
+ * existe empresa sin nucleo, asi que el front no debe pintarlo como una casilla
+ * que se pueda desmarcar.
  *
  * <p>
  * <strong>Y por eso mismo el nucleo no se vuelve a comprar.</strong> Lo concede

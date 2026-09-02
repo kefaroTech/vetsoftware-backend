@@ -1164,12 +1164,12 @@ class HexagonalArchitectureTest {
      * <b>Por qué hacía falta una regla más.</b> La de #196 mira el <i>texto del
      * SQL</i> y prohíbe el literal ({@code THEN true}); esta mira el <i>tipo de
      * destino</i>. {@code ContractItemJpaRepository.findModuleLines} no tenía ni un
-     * literal —proyecta {@code sm.read_only_capable} y {@code ci.is_core}, dos
-     * columnas reales con el alias correcto—, pasaba la regla vieja limpiamente y
-     * aun así devolvía {@code 500} en {@code POST /register} y dejaba el producto
-     * sin poder dar de alta ni una empresa. Mismo defecto de fondo —una columna
-     * booleana que nadie sabe convertir al extraer el resultado— escrito de la otra
-     * forma posible.
+     * literal —proyecta {@code sm.read_only_capable} y
+     * {@code ci.structural_minimum}, dos columnas reales con el alias correcto—,
+     * pasaba la regla vieja limpiamente y aun así devolvía {@code 500} en
+     * {@code POST /register} y dejaba el producto sin poder dar de alta ni una
+     * empresa. Mismo defecto de fondo —una columna booleana que nadie sabe
+     * convertir al extraer el resultado— escrito de la otra forma posible.
      *
      * <p>
      * <b>Nace dura y en cero</b>, igual que #196: la única violación era

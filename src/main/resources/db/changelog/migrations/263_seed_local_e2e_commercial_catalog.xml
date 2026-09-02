@@ -41,6 +41,17 @@
          (D-05)-. NO SON LOS VALORES COMERCIALES REALES: el catálogo de verdad lo decide negocio y
          sigue pendiente (D-96). Sirven para que el laboratorio ejercite las dos ramas. -->
     <changeSet id="263_seed_local_e2e_catalog_items" author="orlando" context="local,e2e">
+        <!-- La 394 renombro `is_core` a `structural_minimum`. Este changeSet va marcado
+             context="local,e2e" y application.yml cierra a `production`, asi que queda PENDIENTE en
+             dev, en produccion y en el perfil de test: se ejecutaria el dia que alguien abriera ese
+             contexto, y para entonces la 394 ya habria renombrado la columna. Sin esta precondicion,
+             ese arranque muere con `Unknown column 'is_core' in 'field list'`. Cuando la columna
+             vieja ya no existe se marca como ejecutado y siembra la 395, que hace lo mismo con el
+             nombre nuevo. En una base nueva con el contexto abierto la columna todavia se llama
+             `is_core` -la 394 va despues- y este changeSet corre con normalidad. -->
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="catalog_items" columnName="is_core"/>
+        </preConditions>
         <sql><![CDATA[
             INSERT INTO catalog_items
                     (code, name, short_description, item_type, is_core, min_quantity,

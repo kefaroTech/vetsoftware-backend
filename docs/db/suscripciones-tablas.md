@@ -116,7 +116,7 @@ catálogo global de la plataforma.
 | `long_description` | `TEXT` | `NULL` | — | Detalle para la página de precios y la cotización impresa |
 | `item_type` | `VARCHAR(20)` | `NOT NULL` | — | `MODULE` · `CAPACITY` · `ONE_TIME` · `BUNDLE` |
 | `capacity_unit` | `VARCHAR(30)` | `NULL` | — | Solo para `CAPACITY`: `USER` · `BRANCH` · `TERMINAL` · `STORAGE_GB` |
-| `is_core` | `BOOLEAN` | `NOT NULL` | `FALSE` | Núcleo obligatorio: el configurador no deja quitarlo y la baja lo rechaza |
+| `structural_minimum` | `BOOLEAN` | `NOT NULL` | `FALSE` | Pertenece al mínimo estructural (un CONJUNTO, no un artículo): el configurador no deja quitarlo y la baja lo rechaza. **Se llamó `is_core` hasta la migración 394**; el campo Java sigue siendo `core` y el contrato publica `core`. |
 | `min_quantity` | `INT` | `NOT NULL` | `1` | Tope inferior de venta |
 | `max_quantity` | `INT` | `NULL` | — | Tope superior. `NULL` = sin tope |
 | `sort_order` | `INT` | `NOT NULL` | `0` | Orden de presentación, comercial |

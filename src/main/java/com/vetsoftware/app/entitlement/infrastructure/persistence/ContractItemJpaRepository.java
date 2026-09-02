@@ -47,7 +47,7 @@ public interface ContractItemJpaRepository extends Repository<SubscriptionItemJp
      * {@code sub_modules}</strong>: {@code read_only_capable} y
      * {@code degradation_immune} son propiedades del submodulo y no de la venta, y
      * congelarlas seria lo contrario de lo que D-76 decide. Igual que
-     * {@code is_core} del articulo.
+     * {@code structural_minimum} del articulo.
      *
      * <p>
      * {@code enabled = TRUE} va explicito en las cuatro tablas: una consulta nativa
@@ -68,7 +68,7 @@ public interface ContractItemJpaRepository extends Repository<SubscriptionItemJp
             SELECT i.id AS subscriptionItemId, sm.id AS subModuleId, sm.code AS subModuleCode,
                    sm.name AS subModuleName, sm.read_only_capable AS readOnlyCapable,
                    i.effective_from AS effectiveFrom, i.effective_to AS effectiveTo,
-                   ci.is_core AS core, i.charge_mode AS chargeMode,
+                   ci.structural_minimum AS core, i.charge_mode AS chargeMode,
                    i.trial_end_date AS trialEndDate, g.policy_trial_outcome AS trialOutcome,
                    sm.degradation_immune AS degradationImmune
             FROM subscription_items i

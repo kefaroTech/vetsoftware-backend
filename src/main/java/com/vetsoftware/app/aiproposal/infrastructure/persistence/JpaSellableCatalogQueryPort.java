@@ -97,32 +97,55 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
      * no esta consulta.
      *
      * <p>
-     * <strong>El penultimo {@code CASE} es el gate del autoservicio</strong>, y es
-     * <em>literalmente</em> la rama del componente de
-     * {@code JpaCatalogQueryPorts.SQL_PUBLISHED_ID_BY_CODE}: o el articulo es un
-     * {@code BUNDLE}, o cuelga de algun {@code BUNDLE} {@code ACTIVE} publicado. Si
-     * divergiera de aquel, la propuesta cotizaria lineas que la contratacion
-     * rechaza despues —en el paso 6, cuando el prospecto ya se registro y verifico
-     * el correo— con un texto deliberadamente indistinguible que no le dice
-     * siquiera que linea sobra. Hoy los cuatro {@code EXTRA_*} dan {@code false}
-     * por este {@code EXISTS}: la semilla 309 no mete ninguno en los tres packs.
+     * <strong>El penultimo {@code CASE} es el gate del autoservicio</strong>, y su
+     * conjunto de aceptacion tiene que ser un <em>subconjunto</em> del de
+     * {@code JpaCatalogQueryPorts.SQL_PUBLISHED_ID_BY_CODE}, que es el paso
+     * vinculante: o el articulo es un {@code BUNDLE}, o es un {@code MODULE} o una
+     * {@code CAPACITY} que cuelga de algun {@code BUNDLE} {@code ACTIVE} publicado.
+     *
+     * <p>
+     * <strong>La restriccion por {@code item_type} no es adorno.</strong> Sin ella,
+     * un {@code ONE_TIME} que fuera componente de un paquete saldria marcado como
+     * contratable y la contratacion lo rechazaria despues, en el paso 6, cuando el
+     * prospecto ya se registro y verifico el correo, con un texto deliberadamente
+     * indistinguible que no le dice siquiera que linea sobra. La direccion del
+     * error es lo que importa: quedarse corto pierde una venta y el prospecto se
+     * entera antes; pasarse lo estrella despues. Por eso esta consulta se aprieta
+     * contra la de {@code quote} y nunca al reves.
+     *
+     * <p>
+     * <strong>Lo que este {@code CASE} NO replica es el
+     * {@code p.tier_min = 1}</strong> que aquel exige en su {@code JOIN}, y no es
+     * un olvido: {@code SQL_ITEM_TIERS} trae la escalera entera a proposito, asi
+     * que aqui no hay un tramo unico al que atarse. La cobertura la da el dominio y
+     * es mas fuerte que ese predicado. {@code PriceLadder} exige que el primer
+     * tramo arranque en uno, y ademas que la escalera sea contigua y cierre;
+     * {@code construir(...)} descarta del catalogo el articulo cuya escalera no
+     * cumple. Un articulo sin tramo de entrada nunca llega a tener
+     * {@code selfServiceEligible}: no llega al catalogo. El subconjunto se conserva
+     * por esa via, no por esta columna.
+     *
+     * <p>
+     * Hoy los cuatro {@code EXTRA_*} dan {@code false} por este {@code EXISTS}: la
+     * semilla 309 no mete ninguno en los tres packs.
      */
     private static final String SQL_ITEM_TIERS = """
             SELECT ci.code,
                    ci.name,
                    ci.short_description,
                    ci.item_type,
-                   ci.is_core,
+                   ci.structural_minimum,
                    CASE WHEN ci.status = 'ACTIVE' THEN 1 ELSE 0 END,
                    CASE WHEN ci.item_type = 'BUNDLE'
-                             OR EXISTS (SELECT 1
-                                          FROM bundle_components bc
-                                          JOIN catalog_items b ON b.id = bc.bundle_item_id
-                                         WHERE bc.component_item_id = ci.id
-                                           AND bc.enabled = TRUE
-                                           AND b.enabled = TRUE
-                                           AND b.item_type = 'BUNDLE'
-                                           AND b.status = 'ACTIVE')
+                             OR (ci.item_type IN ('MODULE', 'CAPACITY')
+                                 AND EXISTS (SELECT 1
+                                               FROM bundle_components bc
+                                               JOIN catalog_items b ON b.id = bc.bundle_item_id
+                                              WHERE bc.component_item_id = ci.id
+                                                AND bc.enabled = TRUE
+                                                AND b.enabled = TRUE
+                                                AND b.item_type = 'BUNDLE'
+                                                AND b.status = 'ACTIVE'))
                         THEN 1 ELSE 0 END,
                    CASE WHEN ci.trial_eligibility = 'ELIGIBLE'
                         THEN ci.default_trial_days END,
@@ -434,11 +457,11 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
 
     /**
      * &#9940; <strong>LA CAPA ANTICORRUPCION, Y LA UNICA LINEA DEL BACKEND DONDE
-     * {@code is_core} SIGNIFICA ALGO PARA EL ASISTENTE.</strong>
+     * {@code structural_minimum} SIGNIFICA ALGO PARA EL ASISTENTE.</strong>
      *
      * <p>
-     * <strong>{@code is_core} es un bit compartido por dos contextos que lo leen
-     * distinto, y las dos lecturas son correctas.</strong> Para el alta de
+     * <strong>{@code structural_minimum} es un bit compartido por dos contextos que
+     * lo leen distinto, y las dos lecturas son correctas.</strong> Para el alta de
      * plataforma es un <em>predicado de conjunto</em> —«forma parte del minimo
      * estructural»— y
      * {@code PlatformCatalogTemplateJpaRepository.findInitialCapacityTemplates}
@@ -464,7 +487,7 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
      *
      * <p>
      * <strong>Ordenado por codigo</strong>: si algun dia hubiera dos modulos
-     * {@code is_core} cotizables, todos los procesos elegirian el mismo.
+     * {@code structural_minimum} cotizables, todos los procesos elegirian el mismo.
      */
     private static Optional<SellableItem> resolverNucleo(CatalogoLeido leido) {
         return leido.nucleosDeclarados().stream().sorted().map(leido.items()::get)
@@ -475,9 +498,9 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
 
     /**
      * Lo que sale de {@code SQL_ITEM_TIERS}: los articulos ya construidos y,
-     * aparte, los codigos que la columna {@code is_core} marca. <strong>El bit se
-     * queda en este record y no sigue hacia dentro</strong>; quien lo traduce es
-     * {@link #resolverNucleo(CatalogoLeido)}.
+     * aparte, los codigos que la columna {@code structural_minimum} marca.
+     * <strong>El bit se queda en este record y no sigue hacia dentro</strong>;
+     * quien lo traduce es {@link #resolverNucleo(CatalogoLeido)}.
      */
     private record CatalogoLeido(Map<String, SellableItem> items, Set<String> nucleosDeclarados) {
     }
@@ -486,8 +509,8 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
      * &#9940; <strong>El tercer estado que dejaba mudo al asistente, y el que mas
      * caro salio.</strong> La tarifa esta publicada y el catalogo trae articulos
      * —los dos avisos de arriba callan— pero <strong>no hay un modulo
-     * {@code is_core} que se pueda cotizar</strong>, asi que el paso 3 de
-     * {@code ProposalCart} no tendria de donde partir y el cierre de
+     * {@code structural_minimum} que se pueda cotizar</strong>, asi que el paso 3
+     * de {@code ProposalCart} no tendria de donde partir y el cierre de
      * {@code REQUIRES} arrancaria de un carrito vacio. Lo que salia era un 200 con
      * {@code lines: []}, {@code discardedLines: 0} y todos los importes a cero: la
      * respuesta mas dificil de distinguir de «el modelo no entendio».
@@ -510,10 +533,10 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
      * descripcion de la alerta se amplie en {@code vetsoftware-infrastructure}.
      *
      * <p>
-     * Enumera los {@code is_core} que si llegaron porque el diagnostico esta
-     * justamente ahi: si salen {@code CAPACITY_USER} y {@code CAPACITY_BRANCH} y no
-     * {@code CORE}, lo que falta es la fila del modulo o su tramo de precio, no la
-     * tarifa entera.
+     * Enumera los {@code structural_minimum} que si llegaron porque el diagnostico
+     * esta justamente ahi: si salen {@code CAPACITY_USER} y {@code CAPACITY_BRANCH}
+     * y no {@code CORE}, lo que falta es la fila del modulo o su tramo de precio,
+     * no la tarifa entera.
      */
     private void avisarDeQueNoHayNucleoCotizable(Long priceListId,
             ProposalBillingCycle billingCycle, CatalogoLeido leido) {
@@ -566,7 +589,7 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
         cabeceras.forEach((code, columnas) -> construir(code, columnas, escaleras.get(code))
                 .ifPresent(item -> {
                     items.put(code, item);
-                    // La columna is_core llega como Byte desde MySQL y se queda aqui:
+                    // La columna structural_minimum llega como Byte desde MySQL y se queda aqui:
                     // el dominio no la ve. Ver resolverNucleo(...).
                     if (asBoolean(columnas[4]))
                         nucleosDeclarados.add(code);
@@ -586,7 +609,8 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
         String currency = asString(columnas[8]);
         try {
             PriceLadder escalera = new PriceLadder(code, tramos, currency);
-            // columnas[4] es is_core y NO se pasa: lo recoge leerArticulos aparte.
+            // columnas[4] es structural_minimum y NO se pasa: lo recoge leerArticulos
+            // aparte.
             return Optional.of(new SellableItem(code, asString(columnas[1]), asString(columnas[2]),
                     asKind(columnas[3]), asBoolean(columnas[5]), asBoolean(columnas[6]),
                     asTrialDays(columnas[7]), escalera.unitAmountForOne(), escalera.taxRate(),

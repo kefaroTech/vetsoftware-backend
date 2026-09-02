@@ -211,16 +211,19 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
 
     private void articulo(Long id, String code, String name, String itemType, String capacityUnit,
             String status, boolean enabled) {
-        entityManager.createNativeQuery("""
-                INSERT INTO catalog_items (id, code, name, item_type, capacity_unit, is_core,
-                                           min_quantity, max_quantity, sort_order, status,
-                                           trial_eligibility, default_trial_days, trial_outcome,
-                                           service_nature, created_date, enabled, version)
-                VALUES (:id, :code, :name, :itemType, :capacityUnit, false, 1, NULL, 0, :status,
-                        'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
-                        '2026-01-01 00:00:00', :enabled, 0)
-                ON DUPLICATE KEY UPDATE id = id
-                """).setParameter("id", id).setParameter("code", code).setParameter("name", name)
+        entityManager
+                .createNativeQuery(
+                        """
+                                INSERT INTO catalog_items (id, code, name, item_type, capacity_unit, structural_minimum,
+                                                           min_quantity, max_quantity, sort_order, status,
+                                                           trial_eligibility, default_trial_days, trial_outcome,
+                                                           service_nature, created_date, enabled, version)
+                                VALUES (:id, :code, :name, :itemType, :capacityUnit, false, 1, NULL, 0, :status,
+                                        'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
+                                        '2026-01-01 00:00:00', :enabled, 0)
+                                ON DUPLICATE KEY UPDATE id = id
+                                """)
+                .setParameter("id", id).setParameter("code", code).setParameter("name", name)
                 .setParameter("itemType", itemType).setParameter("capacityUnit", capacityUnit)
                 .setParameter("status", status).setParameter("enabled", enabled).executeUpdate();
     }
