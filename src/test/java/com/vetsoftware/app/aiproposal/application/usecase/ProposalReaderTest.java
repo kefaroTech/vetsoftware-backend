@@ -470,6 +470,59 @@ class ProposalReaderTest {
         }
 
         /**
+         * &#9940; <b>EL DEFECTO QUE VEIA EL PROSPECTO, Y ES INDEPENDIENTE DEL CARRITO
+         * VACIO.</b> {@code vigente} se asignaba <em>dentro</em> del
+         * {@code if (!delTurno.isEmpty())}, asi que un turno con {@code presentation}
+         * escrita en base y <b>sin ni una linea</b> quedaba inalcanzable y se caia al
+         * respaldo derivado, que con el carrito vacio devuelve {@code OUT_OF_DOMAIN}.
+         *
+         * <p>
+         * Lo que eso significa para una persona: escribio «tengo una veterinaria», el
+         * modelo respondio {@code NOT_UNDERSTOOD} —«no te he entendido, reformula»—, y
+         * al abrir el enlace del correo la pantalla le dice que <b>su negocio no es de
+         * los nuestros</b>. En el paso vinculante, que su propuesta ya no existe.
+         */
+        @Test
+        @DisplayName("un turno con pantalla y sin ni una linea sirve su pantalla, no OUT_OF_DOMAIN")
+        void la_pantalla_persistida_sobrevive_a_un_turno_sin_lineas() {
+            AiProposal propuesta = ProposalMother.propuesta(ProposalMother.ID_PROPUESTA);
+            catalogoPublicado();
+            when(repository.findTurnsByProposalId(ProposalMother.ID_PROPUESTA)).thenReturn(
+                    List.of(ProposalMother.turnoConPantalla(TURNO_1, 1, TurnType.MODEL_INITIAL,
+                            "tengo una veterinaria", ProposalPresentation.NOT_UNDERSTOOD)));
+            when(repository.findLinesByTurnId(TURNO_1)).thenReturn(List.of());
+
+            ProposalViewDto vista = reader.vista(propuesta, false);
+
+            assertThat(vista.presentation()).isEqualTo(ProposalPresentation.NOT_UNDERSTOOD);
+            assertThat(vista.lines()).isEmpty();
+        }
+
+        /**
+         * &#9940; <b>Y un turno {@code PENDING} huerfano no borra lo anterior.</b> TX1
+         * escribe la fila del turno y commitea antes de invocar al modelo —tiene que
+         * hacerlo: la invocacion cae fuera de toda transaccion—, asi que un proceso que
+         * muera en medio deja un turno sin pantalla y sin lineas. Ese turno no tiene
+         * nada que decir, y la propuesta conserva la pantalla del ultimo que si la
+         * escribio en vez de degradarse a {@code OUT_OF_DOMAIN}.
+         */
+        @Test
+        @DisplayName("un turno PENDING huerfano no borra la pantalla del turno anterior")
+        void un_turno_pendiente_no_borra_la_pantalla_anterior() {
+            AiProposal propuesta = ProposalMother.propuesta(ProposalMother.ID_PROPUESTA);
+            catalogoPublicado();
+            when(repository.findTurnsByProposalId(ProposalMother.ID_PROPUESTA)).thenReturn(List.of(
+                    ProposalMother.turnoConPantalla(TURNO_1, 1, TurnType.MODEL_INITIAL,
+                            "tengo una veterinaria", ProposalPresentation.NOT_UNDERSTOOD),
+                    ProposalMother.turnoDeRefinamiento(TURNO_2, 2, "y tambien peluqueria")));
+            when(repository.findLinesByTurnId(TURNO_2)).thenReturn(List.of());
+            when(repository.findLinesByTurnId(TURNO_1)).thenReturn(List.of());
+
+            assertThat(reader.vista(propuesta, false).presentation())
+                    .isEqualTo(ProposalPresentation.NOT_UNDERSTOOD);
+        }
+
+        /**
          * La poblacion legitima que la derivacion sigue cubriendo: las filas escritas
          * antes del changeset 388, que no tienen pantalla anotada. No se degradan a
          * nada, se derivan como siempre.

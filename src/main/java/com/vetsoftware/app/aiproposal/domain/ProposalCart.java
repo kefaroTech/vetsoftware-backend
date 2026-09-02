@@ -27,7 +27,9 @@ import java.util.Set;
  * ({@code NOT_SELLABLE}) y no contratables por autoservicio
  * ({@code NOT_SELF_SERVICE}).</li>
  * <li>Deduplicar ({@code DUPLICATE}).</li>
- * <li>Anadir el articulo {@code is_core}, siempre.</li>
+ * <li>Anadir el <b>modulo</b> del minimo estructural, siempre —y si no se puede
+ * cotizar, dejar su linea de rechazo escrita: ver
+ * {@link SellableCatalog#nucleo()} y el paso 3 de {@link #build}—.</li>
  * <li>Cerrar {@code REQUIRES} en BFS con conjunto de visitados: la cadena
  * entera, no un salto.</li>
  * <li><strong>Nunca</strong> auto-anadir {@code RECOMMENDS}: es un upsell
@@ -138,16 +140,26 @@ public final class ProposalCart {
         }
 
         // Paso 3: el nucleo entra siempre, lo pidiera el modelo o no.
+        //
+        // ⛔ SIN Optional y SIN filter(esCotizable), y esas dos ausencias son el
+        // arreglo. Esto era `catalog.core().filter(SellableItem::esCotizable)
+        // .ifPresent(...)`: cuando el filtro cortaba -porque el nucleo sorteado
+        // era una capacidad del minimo estructural, que no es cotizable- no se
+        // anadia nada Y NO QUEDABA RASTRO. Ni linea aceptada, ni linea de rechazo,
+        // ni log: el carrito salia vacio con discardedLines = 0, que es la lectura
+        // mas enganosa posible -dice "el modelo no descarto nada" cuando lo que
+        // paso es que el backend ni miro-. Hoy `nucleo()` es total y su articulo
+        // viene garantizado cotizable por el constructor de SellableCatalog, asi
+        // que este paso no puede volver a quedarse callado: si el catalogo no
+        // tiene nucleo cotizable no llega a existir, y el adaptador enruta el caso
+        // a ai_outcome=empty_catalog, que tiene alerta critica.
+        //
         // La guarda mira `vistos` y no `enCarrito`, igual que las dos de cerrar(...)
-        // -ver su javadoc-. Aqui es defensiva y hoy no alcanzable: el filtro
-        // esCotizable de la linea de arriba ya descarta al nucleo que evaluar
-        // habria rechazado, asi que las dos guardas coinciden. Se escribe con el
-        // mismo predicado para que las tres digan lo mismo y no haya que razonar
-        // cual de ellas era la buena el dia que el filtro cambie.
-        catalog.core().filter(SellableItem::esCotizable).ifPresent(nucleo -> {
-            if (!vistos.contains(nucleo.code()))
-                anadirPorCierre(nucleo.code(), catalog, vistos, enCarrito, lineas);
-        });
+        // -ver su javadoc-: el nucleo pudo evaluarse ya en los pasos 1 o 2, y
+        // reevaluarlo escribiria una segunda linea DUPLICATE que choca contra
+        // uq_ai_proposal_lines_code.
+        if (!vistos.contains(catalog.nucleo().code()))
+            anadirPorCierre(catalog.nucleo().code(), catalog, vistos, enCarrito, lineas);
 
         // Pasos 4 y 6: el cierre y la regla del terminal, en el mismo recorrido.
         cerrar(catalog, vistos, enCarrito, lineas);
@@ -274,17 +286,17 @@ public final class ProposalCart {
     }
 
     /**
-     * La divisa del carrito sale de lo que se va a cobrar. Con el carrito vacio cae
-     * en la del nucleo, que existe siempre en el catalogo; si tampoco lo hubiera,
-     * en la primera del catalogo. Un {@code CartResult} sin divisa no es
-     * construible a proposito: es el defecto que dejo 52 de 53 DTO de dinero mudos.
+     * La divisa del carrito sale de lo que se va a cobrar; con el carrito vacio, de
+     * la del nucleo. Un {@code CartResult} sin divisa no es construible a
+     * proposito: es el defecto que dejo 52 de 53 DTO de dinero mudos.
+     *
+     * <p>
+     * <strong>Ya no hay tercer respaldo ni {@code orElseThrow}</strong>: aquel
+     * recorria el mapa con un {@code findFirst()} cuyo orden aleatoriza la JVM, y
+     * existia solo para el catalogo sin nucleo, que hoy no es construible.
      */
     private static String monedaDe(List<CartLine> lineas, SellableCatalog catalog) {
         return lineas.stream().filter(l -> l.verdict().esAceptado()).map(CartLine::currency)
-                .filter(java.util.Objects::nonNull).findFirst()
-                .or(() -> catalog.core().map(SellableItem::currency))
-                .or(() -> catalog.items().values().stream().map(SellableItem::currency).findFirst())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "an empty catalog cannot price a proposal"));
+                .filter(java.util.Objects::nonNull).findFirst().orElseGet(catalog::currency);
     }
 }

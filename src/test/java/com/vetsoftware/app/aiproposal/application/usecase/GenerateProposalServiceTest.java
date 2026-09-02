@@ -39,7 +39,6 @@ import com.vetsoftware.app.aiproposal.domain.SellableCatalog;
 import com.vetsoftware.app.aiproposal.testsupport.ProposalMother;
 import com.vetsoftware.app.aiproposal.testsupport.SellableCatalogMother;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -403,15 +402,14 @@ class GenerateProposalServiceTest {
         }
 
         @Test
-        @DisplayName("una tarifa publicada pero sin articulos tampoco cotiza")
+        @DisplayName("una tarifa publicada con la que no se puede cotizar tampoco cotiza")
         void una_tarifa_sin_articulos_tampoco_cotiza() {
             when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
                     .thenReturn(Optional.empty());
             when(catalogQueryPort.findPublishedPriceListId())
                     .thenReturn(Optional.of(ProposalMother.ID_TARIFA));
             when(catalogQueryPort.loadCatalog(ProposalMother.ID_TARIFA,
-                    ProposalBillingCycle.MONTHLY))
-                    .thenReturn(Optional.of(new SellableCatalog(Map.of(), Map.of(), List.of())));
+                    ProposalBillingCycle.MONTHLY)).thenReturn(Optional.empty());
 
             assertThat(service.generate(comandoMensual(ProposalMother.CLAVE)).presentation())
                     .isEqualTo(ProposalPresentation.NO_CATALOG);
@@ -727,15 +725,15 @@ class GenerateProposalServiceTest {
         }
 
         @Test
-        @DisplayName("una tarifa publicada y vacia tambien: el modelo no llego a arrancar")
+        @DisplayName("una tarifa publicada con la que no se puede cotizar tambien: el modelo no"
+                + " llego a arrancar")
         void una_tarifa_vacia_tambien_consta_como_sin_invocacion() {
             when(repository.findByIdempotency(ProposalMother.CORREO, ProposalMother.CLAVE))
                     .thenReturn(Optional.empty());
             when(catalogQueryPort.findPublishedPriceListId())
                     .thenReturn(Optional.of(ProposalMother.ID_TARIFA));
             when(catalogQueryPort.loadCatalog(ProposalMother.ID_TARIFA,
-                    ProposalBillingCycle.MONTHLY))
-                    .thenReturn(Optional.of(new SellableCatalog(Map.of(), Map.of(), List.of())));
+                    ProposalBillingCycle.MONTHLY)).thenReturn(Optional.empty());
 
             service.generate(comandoMensual(ProposalMother.CLAVE));
 

@@ -33,6 +33,10 @@ import java.util.Set;
  * prueba (30 en los modulos clinicos; 14 en los cuatro de la caja y el
  * inventario; cero en {@code ELECTRONIC_INVOICING}, que es
  * {@code NEVER_FREE}).</li>
+ * <li><b>310</b>: que {@code CAPACITY_USER}, {@code CAPACITY_BRANCH} y
+ * {@code CAPACITY_TERMINAL} tienen tramo publicado a importe cero, y por lo
+ * tanto <b>llegan al motor</b>: {@code SQL_ITEM_TIERS} hace {@code JOIN} contra
+ * {@code catalog_prices} y no filtra por {@code is_core}.</li>
  * <li><b>309</b>: los nueve arcos {@code REQUIRES} y los componentes de los
  * tres paquetes. Los cuatro {@code RECOMMENDS} <b>no</b> se copian: el arco no
  * existe en {@link SellableCatalog} a proposito, para que el cierre no pueda
@@ -48,6 +52,27 @@ import java.util.Set;
  * ({@code EXTRA_USER} vale 12.000 hasta el octavo y 9.000 a partir del noveno):
  * aqui se toma el primer tramo, y nada lo afirma —esos articulos entran al
  * golden set solo por su veredicto {@code NOT_SELF_SERVICE}—.
+ *
+ * <p>
+ * &#9940; <b>SON TRES LOS ARTICULOS {@code is_core}, NO UNO</b>: {@code CORE},
+ * {@code CAPACITY_USER} y {@code CAPACITY_BRANCH} (308:41-49). Esta clase tuvo
+ * uno solo durante toda su vida, y esa <b>unica</b> divergencia con la semilla
+ * —justo en el campo que este javadoc afirma copiar— es la que dejo verde el
+ * golden set mientras produccion devolvia un carrito vacio a quien escribia
+ * «tengo una veterinaria»: {@code SellableCatalog.core()} resolvia con un
+ * {@code findFirst()} sobre un {@code Map.copyOf}, cuyo orden de iteracion
+ * cambia entre JVM, y las dos capacidades <b>no son cotizables</b> —no cuelgan
+ * de ningun {@code BUNDLE}, asi que {@code selfServiceEligible} es
+ * {@code false}—. Con un unico core aqui, ese sorteo no existia y el defecto
+ * era invisible.
+ *
+ * <p>
+ * <b>No las desmarques para «simplificar»</b>: {@code is_core} tiene dos
+ * lecturas legitimas en el mismo bit, y la de
+ * {@code PlatformCatalogTemplateJpaRepository.findInitialCapacityTemplates} es
+ * un <b>predicado de conjunto</b> del que depende que el alta de una empresa no
+ * devuelva {@code PLATFORM_CATALOG_NOT_CONFIGURED}. Lo ata
+ * {@code CatalogoDePruebasNoDivergeDeLaSemillaTest}.
  */
 public final class CatalogoComercial2026 {
 
@@ -113,6 +138,8 @@ public final class CatalogoComercial2026 {
                         PRUEBA_CORTA));
         anadir(items, modulo("ELECTRONIC_INVOICING", "Facturacion electronica",
                 "Factura de venta ante la DIAN", 59_000, SIN_PRUEBA));
+        anadir(items, capacidadDeUsuario());
+        anadir(items, capacidadDeSede());
         anadir(items, capacidadDelTerminal());
         anadir(items,
                 extra("EXTRA_USER", "Usuario adicional", "Una persona mas en la cuenta", 12_000));
@@ -121,7 +148,8 @@ public final class CatalogoComercial2026 {
         anadir(items, extra("EXTRA_STORAGE", "Almacenamiento adicional",
                 "Un gigabyte mas de archivos clinicos", 1_200));
 
-        return new SellableCatalog(items, requiere(), List.of(packSpa(), packClinic(), packFull()));
+        return new SellableCatalog(items, requiere(), List.of(packSpa(), packClinic(), packFull()),
+                nucleo());
     }
 
     /**
@@ -155,7 +183,28 @@ public final class CatalogoComercial2026 {
     public static SellableItem nucleo() {
         return new SellableItem("CORE", "Nucleo: clientes, mascotas y cuenta",
                 "Duenos y mascotas, sedes, empleados, roles y suscripcion", SellableItemKind.MODULE,
-                true, true, true, PRUEBA_LARGA, new BigDecimal("69000.00"), IVA, COP);
+                true, true, PRUEBA_LARGA, new BigDecimal("69000.00"), IVA, COP);
+    }
+
+    /**
+     * &#9940; <b>{@code is_core = TRUE} y {@code selfServiceEligible = false} a la
+     * vez</b>, que es la combinacion que rompio produccion. Lo primero lo dice
+     * {@code 308:129-131}; lo segundo sale del {@code EXISTS} de
+     * {@code SQL_ITEM_TIERS}, y {@code 309} no mete esta capacidad en ninguno de
+     * los tres paquetes. Su tramo a importe cero (310:149) es lo que la trae al
+     * motor.
+     */
+    public static SellableItem capacidadDeUsuario() {
+        return new SellableItem("CAPACITY_USER", "Usuario incluido",
+                "Los usuarios que trae el nucleo sin coste", SellableItemKind.CAPACITY, true, false,
+                PRUEBA_LARGA, new BigDecimal("0.00"), IVA, COP);
+    }
+
+    /** La gemela de {@link #capacidadDeUsuario()} para sedes (308:132-134). */
+    public static SellableItem capacidadDeSede() {
+        return new SellableItem("CAPACITY_BRANCH", "Sede incluida",
+                "La sede que trae el nucleo sin coste", SellableItemKind.CAPACITY, true, false,
+                PRUEBA_LARGA, new BigDecimal("0.00"), IVA, COP);
     }
 
     /**
@@ -166,8 +215,8 @@ public final class CatalogoComercial2026 {
      */
     public static SellableItem capacidadDelTerminal() {
         return new SellableItem("CAPACITY_TERMINAL", "Terminal de caja incluida",
-                "Un punto de venta habilitado", SellableItemKind.CAPACITY, false, true, true,
-                PRUEBA_CORTA, new BigDecimal("0.00"), IVA, COP);
+                "Un punto de venta habilitado", SellableItemKind.CAPACITY, true, true, PRUEBA_CORTA,
+                new BigDecimal("0.00"), IVA, COP);
     }
 
     /**
@@ -176,14 +225,14 @@ public final class CatalogoComercial2026 {
      * {@code NOT_SELF_SERVICE}.
      */
     private static SellableItem extra(String code, String nombre, String descripcion, int precio) {
-        return new SellableItem(code, nombre, descripcion, SellableItemKind.CAPACITY, false, true,
-                false, SIN_PRUEBA, new BigDecimal(precio + ".00"), IVA, COP);
+        return new SellableItem(code, nombre, descripcion, SellableItemKind.CAPACITY, true, false,
+                SIN_PRUEBA, new BigDecimal(precio + ".00"), IVA, COP);
     }
 
     private static SellableItem modulo(String code, String nombre, String descripcion, int precio,
             int diasDePrueba) {
-        return new SellableItem(code, nombre, descripcion, SellableItemKind.MODULE, false, true,
-                true, diasDePrueba, new BigDecimal(precio + ".00"), IVA, COP);
+        return new SellableItem(code, nombre, descripcion, SellableItemKind.MODULE, true, true,
+                diasDePrueba, new BigDecimal(precio + ".00"), IVA, COP);
     }
 
     public static PackOffer packSpa() {

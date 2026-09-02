@@ -101,7 +101,7 @@ class PackComparisonTest {
         @DisplayName("no ofrece el paquete que cuesta exactamente lo mismo")
         void el_empate_no_es_una_oferta() {
             SellableCatalog soloEmpate = new SellableCatalog(CATALOGO.items(), CATALOGO.requires(),
-                    List.of(SellableCatalogMother.packAlMismoPrecio()));
+                    List.of(SellableCatalogMother.packAlMismoPrecio()), CATALOGO.nucleo());
             CartResult cesta = carrito(soloEmpate, "CLINICAL_HISTORY", "VACCINATION",
                     "CASH_REGISTER");
 
@@ -149,7 +149,8 @@ class PackComparisonTest {
         @DisplayName("un paquete sin modulos no se ofrece con ningun carrito")
         void el_paquete_sin_modulos_nunca_se_ofrece() {
             SellableCatalog soloCapacidades = new SellableCatalog(CATALOGO.items(),
-                    CATALOGO.requires(), List.of(SellableCatalogMother.packSinModulos()));
+                    CATALOGO.requires(), List.of(SellableCatalogMother.packSinModulos()),
+                    CATALOGO.nucleo());
 
             assertThat(PackComparison.mejorOferta(carrito(soloCapacidades, "CLINICAL_HISTORY"),
                     soloCapacidades)).isEmpty();

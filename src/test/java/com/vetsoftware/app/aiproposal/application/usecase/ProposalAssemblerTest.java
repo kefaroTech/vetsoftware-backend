@@ -122,14 +122,21 @@ class ProposalAssemblerTest {
             assertThat(carrito.total()).isEqualByComparingTo(BigDecimal.ZERO);
         }
 
+        /**
+         * &#9940; <b>La invariante subio un escalon, y esa es la mejora.</b> Esto
+         * comprobaba que {@code ProposalAssembler} <em>lanzaba</em> al recibir un
+         * catalogo sin nada que cotizar; ahora ese catalogo <b>no llega a existir</b>,
+         * porque {@link SellableCatalog} exige un nucleo cotizable en su constructor.
+         * Un estado imposible de construir no hay que recordarlo en cada consumidor: es
+         * la diferencia entre una guarda que alguien puede olvidar y una que el
+         * compilador y el tipo sostienen solos.
+         */
         @Test
-        @DisplayName("un catalogo sin articulos no puede cotizar y lo dice")
-        void un_catalogo_sin_articulos_no_puede_cotizar() {
-            SellableCatalog vacio = new SellableCatalog(Map.of(), Map.of(), List.of());
-
-            assertThatThrownBy(() -> ProposalAssembler.vacio(vacio))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("an empty catalog cannot price a proposal");
+        @DisplayName("un catalogo sin nucleo cotizable ni siquiera se puede construir")
+        void un_catalogo_sin_nucleo_no_se_construye() {
+            assertThatThrownBy(() -> new SellableCatalog(Map.of(), Map.of(), List.of(), null))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining(
+                            "a catalog without a quotable core cannot price a proposal");
         }
     }
 
