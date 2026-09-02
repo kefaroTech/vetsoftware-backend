@@ -16,6 +16,7 @@ import com.vetsoftware.app.cashregister.domain.EmployeeCashSessionRequiredExcept
 import com.vetsoftware.app.cashregister.domain.NoOpenCashSessionException;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -126,6 +127,98 @@ class CashLedgerServiceTest {
         assertThat(cashMovements(collector, CashMovementType.VOID_OUT)).isZero();
         assertThat(cashMovements(actor, CashMovementType.VOID_OUT)).isEqualTo(1);
         assertThat(actor.expectedByMethod().get(CashPaymentMethod.CASH)).isEqualByComparingTo("25");
+    }
+
+    /**
+     * ⛔ <b>El defecto de dinero, en datos.</b> Una nota credito no trae actor
+     * —puede llegar por el webhook de la DIAN, sin persona detras—, y antes eso
+     * caia a buscar «alguna caja abierta con el terminal principal». La cadena
+     * {@code cash_session.terminal} es la foto del codigo al abrir la sesion y dos
+     * terminales pueden compartirla: se renombra la A, se crea la B reutilizando el
+     * codigo liberado. Con las dos abiertas, el {@code VOID_OUT} caia en una
+     * arbitraria y descuadraba el arqueo de quien no habia cobrado nada.
+     *
+     * <p>
+     * <b>El senuelo se siembra PRIMERO a proposito.</b> El doble guarda en un
+     * {@code LinkedHashMap} y la busqueda por cadena resolvia con
+     * {@code findFirst}, asi que la caja que el codigo viejo elegia es justo esta.
+     * Que el {@code VOID_OUT} no caiga aqui es toda la prueba: si el orden fuera el
+     * contrario, el test pasaria con el defecto puesto.
+     */
+    @Test
+    void reversal_lands_in_the_session_where_the_money_entered_even_without_an_actor() {
+        CashSession senuelo = repo
+                .save(CashSession.open(CO, BR, 200L, "principal", OTHER_USER, bd("100"), null));
+        CashSession cobradora = repo
+                .save(CashSession.open(CO, BR, 100L, "principal", USER, bd("100"), null));
+        service.registerInflow(
+                new RegisterCashInflowCommand(CO, BR, null, CashReferenceType.POS_DOCUMENT, 5L,
+                        List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER));
+
+        service.reverse(
+                new ReverseCashMovementsCommand(CO, BR, null, CashReferenceType.POS_DOCUMENT, 5L,
+                        List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), null));
+
+        assertThat(cashMovements(cobradora, CashMovementType.VOID_OUT))
+                .as("la devolucion se compensa donde entro el dinero").isEqualTo(1);
+        assertThat(cashMovements(senuelo, CashMovementType.VOID_OUT))
+                .as("la caja que solo comparte la cadena del terminal no se toca").isZero();
+        assertThat(cobradora.expectedByMethod().get(CashPaymentMethod.CASH))
+                .as("base 100 + venta 60 - devolucion 60").isEqualByComparingTo("100");
+    }
+
+    /**
+     * La otra mitad, y es un defecto distinto del mismo fallback: si la venta nunca
+     * registro un ingreso en caja —no habia sesion abierta al cobrar, o se pago por
+     * cuenta abierta—, <b>no hay nada que compensar</b>. El codigo viejo buscaba
+     * igualmente una caja por la cadena y le sacaba dinero que nunca entro.
+     */
+    @Test
+    void reversal_without_actor_posts_nothing_when_the_sale_never_touched_a_till() {
+        CashSession abierta = seedOpen(BR);
+
+        service.reverse(
+                new ReverseCashMovementsCommand(CO, BR, null, CashReferenceType.POS_DOCUMENT, 999L,
+                        List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("40"))), null));
+
+        assertThat(cashMovements(abierta, CashMovementType.VOID_OUT)).isZero();
+        assertThat(abierta.expectedByMethod().get(CashPaymentMethod.CASH))
+                .as("no se saca dinero que nunca entro").isEqualByComparingTo("100");
+    }
+
+    /**
+     * Si la caja donde entro el dinero ya se arqueo, no se asienta en ninguna otra.
+     * Asentarlo en la del actor descuadraria <b>dos</b> arqueos: el que ya se firmo
+     * sin la devolucion y el de la caja ajena que la recibe. El documento fiscal se
+     * emite igual y el aviso del log manda registrar la salida a mano.
+     *
+     * <p>
+     * El test discrimina en las dos direcciones: si se resolviera por el actor, el
+     * {@code VOID_OUT} apareceria en la caja de {@code OTHER_USER}; si se
+     * devolviera la sesion cerrada sin mirar su estado, {@code addMovement}
+     * lanzaria {@code CashSessionClosedException} y el
+     * {@code doesNotThrowAnyException} caeria.
+     */
+    @Test
+    void reversal_does_not_post_into_a_closed_session_nor_into_someone_elses() {
+        CashSession cobradora = seedOpen(BR);
+        service.registerInflow(
+                new RegisterCashInflowCommand(CO, BR, null, CashReferenceType.POS_DOCUMENT, 8L,
+                        List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), USER));
+        cobradora.close(USER, Map.of(CashPaymentMethod.CASH, bd("160")), null);
+        repo.save(cobradora);
+        CashSession delActor = repo
+                .save(CashSession.open(CO, BR, 300L, "CAJA-3", OTHER_USER, bd("50"), null));
+
+        assertThatCode(() -> service.reverse(new ReverseCashMovementsCommand(CO, BR, null,
+                CashReferenceType.POS_DOCUMENT, 8L,
+                List.of(new CashPaymentLine(CashPaymentMethod.CASH, bd("60"))), OTHER_USER)))
+                .doesNotThrowAnyException();
+
+        assertThat(cashMovements(cobradora, CashMovementType.VOID_OUT))
+                .as("una sesion arqueada no admite movimientos nuevos").isZero();
+        assertThat(cashMovements(delActor, CashMovementType.VOID_OUT))
+                .as("y no se descuadra el arqueo de un tercero").isZero();
     }
 
     @Test

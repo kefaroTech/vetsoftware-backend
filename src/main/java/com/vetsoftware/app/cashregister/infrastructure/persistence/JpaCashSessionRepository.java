@@ -6,13 +6,17 @@ import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.cashregister.application.port.out.CashSessionRepository;
 import com.vetsoftware.app.cashregister.domain.CashMovement;
+import com.vetsoftware.app.cashregister.domain.CashMovementType;
+import com.vetsoftware.app.cashregister.domain.CashReferenceType;
 import com.vetsoftware.app.cashregister.domain.CashSession;
 import com.vetsoftware.app.cashregister.domain.CashSessionCount;
 import com.vetsoftware.app.cashregister.domain.CashSessionStatus;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Repository;
 
@@ -79,16 +83,30 @@ public class JpaCashSessionRepository implements CashSessionRepository {
         return jpaRepository.findByIdAndCompanyId(id, companyId).map(this::toDomain);
     }
 
+    /**
+     * Los tipos de ingreso que inyecta la orquestacion, derivados del censo del
+     * enum y no de una lista literal: {@code isInflow() && !isManual()} son
+     * exactamente {@code SALE_IN} y {@code OPEN_ACCOUNT_IN}. Un {@code MANUAL_IN}
+     * lo teclea un operador y no lleva referencia de venta, asi que no puede ser el
+     * ingreso que una anulacion compensa.
+     */
+    private static final Set<CashMovementType> TIPOS_DE_INGRESO_ORQUESTADO = Arrays
+            .stream(CashMovementType.values()).filter(t -> t.isInflow() && !t.isManual())
+            .collect(Collectors.toUnmodifiableSet());
+
+    @Override
+    public Optional<CashSession> findSessionOfReferencedInflow(Long companyId,
+            CashReferenceType referenceType, Long referenceId) {
+        if (referenceType == null || referenceId == null)
+            return Optional.empty();
+        return jpaRepository.findSessionsOfReferencedInflow(companyId, referenceType, referenceId,
+                TIPOS_DE_INGRESO_ORQUESTADO).stream().findFirst().map(this::toDomain);
+    }
+
     @Override
     public Optional<CashSession> findOpen(Long companyId, Long branchId, String terminal) {
         return jpaRepository.findFirstByCompanyIdAndBranchIdAndTerminalAndStatus(companyId,
                 branchId, terminal, CashSessionStatus.OPEN).map(this::toDomain);
-    }
-
-    @Override
-    public Optional<CashSessionView> findOpenSummary(Long companyId, Long branchId,
-            String terminal) {
-        return jpaRepository.findOpenSummary(companyId, branchId, terminal).map(this::toSummary);
     }
 
     @Override

@@ -1,5 +1,7 @@
 package com.vetsoftware.app.cashregister.infrastructure.persistence;
 
+import com.vetsoftware.app.cashregister.domain.CashMovementType;
+import com.vetsoftware.app.cashregister.domain.CashReferenceType;
 import com.vetsoftware.app.cashregister.domain.CashSessionStatus;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -51,22 +53,40 @@ public interface CashSessionJpaRepository extends JpaRepository<CashSessionJpaEn
     // @OneToMany a la vez).
     Optional<CashSessionJpaEntity> findByIdAndCompanyId(Long id, Long companyId);
 
-    // Sesión OPEN de (empresa, sede, terminal). Solo puede haber una (índice único
-    // condicional en
-    // BD).
+    /**
+     * Sesion OPEN de (empresa, sede, <b>codigo</b> de terminal).
+     *
+     * <p>
+     * <b>Ojo: ningun indice unico respalda ya este {@code findFirst}.</b> El que lo
+     * hacia -{@code uq_cash_session_open}, sobre
+     * {@code (company_id, branch_id, terminal, open_marker)}- lo retiro el
+     * changeset {@code 211_05}, y {@code 211_06} lo sustituyo por
+     * {@code uq_cash_session_terminal_open}, sobre
+     * {@code (company_id, terminal_id, open_marker)}: la unicidad paso al
+     * identificador y esta consulta sigue filtrando por la cadena mutable.
+     *
+     * <p>
+     * {@code cash_session.terminal} es la foto del codigo en el instante de abrir
+     * la sesion -y tiene que seguir siendolo: es lo que salio impreso en el
+     * recibo-, asi que dos terminales distintas pueden acabar compartiendola. Se
+     * renombra la terminal A, se crea la B reutilizando el codigo que quedo libre,
+     * y con las dos abiertas esta consulta devuelve <b>una arbitraria</b>. Quien
+     * tenga el identificador debe usar {@link #findOpenSummaryByTerminalId} o
+     * {@link #existsByCompanyIdAndBranchIdAndTerminalIdAndStatus}.
+     */
     Optional<CashSessionJpaEntity> findFirstByCompanyIdAndBranchIdAndTerminalAndStatus(
             Long companyId, Long branchId, String terminal, CashSessionStatus status);
 
-    @Query(value = SUMMARY_SELECT + """
-            WHERE s.company_id = :companyId
-              AND s.branch_id = :branchId
-              AND s.terminal = :terminal
-              AND s.status = 'OPEN'
-            LIMIT 1
-            """, nativeQuery = true)
-    Optional<CashSessionSummaryRow> findOpenSummary(@Param("companyId") Long companyId,
-            @Param("branchId") Long branchId, @Param("terminal") String terminal);
-
+    /**
+     * Resumen de la sesion OPEN de la terminal, <b>por identificador</b>.
+     *
+     * <p>
+     * Aqui el {@code LIMIT 1} si esta respaldado:
+     * {@code uq_cash_session_terminal_open} (changeset {@code 211_06}) es UNIQUE
+     * sobre {@code (company_id, terminal_id, open_marker)}, asi que no puede haber
+     * empate. El {@code LIMIT} es la red del patron, no el criterio de desempate;
+     * no hay criterio de desempate porque no puede haber empate.
+     */
     @Query(value = SUMMARY_SELECT + """
             WHERE s.company_id = :companyId
               AND s.branch_id = :branchId
@@ -76,6 +96,35 @@ public interface CashSessionJpaRepository extends JpaRepository<CashSessionJpaEn
             """, nativeQuery = true)
     Optional<CashSessionSummaryRow> findOpenSummaryByTerminalId(@Param("companyId") Long companyId,
             @Param("branchId") Long branchId, @Param("terminalId") Long terminalId);
+
+    /**
+     * La sesión que contiene el ingreso orquestado de esa referencia, para
+     * compensarlo donde entró.
+     *
+     * <p>
+     * {@code DISTINCT} no es cosmético: una venta pagada en efectivo y tarjeta deja
+     * <b>dos</b> movimientos con la misma referencia, y el {@code JOIN} devolvería
+     * la sesión repetida. El {@code ORDER BY} la hace determinista aunque el
+     * catálogo de movimientos crezca.
+     *
+     * <p>
+     * Los tipos de ingreso llegan por parámetro y el adaptador los deriva del censo
+     * del enum, no de una lista literal: una lista que nadie mantiene es justo lo
+     * que este repositorio ya sufrió con la unicidad del terminal.
+     */
+    @Query("""
+            SELECT DISTINCT s FROM CashSessionJpaEntity s
+              JOIN s.movements m
+             WHERE s.companyId = :companyId
+               AND m.referenceType = :referenceType
+               AND m.referenceId = :referenceId
+               AND m.type IN :inflowTypes
+             ORDER BY s.id
+            """)
+    List<CashSessionJpaEntity> findSessionsOfReferencedInflow(@Param("companyId") Long companyId,
+            @Param("referenceType") CashReferenceType referenceType,
+            @Param("referenceId") Long referenceId,
+            @Param("inflowTypes") Collection<CashMovementType> inflowTypes);
 
     boolean existsByCompanyIdAndBranchIdAndTerminalAndStatus(Long companyId, Long branchId,
             String terminal, CashSessionStatus status);

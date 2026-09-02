@@ -293,8 +293,8 @@ class CashSessionPersistenceIT extends AbstractDataJpaTest {
         void el_resumen_resuelve_sede_y_responsable() {
             sesionAbierta();
 
-            CashSessionView resumen = repository.findOpenSummary(COMPANY, BRANCH, "principal")
-                    .orElseThrow();
+            CashSessionView resumen = repository
+                    .findOpenSummaryByTerminalId(COMPANY, BRANCH, TERMINAL_ID).orElseThrow();
 
             // El agregado solo tiene ids: estos nombres salen del LEFT JOIN de la query
             // nativa y no hay forma de comprobarlos sin la base.
@@ -305,13 +305,44 @@ class CashSessionPersistenceIT extends AbstractDataJpaTest {
             assertThat(resumen.movements()).as("el resumen no arrastra el detalle").isEmpty();
         }
 
+        /**
+         * El caso que no se podia escribir mientras la busqueda iba por la cadena, y el
+         * motivo de que {@code findOpenSummary(String)} ya no exista.
+         *
+         * <p>
+         * {@code cash_session.terminal} es la foto del codigo en el instante de abrir
+         * -lo que salio impreso en el recibo-, no una referencia viva. Se renombra la
+         * terminal A, se crea la B reutilizando el codigo liberado, y las dos acaban
+         * con sesiones abiertas que declaran el mismo texto. La unicidad que queda
+         * ({@code uq_cash_session_terminal_open}, changeset {@code 211_06}) es sobre
+         * {@code (company_id, terminal_id, open_marker)}: permite exactamente este
+         * estado, asi que la base lo acepta sin rechistar.
+         *
+         * <p>
+         * Aqui se siembra ese estado a proposito y se comprueba lo unico que se puede
+         * comprobar: <b>cada identificador recupera su propia sesion</b>, y la busqueda
+         * por cadena <b>no puede distinguirlas</b>. Esa segunda asercion es
+         * deliberadamente floja -{@code isIn}, no {@code isEqualTo}- porque cual de las
+         * dos vuelve depende del plan que elija el motor: afirmar una concreta seria
+         * escribir en el test una garantia que la base no da. Es dinero: el arqueo de
+         * la caja equivocada.
+         */
         @Test
-        @DisplayName("el resumen por id de terminal devuelve lo mismo")
-        void el_resumen_por_id_de_terminal_devuelve_lo_mismo() {
-            sesionAbierta();
+        @DisplayName("dos terminales con el mismo codigo: cada id recupera la suya")
+        void dos_terminales_con_el_mismo_codigo_no_se_confunden() {
+            CashSession enLaPrincipal = sesion(BRANCH, TERMINAL_ID, "principal", EMPLEADO);
+            CashSession enLaSegunda = sesion(BRANCH, OTRO_TERMINAL_ID, "principal", OTRO_EMPLEADO);
 
             assertThat(repository.findOpenSummaryByTerminalId(COMPANY, BRANCH, TERMINAL_ID))
-                    .map(CashSessionView::branchName).contains("Sede Centro");
+                    .as("la terminal %s tiene que devolver su propia sesion", TERMINAL_ID)
+                    .map(CashSessionView::id).contains(enLaPrincipal.getId());
+            assertThat(repository.findOpenSummaryByTerminalId(COMPANY, BRANCH, OTRO_TERMINAL_ID))
+                    .as("la terminal %s tiene que devolver su propia sesion", OTRO_TERMINAL_ID)
+                    .map(CashSessionView::id).contains(enLaSegunda.getId());
+
+            assertThat(repository.findOpen(COMPANY, BRANCH, "principal").orElseThrow().getId())
+                    .as("la busqueda por cadena no puede discriminar: devuelve una arbitraria")
+                    .isIn(enLaPrincipal.getId(), enLaSegunda.getId());
         }
 
         @Test

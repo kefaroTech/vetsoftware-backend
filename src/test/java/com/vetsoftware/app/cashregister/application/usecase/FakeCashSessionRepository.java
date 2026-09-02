@@ -4,6 +4,7 @@ import com.vetsoftware.app.cashregister.application.command.SearchCashSessionsQu
 import com.vetsoftware.app.cashregister.application.dto.CashSessionView;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.cashregister.application.port.out.CashSessionRepository;
+import com.vetsoftware.app.cashregister.domain.CashReferenceType;
 import com.vetsoftware.app.cashregister.domain.CashSession;
 import com.vetsoftware.app.cashregister.domain.CashSessionStatus;
 import java.util.ArrayList;
@@ -41,21 +42,24 @@ class FakeCashSessionRepository implements CashSessionRepository {
     }
 
     @Override
+    public Optional<CashSession> findSessionOfReferencedInflow(Long companyId,
+            CashReferenceType referenceType, Long referenceId) {
+        if (referenceType == null || referenceId == null)
+            return Optional.empty();
+        return store.values().stream().filter(s -> Objects.equals(s.getCompanyId(), companyId))
+                .filter(s -> s.getMovements().stream()
+                        .anyMatch(m -> m.getReferenceType() == referenceType
+                                && Objects.equals(m.getReferenceId(), referenceId)
+                                && m.getType().isInflow() && !m.getType().isManual()))
+                .findFirst();
+    }
+
+    @Override
     public Optional<CashSession> findOpen(Long companyId, Long branchId, String terminal) {
         return store.values().stream().filter(s -> s.getStatus() == CashSessionStatus.OPEN)
                 .filter(s -> Objects.equals(s.getCompanyId(), companyId))
                 .filter(s -> Objects.equals(s.getBranchId(), branchId))
                 .filter(s -> Objects.equals(s.getTerminal(), terminal)).findFirst();
-    }
-
-    @Override
-    public Optional<CashSessionView> findOpenSummary(Long companyId, Long branchId,
-            String terminal) {
-        return findOpen(companyId, branchId, terminal).map(s -> CashSessionView.summary(s.getId(),
-                s.getBranchId(), "Sede Centro", s.getTerminalId(), s.getTerminal(), s.getStatus(),
-                s.getOpenedByEmployeeId(), "Laura Gómez", s.getOpenedAt(), s.getOpeningFloat(),
-                CashSessionView.from(s).closingTotal(), s.getClosedByEmployeeId(), null,
-                s.getClosedAt(), s.getNote(), s.getVersion()));
     }
 
     @Override
