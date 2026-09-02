@@ -203,19 +203,65 @@ public class ProposalReader {
         return codigos;
     }
 
-    /** La vista de una propuesta ya persistida, que es lo que sirve el GET. */
+    /**
+     * La vista de una propuesta ya persistida, que es lo que sirve el GET.
+     *
+     * <p>
+     * &#9940; <strong>La pantalla y las lineas se buscan por separado, y esa
+     * separacion es un arreglo.</strong> Antes {@code vigente} se asignaba
+     * <em>dentro</em> del {@code if (!delTurno.isEmpty())}, asi que un turno con
+     * {@code presentation} escrita en base <strong>y sin ni una linea</strong>
+     * quedaba inalcanzable: {@link #presentacionReleida} no lo veia nunca y caia al
+     * respaldo derivado, que con el carrito vacio devuelve
+     * {@link ProposalPresentation#OUT_OF_DOMAIN}. El dano no era cosmetico: al
+     * prospecto que escribio «tengo una veterinaria» y recibio
+     * {@code NOT_UNDERSTOOD} —una invitacion a reformular— se le decia, al abrir el
+     * enlace del correo, que <em>su negocio no es de los nuestros</em>; y en el
+     * paso vinculante, que su propuesta ya no existe.
+     *
+     * <p>
+     * <strong>La pantalla la impone el turno del carrito; solo si NINGUN turno
+     * escribio lineas manda la ultima pantalla persistida.</strong> Ese matiz es
+     * todo el arreglo, y hay que leerlo junto a
+     * {@code un_turno_sin_lineas_no_cambia_la_pantalla}: un turno posterior que
+     * fallo sin escribir nada <em>no</em> puede repintar el carrito de otro turno,
+     * porque lo que el prospecto tiene delante es aquel carrito y aquella pantalla.
+     * Lo que si tiene que poder es hablar cuando no hay carrito ninguno —que es
+     * justo el caso que estaba roto—.
+     *
+     * <p>
+     * Las cuatro poblaciones, y solo la ultima cambia:
+     * <ul>
+     * <li>un turno con lineas: su pantalla, como siempre;</li>
+     * <li>un {@code CUSTOMER_EDIT}, que no anota pantalla a proposito: se deriva
+     * del carrito, como siempre;</li>
+     * <li>un turno sin lineas <em>por encima</em> de otro que si las tiene: se
+     * ignora, como siempre;</li>
+     * <li><strong>ningun turno con lineas</strong>: antes esto caia al respaldo
+     * derivado —{@link ProposalPresentation#OUT_OF_DOMAIN} con el carrito vacio— y
+     * ahora sirve la ultima pantalla escrita.</li>
+     * </ul>
+     * No cuesta ni una consulta mas: el bucle sigue parando en el primer turno con
+     * lineas.
+     */
     public ProposalViewDto vista(AiProposal proposal, boolean recalculated) {
         SellableCatalog catalog = catalogo(proposal);
         List<ProposalTurn> turnos = repository.findTurnsByProposalId(proposal.getId());
-        ProposalTurn vigente = null;
+        ProposalTurn conLineas = null;
+        ProposalTurn ultimoConPantalla = null;
         List<ProposalLine> lineas = List.of();
-        for (int i = turnos.size() - 1; i >= 0 && lineas.isEmpty(); i--) {
-            List<ProposalLine> delTurno = repository.findLinesByTurnId(turnos.get(i).getId());
+        for (int i = turnos.size() - 1; i >= 0; i--) {
+            ProposalTurn turno = turnos.get(i);
+            if (ultimoConPantalla == null && turno.getPresentation() != null)
+                ultimoConPantalla = turno;
+            List<ProposalLine> delTurno = repository.findLinesByTurnId(turno.getId());
             if (!delTurno.isEmpty()) {
-                vigente = turnos.get(i);
+                conLineas = turno;
                 lineas = delTurno;
+                break;
             }
         }
+        ProposalTurn vigente = conLineas != null ? conLineas : ultimoConPantalla;
         CartResult carrito = ProposalAssembler.reconstruir(lineas, catalog);
         return vista(proposal, carrito, catalog, presentacionReleida(vigente, carrito),
                 recalculated);
