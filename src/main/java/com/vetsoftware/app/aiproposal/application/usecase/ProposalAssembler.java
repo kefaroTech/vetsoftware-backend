@@ -130,10 +130,14 @@ final class ProposalAssembler {
         return ProposalPresentation.PROPOSAL;
     }
 
+    /**
+     * La divisa de un carrito reconstruido: la de sus lineas aceptadas y, si no hay
+     * ninguna, la del nucleo. <strong>Sin {@code orElseThrow}</strong>: aquel
+     * cubria el catalogo sin nucleo, que desde el rediseno no es construible
+     * ({@link SellableCatalog}).
+     */
     private static String divisa(List<CartLine> lineas, SellableCatalog catalog) {
         return lineas.stream().filter(linea -> linea.verdict().esAceptado()).map(CartLine::currency)
-                .filter(java.util.Objects::nonNull).findFirst().or(catalog::currency)
-                .orElseThrow(() -> new IllegalStateException(
-                        "an empty catalog cannot price a proposal"));
+                .filter(java.util.Objects::nonNull).findFirst().orElseGet(catalog::currency);
     }
 }

@@ -41,13 +41,12 @@ public final class SellableCatalogMother {
      */
     public static SellableCatalog completo() {
         Map<String, SellableItem> items = new LinkedHashMap<>();
-        anadir(items, modulo("CORE", "Nucleo: clientes y mascotas", 69_000, 30, true));
-        anadir(items,
-                modulo("CLINICAL_HISTORY", "Historia clinica y consultas", 49_000, 30, false));
-        anadir(items, modulo("VACCINATION", "Vacunacion y desparasitacion", 25_000, 30, false));
-        anadir(items, modulo("SCHEDULING", "Agenda de citas", 35_000, 30, false));
-        anadir(items, modulo("CASH_REGISTER", "Caja y punto de venta", 46_000, 14, false));
-        anadir(items, modulo("LAB_IMAGING", "Laboratorio e imagen", 45_000, 30, false));
+        anadir(items, nucleo());
+        anadir(items, modulo("CLINICAL_HISTORY", "Historia clinica y consultas", 49_000, 30));
+        anadir(items, modulo("VACCINATION", "Vacunacion y desparasitacion", 25_000, 30));
+        anadir(items, modulo("SCHEDULING", "Agenda de citas", 35_000, 30));
+        anadir(items, modulo("CASH_REGISTER", "Caja y punto de venta", 46_000, 14));
+        anadir(items, modulo("LAB_IMAGING", "Laboratorio e imagen", 45_000, 30));
         anadir(items, capacidadContratable());
         anadir(items, capacidadNoAutoservicio());
         anadir(items, moduloEnBorrador());
@@ -57,13 +56,14 @@ public final class SellableCatalogMother {
         requiere.put("CLINICAL_HISTORY", List.of("SCHEDULING"));
 
         return new SellableCatalog(items, requiere,
-                List.of(packClinicaMasBarato(), packAlMismoPrecio(), packSinModulos()));
+                List.of(packClinicaMasBarato(), packAlMismoPrecio(), packSinModulos()), nucleo());
     }
 
     /** Un catalogo sin ningun paquete, para los casos que no comparan nada. */
     public static SellableCatalog sinPaquetes() {
         SellableCatalog completo = completo();
-        return new SellableCatalog(completo.items(), completo.requires(), List.of());
+        return new SellableCatalog(completo.items(), completo.requires(), List.of(),
+                completo.nucleo());
     }
 
     /**
@@ -96,10 +96,19 @@ public final class SellableCatalogMother {
                 Set.of());
     }
 
-    public static SellableItem modulo(String code, String nombre, int precio, int diasDePrueba,
-            boolean nucleo) {
+    /**
+     * <b>Ya no recibe el {@code is_core}</b>: {@link SellableItem} dejo de llevarlo
+     * cuando la traduccion de esa columna bajo al adaptador. Quien sea el nucleo lo
+     * decide ahora el cuarto componente de {@link SellableCatalog}.
+     */
+    public static SellableItem modulo(String code, String nombre, int precio, int diasDePrueba) {
         return new SellableItem(code, nombre, "Descripcion de " + nombre, SellableItemKind.MODULE,
-                nucleo, true, true, diasDePrueba, new BigDecimal(precio + ".00"), IVA, COP);
+                true, true, diasDePrueba, new BigDecimal(precio + ".00"), IVA, COP);
+    }
+
+    /** El nucleo del catalogo de laboratorio, ya resuelto. */
+    public static SellableItem nucleo() {
+        return modulo("CORE", "Nucleo: clientes y mascotas", 69_000, 30);
     }
 
     /**
@@ -108,7 +117,7 @@ public final class SellableCatalogMother {
      */
     public static SellableItem capacidadContratable() {
         return new SellableItem("CAPACITY_TERMINAL", "Terminal de caja incluida",
-                "Un punto de venta", SellableItemKind.CAPACITY, false, true, true, 0,
+                "Un punto de venta", SellableItemKind.CAPACITY, true, true, 0,
                 new BigDecimal("0.00"), IVA, COP);
     }
 
@@ -118,14 +127,12 @@ public final class SellableCatalogMother {
      */
     public static SellableItem capacidadNoAutoservicio() {
         return new SellableItem("EXTRA_USER", "Usuario adicional", "Una persona mas",
-                SellableItemKind.CAPACITY, false, true, false, 0, new BigDecimal("15000.00"), IVA,
-                COP);
+                SellableItemKind.CAPACITY, true, false, 0, new BigDecimal("15000.00"), IVA, COP);
     }
 
     public static SellableItem moduloEnBorrador() {
         return new SellableItem("DRAFT_MODULE", "Modulo sin publicar", "Todavia no se vende",
-                SellableItemKind.MODULE, false, false, true, 0, new BigDecimal("10000.00"), IVA,
-                COP);
+                SellableItemKind.MODULE, false, true, 0, new BigDecimal("10000.00"), IVA, COP);
     }
 
     private static void anadir(Map<String, SellableItem> items, SellableItem item) {

@@ -248,6 +248,12 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
     /** Ver {@link #avisarDeQueElCatalogoEstaVacio(Long, ProposalBillingCycle)}. */
     private final AvisoPorVentana avisoCatalogoVacio = new AvisoPorVentana();
 
+    /**
+     * Ver
+     * {@link #avisarDeQueNoHayNucleoCotizable(Long, ProposalBillingCycle, CatalogoLeido)}.
+     */
+    private final AvisoPorVentana avisoSinNucleo = new AvisoPorVentana();
+
     public JpaSellableCatalogQueryPort(EntityManager entityManager, Clock clock) {
         this.entityManager = entityManager;
         this.clock = clock;
@@ -411,14 +417,125 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
             ProposalBillingCycle billingCycle) {
         if (priceListId == null || billingCycle == null)
             return Optional.empty();
-        Map<String, SellableItem> items = leerArticulos(priceListId, billingCycle);
-        if (items.isEmpty()) {
+        CatalogoLeido leido = leerArticulos(priceListId, billingCycle);
+        if (leido.items().isEmpty()) {
             avisarDeQueElCatalogoEstaVacio(priceListId, billingCycle);
             return Optional.empty();
         }
+        Optional<SellableItem> nucleo = resolverNucleo(leido);
+        if (nucleo.isEmpty()) {
+            avisarDeQueNoHayNucleoCotizable(priceListId, billingCycle, leido);
+            return Optional.empty();
+        }
         Map<String, Set<String>> componentes = leerComponentesDePaquete();
-        return Optional.of(new SellableCatalog(items, leerRequisitos(),
-                construirPaquetes(items, componentes)));
+        return Optional.of(new SellableCatalog(leido.items(), leerRequisitos(),
+                construirPaquetes(leido.items(), componentes), nucleo.get()));
+    }
+
+    /**
+     * &#9940; <strong>LA CAPA ANTICORRUPCION, Y LA UNICA LINEA DEL BACKEND DONDE
+     * {@code is_core} SIGNIFICA ALGO PARA EL ASISTENTE.</strong>
+     *
+     * <p>
+     * <strong>{@code is_core} es un bit compartido por dos contextos que lo leen
+     * distinto, y las dos lecturas son correctas.</strong> Para el alta de
+     * plataforma es un <em>predicado de conjunto</em> —«forma parte del minimo
+     * estructural»— y
+     * {@code PlatformCatalogTemplateJpaRepository.findInitialCapacityTemplates}
+     * exige que lo lleven las dos capacidades ademas del modulo: si a alguien se le
+     * ocurre «limpiarlas» en la semilla, {@code POST /api/v1/register} empieza a
+     * devolver {@code PLATFORM_CATALOG_NOT_CONFIGURED} y el alta de la empresa
+     * falla entera, que es un fallo peor (#490, y la semilla 308:41-49 lo grita en
+     * mayusculas). Para esta rodaja, en cambio, el nucleo es <em>el articulo que
+     * todo carrito arrastra</em>, y eso solo puede ser <strong>un modulo</strong>:
+     * lo que el paso 3 del motor mete en el carrito es una linea cotizada, no una
+     * cantidad.
+     *
+     * <p>
+     * <strong>Por eso la traduccion vive aqui y no en el dominio.</strong> El
+     * defecto de produccion fue precisamente que el bit cruzaba la frontera en
+     * crudo: {@code SellableCatalog} resolvia el nucleo con un {@code findFirst()}
+     * sobre los tres que lo llevan, sorteado por el orden de iteracion de un
+     * {@code Map.copyOf} —que la JVM aleatoriza en cada arranque—, y cuando salia
+     * una capacidad, que no es cotizable, el carrito quedaba vacio sin dejar
+     * rastro. Estable dentro de un proceso y distinto tras reiniciar: se curaba
+     * solo y volvia. Con la traduccion en la frontera, el dominio recibe el
+     * concepto ya resuelto y no le queda nada que leer mal.
+     *
+     * <p>
+     * <strong>Ordenado por codigo</strong>: si algun dia hubiera dos modulos
+     * {@code is_core} cotizables, todos los procesos elegirian el mismo.
+     */
+    private static Optional<SellableItem> resolverNucleo(CatalogoLeido leido) {
+        return leido.nucleosDeclarados().stream().sorted().map(leido.items()::get)
+                .filter(java.util.Objects::nonNull)
+                .filter(item -> item.kind() == SellableItemKind.MODULE)
+                .filter(SellableItem::esCotizable).findFirst();
+    }
+
+    /**
+     * Lo que sale de {@code SQL_ITEM_TIERS}: los articulos ya construidos y,
+     * aparte, los codigos que la columna {@code is_core} marca. <strong>El bit se
+     * queda en este record y no sigue hacia dentro</strong>; quien lo traduce es
+     * {@link #resolverNucleo(CatalogoLeido)}.
+     */
+    private record CatalogoLeido(Map<String, SellableItem> items, Set<String> nucleosDeclarados) {
+    }
+
+    /**
+     * &#9940; <strong>El tercer estado que dejaba mudo al asistente, y el que mas
+     * caro salio.</strong> La tarifa esta publicada y el catalogo trae articulos
+     * —los dos avisos de arriba callan— pero <strong>no hay un modulo
+     * {@code is_core} que se pueda cotizar</strong>, asi que el paso 3 de
+     * {@code ProposalCart} no tendria de donde partir y el cierre de
+     * {@code REQUIRES} arrancaria de un carrito vacio. Lo que salia era un 200 con
+     * {@code lines: []}, {@code discardedLines: 0} y todos los importes a cero: la
+     * respuesta mas dificil de distinguir de «el modelo no entendio».
+     *
+     * <p>
+     * <strong>Ya no sale eso.</strong> Devolver {@link Optional#empty()} enruta el
+     * caso al desenlace que <em>ya existe</em> para «la tarifa esta publicada y no
+     * se puede cotizar con ella»: {@code GenerateProposalService} responde
+     * {@code ProposalViewDto.sinCatalogo()} —sin token y sin boton que lleve a un
+     * callejon— y cuenta {@code ai_proposal_generated_total} con
+     * {@code ai_outcome="empty_catalog"}, que tiene alerta critica
+     * ({@code VetSoftwareAiProposalEmptyCatalog}) y procedimiento escrito. No se
+     * inventa un modo de fallo nuevo: se encamina al que ya esta vigilado.
+     *
+     * <p>
+     * &#9888; <strong>Lo que la alerta NO dice, y por eso este log
+     * importa.</strong> Su resumen manda «anadir items a la lista de precios
+     * vigente», y aqui items hay: lo que falta es el <em>modulo nucleo</em>. La
+     * accion correcta esta en estas lineas, no en el runbook, hasta que la
+     * descripcion de la alerta se amplie en {@code vetsoftware-infrastructure}.
+     *
+     * <p>
+     * Enumera los {@code is_core} que si llegaron porque el diagnostico esta
+     * justamente ahi: si salen {@code CAPACITY_USER} y {@code CAPACITY_BRANCH} y no
+     * {@code CORE}, lo que falta es la fila del modulo o su tramo de precio, no la
+     * tarifa entera.
+     */
+    private void avisarDeQueNoHayNucleoCotizable(Long priceListId,
+            ProposalBillingCycle billingCycle, CatalogoLeido leido) {
+        Long silenciadas = avisoSinNucleo.tocaEscribir(clock.millis());
+        if (silenciadas == null)
+            return;
+        log.warn("La lista de precios {} tiene articulos para el ciclo {} pero ninguno es un modulo"
+                + " is_core cotizable, asi que el asistente comercial no puede cotizar nada y"
+                + " responde como si el catalogo estuviera vacio (ai_outcome=empty_catalog). Los"
+                + " is_core que si llegaron son {} -si ahi no esta CORE, revisa esa fila de"
+                + " catalog_items (item_type MODULE, status ACTIVE, enabled) y su tramo en"
+                + " catalog_prices para ESE ciclo; si esta pero no se cotiza, es que no cuelga de"
+                + " ningun BUNDLE ACTIVE y por eso no es autoservicio-. OJO: la alerta"
+                + " VetSoftwareAiProposalEmptyCatalog dira 'faltan items en la tarifa', y aqui"
+                + " items hay: lo que falta es el modulo nucleo. Y NO desmarques is_core en"
+                + " CAPACITY_USER ni CAPACITY_BRANCH para 'limpiar' la lista, que ese bit lo usa"
+                + " findInitialCapacityTemplates como predicado de conjunto y el alta de empresas"
+                + " empezaria a fallar con PLATFORM_CATALOG_NOT_CONFIGURED (#490). Otras {}"
+                + " peticiones dieron lo mismo desde el aviso anterior y no se escribieron; este"
+                + " aviso no se repite antes de {} minutos", priceListId, billingCycle,
+                leido.nucleosDeclarados().stream().sorted().toList(), silenciadas,
+                VENTANA_DEL_AVISO.toMinutes());
     }
 
     /**
@@ -428,8 +545,7 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
      * lo que hace reproducible el bloque del prompt y con el
      * {@code catalog_snapshot_hash}.
      */
-    private Map<String, SellableItem> leerArticulos(Long priceListId,
-            ProposalBillingCycle billingCycle) {
+    private CatalogoLeido leerArticulos(Long priceListId, ProposalBillingCycle billingCycle) {
         Query query = entityManager.createNativeQuery(SQL_ITEM_TIERS)
                 .setParameter("priceListId", priceListId)
                 .setParameter("billingCycle", billingCycle.name());
@@ -446,9 +562,16 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
         }
 
         Map<String, SellableItem> items = new LinkedHashMap<>();
+        Set<String> nucleosDeclarados = new LinkedHashSet<>();
         cabeceras.forEach((code, columnas) -> construir(code, columnas, escaleras.get(code))
-                .ifPresent(item -> items.put(code, item)));
-        return items;
+                .ifPresent(item -> {
+                    items.put(code, item);
+                    // La columna is_core llega como Byte desde MySQL y se queda aqui:
+                    // el dominio no la ve. Ver resolverNucleo(...).
+                    if (asBoolean(columnas[4]))
+                        nucleosDeclarados.add(code);
+                }));
+        return new CatalogoLeido(items, nucleosDeclarados);
     }
 
     /**
@@ -463,10 +586,11 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
         String currency = asString(columnas[8]);
         try {
             PriceLadder escalera = new PriceLadder(code, tramos, currency);
+            // columnas[4] es is_core y NO se pasa: lo recoge leerArticulos aparte.
             return Optional.of(new SellableItem(code, asString(columnas[1]), asString(columnas[2]),
-                    asKind(columnas[3]), asBoolean(columnas[4]), asBoolean(columnas[5]),
-                    asBoolean(columnas[6]), asTrialDays(columnas[7]), escalera.unitAmountForOne(),
-                    escalera.taxRate(), currency));
+                    asKind(columnas[3]), asBoolean(columnas[5]), asBoolean(columnas[6]),
+                    asTrialDays(columnas[7]), escalera.unitAmountForOne(), escalera.taxRate(),
+                    currency));
         } catch (IllegalArgumentException rota) {
             log.warn("Articulo {} excluido del catalogo de propuestas: {}", code,
                     rota.getMessage());

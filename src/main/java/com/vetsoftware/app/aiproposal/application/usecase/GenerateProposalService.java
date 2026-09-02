@@ -133,9 +133,16 @@ public class GenerateProposalService implements GenerateProposalUseCase {
         Optional<Long> priceListId = catalogQueryPort.findPublishedPriceListId();
         if (priceListId.isEmpty())
             return sinCotizar(ServedProposal.sinCatalogo(Operation.PROPOSE, texto.length()));
+        // ⛔ Una sola condicion, y ya no hay `|| items().isEmpty()`: un
+        // SellableCatalog exige un nucleo cotizable que pertenezca a sus propios
+        // items, asi que no puede existir uno vacio. La segunda guarda no era
+        // defensa en profundidad sino codigo inalcanzable, y el estado que
+        // pretendia cubrir -mas el nuevo «hay articulos pero ninguno sirve de
+        // nucleo»- lo resuelve hoy el adaptador devolviendo Optional.empty(),
+        // que cae aqui y se cuenta como empty_catalog.
         Optional<SellableCatalog> catalogo = catalogQueryPort.loadCatalog(priceListId.get(),
                 command.billingCycle());
-        if (catalogo.isEmpty() || catalogo.get().items().isEmpty())
+        if (catalogo.isEmpty())
             return sinCotizar(ServedProposal.catalogoVacio(Operation.PROPOSE, texto.length()));
         SellableCatalog catalog = catalogo.get();
 

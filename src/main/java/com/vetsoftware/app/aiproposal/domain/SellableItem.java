@@ -27,13 +27,29 @@ import java.math.BigDecimal;
  * DTO de dinero sin divisa obliga al front a cablear "COP", y arreglarlo
  * despues parece aditivo y rompe los bindings de los dos fronts.
  *
+ * <p>
+ * &#9940; <strong>NO lleva {@code is_core}, y esa ausencia es
+ * deliberada.</strong> Esa columna es un bit compartido por dos contextos que
+ * la leen distinto: el alta de plataforma la usa como <em>predicado de
+ * conjunto</em> —«forma parte del minimo estructural», y en el catalogo real
+ * son TRES articulos: el modulo {@code CORE} y las capacidades
+ * {@code CAPACITY_USER} y {@code CAPACITY_BRANCH}, semilla 308:41-49— mientras
+ * que esta rodaja necesita <em>el</em> articulo que todo carrito arrastra.
+ * Traerla en crudo hasta aqui fue el defecto: {@code SellableCatalog} resolvia
+ * el nucleo con un {@code findFirst()} sobre los que tenian el bit, las dos
+ * capacidades no son cotizables, y cuando el sorteo caia en una de ellas el
+ * prospecto recibia un 200 con el carrito vacio. La traduccion vive ahora en
+ * {@code JpaSellableCatalogQueryPort}, que es la frontera, y el dominio recibe
+ * el concepto ya resuelto en {@link SellableCatalog#nucleo()}: aqui no queda
+ * nada que se pueda volver a leer mal.
+ *
  * @param trialDays
  *            dias de prueba que concede el articulo; {@code 0} es "sin prueba"
  *            ({@code NEVER_FREE}), nunca negativo: el lado seguro es no regalar
  */
 public record SellableItem(String code, String name, String shortDescription, SellableItemKind kind,
-        boolean core, boolean active, boolean selfServiceEligible, int trialDays,
-        BigDecimal unitAmount, BigDecimal taxRate, String currency) {
+        boolean active, boolean selfServiceEligible, int trialDays, BigDecimal unitAmount,
+        BigDecimal taxRate, String currency) {
 
     public SellableItem {
         if (code == null || code.isBlank())

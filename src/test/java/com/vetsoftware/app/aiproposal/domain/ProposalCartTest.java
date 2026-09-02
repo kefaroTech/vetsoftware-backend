@@ -143,13 +143,63 @@ class ProposalCartTest {
         @DisplayName("la caja arrastra su terminal tambien si llega por dependencia")
         void la_caja_arrastra_el_terminal_tambien_por_cierre() {
             SellableCatalog conCajaDependiente = new SellableCatalog(CATALOGO.items(),
-                    Map.of("LAB_IMAGING", List.of("CASH_REGISTER")), List.of());
+                    Map.of("LAB_IMAGING", List.of("CASH_REGISTER")), List.of(), CATALOGO.nucleo());
 
             CartResult resultado = ProposalCart.build(List.of("LAB_IMAGING"), List.of(),
                     Map.of("LAB_IMAGING", MOTIVO), conCajaDependiente);
 
             assertThat(codigos(resultado.aceptadas())).contains("CASH_REGISTER",
                     "CAPACITY_TERMINAL");
+        }
+    }
+
+    /**
+     * &#9940; <b>El paso 3 no puede volver a quedarse callado.</b> El defecto de
+     * produccion no fue «eligio mal el nucleo»: fue que, al elegir uno que no se
+     * podia cotizar, <b>no dejo rastro de nada</b> —ni linea aceptada, ni linea de
+     * rechazo, ni log—. El carrito salia vacio con {@code discardedLines = 0}, que
+     * es peor que un error: afirma que el modelo no descarto nada cuando lo que
+     * paso es que el backend no llego a mirar.
+     */
+    @Nested
+    @DisplayName("El nucleo no puede desaparecer en silencio")
+    class ElNucleoNoDesaparece {
+
+        /**
+         * El motor recibe un nucleo <b>garantizado cotizable</b> por el constructor de
+         * {@link SellableCatalog}, asi que el paso 3 siempre escribe su linea. Este
+         * test fija esa consecuencia sobre el catalogo de laboratorio: sin lineas del
+         * modelo, el carrito no puede salir vacio.
+         */
+        @Test
+        @DisplayName("un borrador sin lineas produce el nucleo, nunca un carrito mudo")
+        void un_borrador_sin_lineas_no_produce_un_carrito_mudo() {
+            CartResult resultado = carrito(List.of(), List.of());
+
+            assertThat(resultado.lineas()).isNotEmpty();
+            assertThat(codigos(resultado.aceptadas())).containsExactly("CORE");
+        }
+
+        /**
+         * &#9940; <b>La forma exacta del defecto, cerrada por tipo.</b> Un catalogo
+         * cuyo nucleo no se puede cotizar —una capacidad del minimo estructural que no
+         * cuelga de ningun {@code BUNDLE}, o el modulo retirado— ya no existe: lo
+         * rechaza el constructor. El motor no necesita defenderse de un estado que no
+         * puede recibir, que es la diferencia entre una guarda repartida por los
+         * consumidores y una invariante.
+         */
+        @Test
+        @DisplayName("un catalogo cuyo nucleo no se puede cotizar no llega al motor")
+        void un_nucleo_no_cotizable_no_llega_al_motor() {
+            SellableItem nucleoRetirado = new SellableItem("CORE", "Nucleo",
+                    "Retirado del catalogo", SellableItemKind.MODULE, false, true, 30,
+                    new java.math.BigDecimal("69000.00"), new java.math.BigDecimal("19.00"), "COP");
+
+            org.assertj.core.api.Assertions
+                    .assertThatThrownBy(() -> new SellableCatalog(Map.of("CORE", nucleoRetirado),
+                            Map.of(), List.of(), nucleoRetirado))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("the catalog core must be quotable: CORE");
         }
     }
 
@@ -214,11 +264,11 @@ class ProposalCartTest {
          * que otro depende, que es una edicion normal de catalogo.
          */
         private static final SellableCatalog CON_REQUISITO_RECHAZADO = new SellableCatalog(
-                Map.of("CORE", SellableCatalogMother.modulo("CORE", "Nucleo", 69_000, 30, true),
-                        "PADRE",
-                        SellableCatalogMother.modulo("PADRE", "Modulo padre", 30_000, 0, false),
+                Map.of("CORE", SellableCatalogMother.nucleo(), "PADRE",
+                        SellableCatalogMother.modulo("PADRE", "Modulo padre", 30_000, 0),
                         "DRAFT_MODULE", SellableCatalogMother.moduloEnBorrador()),
-                Map.of("PADRE", List.of("DRAFT_MODULE")), List.of());
+                Map.of("PADRE", List.of("DRAFT_MODULE")), List.of(),
+                SellableCatalogMother.nucleo());
 
         @Test
         @DisplayName("un requisito rechazado que ademas pidio el modelo no genera una segunda"
@@ -244,16 +294,14 @@ class ProposalCartTest {
                 + " evaluo y quedo rechazada")
         void la_terminal_rechazada_no_se_evalua_dos_veces() {
             SellableCatalog conTerminalNoPublicada = new SellableCatalog(
-                    Map.of("CORE", SellableCatalogMother.modulo("CORE", "Nucleo", 69_000, 30, true),
-                            "CASH_REGISTER",
-                            SellableCatalogMother
-                                    .modulo("CASH_REGISTER", "Caja", 46_000, 14, false),
+                    Map.of("CORE", SellableCatalogMother.nucleo(), "CASH_REGISTER",
+                            SellableCatalogMother.modulo("CASH_REGISTER", "Caja", 46_000, 14),
                             "CAPACITY_TERMINAL",
                             new SellableItem("CAPACITY_TERMINAL", "Terminal", "Un punto de venta",
-                                    SellableItemKind.CAPACITY, false, false, true, 0,
+                                    SellableItemKind.CAPACITY, false, true, 0,
                                     new java.math.BigDecimal("0.00"),
                                     new java.math.BigDecimal("0.19"), "COP")),
-                    Map.of(), List.of());
+                    Map.of(), List.of(), SellableCatalogMother.nucleo());
 
             CartResult resultado = ProposalCart.build(List.of("CAPACITY_TERMINAL", "CASH_REGISTER"),
                     List.of(), Map.of("CAPACITY_TERMINAL", MOTIVO, "CASH_REGISTER", MOTIVO),

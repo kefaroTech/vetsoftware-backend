@@ -301,11 +301,68 @@ class SellableCatalogQueryPortIT extends AbstractDataJpaTest {
             assertThat(catalogo().requiredBy(COD_FUERA)).isEmpty();
         }
 
+        /**
+         * &#9940; <b>La capa anticorrupcion, contra MySQL real.</b> {@code is_core} ya
+         * no llega al dominio: lo traduce {@code resolverNucleo} en el adaptador. La
+         * conversion del {@code TINYINT} —que el driver entrega como {@code Byte}—
+         * sigue comprobandose aqui, solo que por su efecto: si se leyera mal, ningun
+         * articulo saldria marcado, el catalogo no tendria nucleo y {@code loadCatalog}
+         * devolveria vacio, asi que {@link #catalogo()} reventaria en el
+         * {@code orElseThrow}.
+         */
         @Test
-        @DisplayName("is_core llega como booleano aunque MySQL lo entregue como Byte")
+        @DisplayName("is_core se lee bien -TINYINT como Byte- y resuelve el nucleo del catalogo")
         void el_tinyint_se_convierte() {
-            assertThat(articuloDePrueba(COD_EN_PACK).core()).isTrue();
-            assertThat(articuloDePrueba(COD_FUERA).core()).isFalse();
+            assertThat(catalogo().nucleo().code()).isEqualTo(COD_EN_PACK);
+        }
+
+        /**
+         * &#9940; <b>EL DEFECTO DE PRODUCCION, REPRODUCIDO CONTRA LA BASE DE
+         * VERDAD.</b> En el catalogo real son TRES los articulos con {@code is_core}
+         * —{@code CORE}, {@code CAPACITY_USER} y {@code CAPACITY_BRANCH}— porque el
+         * alta de plataforma lee ese bit como predicado de conjunto. Las dos
+         * capacidades no cuelgan de ningun {@code BUNDLE}, asi que no son cotizables;
+         * el codigo viejo las metia en el sorteo y, cuando salia una, el prospecto
+         * recibia un 200 con el carrito vacio.
+         *
+         * <p>
+         * <b>{@code TESTAI_CAP} es el probe perfecto y no por casualidad</b>: cuelga
+         * del pack, asi que <em>si</em> es cotizable —el filtro de autoservicio no la
+         * descarta—, y su codigo ordena <em>antes</em> que {@code TESTAI_EN_PACK}, asi
+         * que el desempate por codigo tampoco. Lo unico que la deja fuera es el filtro
+         * por {@code MODULE}, que es exactamente la traduccion que se quiere probar.
+         *
+         * <p>
+         * La mutacion va por SQL nativo y la revierte el rollback del test.
+         */
+        @Test
+        @DisplayName("una capacidad marcada is_core no puede convertirse en el nucleo")
+        void una_capacidad_is_core_no_es_el_nucleo() {
+            entityManager.createNativeQuery("UPDATE catalog_items SET is_core = 1 WHERE id = :id")
+                    .setParameter("id", CAP_EN_PACK).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(catalogo().nucleo().code()).isEqualTo(COD_EN_PACK);
+        }
+
+        /**
+         * Y la otra mitad: si el unico {@code is_core} que queda es esa capacidad, el
+         * catalogo <b>no se puede cotizar</b> y el adaptador lo dice devolviendo vacio.
+         * Eso enruta la peticion a {@code ai_outcome=empty_catalog}, que tiene alerta
+         * critica, en vez de servir un carrito vacio en silencio.
+         */
+        @Test
+        @DisplayName("sin ningun modulo is_core cotizable el catalogo no se carga")
+        void sin_modulo_nucleo_no_hay_catalogo() {
+            entityManager
+                    .createNativeQuery("UPDATE catalog_items SET is_core = CASE WHEN id = :cap"
+                            + " THEN 1 ELSE 0 END WHERE code LIKE 'TESTAI\\_%'")
+                    .setParameter("cap", CAP_EN_PACK).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(port.loadCatalog(LISTA, ProposalBillingCycle.MONTHLY)).isEmpty();
         }
 
         @Test

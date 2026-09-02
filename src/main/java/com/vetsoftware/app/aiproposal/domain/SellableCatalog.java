@@ -21,9 +21,26 @@ import java.util.Optional;
  * Es un valor inmutable: las tres colecciones se copian en el constructor
  * compacto, asi que quien la construya no puede mutarla despues por debajo del
  * motor.
+ *
+ * <p>
+ * &#9940; <strong>UN CATALOGO SIN NUCLEO COTIZABLE NO ES CONSTRUIBLE.</strong>
+ * Es la misma clase de invariante que «un catalogo vacio no puede cotizar una
+ * propuesta», que este fichero ya sostenia para la divisa, y esta escrita como
+ * invariante y no como un {@code Optional} por lo que costo la version
+ * anterior: el nucleo se resolvia con un {@code findFirst()} sobre los
+ * articulos con {@code is_core}, el llamante lo filtraba por
+ * {@code esCotizable} y el {@code Optional} vacio resultante <em>se ignoraba en
+ * silencio</em>. Ni linea de rechazo, ni log, ni contador: 200 con el carrito
+ * vacio. Un contrato total no admite esa lectura.
+ *
+ * @param nucleo
+ *            el articulo que todo carrito arrastra, <strong>ya resuelto por el
+ *            adaptador</strong> y garantizado cotizable. El dominio no ve
+ *            {@code is_core}: ver {@link SellableItem} y la capa anticorrupcion
+ *            de {@code JpaSellableCatalogQueryPort}
  */
 public record SellableCatalog(Map<String, SellableItem> items, Map<String, List<String>> requires,
-        List<PackOffer> packs) {
+        List<PackOffer> packs, SellableItem nucleo) {
 
     public SellableCatalog {
         if (items == null)
@@ -33,6 +50,15 @@ public record SellableCatalog(Map<String, SellableItem> items, Map<String, List<
         if (packs == null)
             throw new IllegalArgumentException("catalog packs are required");
         items = Map.copyOf(items);
+        if (nucleo == null)
+            throw new IllegalArgumentException(
+                    "a catalog without a quotable core cannot price a proposal");
+        if (!nucleo.esCotizable())
+            throw new IllegalArgumentException(
+                    "the catalog core must be quotable: " + nucleo.code());
+        if (!nucleo.equals(items.get(nucleo.code())))
+            throw new IllegalArgumentException(
+                    "the catalog core must be one of its own items: " + nucleo.code());
         Map<String, List<String>> copiaDeArcos = new LinkedHashMap<>();
         requires.forEach((desde, hacia) -> copiaDeArcos.put(desde, List.copyOf(hacia)));
         requires = Collections.unmodifiableMap(copiaDeArcos);
@@ -48,9 +74,6 @@ public record SellableCatalog(Map<String, SellableItem> items, Map<String, List<
         return requires.getOrDefault(code, List.of());
     }
 
-    /**
-     * El articulo marcado {@code is_core}, que entra siempre (plan S4.4, paso 3).
-     */
     /**
      * La huella de la foto del catalogo, para
      * {@code ai_proposals.catalog_snapshot_hash}: 64 caracteres hexadecimales en
@@ -91,16 +114,21 @@ public record SellableCatalog(Map<String, SellableItem> items, Map<String, List<
     }
 
     /**
-     * La divisa con la que se cotiza. Un carrito sin divisa no es construible a
-     * proposito: es el defecto que dejo 52 de 53 DTO de dinero de este backend
-     * mudos sobre la moneda.
+     * La divisa con la que se cotiza, que es la del nucleo. Un carrito sin divisa
+     * no es construible a proposito: es el defecto que dejo 52 de 53 DTO de dinero
+     * de este backend mudos sobre la moneda.
+     *
+     * <p>
+     * &#9940; <strong>Total, y sin respaldo por sorteo.</strong> Esto devolvia un
+     * {@code Optional} y caia, cuando no habia nucleo, en
+     * {@code items.values().stream()...findFirst()} —el orden de iteracion de un
+     * {@code Map.copyOf}, que la JVM aleatoriza en cada arranque—. Hoy todo el
+     * catalogo es {@code COP} y ese sorteo acertaba por casualidad; con dos divisas
+     * conviviendo, el mismo despliegue habria cotizado en una moneda distinta
+     * despues de reiniciar. El respaldo desaparecio porque desaparecio su causa:
+     * sin nucleo no hay catalogo.
      */
-    public Optional<String> currency() {
-        return core().map(SellableItem::currency)
-                .or(() -> items.values().stream().map(SellableItem::currency).findFirst());
-    }
-
-    public Optional<SellableItem> core() {
-        return items.values().stream().filter(SellableItem::core).findFirst();
+    public String currency() {
+        return nucleo.currency();
     }
 }
