@@ -35,11 +35,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-/**
- * Rodaja HTTP del controller: rutas, binding, validacion del request, codigos
- * de estado y forma del JSON. Lo que hay debajo son dobles — aqui no se prueba
- * el caso de uso, se prueba el contrato que ve el front.
- */
 @WebMvcTest(BaseRolePermissionController.class)
 @org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc(addFilters = false)
 @Import(WebMvcSliceConfig.class)

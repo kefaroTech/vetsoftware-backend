@@ -253,7 +253,7 @@ public class JpaClinicalEventDetailQueryPort implements ClinicalEventDetailQuery
                 });
     }
 
-    // --- Tablas hijas (Fase 2)
+    // --- Tablas hijas
     // -------------------------------------------------------------
 
     private DetailTable medicamentTable(Long prescriptionId) {

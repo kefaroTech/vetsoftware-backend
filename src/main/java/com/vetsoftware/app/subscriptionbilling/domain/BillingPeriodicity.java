@@ -19,7 +19,6 @@ public enum BillingPeriodicity {
         this.months = months;
     }
 
-    /** Meses que dura un periodo de esta periodicidad. */
     public int months() {
         return months;
     }

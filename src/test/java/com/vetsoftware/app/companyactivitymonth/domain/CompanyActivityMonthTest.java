@@ -232,7 +232,6 @@ class CompanyActivityMonthTest {
             assertThat(recalculado.getRecordsCreated()).isEqualTo(10);
             assertThat(recalculado.getMrrSnapshot()).isEqualByComparingTo(BigDecimal.ZERO);
 
-            // inmutabilidad: la fila original no cambia
             assertThat(original.getCommercialState()).isEqualTo(CommercialState.PAID);
             assertThat(original.getActiveDays()).isEqualTo(20);
         }

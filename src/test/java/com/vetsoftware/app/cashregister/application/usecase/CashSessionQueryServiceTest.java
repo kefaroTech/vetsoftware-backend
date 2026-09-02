@@ -35,11 +35,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/**
- * Lecturas de caja. Modernizado a Mockito el 2026-08-12 al tocar la feature (la
- * version anterior usaba el fake in-memory y terminaba afirmando sobre el
- * propio fake en vez de sobre el servicio).
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CashSessionQueryService — lecturas de caja")
 class CashSessionQueryServiceTest {

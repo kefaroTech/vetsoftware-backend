@@ -65,7 +65,6 @@ public class VoidDebtOpenAccountService implements VoidDebtOpenAccountUseCase {
         if (!debtOpenAccount.getOpenAccount().companyId().equals(command.companyId())) {
             throw new IllegalArgumentException("debt open account does not belong to company");
         }
-        // Detección temprana de conflicto sobre la cuenta del abono.
         versionGuard.assertVersion(command.companyId(), openAccountId, command.expectedVersion());
         if (!openAccountQueryPort.isOpen(openAccountId)) {
             throw new IllegalStateException("open account is not OPEN");

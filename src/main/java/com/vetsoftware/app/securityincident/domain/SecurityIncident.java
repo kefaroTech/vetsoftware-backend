@@ -207,7 +207,6 @@ public class SecurityIncident {
         return reportedToAuthorityAt != null;
     }
 
-    /** Ya se cerro. */
     public boolean isClosed() {
         return closedAt != null;
     }

@@ -17,10 +17,6 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/**
- * Tests del {@link OpenCashSessionService}: apertura con base, default de
- * terminal, doble apertura y sede inválida.
- */
 class OpenCashSessionServiceTest {
 
     private static final long CO = 1L;

@@ -6,7 +6,6 @@ import com.vetsoftware.app.surgerytype.domain.CompanyRef;
 import com.vetsoftware.app.surgerytype.domain.SurgeryType;
 import java.time.LocalDateTime;
 
-/** Fixtures del modulo surgerytype. */
 public final class SurgeryTypeMother {
 
     public static final Long SURGERY_TYPE_ID = 700L;

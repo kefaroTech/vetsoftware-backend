@@ -106,9 +106,9 @@ public class RescheduleMedicationScheduleService implements RescheduleMedication
 
     /**
      * Aplica la cascada; devuelve {@code null} si se aplico, o el motivo por el que
-     * no. Las tres salidas se saltaban antes sin {@code else}, sin excepcion y sin
-     * log: la respuesta era un 200 con el plan intacto salvo el pivote, y nadie
-     * podia distinguirla de una cascada que si corrio (#134).
+     * no. Las tres salidas tienen que nombrarse: saltarlas en silencio deja un 200
+     * con el plan intacto salvo el pivote, indistinguible de una cascada que si
+     * corrio.
      */
     private CascadeSkipReason applyCascade(List<MedicationSchedule> all, int pivotIdx,
             RescheduleMedicationScheduleCommand command, Long medicationId,

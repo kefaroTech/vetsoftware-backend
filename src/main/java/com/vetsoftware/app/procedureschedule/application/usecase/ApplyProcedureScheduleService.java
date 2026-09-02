@@ -43,7 +43,7 @@ public class ApplyProcedureScheduleService implements ApplyProcedureScheduleUseC
         Long procedureId = target.getHospitalizationProcedure().id();
         requireOwnedByCompany(procedureId, command.companyId(), command.scheduleId());
 
-        target.apply(LocalDateTime.now()); // appliedStatus=APPLIED, realDateTime=now
+        target.apply(LocalDateTime.now());
         repository.save(target);
 
         // Pauta INTERVALO: aplicar tarde NO recalcula las siguientes; eso solo ocurre

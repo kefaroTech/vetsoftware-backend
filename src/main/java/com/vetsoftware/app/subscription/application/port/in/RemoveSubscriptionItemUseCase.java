@@ -8,8 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * Dar de baja es escribir {@code effective_to}. No borra la fila, no toca
  * {@code enabled} y no toca ni una tabla clinica (R12): lo que baja es el nivel
  * de acceso, y eso lo decide el recalculo, no este caso de uso.
- */
-/**
+ *
  * <p>
  * <strong>Es del cliente.</strong> Dar de baja una linea solo puede reducir lo
  * que esa empresa tiene contratado: no fija precios —el cuerpo no trae

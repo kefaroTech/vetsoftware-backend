@@ -43,7 +43,7 @@ public class ApplyMedicationScheduleService implements ApplyMedicationScheduleUs
         Long medicationId = target.getHospitalizationMedication().id();
         requireOwnedByCompany(medicationId, command.companyId(), command.scheduleId());
 
-        target.apply(LocalDateTime.now()); // appliedStatus=APPLIED, realDateTime=now
+        target.apply(LocalDateTime.now());
         repository.save(target);
 
         // Pauta INTERVALO: aplicar tarde NO recalcula las siguientes; eso solo ocurre

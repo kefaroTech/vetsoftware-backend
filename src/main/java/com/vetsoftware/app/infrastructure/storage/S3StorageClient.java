@@ -39,7 +39,6 @@ public class S3StorageClient {
         }
     }
 
-    /** Obtiene el contenido de un archivo de S3 por su clave. */
     public byte[] getObject(String key) {
         try {
             ResponseBytes<GetObjectResponse> response = s3Client
@@ -59,7 +58,6 @@ public class S3StorageClient {
         }
     }
 
-    /** Bucket configurado para este cliente. */
     public String bucket() {
         return bucket;
     }

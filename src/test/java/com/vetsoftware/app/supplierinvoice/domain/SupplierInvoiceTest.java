@@ -17,12 +17,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
-/**
- * Tests del agregado {@link SupplierInvoice}: matemática de dinero
- * (total/neto/saldo con retención), transición de estado por abonos (PENDING →
- * PARTIAL → PAID), rechazo de sobrepago / pago sobre anulada, y anulación solo
- * sin abonos.
- */
 class SupplierInvoiceTest {
 
     private static final CompanyRef CO = new CompanyRef(1L, "Vet SAS", "900123456-7");
@@ -248,12 +242,6 @@ class SupplierInvoiceTest {
             assertThat(inv.getVersion()).isEqualTo(3L);
         }
 
-        /**
-         * BE-fix3: {@code update(...)} validaba {@code notes} (lo pasaba a
-         * {@code validate(...)}) pero nunca hacia {@code this.notes = notes} — el campo
-         * quedaba congelado en el valor de creacion pasara lo que pasara en la edicion.
-         * Ahora la asignacion existe y las notas nuevas se persisten.
-         */
         @Test
         @DisplayName("las notas nuevas se validan y se asignan al campo")
         void las_notas_nuevas_se_asignan() {

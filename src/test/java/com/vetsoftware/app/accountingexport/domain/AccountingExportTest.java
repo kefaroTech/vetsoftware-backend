@@ -407,10 +407,7 @@ class AccountingExportTest {
          * CHECK solo mira la fila resultante). <strong>El constructor Java es mas
          * estricto</strong>: reusa el mismo {@code requireEmpty} que GENERATED, asi que
          * este caso SI es observable desde una unidad de dominio pura — a diferencia de
-         * lo que la ausencia de condicion en el CHECK sugeriria. Ver el informe de la
-         * sesion que escribio esta suite: se avisaba explicitamente de no inventar un
-         * test aqui, y este no se inventa — ejercita una rama real de
-         * {@code validateLifecycle} que existe en el codigo hoy.
+         * lo que la ausencia de condicion en el CHECK sugeriria.
          */
         @Test
         @DisplayName("SUPERSEDED con una fecha de entrega colgada es incoherente para el "

@@ -57,7 +57,6 @@ class VoidGeneralChargeOpenAccountServiceTest {
     @Captor
     private ArgumentCaptor<GeneralChargeOpenAccount> cargoCaptor;
 
-    /** Cuenta abierta con el saldo pendiente que se indique. */
     private void cuentaAbiertaConSaldo(String saldo) {
         when(openAccountQueryPort.isOpen(OPEN_ACCOUNT_ID)).thenReturn(true);
         when(openAccountQueryPort.outstandingAmount(OPEN_ACCOUNT_ID))

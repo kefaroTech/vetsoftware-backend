@@ -15,11 +15,6 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Cancela una recepción CONFIRMED: revierte las entradas de inventario y, si
- * venía de una orden de compra, revierte lo recibido en ella; luego marca
- * CANCELLED.
- */
 @Observed(name = "goods.receipt.cancel")
 @Service
 public class CancelGoodsReceiptService implements CancelGoodsReceiptUseCase {

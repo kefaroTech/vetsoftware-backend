@@ -11,7 +11,6 @@ import com.vetsoftware.app.diagnosticimaging.domain.DiagnosticImagingTypeRef;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/** Fixtures del modulo diagnosticimaging. */
 public final class DiagnosticImagingMother {
 
     public static final Long IMAGING_ID = 700L;

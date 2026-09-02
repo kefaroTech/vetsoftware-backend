@@ -106,13 +106,6 @@ class CompanyTrialGrantTest {
         }
     }
 
-    /**
-     * El caso «no existe ninguna operación que borre o desactive» vivía aquí y
-     * reflexionaba sobre el agregado y nada más: un método de repositorio, una
-     * consulta nativa o un puerto de entrada nuevo pasaban por debajo sin tocarlo.
-     * Se movió, ampliado a toda la superficie de escritura del slice, a
-     * {@code companytrialgrant.TrialGrantWriteSurfaceTest}.
-     */
     @Nested
     @DisplayName("R-TRIAL-22 y R-TRIAL-30 · no se desconcede, se resuelve")
     class Desenlace {

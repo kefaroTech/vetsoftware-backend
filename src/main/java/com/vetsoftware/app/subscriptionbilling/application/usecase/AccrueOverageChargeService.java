@@ -124,13 +124,10 @@ public class AccrueOverageChargeService implements AccrueOverageChargeUseCase {
      * que devengue.
      *
      * <p>
-     * <b>Devuelve el perfil entero y no solo el modo, y esa es la corrección.</b>
-     * La misma lectura que comprueba que la línea cobra trae ya su
-     * {@code tax_treatment} y su {@code tax_rate}, así que al cargo no le queda de
-     * dónde sacarse un impuesto propio ni a un llamador futuro dónde meter una
-     * constante. Antes se leía solo el modo y el par fiscal se rellenaba con
-     * {@code EXCLUDED} + {@code 0.00} fijos: una línea gravada al 19 % producía un
-     * excedente sin IVA, que es una factura emitida de menos ante la DIAN.
+     * <b>Devuelve el perfil entero y no solo el modo.</b> La misma lectura que
+     * comprueba que la línea cobra trae ya su {@code tax_treatment} y su
+     * {@code tax_rate}, así que al cargo no le queda de dónde sacarse un impuesto
+     * propio ni a un llamador futuro dónde meter una constante.
      *
      * @return el modo de cobro y el impuesto que el cargo hereda de la línea
      */

@@ -16,10 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <strong>Carga por el par (techo, artículo) y no por el id suelto.</strong> No
  * hay empresa con la que acotar —la tabla es catálogo global y su puerto está
  * cerrado a un principal cross-tenant—, pero sí hay un padre que la ruta nombra
- * y que hasta ahora no se comprobaba: editar el techo del artículo 7 entrando
- * por {@code /catalog-items/9/limits/{id}} funcionaba. Con la carga acotada,
- * ese desajuste responde 404 en vez de aplicar el cambio y devolver un 200 que
- * confirma una operación distinta de la que la URL decía.
+ * y que hay que comprobar: cargando solo por el {@code id}, editar el techo del
+ * artículo 7 entrando por {@code /catalog-items/9/limits/{id}} funcionaría. Con
+ * la carga acotada, ese desajuste responde 404 en vez de aplicar el cambio y
+ * devolver un 200 que confirma una operación distinta de la que la URL decía.
  */
 @Service
 public class UpdateCatalogItemLimitService implements UpdateCatalogItemLimitUseCase {

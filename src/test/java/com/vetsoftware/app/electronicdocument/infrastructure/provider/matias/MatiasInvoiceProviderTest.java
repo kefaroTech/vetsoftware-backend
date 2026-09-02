@@ -247,7 +247,6 @@ class MatiasInvoiceProviderTest {
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, null);
     }
 
-    // ============================================================
     @Nested
     @DisplayName("providerName")
     class NombreProveedor {
@@ -258,7 +257,6 @@ class MatiasInvoiceProviderTest {
         }
     }
 
-    // ============================================================
     @Nested
     @DisplayName("transmit — autenticacion")
     class Autenticacion {
@@ -363,7 +361,6 @@ class MatiasInvoiceProviderTest {
         }
     }
 
-    // ============================================================
     @Nested
     @DisplayName("transmit — construccion del payload")
     class ConstruccionPayload {
@@ -618,7 +615,6 @@ class MatiasInvoiceProviderTest {
         }
     }
 
-    // ============================================================
     @Nested
     @DisplayName("transmit — interpretacion de la respuesta del proveedor")
     class InterpretacionRespuesta {
@@ -727,7 +723,6 @@ class MatiasInvoiceProviderTest {
         }
     }
 
-    // ============================================================
     @Nested
     @DisplayName("transmit — fallos del transporte")
     class Fallos {
@@ -816,7 +811,6 @@ class MatiasInvoiceProviderTest {
         }
     }
 
-    // ============================================================
     @Nested
     @DisplayName("fetchStatus — reconciliacion por polling")
     class FetchStatus {
@@ -932,7 +926,6 @@ class MatiasInvoiceProviderTest {
         }
     }
 
-    // ============================================================
     @Nested
     @DisplayName("transmit — catalogos del adquiriente y de las lineas")
     class CatalogosAdquirienteYLineas {

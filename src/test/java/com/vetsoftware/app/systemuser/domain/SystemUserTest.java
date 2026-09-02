@@ -104,8 +104,7 @@ class SystemUserTest {
             // createdDate lo pone LocalDateTime.now() dentro del factory: no hay Clock
             // inyectable, asi que la asercion tiene que ser una ventana. Mismo patron de
             // deuda que Animal.create documentado en "Determinismo" del CLAUDE.md;
-            // SystemUser
-            // no esta en esa lista todavia — ver HUECOS en el informe final.
+            // SystemUser no esta en esa lista todavia.
             assertThat(systemUser.getCreatedDate()).isCloseTo(LocalDateTime.now(),
                     within(10, ChronoUnit.SECONDS));
         }

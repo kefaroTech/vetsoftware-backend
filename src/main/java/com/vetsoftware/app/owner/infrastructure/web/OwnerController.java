@@ -56,9 +56,9 @@ public class OwnerController {
     }
 
     /**
-     * BE-06: devuelve una página, no la tabla. {@code page} y {@code pageSize} son
+     * Devuelve una página, no la tabla. {@code page} y {@code pageSize} son
      * opcionales y llevan los mismos valores por defecto que el resto de listados
-     * ya paginados del sistema.
+     * paginados del sistema.
      */
     @GetMapping
     public PageResponse<OwnerResponse> listAll(@RequestParam(defaultValue = "0") int page,

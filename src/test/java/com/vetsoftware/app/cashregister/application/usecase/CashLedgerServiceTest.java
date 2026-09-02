@@ -19,11 +19,6 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/**
- * Tests del {@link CashLedgerService} (orquestación POS / cuenta abierta):
- * registro idempotente de ingresos, reversa idempotente, no-op sin caja abierta
- * y el guard "caja requerida".
- */
 class CashLedgerServiceTest {
 
     private static final long CO = 1L;

@@ -73,9 +73,7 @@ class JpaQuoteNumberPortTest {
      *
      * @param numeroReservado
      *            lo que devuelve la lectura, que NO es {@code next_value} sino
-     *            {@code next_value - 1}: la resta la hace el SQL, no Java. Que este
-     *            matiz se me escapara al escribir el doble y lo cazara el test es
-     *            justamente para lo que sirve.
+     *            {@code next_value - 1}: la resta la hace el SQL, no Java.
      */
     private void conSecuencia(Object numeroReservado) {
         when(entityManager.createNativeQuery(anyString())).thenReturn(upsert, lectura);

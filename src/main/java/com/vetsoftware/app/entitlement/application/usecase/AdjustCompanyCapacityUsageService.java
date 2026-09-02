@@ -28,8 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Mueve el consumo con una sola sentencia atomica y despues lee el contador
  * para devolverlo. La lectura va <em>despues</em> a proposito: leer antes para
  * decidir y escribir despues es exactamente la carrera que el
- * {@code UPDATE ... SET x = x + ?} evita (R-LIMIT-01). Ese mecanismo no se
- * reimplementa aqui: se conserva tal cual estaba.
+ * {@code UPDATE ... SET x = x + ?} evita (R-LIMIT-01).
  *
  * <p>
  * Lo unico que se le antepone es resolver el eje contra el catalogo, que es lo

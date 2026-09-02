@@ -220,7 +220,6 @@ public final class LogRedactor {
      *
      * @param text
      *            texto a redactar; puede ser {@code null}
-     * @return el texto redactado, o el original si ninguna regla aplicó
      */
     public static String redact(String text) {
         if (text == null || text.isEmpty()) {

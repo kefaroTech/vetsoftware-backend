@@ -52,7 +52,6 @@ public class InventoryCount {
                 true, lines);
     }
 
-    /** Cantidad de líneas contadas. */
     public int totalLines() {
         return lines.size();
     }

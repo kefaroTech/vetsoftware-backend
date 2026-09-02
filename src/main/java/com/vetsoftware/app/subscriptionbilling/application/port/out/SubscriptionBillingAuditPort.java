@@ -9,14 +9,13 @@ import java.math.BigDecimal;
  * suscripciones.
  *
  * <p>
- * <b>Es donde está el agujero peor del issue #607.</b> El devengo de los cargos
- * del cierre de mes y la emisión de las cuentas de cobro nacen del barrido
- * nocturno: no cruzan el borde HTTP, así que hasta ahora no producían ni el
- * evento genérico {@code http_mutation}. La pregunta «¿cuántos cargos se
- * emitieron anoche y por cuánto?» solo se podía responder abriendo la base de
- * producción, y la de «¿se emitieron dos veces?» ni siquiera así, porque
- * {@code subscription_charges} es la única tabla del bloque sin llave
- * antiduplicados.
+ * <b>Existe porque estos hechos no cruzan el borde HTTP.</b> El devengo de los
+ * cargos del cierre de mes y la emisión de las cuentas de cobro nacen del
+ * barrido nocturno, así que el evento genérico {@code http_mutation} no los
+ * cubre. Sin este puerto, «¿cuántos cargos se emitieron anoche y por cuánto?»
+ * solo se responde abriendo la base de producción, y «¿se emitieron dos veces?»
+ * ni siquiera así, porque {@code subscription_charges} es la única tabla del
+ * bloque sin llave antiduplicados.
  *
  * <p>
  * Actor, empresa y origen viajan por el MDC. Ver {@code SubscriptionAuditPort}.

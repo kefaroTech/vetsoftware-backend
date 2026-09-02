@@ -23,7 +23,6 @@ final class CashArqueoCsv {
 
     static byte[] arqueo(CashArqueoReport r) {
         StringBuilder sb = new StringBuilder(BOM);
-        // Cabecera
         row(sb, "Arqueo de caja");
         row(sb, "Sesión", r.sessionId() == null ? "" : String.valueOf(r.sessionId()));
         row(sb, "Sede", r.branchId() == null ? "" : String.valueOf(r.branchId()));
@@ -34,7 +33,6 @@ final class CashArqueoCsv {
         row(sb, "Base inicial", plain(r.openingFloat()));
         row(sb);
 
-        // Desglose por método
         row(sb, "Método", "Base", "Ventas", "Abonos", "Ingresos", "Retiros", "Gastos", "Reversas",
                 "Esperado", "Contado", "Diferencia");
         for (CashArqueoReport.MethodRow m : r.methods()) {
@@ -47,7 +45,6 @@ final class CashArqueoCsv {
                 plain(r.totalCounted()), plain(r.totalDifference()));
         row(sb);
 
-        // Movimientos
         row(sb, "Fecha", "Tipo", "Método", "Monto", "Referencia", "Nota");
         for (CashMovementView mv : r.movements()) {
             row(sb, DT.format(mv.createdAt()), typeLabel(mv.type()), methodLabel(mv.method()),

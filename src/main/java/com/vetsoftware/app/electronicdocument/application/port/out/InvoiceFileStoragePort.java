@@ -3,7 +3,6 @@ package com.vetsoftware.app.electronicdocument.application.port.out;
 /** Guarda el archivo (PDF/XML) de la factura y devuelve su clave/referencia. */
 public interface InvoiceFileStoragePort {
 
-    /** Sube el contenido bajo la clave indicada y devuelve la clave almacenada. */
     String store(String key, byte[] content, String contentType);
 
     /**
