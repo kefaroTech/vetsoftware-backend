@@ -54,6 +54,52 @@ Ojo con la palabra «duras»: quince de las diecinueve lo son porque el código 
 - **Congelar una regla nueva**: no hace falta tocar nada. `allowStoreCreation=false` solo impide **crear el directorio** del store; con el directorio ya versionado, una regla nueva envuelta en `freeze(...)` registra su foto sola en la primera ejecución. Eso es cómodo y es una trampa: **la deuda entra al repo en silencio**, así que revisa el diff de `config/archunit/violation-store` y cuenta las líneas antes de commitear. Solo se pone en `true` —y se devuelve a `false` en el mismo commit— si el directorio del store no existe.
 - **No toques la descripción de una regla congelada.** El store indexa por el texto completo (`stored.rules`): cambiar un predicado o el `because` huérfana la foto y la deuda reaparece entera.
 
+## Comentarios en el código
+
+**El comentario es la última opción.** Antes van un nombre que diga lo que hace, un método
+pequeño y un flujo que se lea de arriba abajo. Si un comentario existe porque el código
+cuesta de leer, **arregla el código**.
+
+- **Nunca narres QUÉ hace el código.** `// Obtiene el usuario de la base de datos` sobra: la línea de
+  debajo ya lo dice. Igual `// Comprueba si existe` o `// Devuelve el resultado`.
+- **Nunca guardes en un comentario** hallazgos de implementación, análisis, contexto de la
+  tarea o del ticket, tu razonamiento, notas de depuración, narración histórica («antes este
+  método…») ni la descripción del cambio que acabas de hacer. Eso va en la respuesta final,
+  no en el código fuente. Las formas que más se cuelan: `// Añadido porque el ticket pide…`,
+  `// Según mi análisis…`, `// Esto corrige el problema de…`, `// Esto asegura que…`.
+- **Sí se gana su sitio cuando explica POR QUÉ existe algo no obvio**: una regla de negocio
+  que no se deduce del código, el límite de una API externa, una restricción de
+  compatibilidad, una suposición de concurrencia, una decisión de seguridad, una invariante,
+  un workaround necesario, o código que parece incorrecto y es intencionadamente así.
+
+```java
+// VMS acepta 50 caracteres como máximo aunque el RFC permita correos más largos.
+private static final int MAX_EMAIL = 50;
+```
+
+**Cierre de toda tarea de implementación:** repasa el `git diff`, borra los comentarios que
+añadiste y no expliquen un porqué, y simplifica el código cuando el comentario solo existía
+para descifrarlo. No toques comentarios previos ajenos al cambio, salvo que este los haya
+vuelto incorrectos.
+
+El objetivo no es cero comentarios: es que sean **excepcionales y valiosos** en vez de
+rutinarios y descriptivos. La versión larga, con el alcance completo y las excepciones, está
+en `.claude/rules/code-comments.md` del directorio de coordinación.
+
+**Javadoc: nunca por sistema.** El que repite la firma es ceremonia y sobra —
+`/** Obtiene la organización por id. @param id … @return … */` sobre un
+`Organization getOrganizationById(UUID id)` no dice nada que la firma no diga—. Escríbelo
+cuando aporte contrato que la firma no puede dar: API pública, comportamiento no obvio,
+efectos colaterales inesperados, precondiciones y postcondiciones que importan, reglas de
+dominio complejas o un punto de extensión de framework.
+
+**Excepciones que mandan sobre todo lo anterior**, porque son comentarios de POR QUÉ y
+además hay reglas que los comprueban: el motivo obligatorio junto a un `lenient()` de
+Mockito, el `@NoAuthorizationRequired(reason = "…")` de un puerto y el motivo al lado de
+cada entrada de `ENTIDADES_EXENTAS_DE_VERSION`. Con criterio y fuera del automatismo, los
+comentarios de test que describen un escenario genuinamente no obvio y los de un changeset
+Liquibase que documenta una operación irreversible o inusual.
+
 ## Cierre obligatorio — nada abierto sin issue
 
 **Regla dura del proyecto, sin excepciones y sin pedir permiso.** Todo lo que quede abierto al
