@@ -82,6 +82,15 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
      */
     private static final Long ITEM_INTERNO = 1966L;
 
+    /**
+     * La forma exacta de los cuatro {@code EXTRA_*}: {@code CAPACITY}
+     * {@code ACTIVE}, tarifada, y <b>sin una sola fila en
+     * {@code bundle_components}</b> — se vende aparte y no viene incluida en ningún
+     * paquete. Es el artículo que el gate rechazaba y que la columna
+     * {@code self_service} existe para admitir.
+     */
+    private static final Long ITEM_CAPACIDAD_EXTRA = 1967L;
+
     /** Lista en borrador: sus precios todavía se pueden cambiar. */
     private static final Long LISTA_BORRADOR = 1970L;
 
@@ -93,6 +102,7 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
     private static final Long PRECIO_COMPONENTE = 1985L;
     private static final Long PRECIO_INTERNO = 1986L;
     private static final Long PRECIO_BORRADOR = 1987L;
+    private static final Long PRECIO_CAPACIDAD_EXTRA = 1988L;
 
     private static final Long ENLACE_COMPONENTE = 1995L;
     private static final Long ENLACE_BORRADOR = 1996L;
@@ -107,6 +117,7 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
     private static final String CODE_COMPONENTE = "TEST_MODULO_DEL_PLAN";
     private static final String CODE_INTERNO = "TEST_MODULO_INTERNO";
     private static final String CODE_BORRADOR = "BORRADOR";
+    private static final String CODE_CAPACIDAD_EXTRA = "TEST_EXTRA_SUELTO";
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -177,6 +188,8 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
         articulo(ITEM_COMPONENTE, CODE_COMPONENTE, "Modulo del plan", "MODULE", null, "ACTIVE",
                 true);
         articulo(ITEM_INTERNO, CODE_INTERNO, "Modulo interno", "MODULE", null, "ACTIVE", true);
+        articulo(ITEM_CAPACIDAD_EXTRA, CODE_CAPACIDAD_EXTRA, "Sede adicional", "CAPACITY", "BRANCH",
+                "ACTIVE", true);
 
         componenteDePaquete(ENLACE_COMPONENTE, ITEM_BUNDLE, ITEM_COMPONENTE);
         // El de borrador SI cuelga del paquete: asi el unico motivo por el que no se
@@ -197,6 +210,20 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
                 "40000.00", "19.00", "TAXED", true);
         precio(PRECIO_BORRADOR, SchemaSeed.PRICE_LIST_ID, ITEM_DRAFT, "MONTHLY", 1, null, 0,
                 "10000.00", "19.00", "TAXED", true);
+        precio(PRECIO_CAPACIDAD_EXTRA, SchemaSeed.PRICE_LIST_ID, ITEM_CAPACIDAD_EXTRA, "MONTHLY", 1,
+                null, 0, "45000.00", "19.00", "TAXED", true);
+    }
+
+    /**
+     * {@code chk_catalog_items_self_service} solo la admite en {@code MODULE} y
+     * {@code CAPACITY}: marcar un {@code BUNDLE} o un {@code ONE_TIME} muere en la
+     * base y no en la aserción.
+     */
+    private void marcarAutoservicio(Long catalogItemId) {
+        entityManager
+                .createNativeQuery("UPDATE catalog_items SET self_service = TRUE WHERE id = :id")
+                .setParameter("id", catalogItemId).executeUpdate();
+        entityManager.flush();
     }
 
     private void componenteDePaquete(Long id, Long bundleId, Long componentId) {
@@ -664,6 +691,67 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
         void el_mismo_rotulo_en_otra_tarifa_no_se_resuelve() {
             assertThat(publicadoPort.findPublishedIdByCode(CODE_BUNDLE, LISTA_BORRADOR,
                     BillingCycle.MONTHLY)).isEmpty();
+        }
+
+        /**
+         * <b>La capacidad extra, que es el caso que abrió la columna.</b>
+         * {@link #ITEM_CAPACIDAD_EXTRA} tiene la forma de los cuatro {@code EXTRA_*}:
+         * {@code CAPACITY} {@code ACTIVE}, tarifada y sin colgar de ningún paquete. Con
+         * el gate atado solo a {@code bundle_components}, cotizar una sede adicional
+         * daba 400 y tumbaba la petición entera — y colgarla de un pack para arreglarlo
+         * la habría anunciado como incluida en su precio.
+         */
+        @Test
+        @DisplayName("una capacidad suelta marcada self_service SÍ se resuelve")
+        void una_capacidad_marcada_self_service_se_resuelve() {
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_CAPACIDAD_EXTRA,
+                    SchemaSeed.PRICE_LIST_ID, BillingCycle.MONTHLY)).isEmpty();
+
+            marcarAutoservicio(ITEM_CAPACIDAD_EXTRA);
+
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_CAPACIDAD_EXTRA,
+                    SchemaSeed.PRICE_LIST_ID, BillingCycle.MONTHLY)).contains(ITEM_CAPACIDAD_EXTRA);
+        }
+
+        /**
+         * La unión es <b>aditiva</b>: la vía nueva se suma a la de
+         * {@code bundle_components}, no la reemplaza. Sin este caso, escribir el gate
+         * como «solo {@code self_service}» dejaría los trece módulos de los tres packs
+         * fuera de la contratación y ningún otro test lo delataría, porque todos los de
+         * arriba miran el rótulo de uno en uno.
+         */
+        @Test
+        @DisplayName("marcar una capacidad no saca del gate a lo que ya colgaba del paquete")
+        void marcar_una_capacidad_no_saca_a_lo_que_colgaba_del_paquete() {
+            marcarAutoservicio(ITEM_CAPACIDAD_EXTRA);
+
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_BUNDLE, SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.MONTHLY)).contains(ITEM_BUNDLE);
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_COMPONENTE,
+                    SchemaSeed.PRICE_LIST_ID, BillingCycle.MONTHLY)).contains(ITEM_COMPONENTE);
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_INTERNO, SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.MONTHLY)).isEmpty();
+        }
+
+        /**
+         * La marca abre una vía <b>dentro</b> del {@code WHERE}, no por encima de él:
+         * el estado, la baja lógica y el precio de entrada en el ciclo pedido siguen
+         * mandando. Un artículo en borrador marcado como vendible sigue sin poder
+         * cotizarse, que es lo que separa «abrir el gate» de «quitarlo».
+         */
+        @Test
+        @DisplayName("la marca no salta el estado ni el precio del ciclo pedido")
+        void la_marca_no_salta_el_estado_ni_el_precio_del_ciclo() {
+            marcarAutoservicio(ITEM_DRAFT);
+            marcarAutoservicio(ITEM_DESHABILITADO);
+            marcarAutoservicio(ITEM_CAPACIDAD_EXTRA);
+
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_BORRADOR, SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.MONTHLY)).isEmpty();
+            assertThat(publicadoPort.findPublishedIdByCode("DE_BAJA", SchemaSeed.PRICE_LIST_ID,
+                    BillingCycle.MONTHLY)).isEmpty();
+            assertThat(publicadoPort.findPublishedIdByCode(CODE_CAPACIDAD_EXTRA,
+                    SchemaSeed.PRICE_LIST_ID, BillingCycle.ANNUAL)).isEmpty();
         }
 
         @Test

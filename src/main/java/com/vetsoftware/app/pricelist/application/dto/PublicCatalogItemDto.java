@@ -45,12 +45,13 @@ import java.math.BigDecimal;
 public record PublicCatalogItemDto(String code, String name, String description, boolean mandatory,
         Integer trialDays, BigDecimal monthlyAmount, BigDecimal annualAmount,
         BigDecimal setupAmount, BigDecimal taxRate, TaxTreatment taxTreatment,
-        boolean selfServiceEligible) {
+        boolean selfServiceEligible, String areaCode, String shortLabel) {
 
     /** Proyecta la fila plana del read model a la forma que sale por HTTP. */
     public static PublicCatalogItemDto from(PublicCatalogItemRowDto row) {
         return new PublicCatalogItemDto(row.code(), row.name(), row.shortDescription(),
                 row.mandatory(), row.trialDays(), row.monthlyAmount(), row.annualAmount(),
-                row.setupAmount(), row.taxRate(), row.taxTreatment(), row.selfServiceEligible());
+                row.setupAmount(), row.taxRate(), row.taxTreatment(), row.selfServiceEligible(),
+                row.areaCode(), row.shortLabel());
     }
 }

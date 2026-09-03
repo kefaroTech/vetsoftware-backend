@@ -29,5 +29,6 @@ public record PublicCatalogPackResponse(
         @Schema(description = "Precio al mes; nulo si el paquete no esta tarifado en ese ciclo") BigDecimal monthlyAmount,
         @Schema(description = "Precio al ano; nulo si el paquete no esta tarifado en ese ciclo") BigDecimal annualAmount,
         BigDecimal setupAmount, BigDecimal taxRate, TaxTreatment taxTreatment,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Rotulos de los articulos que el paquete incluye. Ninguno de ellos se puede comprar ademas del paquete") List<String> componentCodes) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Rotulos de los articulos que el paquete incluye. Ninguno de ellos se puede comprar ademas del paquete") List<String> componentCodes,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "La combinacion que el negocio destaca. Es una decision comercial editable, no el minimo estructural de mandatory; a lo sumo un paquete vivo la lleva") boolean recommended) {
 }

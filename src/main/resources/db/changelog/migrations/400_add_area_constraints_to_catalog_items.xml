@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Cierra el arco exclusivo de area_code (docs/db/landing-nucleo-modulos-areas.md §4.2) tras
+         el backfill de 399. LA REGLA ES DE UN SOLO SENTIDO: un artículo que NO sea MODULE no
+         puede llevar área; un MODULE puede llevarla o no. No es "todo MODULE exige área" -esa
+         redacción, que este changeset tuvo en una versión anterior, contradecía a 399 y a la
+         propia regla de producto: CORE es MODULE y se pinta en una fila fija sobre las cuatro
+         áreas plegables, no dentro de ninguna casilla, así que 399 lo deja con area_code = NULL
+         a propósito (issue #711). Mismo arco exclusivo de un solo sentido que
+         chk_catalog_items_capacity_unit no usa -aquel sí ata los dos lados porque CAPACITY
+         siempre necesita unidad-; aquí basta con impedir que el área se cuele en lo que no es
+         MODULE.
+
+         La preCondition ya no comprueba "ningún MODULE con area_code NULL" -eso volvería a
+         contar a CORE y volvería a HALTear siempre, issue #711-. Comprueba lo que de verdad
+         garantiza el backfill: que los trece módulos que SÍ debían llevar área (todo MODULE
+         salvo CORE) la tienen. Sigue sirviendo de guardia por si un operador dio de alta un
+         MODULE manual desde la consola de plataforma después de 308 sin asignarle área -este
+         agente no tuvo acceso a la base de datos de dev/prod para descartarlo-, mismo patrón de
+         guardia que 206/226.
+
+         fk_catalog_items_area, RESTRICT en los dos sentidos: borrar un área con módulos colgando
+         es un error, y su código es inmutable -reescribirlo en cascada movería el pasado, mismo
+         criterio que fk_catalog_items_capacity_unit en 333-. Sin índice explícito sobre
+         area_code: la FK obliga a InnoDB a crear uno propio de una columna, y con 26 filas en
+         catalog_items un compuesto (area_code, sort_order) paga escritura en cada INSERT sin
+         comprar nada medible (docs/db/landing-nucleo-modulos-areas.md §4.2). -->
+    <changeSet id="400_add_area_constraints_to_catalog_items" author="orlando">
+        <preConditions onFail="HALT" onError="HALT"
+                       onFailMessage="Algún MODULE distinto de CORE quedó sin area_code tras el backfill de 399: probablemente un artículo dado de alta manualmente desde la consola de plataforma. Decide su área con un humano antes de reintentar.">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM catalog_items
+                 WHERE item_type = 'MODULE' AND area_code IS NULL AND code != 'CORE'
+            </sqlCheck>
+        </preConditions>
+
+        <addForeignKeyConstraint baseTableName="catalog_items" baseColumnNames="area_code"
+                                 referencedTableName="catalog_areas" referencedColumnNames="code"
+                                 constraintName="fk_catalog_items_area"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_items
+                ADD CONSTRAINT chk_catalog_items_area
+                    CHECK (area_code IS NULL OR item_type = 'MODULE')
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_items
+                ADD CONSTRAINT chk_catalog_items_short_label
+                    CHECK (short_label IS NULL OR CHAR_LENGTH(TRIM(short_label)) > 0)
+        ]]></sql>
+
+        <rollback>
+            <sql>ALTER TABLE catalog_items DROP CONSTRAINT chk_catalog_items_short_label</sql>
+            <sql>ALTER TABLE catalog_items DROP CONSTRAINT chk_catalog_items_area</sql>
+            <dropForeignKeyConstraint baseTableName="catalog_items"
+                                      constraintName="fk_catalog_items_area"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

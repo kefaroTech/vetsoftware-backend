@@ -60,21 +60,32 @@ import java.math.BigDecimal;
  *            sembrado, que es un importe de verdad —«no hay cargo de
  *            implantacion»— y no una ausencia de dato.
  * @param selfServiceEligible
- *            si el articulo cuelga de algun paquete {@code ACTIVE} publicado.
- *            <strong>Es el predicado del gate, proyectado</strong>: junto con
- *            «tiene importe en el ciclo pedido» reproduce exactamente el
- *            {@code WHERE} de
+ *            si el articulo cuelga de algun paquete {@code ACTIVE} publicado o
+ *            lleva {@code catalog_items.self_service}. <strong>Es el predicado
+ *            del gate, proyectado</strong>: junto con «tiene importe en el
+ *            ciclo pedido» reproduce exactamente el {@code WHERE} de
  *            {@code JpaPublishedCatalogItemQueryPort.SQL_PUBLISHED_ID_BY_CODE}.
  *            Se publica en vez de filtrar por el para que la portada pueda
  *            mostrar el cargo unico —que existe y tiene precio de lista— sin
  *            ofrecerlo como linea de autoservicio, que es lo que la
  *            contratacion rechazaria.
+ * @param areaCode
+ *            {@code catalog_items.area_code}. Nulo fuera de los {@code MODULE}
+ *            —{@code chk_catalog_items_area} lo prohibe— y tambien en
+ *            {@code CORE}, que es {@code MODULE} y aun asi lo tiene nulo: el
+ *            nucleo se pinta en una fila fija sobre las cabeceras plegables y
+ *            no dentro de ninguna (changeset 399, issue #711).
+ * @param shortLabel
+ *            rotulo de casilla, no la frase de escaparate de
+ *            {@code shortDescription}. Nulable: la caida a {@code name} es
+ *            decision de quien pinta.
  */
 public record PublicCatalogItemRowDto(String code, String name, String shortDescription,
         String itemType, boolean mandatory, String capacityUnit, Integer trialDays,
         BigDecimal monthlyAmount, BigDecimal annualAmount, Integer monthlyIncludedQuantity,
         Integer annualIncludedQuantity, BigDecimal setupAmount, BigDecimal taxRate,
-        TaxTreatment taxTreatment, boolean selfServiceEligible) {
+        TaxTreatment taxTreatment, boolean selfServiceEligible, String areaCode,
+        String shortLabel) {
 
     /** Un contador que se compra por unidades. */
     public boolean esCapacidad() {

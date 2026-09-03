@@ -1044,4 +1044,61 @@
          checksum de 263/265 se mueve, y esta asumido: no estan aplicadas en dev ni en produccion. -->
     <include file="db/changelog/migrations/395_reseed_local_e2e_catalog_after_structural_minimum_rename.xml"/>
 
+    <!-- 396-403: LANDING «NUCLEO + MODULOS SUELTOS» (docs/db/landing-nucleo-modulos-areas.md).
+         Mueve al catalogo tres cosas que hoy viven a mano en VetSoftwarePublicFront: el area
+         funcional de cada modulo (catalogo.content.ts:69-83), su rotulo corto (no existia) y la
+         marca de "combinacion recomendada" (plans.content.ts:175). Expand/contract: nada de esto
+         lo ve la aplicacion en marcha hasta que backend-feature amplie CatalogItemJpaEntity y los
+         cinco SELECT nativos de JpaPublicCatalogQueryPort -ninguno hace SELECT *-.
+
+         396 crea catalog_areas (tabla de catalogo, no columna enum: mismo argumento que 333 uso
+         para capacity_unit -> limit_dimensions). 397 anade area_code/short_label/recommended al
+         FINAL de catalog_items -acordado con backend-feature: findContractableItems lee
+         columns[0..14] por posicion-. 398 siembra las 4 areas. 399 hace el backfill de los 14
+         MODULE en un solo UPDATE con version = version + 1 (#53), dejando CORE con area_code NULL a
+         proposito -es MODULE y se pinta en una fila fija sobre las cuatro areas, no dentro de
+         ninguna casilla-. 400 cierra el arco de area_code EN UN SOLO SENTIDO -lo que no es
+         MODULE no puede llevar area; un MODULE puede llevarla o no, CORE incluido- con FK +
+         CHECK, DESPUES del backfill, con preCondition HALT que exige area solo en los trece
+         MODULE que si debian recibirla, nunca en CORE (redaccion corregida: issue #711). 401 marca
+         PACK_CLINIC como recomendado y cierra el CHECK "solo BUNDLE". 402 anade la columna GENERADA + UNIQUE que
+         emula "a lo sumo un paquete recomendado" -patron de 206/210/226-, en su propia sentencia
+         porque una columna STORED reconstruye la tabla (InnoDB online DDL). 403 renombra el copy
+         comercial de los tres BUNDLE y de paso cierra el defecto #708 (PACK_FULL.short_
+         description era una nota de modelado interna, no texto de escaparate).
+
+         bundle_components NO se toca en ninguno de estos ocho: la composicion real de los tres
+         paquetes (309) sigue siendo la que vende hoy la plataforma; un mockup de landing no basta
+         para cambiar que trae cada paquete. -->
+    <include file="db/changelog/migrations/396_create_catalog_areas.xml"/>
+    <include file="db/changelog/migrations/397_add_area_and_recommendation_columns_to_catalog_items.xml"/>
+    <include file="db/changelog/migrations/398_seed_catalog_areas.xml"/>
+    <include file="db/changelog/migrations/399_backfill_catalog_items_area_and_short_label.xml"/>
+    <include file="db/changelog/migrations/400_add_area_constraints_to_catalog_items.xml"/>
+    <include file="db/changelog/migrations/401_mark_pack_clinic_as_recommended.xml"/>
+    <include file="db/changelog/migrations/402_add_unique_recommended_bundle_to_catalog_items.xml"/>
+    <include file="db/changelog/migrations/403_rename_bundle_commercial_copy.xml"/>
+
+    <!-- 404-406: ELEGIBILIDAD DE CAPACIDAD EXTRA EN AUTOSERVICIO
+         (docs/db/capacidad-extra-autoservicio-elegibilidad.md §4). Separa "que contiene un
+         paquete" (bundle_components, intacta) de "que es contratable por autoservicio"
+         (self_service, columna nueva): los cuatro EXTRA_* son vendibles y no van dentro de
+         ningun paquete, y hoy el gate de JpaCatalogQueryPorts.SQL_PUBLISHED_ID_BY_CODE solo
+         acepta lo que cuelga de un BUNDLE, asi que cotizar una sede o un usuario adicional
+         devuelve 400. 404 anade catalog_items.self_service BOOLEAN NOT NULL DEFAULT FALSE al
+         FINAL de la tabla -mismo contrato posicional que 397- con su CHECK. 405 marca TRUE
+         solo los cuatro EXTRA_* (version = version + 1, #53); los otros 22 codigos quedan en
+         FALSE por el DEFAULT y el conjunto contratable de hoy no cambia. 406 anade los arcos
+         REQUIRES EXTRA_USER -> CORE y EXTRA_BRANCH -> CORE que SelfServeCartGuard necesita
+         para no aceptar una capacidad extra sin nada debajo; EXTRA_TERMINAL y EXTRA_STORAGE ya
+         llevaban su REQUIRES desde 309 y no se tocan.
+
+         backend-feature cambia en el MISMO PR el gate y su gemelo proyectado
+         (JpaPublicCatalogQueryPort.SQL_ITEMS) a la union "cuelga de BUNDLE activo" O
+         self_service = TRUE: con la columna sembrada y el gate sin tocar no pasa nada
+         (fail-closed); el orden seguro es datos primero. -->
+    <include file="db/changelog/migrations/404_add_self_service_to_catalog_items.xml"/>
+    <include file="db/changelog/migrations/405_backfill_self_service_extra_capacities.xml"/>
+    <include file="db/changelog/migrations/406_seed_extra_capacity_requires_core.xml"/>
+
 </databaseChangeLog>

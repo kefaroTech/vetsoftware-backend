@@ -1,11 +1,13 @@
 package com.vetsoftware.app.pricelist.infrastructure.web;
 
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogAreaDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogCapacityDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogRequirementDto;
 import com.vetsoftware.app.pricelist.application.port.in.GetPublicCatalogUseCase;
+import com.vetsoftware.app.pricelist.infrastructure.web.response.PublicCatalogAreaResponse;
 import com.vetsoftware.app.pricelist.infrastructure.web.response.PublicCatalogCapacityResponse;
 import com.vetsoftware.app.pricelist.infrastructure.web.response.PublicCatalogItemResponse;
 import com.vetsoftware.app.pricelist.infrastructure.web.response.PublicCatalogPackResponse;
@@ -66,7 +68,7 @@ public class PublicCatalogController {
 
     /**
      * Sin parametros y sin cabecera de empresa: la respuesta es la misma para
-     * cualquiera. Devuelve 200 con las cuatro listas vacias cuando no hay tarifa
+     * cualquiera. Devuelve 200 con todas las listas vacias cuando no hay tarifa
      * vigente, y no un 404: la portada tiene que seguir cargando.
      */
     @GetMapping
@@ -80,13 +82,19 @@ public class PublicCatalogController {
                         .toList(),
                 catalog.packs().stream().map(PublicCatalogController::toPackResponse).toList(),
                 catalog.requirements().stream().map(PublicCatalogController::toRequirementResponse)
-                        .toList());
+                        .toList(),
+                catalog.areas().stream().map(PublicCatalogController::toAreaResponse).toList());
     }
 
     private static PublicCatalogItemResponse toItemResponse(PublicCatalogItemDto dto) {
         return new PublicCatalogItemResponse(dto.code(), dto.name(), dto.description(),
                 dto.mandatory(), dto.trialDays(), dto.monthlyAmount(), dto.annualAmount(),
-                dto.setupAmount(), dto.taxRate(), dto.taxTreatment(), dto.selfServiceEligible());
+                dto.setupAmount(), dto.taxRate(), dto.taxTreatment(), dto.selfServiceEligible(),
+                dto.areaCode(), dto.shortLabel());
+    }
+
+    private static PublicCatalogAreaResponse toAreaResponse(PublicCatalogAreaDto dto) {
+        return new PublicCatalogAreaResponse(dto.code(), dto.name());
     }
 
     private static PublicCatalogCapacityResponse toCapacityResponse(PublicCatalogCapacityDto dto) {
@@ -104,6 +112,6 @@ public class PublicCatalogController {
     private static PublicCatalogPackResponse toPackResponse(PublicCatalogPackDto dto) {
         return new PublicCatalogPackResponse(dto.code(), dto.name(), dto.tagline(),
                 dto.monthlyAmount(), dto.annualAmount(), dto.setupAmount(), dto.taxRate(),
-                dto.taxTreatment(), dto.componentCodes());
+                dto.taxTreatment(), dto.componentCodes(), dto.recommended());
     }
 }

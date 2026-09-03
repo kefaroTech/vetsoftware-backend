@@ -1,5 +1,6 @@
 package com.vetsoftware.app.pricelist.application.usecase;
 
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogAreaDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogCapacityDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemDto;
@@ -23,17 +24,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * El catalogo contratable en <strong>cuatro consultas</strong>, no en una por
- * articulo.
+ * El catalogo contratable en <strong>un punado de consultas fijas</strong>, no
+ * en una por articulo.
  *
  * <p>
  * Misma forma que {@link GetPublicPlansService} y por el mismo motivo: se traen
- * las tarifas publicadas, los articulos sueltos de la vigente, sus paquetes y
- * la composicion de esos paquetes, y se agrupa en memoria. Sobre unas decenas
- * de filas eso es mas barato que cualquier {@code JOIN} anidado y, sobre todo,
- * evita el N+1 que produciria recorrer los paquetes pidiendo sus piezas — en un
- * endpoint que sirve a gente sin autenticar, que es donde un N+1 es una via de
- * saturacion gratuita.
+ * las tarifas publicadas, los articulos sueltos de la vigente, sus paquetes, la
+ * composicion de esos paquetes y las cabeceras funcionales, y se agrupa en
+ * memoria. Sobre unas decenas de filas eso es mas barato que cualquier
+ * {@code JOIN} anidado y, sobre todo, evita el N+1 que produciria recorrer los
+ * paquetes pidiendo sus piezas — en un endpoint que sirve a gente sin
+ * autenticar, que es donde un N+1 es una via de saturacion gratuita.
  *
  * <p>
  * <strong>La tarifa la elige {@link PublicPriceListSelector}</strong>,
@@ -55,7 +56,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class GetPublicCatalogService implements GetPublicCatalogUseCase {
 
     private static final PublicCatalogDto SIN_TARIFA = new PublicCatalogDto(null, null, List.of(),
-            List.of(), List.of(), List.of(), List.of());
+            List.of(), List.of(), List.of(), List.of(), List.of());
 
     private final PublicPlanQueryPort priceListQueryPort;
     private final PublicCatalogQueryPort queryPort;
@@ -97,6 +98,7 @@ public class GetPublicCatalogService implements GetPublicCatalogUseCase {
                                 porPaquete.getOrDefault(pack.code(), List.of())))
                         .toList(),
                 queryPort.findRequirements().stream().map(PublicCatalogRequirementDto::from)
-                        .toList());
+                        .toList(),
+                queryPort.findAreas().stream().map(PublicCatalogAreaDto::from).toList());
     }
 }

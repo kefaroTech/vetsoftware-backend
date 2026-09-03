@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Mueve la marca de "combinación recomendada" del front al catálogo
+         (docs/db/landing-nucleo-modulos-areas.md §4.4). Hoy vive en
+         VetSoftwarePublicFront/src/features/landing/content/plans.content.ts:175
+         (OVERLAY_EDITORIAL.PACK_CLINIC.recommended = true), y el propio comentario de ese
+         fichero la llama parche declarando que "el arreglo de verdad es la semilla". Un solo
+         BUNDLE recomendado hoy: PACK_CLINIC.
+
+         UPDATE_MASIVO_MUEVE_LA_VERSION: catalog_items está versionada y este UPDATE no pasa por
+         el ciclo de Hibernate, así que version = version + 1 va en el SET.
+
+         chk_catalog_items_recommended cierra el CHECK "solo un BUNDLE puede recomendarse"
+         DESPUÉS del backfill, mismo orden que 399→400: aunque hoy pasaría igual con las 26 filas
+         en FALSE por defecto, se mantiene el patrón de la casa para no dejarlo a la suerte del
+         orden de ejecución. -->
+    <changeSet id="401_mark_pack_clinic_as_recommended" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_items
+               SET recommended = TRUE, version = version + 1
+             WHERE code = 'PACK_CLINIC'
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_items
+                ADD CONSTRAINT chk_catalog_items_recommended
+                    CHECK (recommended = FALSE OR item_type = 'BUNDLE')
+        ]]></sql>
+
+        <rollback>
+            <sql>ALTER TABLE catalog_items DROP CONSTRAINT chk_catalog_items_recommended</sql>
+            <sql><![CDATA[
+                UPDATE catalog_items
+                   SET recommended = FALSE, version = version + 1
+                 WHERE code = 'PACK_CLINIC'
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

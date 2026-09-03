@@ -135,6 +135,44 @@ public class CatalogItemJpaEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
+    /**
+     * El <strong>código del área funcional</strong> ({@code catalog_areas.code}),
+     * con la misma forma que {@link #capacityUnit}: {@code VARCHAR} atado por
+     * {@code fk_catalog_items_area} y <strong>sin {@code @ManyToOne}</strong>,
+     * porque de aquí no hace falta un solo campo del área — quien publica su rótulo
+     * lo lee con su propia consulta.
+     *
+     * <p>
+     * {@code chk_catalog_items_area} lo prohíbe fuera de los {@code MODULE}, igual
+     * que {@code chk_catalog_items_capacity_unit} hace con el eje.
+     */
+    @Column(name = "area_code", length = 30)
+    private String areaCode;
+
+    @Column(name = "short_label", length = 40)
+    private String shortLabel;
+
+    /**
+     * Combinación que el negocio destaca en la portada. Solo puede ser cierta en un
+     * {@code BUNDLE} ({@code chk_catalog_items_recommended}) y a lo sumo en uno
+     * vivo, invariante que sostiene una columna generada con su índice único y no
+     * este campo.
+     */
+    @Column(name = "recommended", nullable = false)
+    private boolean recommended;
+
+    /**
+     * Si el artículo se puede contratar por autoservicio <strong>por sí
+     * mismo</strong>. Existe porque {@code bundle_components} significa «incluido
+     * en el precio del paquete» y no «vendible aparte»: los cuatro {@code EXTRA_*}
+     * son lo segundo sin ser lo primero, y expresarlo colgándolos de un pack los
+     * anunciaría como regalados. {@code chk_catalog_items_self_service} solo lo
+     * admite en {@code MODULE} y {@code CAPACITY} — un {@code BUNDLE} ya es
+     * elegible por su tipo y un {@code ONE_TIME} se negocia.
+     */
+    @Column(name = "self_service", nullable = false)
+    private boolean selfService;
+
     protected CatalogItemJpaEntity() {
     }
 
@@ -288,5 +326,37 @@ public class CatalogItemJpaEntity {
 
     public void setServiceNature(String serviceNature) {
         this.serviceNature = serviceNature;
+    }
+
+    public String getAreaCode() {
+        return areaCode;
+    }
+
+    public void setAreaCode(String areaCode) {
+        this.areaCode = areaCode;
+    }
+
+    public String getShortLabel() {
+        return shortLabel;
+    }
+
+    public void setShortLabel(String shortLabel) {
+        this.shortLabel = shortLabel;
+    }
+
+    public boolean isRecommended() {
+        return recommended;
+    }
+
+    public void setRecommended(boolean recommended) {
+        this.recommended = recommended;
+    }
+
+    public boolean isSelfService() {
+        return selfService;
+    }
+
+    public void setSelfService(boolean selfService) {
+        this.selfService = selfService;
     }
 }

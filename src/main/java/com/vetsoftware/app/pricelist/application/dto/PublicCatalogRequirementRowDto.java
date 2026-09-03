@@ -42,9 +42,9 @@ package com.vetsoftware.app.pricelist.application.dto;
  * @param itemCode
  *            el articulo que el cliente elige
  * @param requiredItemCode
- *            el que se le va a anadir. Puede no estar en ninguna de las cuatro
- *            listas de la respuesta si no tiene precio en la tarifa vigente:
- *            ver {@link PublicCatalogDto#requirements()}
+ *            el que se le va a anadir. Puede no estar en ninguna de las listas
+ *            de la respuesta si no tiene precio en la tarifa vigente: ver
+ *            {@link PublicCatalogDto#requirements()}
  */
 public record PublicCatalogRequirementRowDto(String itemCode, String requiredItemCode) {
 }
