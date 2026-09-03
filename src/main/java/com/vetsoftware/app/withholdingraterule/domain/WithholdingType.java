@@ -16,7 +16,7 @@ package com.vetsoftware.app.withholdingraterule.domain;
  * comparten el centinela {@code '-'} de la columna generada
  * {@code municipality_key}.
  *
- * <h2>Este nombre simple esta repetido, y NO pasa lo que aqui se decia</h2>
+ * <h2>Este nombre simple esta repetido, y no colisiona</h2>
  *
  * <p>
  * Existen tres enums {@code WithholdingType} —este,
@@ -36,20 +36,15 @@ package com.vetsoftware.app.withholdingraterule.domain;
  *
  * <p>
  * <strong>Corolario: anadir aqui un cuarto valor NO lo publica en los otros
- * dos.</strong> La version anterior de este javadoc afirmaba lo contrario y
- * mandaba «renombrar el esquema de al menos dos de ellas antes de regenerar
- * {@code api/openapi.json}» — una precaucion imposible de ejecutar, porque esos
- * esquemas no existen, y que a cambio desaconseja un cambio legitimo. Si esta
- * lista tiene que crecer, crece: lo unico que hay que revisar es el
- * {@code CHECK} de <em>esta</em> tabla y los rotulos de los frontends para
- * <em>este</em> endpoint.
+ * dos.</strong> Si esta lista tiene que crecer, crece: lo unico que hay que
+ * revisar es el {@code CHECK} de <em>esta</em> tabla y los rotulos de los
+ * frontends para <em>este</em> endpoint.
  *
  * <p>
- * Lo que si sigue siendo cierto es que la duplicacion es deliberada —el
- * vertical slicing prohibe que un slice importe el dominio de otro— y que hoy
- * los tres declaran exactamente {@code INCOME_TAX}, {@code VAT} e {@code ICA}
- * porque son espejo del mismo {@code CHECK} repetido en los changesets del
- * bloque fiscal.
+ * La duplicacion es deliberada —el vertical slicing prohibe que un slice
+ * importe el dominio de otro— y hoy los tres declaran exactamente
+ * {@code INCOME_TAX}, {@code VAT} e {@code ICA} porque son espejo del mismo
+ * {@code CHECK} repetido en los changesets del bloque fiscal.
  */
 public enum WithholdingType {
 

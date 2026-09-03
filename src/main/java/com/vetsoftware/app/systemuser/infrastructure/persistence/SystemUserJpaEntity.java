@@ -49,7 +49,6 @@ public class SystemUserJpaEntity {
     @Column(name = "email", length = 150, unique = true)
     private String email;
 
-    /** Nombre real. Antes se perdia y /auth/me devolvia el codigo como nombre. */
     @Column(name = "full_name", length = 120)
     private String fullName;
 

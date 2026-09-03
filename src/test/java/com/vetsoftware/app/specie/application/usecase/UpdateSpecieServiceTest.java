@@ -31,7 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * por tanto un escenario de "entidad de otra empresa" que construir aqui: no
  * existe el campo contra el que aislar. La unica frontera de esta feature es el
  * rol SYSTEM en el {@code @PreAuthorize} del puerto de entrada, que no lo
- * ejercita esta capa (ver `SpecieControllerTest` y el informe final).
+ * ejercita esta capa (ver `SpecieControllerTest`).
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UpdateSpecieService")

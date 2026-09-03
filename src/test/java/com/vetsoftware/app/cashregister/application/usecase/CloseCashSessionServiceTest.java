@@ -22,10 +22,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 
-/**
- * Tests del {@link CloseCashSessionService}: cálculo
- * esperado/contado/diferencia, guardas de estado y not-found.
- */
 class CloseCashSessionServiceTest {
 
     private static final long CO = 1L;

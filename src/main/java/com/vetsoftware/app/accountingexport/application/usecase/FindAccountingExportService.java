@@ -7,7 +7,6 @@ import com.vetsoftware.app.accountingexport.domain.AccountingExportNotFoundExcep
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-/** Una exportacion por su id. */
 @Observed(name = "accounting.export.find")
 @Service
 public class FindAccountingExportService implements FindAccountingExportUseCase {

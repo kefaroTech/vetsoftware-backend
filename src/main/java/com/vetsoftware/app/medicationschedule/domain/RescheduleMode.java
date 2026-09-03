@@ -1,11 +1,13 @@
 package com.vetsoftware.app.medicationschedule.domain;
 
 /**
- * Alcance de una reprogramacion. Antes viajaba como {@code String} libre y se
- * comparaba con {@code "cascade".equalsIgnoreCase(...)}: cualquier otro texto
- * —incluido un {@code "cascada"} mal escrito— degradaba a {@link #ONE} en
- * silencio y devolvia 200 (#134). Como enum, el valor desconocido lo rechaza el
- * binder con un 400.
+ * Alcance de una reprogramacion.
+ *
+ * <p>
+ * Es un enum y no un {@code String} libre porque, comparando texto, cualquier
+ * valor distinto de {@code "cascade"} —incluido un {@code "cascada"} mal
+ * escrito— degrada a {@link #ONE} en silencio y responde 200. Como enum, el
+ * valor desconocido lo rechaza el binder con un 400.
  */
 public enum RescheduleMode {
     /** Mueve solo la toma indicada. */

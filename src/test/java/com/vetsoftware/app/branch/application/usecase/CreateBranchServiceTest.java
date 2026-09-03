@@ -86,8 +86,6 @@ class CreateBranchServiceTest {
         assertThat(dto.company().identifier()).isEqualTo("900123456");
         assertThat(dto.active()).isTrue();
 
-        // La sede recién creada se auto-asigna a los empleados "con todas las sedes" de
-        // la empresa.
         verify(fullCoverageAssignmentPort).assignNewBranchToFullCoverageEmployees(9L, 1L);
         verify(branchCapacityPort).reserve(9L);
     }

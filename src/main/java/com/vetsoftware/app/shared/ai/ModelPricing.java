@@ -64,11 +64,6 @@ import java.math.RoundingMode;
  * cambio de tarifa no se puede. Lo unico que queda es el contador diario del
  * guardian de gasto, que es agregado y se reinicia.
  *
- * <p>
- * Este javadoc afirmaba lo contrario hasta el 31-08-2026. Se corrigio al
- * comprobar que la columna no existe: era la clase de promesa que solo se
- * descubre falsa el dia que alguien la necesita.
- *
  * @param pricedModelId
  *            de que modelo son estas tarifas. Viaja pegado a las cifras a
  *            proposito: un precio sin decir de que modelo es se convierte en

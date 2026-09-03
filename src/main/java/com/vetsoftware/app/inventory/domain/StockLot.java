@@ -57,7 +57,6 @@ public class StockLot {
                 unitCost, now, now, null, true);
     }
 
-    /** Suma unidades al lote (entrada). */
     public void add(int quantity) {
         this.quantityAvailable += quantity;
     }

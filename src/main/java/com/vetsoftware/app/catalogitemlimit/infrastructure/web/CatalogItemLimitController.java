@@ -38,15 +38,13 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>
  * <strong>El {@code {catalogItemId}} de la ruta del {@code PUT} se
- * comprueba.</strong> Durante un tiempo no fue así:
- * {@code UpdateCatalogItemLimitCommand} no llevaba el artículo —al contrario
- * que su hermano {@code UpdateBundleComponentCommand}—, de modo que editar el
- * techo del artículo 7 entrando por la ruta del 9 funcionaba y devolvía 200. No
- * era una fuga entre empresas —aquí no hay empresas y el gate es SYSTEM— pero
- * sí una URL que miente: cualquiera que la guardara o la compartiera estaba
- * documentando una operación distinta de la que ocurre. Hoy el artículo viaja
- * en el command y la carga se acota por el par, así que el desajuste responde
- * 404.
+ * comprueba.</strong> Viaja dentro de {@code UpdateCatalogItemLimitCommand}
+ * —igual que en su hermano {@code UpdateBundleComponentCommand}— y la carga se
+ * acota por el par, así que editar el techo del artículo 7 entrando por la ruta
+ * del 9 responde 404. Sin eso no habría fuga entre empresas —aquí no hay
+ * empresas y el gate es SYSTEM— pero sí una URL que miente: cualquiera que la
+ * guardara o la compartiera estaría documentando una operación distinta de la
+ * que ocurre.
  */
 @RestController
 @RequestMapping("/catalog-items/{catalogItemId}/limits")

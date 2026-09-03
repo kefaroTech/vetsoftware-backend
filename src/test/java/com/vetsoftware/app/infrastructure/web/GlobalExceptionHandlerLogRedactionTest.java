@@ -47,13 +47,13 @@ import org.springframework.web.context.request.ServletWebRequest;
  * estas dos ramas era un cambio de una línea que pasa la revisión.
  *
  * <p>
- * <b>Por qué no una regexp.</b> Este fichero tiene 31 llamadas {@code log.*}
- * con {@code getMessage()} y casi todas son legítimas: el mensaje de una
- * excepción <em>de dominio</em> es una constante que escribimos nosotros. Una
- * regla por texto nacería en rojo y se desactivaría el primer día. Lo que
- * distingue las dos ramas peligrosas no es la forma de la llamada sino el
- * origen del mensaje —el driver de la base de datos, o el binder con el payload
- * del cliente dentro—, y eso solo se ve ejecutándolas.
+ * <b>Por qué no una regexp.</b> {@code GlobalExceptionHandler} tiene decenas de
+ * llamadas {@code log.*} con {@code getMessage()} y casi todas son legítimas:
+ * el mensaje de una excepción <em>de dominio</em> es una constante que
+ * escribimos nosotros. Una regla por texto nacería en rojo y se desactivaría el
+ * primer día. Lo que distingue las dos ramas peligrosas no es la forma de la
+ * llamada sino el origen del mensaje —el driver de la base de datos, o el
+ * binder con el payload del cliente dentro—, y eso solo se ve ejecutándolas.
  *
  * <p>
  * <b>La aserción es sobre el evento crudo, a propósito.</b> El

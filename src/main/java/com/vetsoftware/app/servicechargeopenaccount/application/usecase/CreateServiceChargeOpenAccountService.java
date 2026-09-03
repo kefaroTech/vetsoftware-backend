@@ -57,10 +57,9 @@ public class CreateServiceChargeOpenAccountService
         // concedia.
         openAccountQueryPort.lockForUpdate(command.openAccountId(), command.companyId());
         // Carga ACOTADA por empresa: la cuenta de otro tenant no se resuelve, asi que
-        // el
-        // cargo no puede colgarse de ella. Antes se cargaba ancha y la empresa se
-        // comparaba despues en Java: ese if era toda la barrera entre un cargo propio y
-        // un importe escrito en la cuenta de un cliente ajeno.
+        // el cargo no puede colgarse de ella. Cargar ancha y comparar la empresa
+        // despues en Java deja ese if como toda la barrera entre un cargo propio y un
+        // importe escrito en la cuenta de un cliente ajeno.
         OpenAccountRef openAccount = openAccountQueryPort
                 .findByIdAndCompanyId(command.openAccountId(), command.companyId())
                 .orElseThrow(() -> new IllegalArgumentException(

@@ -8,8 +8,8 @@ import java.util.List;
  * cascada llego a aplicarse y, si no, por que.
  *
  * <p>
- * El caso de uso devolvia solo la lista, de modo que una cascada saltada era
- * indistinguible de una aplicada sobre un plan de una sola toma (#134).
+ * Sin los dos ultimos campos, una cascada saltada seria indistinguible de una
+ * aplicada sobre un plan de una sola toma.
  */
 public record RescheduleResultDto(List<MedicationScheduleDto> schedules, boolean cascadeApplied,
         CascadeSkipReason cascadeSkippedReason) {

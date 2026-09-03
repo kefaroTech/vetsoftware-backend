@@ -7,7 +7,6 @@ import com.vetsoftware.app.companyactivitymonth.domain.CompanyActivityMonth;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/** Fixtures del modulo companyactivitymonth. */
 public final class CompanyActivityMonthMother {
 
     public static final Long MONTH_ID = 900L;

@@ -7,9 +7,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public interface ListOwnersUseCase {
 
     /**
-     * BE-06: devolvía la lista entera. Los propietarios crecen con cada cliente de
-     * la veterinaria, así que era una consulta sin techo — la que tumba la memoria
-     * del backend cuando la empresa lleva años operando.
+     * Paginado, nunca la lista entera. Los propietarios crecen con cada cliente de
+     * la veterinaria: una consulta sin techo aquí es la que tumba la memoria del
+     * backend cuando la empresa lleva años operando.
      */
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('owner.read') and @authz.isMyCompany(#companyId))")
     PageResult<OwnerDto> listAll(Long companyId, int page, int pageSize);

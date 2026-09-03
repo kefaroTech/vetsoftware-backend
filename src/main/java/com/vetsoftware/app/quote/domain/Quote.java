@@ -220,7 +220,6 @@ public class Quote {
             throw new InvalidQuoteStatusTransitionException(status, QuoteStatus.DRAFT);
     }
 
-    /** De que propuesta del asistente salio, o null. Ver el campo. */
     public Long getAiProposalId() {
         return aiProposalId;
     }

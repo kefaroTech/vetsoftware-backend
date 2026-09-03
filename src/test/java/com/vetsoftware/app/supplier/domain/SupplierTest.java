@@ -17,14 +17,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-/**
- * Nota de campaña de cobertura: el brief de esta tarea asumia que {@code taxId}
- * llevaba un calculo de digito verificador de NIT colombiano. Leido el fuente
- * via CodeGraph, {@code Supplier.validate} no hace ninguna validacion de
- * formato de {@code taxId} mas alla del limite de longitud (30 caracteres); es
- * un String libre. No hay tal calculo que cubrir hoy — esta clase prueba las
- * invariantes que realmente existen en el constructor.
- */
 @DisplayName("Supplier — invariantes y ciclo de vida del agregado")
 class SupplierTest {
 

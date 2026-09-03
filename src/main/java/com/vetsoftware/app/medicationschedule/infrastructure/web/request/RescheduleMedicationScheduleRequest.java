@@ -6,9 +6,9 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 /**
- * {@code mode} era {@code String} sin restricciones: llegaba crudo al caso de
- * uso pese al {@code @Valid} y todo lo que no fuese {@code "cascade"} degradaba
- * a «solo esta toma» sin decirlo (#134). Como enum, un valor desconocido lo
+ * {@code mode} viaja como enum y no como {@code String}: con texto libre, el
+ * {@code @Valid} no acota nada y todo lo que no fuese {@code "cascade"}
+ * degradaria a «solo esta toma» sin decirlo. Como enum, un valor desconocido lo
  * rechaza el deserializador y sale un 400 {@code MALFORMED_REQUEST}.
  *
  * <p>

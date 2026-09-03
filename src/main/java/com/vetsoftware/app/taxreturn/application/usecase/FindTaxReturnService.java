@@ -7,7 +7,6 @@ import com.vetsoftware.app.taxreturn.domain.TaxReturnNotFoundException;
 import io.micrometer.observation.annotation.Observed;
 import org.springframework.stereotype.Service;
 
-/** Una declaracion por su id. */
 @Observed(name = "tax.return.find")
 @Service
 public class FindTaxReturnService implements FindTaxReturnUseCase {

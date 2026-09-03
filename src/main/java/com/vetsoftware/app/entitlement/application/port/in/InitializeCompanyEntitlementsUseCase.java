@@ -22,8 +22,7 @@ import com.vetsoftware.app.shared.security.NoAuthorizationRequired;
  * estado y cancelacion--, transitivamente: cada uno de sus casos de uso llama a
  * {@code SubscriptionChangedPort.subscriptionChanged(...)}, y su unico
  * implementador es {@code EntitlementRecalculationAdapter}, que invoca este
- * puerto. Es un salto por interfaz que un {@code grep} no ve, y hasta #409 el
- * javadoc de aqui afirmaba lo contrario.
+ * puerto. Es un salto por interfaz que un {@code grep} no ve.
  * </ul>
  *
  * <p>

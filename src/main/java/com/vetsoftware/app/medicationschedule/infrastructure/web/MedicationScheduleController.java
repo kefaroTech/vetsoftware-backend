@@ -76,7 +76,7 @@ public class MedicationScheduleController {
     /**
      * Reprograma una toma (mode=ONE|CASCADE). Devuelve el plan de esa medicación
      * —reordenado por hora vigente— junto con el desenlace de la cascada: pedirla
-     * no garantiza aplicarla, y antes eso no se distinguía de haberla aplicado.
+     * no garantiza aplicarla, y sin ese desenlace las dos cosas se ven igual.
      */
     @PatchMapping("/{id}/reschedule")
     public RescheduleMedicationScheduleResponse reschedule(@PathVariable Long id,

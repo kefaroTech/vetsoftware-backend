@@ -27,11 +27,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-// NOTA DE STAGING: este fichero se llama "RegisterAffectedCompanyServiceTest.java" en el
-// destino real (com.vetsoftware.app.securityincident.application.usecase). El prefijo
-// "SecIncident_" solo existe para no colisionar en el directorio plano de staging con su
-// homonimo de externalinvoicingoutage: ambas rodajas tienen un caso de uso con el mismo
-// nombre simple en paquetes distintos.
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RegisterAffectedCompanyService (securityincident)")
 class RegisterAffectedCompanyServiceTest {

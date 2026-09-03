@@ -27,12 +27,9 @@ package com.vetsoftware.app.withholdingraterule.domain;
  */
 public enum ServiceNature {
 
-    /** Licenciamiento de software. */
     SOFTWARE_LICENSING,
 
-    /** Servicio tecnico. */
     TECHNICAL_SERVICE,
 
-    /** Consultoria. */
     CONSULTING
 }

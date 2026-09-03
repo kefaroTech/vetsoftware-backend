@@ -24,7 +24,7 @@ public record CreateConsultationRequest(
         // del animal.
         @Positive(message = "El peso debe ser mayor que cero.") BigDecimal weight,
         String weightUnit,
-        // Examen físico / constantes vitales (Fase 3) — todos opcionales.
+        // Examen físico / constantes vitales — todos opcionales.
         @DecimalMin(value = "0", message = "La temperatura no puede ser negativa.") @DecimalMax(value = "60", message = "La temperatura no puede superar los 60 grados.") BigDecimal temperature,
         @Min(value = 0, message = "La frecuencia cardiaca no puede ser negativa.") @Max(value = 1000, message = "La frecuencia cardiaca no puede superar los 1000 latidos por minuto.") Integer heartRate,
         @Min(value = 0, message = "La frecuencia respiratoria no puede ser negativa.") @Max(value = 1000, message = "La frecuencia respiratoria no puede superar las 1000 respiraciones por minuto.") Integer respiratoryRate,

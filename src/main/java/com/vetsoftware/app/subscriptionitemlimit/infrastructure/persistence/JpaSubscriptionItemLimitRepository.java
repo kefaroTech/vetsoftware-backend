@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
-/** Adaptador de salida de los techos congelados. */
 @Repository
 public class JpaSubscriptionItemLimitRepository implements SubscriptionItemLimitRepository {
 

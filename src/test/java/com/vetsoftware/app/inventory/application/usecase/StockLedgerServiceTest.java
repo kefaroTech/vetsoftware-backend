@@ -47,8 +47,7 @@ import org.junit.jupiter.api.Test;
  * repositorios. Eso permite verificar el <b>estado final real</b>: cantidad
  * disponible por lote, saldo materializado por sede y el ledger completo de
  * movimientos con su signo (entrada +, salida −), tipo, costo por lote (COGS) y
- * referencia. Alineado con el patrón de "stubs manuales" de las convenciones de
- * testing del proyecto.
+ * referencia.
  *
  * <p>
  * Convenciones de los datos: empresa {@code CO=1}, sedes {@code A=10} /

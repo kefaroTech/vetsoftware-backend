@@ -40,7 +40,6 @@ public class JpaBranchQueryPort implements BranchQueryPort {
 
     @Override
     public Optional<String> findAddressById(Long branchId) {
-        // Optional.map colapsa a empty() si la dirección es null.
         return branchJpaRepository.findById(branchId).map(BranchJpaEntity::getAddress);
     }
 

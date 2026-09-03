@@ -28,7 +28,6 @@ public interface PlatformSystemUserProvisioningPort {
     /** {@code true} si el codigo de login ya esta tomado, activo o no. */
     boolean codeTaken(String code);
 
-    /** @return el id del usuario de sistema creado. */
     Long provision(String code, String email, String fullName, String hashedPassword,
             LocalDateTime createdDate);
 }

@@ -48,13 +48,13 @@ import org.springframework.test.web.servlet.MockMvc;
  * Lo que congela esta clase y no ve ningun test de servicio:
  *
  * <ul>
- * <li><b>Los diez campos del cuerpo llegan al command en su posicion.</b>
- * Cuatro son cadenas seguidas —{@code documentId}, {@code verificationDigit},
- * {@code legalName}, {@code fiscalEmail}, {@code commercialName}— y cruzar dos
- * de ellas compila sin una queja. El resultado no seria un error visible: seria
- * una factura con la razon social en el campo del correo fiscal. Por eso el
- * caso feliz captura el command y compara componente a componente con valores
- * todos distintos.</li>
+ * <li><b>Los diez campos del cuerpo llegan al command en su posicion.</b> Cinco
+ * son cadenas —{@code documentId}, {@code verificationDigit} y
+ * {@code legalName} contiguas, y {@code fiscalEmail} con {@code commercialName}
+ * detras del regimen— y cruzar dos de ellas compila sin una queja. El resultado
+ * no seria un error visible: seria una factura con la razon social en el campo
+ * del correo fiscal. Por eso el caso feliz captura el command y compara
+ * componente a componente con valores todos distintos.</li>
  * <li><b>La tabla vacia contesta 503 y no 404 ni 409.</b> Es el codigo que
  * distingue «no hay identidad fiscal configurada todavia» de «el recurso que
  * pediste no existe», y el que le dice a quien opera que falta una decision

@@ -81,8 +81,6 @@ public class RefreshAccessTokenService implements RefreshTokenUseCase {
 
         String accessToken = switch (stored.subjectType()) {
             case EMPLOYEE -> {
-                // Re-valida que el empleado siga activo y toma companyId + authVersion
-                // actuales.
                 AuthEmployee employee = authEmployeeRepository.findActiveById(stored.subjectId())
                         .orElseThrow(InvalidCredentialsException::new);
                 ensureCurrentSession(stored.authVersion(), employee.authVersion());

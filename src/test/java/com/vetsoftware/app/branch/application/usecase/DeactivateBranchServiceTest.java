@@ -52,7 +52,7 @@ class DeactivateBranchServiceTest {
     void desactiva_una_activa_cuando_hay_otra_sede_activa() {
         Branch activa = branch(true);
         when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(activa));
-        when(repository.existsOtherActiveByCompanyId(9L, 3L)).thenReturn(true); // queda otra activa
+        when(repository.existsOtherActiveByCompanyId(9L, 3L)).thenReturn(true);
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         BranchDto dto = service.execute(3L, 9L);
@@ -68,8 +68,7 @@ class DeactivateBranchServiceTest {
     void rechaza_desactivar_la_ultima_sede_activa_y_no_muta_ni_escribe() {
         Branch ultimaActiva = branch(true);
         when(repository.findByIdAndCompanyId(3L, 9L)).thenReturn(Optional.of(ultimaActiva));
-        when(repository.existsOtherActiveByCompanyId(9L, 3L)).thenReturn(false); // no hay otra
-                                                                                 // activa
+        when(repository.existsOtherActiveByCompanyId(9L, 3L)).thenReturn(false);
 
         assertThatThrownBy(() -> service.execute(3L, 9L)).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("última sucursal activa");

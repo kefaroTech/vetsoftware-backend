@@ -701,7 +701,6 @@ public class AuditLogger {
                         documentNumber);
     }
 
-    /** Registro de un pago recibido. */
     public void subscriptionPaymentRegistered(Long paymentId, String paymentMethod,
             BigDecimal amount, String toStatus) {
         audit.atInfo().addKeyValue("event", "subscription_payment_registered")

@@ -50,9 +50,6 @@ public class CreateBranchService implements CreateBranchUseCase {
                 city, company);
         branchCapacityPort.reserve(command.companyId());
         Branch saved = repository.save(branch);
-        // Multi-sucursal: los empleados "con todas las sedes" heredan la sede recién
-        // creada (ver
-        // puerto).
         fullCoverageAssignmentPort.assignNewBranchToFullCoverageEmployees(command.companyId(),
                 saved.getId());
         return BranchDto.from(saved);

@@ -35,7 +35,6 @@ public class ConsultationJpaEntity {
     @Column(name = "prognosis", length = 500)
     private String prognosis;
 
-    // Examen físico / constantes vitales (Fase 3) — todas opcionales.
     @Column(name = "temperature", precision = 4, scale = 1)
     private BigDecimal temperature;
 

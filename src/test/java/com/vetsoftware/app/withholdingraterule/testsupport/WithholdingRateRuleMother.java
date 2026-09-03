@@ -28,16 +28,15 @@ import java.time.LocalDateTime;
 public final class WithholdingRateRuleMother {
 
     /**
-     * Codigo DANE SINTETICO, rango {@code 00xxx}. Liquibase ya siembra la DIVIPOLA
-     * completa (1.121 municipios) y {@code uq_cities_dane_code} es GLOBAL, asi que
-     * un codigo real como el de Bogota (11001) chocaria con la fila que Liquibase
-     * ya sembro. El rango {@code 00xxx} no existe en la DIVIPOLA real.
+     * Codigo DANE real de Bogota, ya sembrado en {@code cities} por el changeset
+     * 114: la FK de {@code municipality_code} apunta a {@code cities.dane_code}, y
+     * {@code uq_cities_dane_code} es GLOBAL, asi que una rodaja que lo insertara de
+     * nuevo chocaria. Ver {@code WithholdingRateRulePersistenceIT}.
      */
     public static final String BOGOTA = "11001";
 
     /**
-     * El segundo municipio sintetico, para las pruebas de clave. Ver
-     * {@link #BOGOTA}.
+     * El segundo municipio, tambien con su codigo DANE real. Ver {@link #BOGOTA}.
      */
     public static final String MEDELLIN = "05001";
 

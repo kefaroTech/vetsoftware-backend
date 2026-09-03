@@ -105,8 +105,7 @@ class CreateAppointmentServiceBranchTest {
     void rechaza_una_sede_solicitada_INACTIVA_con_error_distinto_y_no_escribe() {
         when(employeeQueryPort.findByIdAndCompanyId(4L, COMPANY)).thenReturn(Optional.of(employee));
         when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.empty());
-        when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(true); // existe pero
-                                                                                     // inactiva
+        when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(true);
 
         assertThatThrownBy(() -> service.execute(command(11L)))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -119,9 +118,7 @@ class CreateAppointmentServiceBranchTest {
     void rechaza_una_sede_inexistente_o_ajena_con_error_de_not_found_y_no_escribe() {
         when(employeeQueryPort.findByIdAndCompanyId(4L, COMPANY)).thenReturn(Optional.of(employee));
         when(branchQueryPort.findActiveByIdAndCompanyId(11L, COMPANY)).thenReturn(Optional.empty());
-        when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(false); // no existe
-                                                                                      // en la
-                                                                                      // empresa
+        when(branchQueryPort.existsByIdAndCompanyId(11L, COMPANY)).thenReturn(false);
 
         assertThatThrownBy(() -> service.execute(command(11L)))
                 .isInstanceOf(IllegalArgumentException.class)

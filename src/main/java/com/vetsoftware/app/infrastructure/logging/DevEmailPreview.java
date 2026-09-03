@@ -42,14 +42,6 @@ public final class DevEmailPreview {
     private DevEmailPreview() {
     }
 
-    /**
-     * @param recipient
-     *            destinatario al que se habría enviado el correo
-     * @param description
-     *            qué contiene la previsualización (p.ej. "Enlace de verificación")
-     * @param payload
-     *            el enlace o listado que el correo habría llevado
-     */
     public static void show(String recipient, String description, String payload) {
         preview.info("[dev] Envío de correo deshabilitado. {} para {}: {}", description, recipient,
                 payload);

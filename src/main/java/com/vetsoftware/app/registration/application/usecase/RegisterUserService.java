@@ -174,9 +174,6 @@ public class RegisterUserService implements RegisterUserUseCase {
         branchCreator.create("Principal", "PRINCIPAL", command.companyAddress(),
                 command.companyContactNumber(), command.cityId(), company.id());
 
-        // El dueño ELIGE su código de acceso (Opción A). Revalidamos aquí que siga
-        // libre (defensa ante
-        // la
         // El usuario de acceso ES el correo del administrador (un email = una
         // veterinaria). Como
         // employee_code
