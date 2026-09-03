@@ -134,10 +134,8 @@ public record PriceLadder(String itemCode, List<PriceTier> tiers, String currenc
      * ⚠️ <strong>Es un caso particular de {@link #amountFor(int)}, no un
      * atajo.</strong> {@code CartLine.base()} multiplica este importe por la
      * cantidad, asi que seria correcto solo mientras la cantidad valga 1. El dia
-     * que se coticen capacidades -hoy no se puede: ningun {@code EXTRA_*} cuelga de
-     * un paquete publicado y por tanto ninguno es {@code selfServiceEligible} (plan
-     * S2.3)- el importe tiene que salir de {@link #amountFor(int)} y no de
-     * multiplicar este.
+     * que este motor cotice capacidades por unidades, el importe tiene que salir de
+     * {@link #amountFor(int)} y no de multiplicar este.
      */
     public BigDecimal unitAmountForOne() {
         return amountFor(1);

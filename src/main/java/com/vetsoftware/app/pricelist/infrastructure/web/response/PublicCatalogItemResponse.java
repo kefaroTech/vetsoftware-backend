@@ -30,5 +30,7 @@ public record PublicCatalogItemResponse(
         @Schema(description = "Precio al ano; nulo si no se vende suelto en ese ciclo. No es el mensual por doce") BigDecimal annualAmount,
         @Schema(description = "Cargo unico de puesta en marcha. En un articulo ONE_TIME es TODO su precio: DATA_MIGRATION vale 0.00 por ciclo y 450000.00 aqui") BigDecimal setupAmount,
         BigDecimal taxRate, TaxTreatment taxTreatment,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Si la autocontratacion lo aceptaria como linea. Falso en los cargos unicos, que se negocian") boolean selfServiceEligible) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Si la autocontratacion lo aceptaria como linea. Falso en los cargos unicos, que se negocian") boolean selfServiceEligible,
+        @Schema(description = "Codigo del area funcional bajo cuya cabecera va el modulo; casa con areas[].code. Nulo en todo articulo que no se agrupa bajo una cabecera: los cargos unicos, cualquiera que no sea MODULE, y tambien CORE, que se pinta en una fila fija sobre las cabeceras") String areaCode,
+        @Schema(description = "Rotulo corto para la casilla, mas breve que name y distinto de description. Nulo mientras no se haya escrito: en ese caso se pinta name") String shortLabel) {
 }

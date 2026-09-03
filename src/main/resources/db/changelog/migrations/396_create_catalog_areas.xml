@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Landing «núcleo + módulos sueltos» (docs/db/landing-nucleo-modulos-areas.md §4.1).
+         Tabla de catálogo, no columna enum: el área tiene rótulo de cabecera y orden de
+         presentación propios, así que una FK a `code` los transporta y una lista `CHECK`
+         cerrada los dejaría sin sitio -mismo argumento y mismo precedente que
+         333_open_capacity_unit_to_limit_dimensions, que sustituyó una lista literal por una FK
+         a tabla de catálogo en esta misma familia de tablas-.
+
+         `code` va CHARACTER SET ascii COLLATE ascii_bin, igual que catalog_items.code desde
+         332_align_identifier_collation: esta columna se va a unir por igualdad con
+         catalog_items.area_code (397), y una colación distinta entre las dos columnas del JOIN
+         inutiliza el índice y hace que MySQL rechace la FK.
+
+         uq_catalog_areas_sort_order convierte "dos áreas empatadas en la cabecera" en un error
+         del motor en vez de en un desempate por id que nadie decidió.
+
+         version SÍ: a diferencia de bundle_components o catalog_item_dependencies (E2_TABLA_
+         PUENTE), catalog_areas tiene atributos propios editables desde la consola -name,
+         sort_order-, así que no cabe esa exención y hay que declarar @Version en la entidad. -->
+    <changeSet id="396_create_catalog_areas" author="orlando">
+        <createTable tableName="catalog_areas">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="code" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(60)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sort_order" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+            ALTER TABLE catalog_areas
+                MODIFY COLUMN code VARCHAR(30) CHARACTER SET ascii COLLATE ascii_bin NOT NULL
+        </sql>
+
+        <addUniqueConstraint tableName="catalog_areas" columnNames="code"
+                              constraintName="uq_catalog_areas_code"/>
+        <addUniqueConstraint tableName="catalog_areas" columnNames="sort_order"
+                              constraintName="uq_catalog_areas_sort_order"/>
+
+        <sql>
+            ALTER TABLE catalog_areas
+                ADD CONSTRAINT chk_catalog_areas_sort_order CHECK (sort_order &gt;= 0)
+        </sql>
+
+        <rollback>
+            <dropTable tableName="catalog_areas"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

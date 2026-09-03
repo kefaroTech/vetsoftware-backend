@@ -24,16 +24,13 @@ import java.util.List;
  */
 public record PublicCatalogPackDto(String code, String name, String tagline,
         BigDecimal monthlyAmount, BigDecimal annualAmount, BigDecimal setupAmount,
-        BigDecimal taxRate, TaxTreatment taxTreatment, List<String> componentCodes) {
+        BigDecimal taxRate, TaxTreatment taxTreatment, List<String> componentCodes,
+        boolean recommended) {
 
-    /**
-     * La cabecera sale de la misma fila plana que alimenta {@code GET /plans}
-     * ({@link PublicPlanRowDto}); los componentes se le adjuntan ya agrupados por
-     * el servicio.
-     */
-    public static PublicCatalogPackDto from(PublicPlanRowDto row, List<String> componentCodes) {
+    public static PublicCatalogPackDto from(PublicCatalogPackRowDto row,
+            List<String> componentCodes) {
         return new PublicCatalogPackDto(row.code(), row.name(), row.tagline(),
                 row.monthlyFromAmount(), row.annualFromAmount(), row.setupAmount(), row.taxRate(),
-                row.taxTreatment(), List.copyOf(componentCodes));
+                row.taxTreatment(), List.copyOf(componentCodes), row.recommended());
     }
 }

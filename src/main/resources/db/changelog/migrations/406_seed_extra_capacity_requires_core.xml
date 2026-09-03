@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Cierra el agujero que abre 405: sin esto, SelfServeCartGuard.rechazarCestaIncoherente
+         dejaría pasar una cesta con EXTRA_USER o EXTRA_BRANCH sueltos -sin ningún producto
+         debajo- porque hoy ninguno de los dos tiene arco REQUIRES en catalog_item_dependencies
+         (docs/db/capacidad-extra-autoservicio-elegibilidad.md §4.3). Con el arco, la cobertura
+         de SQL_MISSING_REQUIREMENTS (JpaCatalogQueryPorts) expande cualquier BUNDLE de la cesta
+         en sus bundle_components y encuentra CORE dentro -los tres paquetes lo traen (309)-, así
+         que "pack + usuarios extra" pasa y "EXTRA_USER solo" se rechaza nombrando lo que falta.
+
+         SOLO ESTOS DOS. EXTRA_TERMINAL ya REQUIRES CASH_REGISTER y EXTRA_STORAGE ya REQUIRES
+         LAB_IMAGING, ambos sembrados en 309 (líneas 164 y 176) antes de que existiera venta suelta
+         de EXTRA_*; siguen siendo la cobertura correcta ahora que sí se vende: piden el módulo
+         que la propia capacidad necesita para tener sentido, no un mínimo estructural distinto.
+         Ninguno de los dos necesita también REQUIRES CORE porque CASH_REGISTER y LAB_IMAGING no
+         se venden sin CORE -SelfServeCartGuard exige que la cesta entera cumpla sus propios
+         REQUIRES, así que la cadena EXTRA_TERMINAL -> CASH_REGISTER -> (CORE, si CASH_REGISTER
+         lo exigiera) ya cerraría el camino; hoy CASH_REGISTER y LAB_IMAGING no declaran REQUIRES
+         CORE tampoco, así que añadirlo aquí solo a los dos EXTRA_* dejaría una asimetría sin
+         beneficio real: el caso que el encargo pide cerrar es el de una capacidad suelta y sin
+         nada más en la cesta, y CASH_REGISTER/LAB_IMAGING ya obligan a llevar ALGO más.
+
+         Mismo NOT EXISTS y mismo <rollback> por DELETE que las filas vecinas de 309. -->
+    <changeSet id="406_seed_extra_capacity_requires_core" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO catalog_item_dependencies
+                    (catalog_item_id, related_item_id, relation_type, note)
+            SELECT a.id, b.id, seed.relation_type, seed.note
+              FROM (
+                SELECT 'EXTRA_USER' AS item_code, 'CORE' AS related_code,
+                       'REQUIRES' AS relation_type,
+                       'Un usuario adicional necesita el núcleo de clientes y mascotas' AS note
+                UNION ALL SELECT 'EXTRA_BRANCH', 'CORE', 'REQUIRES',
+                       'Una sede adicional necesita el núcleo de clientes y mascotas'
+              ) seed
+              JOIN catalog_items a ON a.code = seed.item_code
+              JOIN catalog_items b ON b.code = seed.related_code
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM catalog_item_dependencies x
+                  WHERE x.catalog_item_id = a.id AND x.related_item_id = b.id
+                    AND x.relation_type = seed.relation_type);
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE cid FROM catalog_item_dependencies cid
+                  JOIN catalog_items a ON a.id = cid.catalog_item_id
+                  JOIN catalog_items b ON b.id = cid.related_item_id
+                 WHERE a.code IN ('EXTRA_USER','EXTRA_BRANCH')
+                   AND b.code = 'CORE'
+                   AND cid.relation_type = 'REQUIRES';
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

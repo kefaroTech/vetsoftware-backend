@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Landing «núcleo + módulos sueltos» (docs/db/landing-nucleo-modulos-areas.md §4.2-§4.4).
+         Fase EXPAND del patrón parallel-change: las tres columnas nacen al FINAL de la tabla, no
+         donde el documento de diseño sugería (area_code AFTER item_type, short_label AFTER
+         name) -contrato acordado con backend-feature en la misma tanda-.
+         JpaPublicCatalogQueryPort.findContractableItems lee columns[0..14] por POSICIÓN sobre
+         un Object[]; el otro agente amplía ese SELECT añadiendo las columnas nuevas al final. Si
+         entraran en medio, desplazarían los quince índices existentes y el fallo aparecería en
+         tiempo de ejecución -asString(columns[7]) sobre lo que antes era otra cosa compila igual-,
+         no en compilación.
+
+         Las tres son ADD COLUMN normales -sin GENERATED, sin STORED-, así que el manual de
+         online DDL de InnoDB 8.4 las clasifica "Instant: Yes / Rebuilds Table: No / Permits
+         Concurrent DML: Yes": no bloquean escritura sobre las 26 filas de hoy ni sobre una tabla
+         mayor en producción.
+
+         area_code NULL (no NOT NULL): solo un MODULE pertenece a una cabecera; una CAPACITY, un
+         ONE_TIME o un BUNDLE no van en ninguna. El arco exclusivo se cierra con
+         chk_catalog_items_area en 400, DESPUÉS del backfill de 399 -añadirlo ahora rechazaría
+         las 14 filas de MODULE que todavía no tienen área asignada-.
+
+         short_label NULL con caída a name en el front (short_label ?? name): permite rellenar
+         módulo a módulo sin backfill obligatorio y sin dejar ninguna casilla en blanco.
+
+         recommended BOOLEAN NOT NULL DEFAULT FALSE, nunca TINYINT(1): con el display width
+         Connector/J (tinyInt1isBit=true) reporta la columna como Types#BIT y ddl-auto: validate
+         tumba el arranque -misma trampa que 394 documentó para structural_minimum-. -->
+    <changeSet id="397_add_area_and_recommendation_columns_to_catalog_items" author="orlando">
+        <addColumn tableName="catalog_items">
+            <column name="area_code" type="VARCHAR(30)"/>
+            <column name="short_label" type="VARCHAR(40)"/>
+            <column name="recommended" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <sql>
+            ALTER TABLE catalog_items
+                MODIFY COLUMN area_code VARCHAR(30) CHARACTER SET ascii COLLATE ascii_bin NULL
+        </sql>
+
+        <rollback>
+            <dropColumn tableName="catalog_items" columnName="area_code"/>
+            <dropColumn tableName="catalog_items" columnName="short_label"/>
+            <dropColumn tableName="catalog_items" columnName="recommended"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

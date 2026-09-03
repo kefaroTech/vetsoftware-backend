@@ -1,14 +1,16 @@
 package com.vetsoftware.app.pricelist.testsupport;
 
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogAreaRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackComponentRowDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackRowDto;
 import com.vetsoftware.app.pricelist.domain.TaxTreatment;
 import java.math.BigDecimal;
 
 /**
  * Fixtures del read model del catalogo <em>contratable</em>: las filas planas
  * que devuelve {@code PublicCatalogQueryPort} antes de que
- * {@code GetPublicCatalogService} las reparta en cuatro listas.
+ * {@code GetPublicCatalogService} las reparta por naturaleza.
  *
  * <p>
  * Aparte de {@link PublicPlanMother} porque son dos read models distintos
@@ -25,6 +27,7 @@ public final class PublicCatalogMother {
     public static final String CONTADOR = "CAPACITY_USER";
     public static final String CARGO_UNICO = "ONBOARDING";
     public static final String PAQUETE = "PACK_CLINIC";
+    public static final String AREA = "PATIENT_CARE";
 
     private PublicCatalogMother() {
     }
@@ -34,12 +37,20 @@ public final class PublicCatalogMother {
      * {@code catalog_items.structural_minimum}, la misma columna con la que
      * {@code PlatformCatalogTemplateJpaRepository} monta el contrato inicial de
      * toda empresa: sin esa fila el alta falla entera. No es «recomendado».
+     *
+     * <p>
+     * <b>Sin area, aunque sea un {@code MODULE}.</b> El changeset 399 deja
+     * {@code CORE.area_code} en {@code NULL} a proposito —se pinta en una fila fija
+     * sobre las cabeceras plegables, no dentro de ninguna— y 400 lo bendice
+     * excluyendolo de su preCondition. Una fixture con area describia un mundo que
+     * la semilla no produce.
      */
     public static PublicCatalogItemRowDto nucleo() {
         return new PublicCatalogItemRowDto(CORE, "Nucleo: clientes y mascotas",
                 "Lo que toda clinica necesita", "MODULE", true, null, null,
                 new BigDecimal("49000.00"), new BigDecimal("490000.00"), null, null,
-                new BigDecimal("0.00"), new BigDecimal("19.00"), TaxTreatment.TAXED, true);
+                new BigDecimal("0.00"), new BigDecimal("19.00"), TaxTreatment.TAXED, true, null,
+                "Nucleo");
     }
 
     /**
@@ -55,7 +66,7 @@ public final class PublicCatalogMother {
         return new PublicCatalogItemRowDto(MODULO, "Cirugia", "Partes quirurgicos y protocolos",
                 "MODULE", false, null, 30, new BigDecimal("38000.00"), new BigDecimal("350000.00"),
                 null, null, new BigDecimal("0.00"), new BigDecimal("19.00"), TaxTreatment.TAXED,
-                true);
+                true, "HOSPITAL", "Cirugia");
     }
 
     /**
@@ -66,14 +77,15 @@ public final class PublicCatalogMother {
     public static PublicCatalogItemRowDto moduloSoloMensual() {
         return new PublicCatalogItemRowDto("GROOMING", "Peluqueria", null, "MODULE", false, null,
                 null, new BigDecimal("29000.00"), null, null, null, new BigDecimal("0.00"),
-                new BigDecimal("19.00"), TaxTreatment.TAXED, true);
+                new BigDecimal("19.00"), TaxTreatment.TAXED, true, AREA, null);
     }
 
     /** Contador con unidades incluidas distintas en cada ciclo. */
     public static PublicCatalogItemRowDto contador() {
         return new PublicCatalogItemRowDto(CONTADOR, "Usuario adicional", null, "CAPACITY", true,
                 "USER", null, new BigDecimal("15000.00"), new BigDecimal("145000.00"), 3, 5,
-                new BigDecimal("0.00"), new BigDecimal("19.00"), TaxTreatment.TAXED, true);
+                new BigDecimal("0.00"), new BigDecimal("19.00"), TaxTreatment.TAXED, true, null,
+                null);
     }
 
     /**
@@ -96,10 +108,21 @@ public final class PublicCatalogMother {
         return new PublicCatalogItemRowDto(CARGO_UNICO, "Migracion de datos",
                 "Traemos tu historico", "ONE_TIME", false, null, null, new BigDecimal("0.00"),
                 new BigDecimal("0.00"), 0, 0, new BigDecimal("450000.00"), new BigDecimal("19.00"),
-                TaxTreatment.TAXED, false);
+                TaxTreatment.TAXED, false, null, null);
     }
 
     public static PublicCatalogPackComponentRowDto componente(String componentCode) {
         return new PublicCatalogPackComponentRowDto(PAQUETE, componentCode);
+    }
+
+    public static PublicCatalogPackRowDto paquete(String code, boolean recommended) {
+        return new PublicCatalogPackRowDto(code, "Pack " + code, "Para una clinica que empieza",
+                new BigDecimal("89000.00"), new BigDecimal("890000.00"),
+                new BigDecimal("150000.00"), new BigDecimal("19.00"), TaxTreatment.TAXED,
+                recommended);
+    }
+
+    public static PublicCatalogAreaRowDto area(String code) {
+        return new PublicCatalogAreaRowDto(code, "Area " + code);
     }
 }

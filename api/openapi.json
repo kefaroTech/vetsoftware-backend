@@ -43996,6 +43996,19 @@
         },
         "required" : [ "animalId", "eventDate", "eventType", "sourceId" ]
       },
+      "PublicCatalogAreaResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "description" : "Codigo del area; es el valor que traen los modulos en areaCode"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "name" ]
+      },
       "PublicCatalogCapacityResponse" : {
         "type" : "object",
         "properties" : {
@@ -44092,6 +44105,14 @@
           "selfServiceEligible" : {
             "type" : "boolean",
             "description" : "Si la autocontratacion lo aceptaria como linea. Falso en los cargos unicos, que se negocian"
+          },
+          "areaCode" : {
+            "type" : "string",
+            "description" : "Codigo del area funcional bajo cuya cabecera va el modulo; casa con areas[].code. Nulo en todo articulo que no se agrupa bajo una cabecera: los cargos unicos, cualquiera que no sea MODULE, y tambien CORE, que se pinta en una fila fija sobre las cabeceras"
+          },
+          "shortLabel" : {
+            "type" : "string",
+            "description" : "Rotulo corto para la casilla, mas breve que name y distinto de description. Nulo mientras no se haya escrito: en ese caso se pinta name"
           }
         },
         "required" : [ "code", "mandatory", "name", "selfServiceEligible" ]
@@ -44133,9 +44154,13 @@
             "items" : {
               "type" : "string"
             }
+          },
+          "recommended" : {
+            "type" : "boolean",
+            "description" : "La combinacion que el negocio destaca. Es una decision comercial editable, no el minimo estructural de mandatory; a lo sumo un paquete vivo la lleva"
           }
         },
-        "required" : [ "code", "componentCodes", "name" ]
+        "required" : [ "code", "componentCodes", "name", "recommended" ]
       },
       "PublicCatalogRequirementResponse" : {
         "type" : "object",
@@ -44197,9 +44222,16 @@
             "items" : {
               "$ref" : "#/components/schemas/PublicCatalogRequirementResponse"
             }
+          },
+          "areas" : {
+            "type" : "array",
+            "description" : "Cabeceras funcionales, YA ORDENADAS: el orden de la lista es el de presentacion y no se reordena en el cliente. Vacia si no hay tarifa vigente",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicCatalogAreaResponse"
+            }
           }
         },
-        "required" : [ "capacities", "modules", "oneTimeItems", "packs", "requirements" ]
+        "required" : [ "areas", "capacities", "modules", "oneTimeItems", "packs", "requirements" ]
       },
       "PageResponseCatalogPriceResponse" : {
         "type" : "object",

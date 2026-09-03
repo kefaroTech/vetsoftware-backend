@@ -17,9 +17,13 @@ import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.quote.application.command.AcceptQuoteCommand;
 import com.vetsoftware.app.quote.application.command.CreateQuoteCommand;
 import com.vetsoftware.app.quote.application.command.QuoteLineCommand;
+import com.vetsoftware.app.quote.application.command.PreviewQuoteCommand;
 import com.vetsoftware.app.quote.application.command.RejectQuoteCommand;
+import com.vetsoftware.app.quote.application.command.SelfServeQuoteLineCommand;
 import com.vetsoftware.app.quote.application.command.SendQuoteCommand;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
+import com.vetsoftware.app.quote.application.dto.QuotePreviewDto;
+import com.vetsoftware.app.quote.application.dto.QuotePreviewLineDto;
 import com.vetsoftware.app.quote.application.dto.QuoteSummaryDto;
 import com.vetsoftware.app.quote.application.port.in.AcceptQuoteUseCase;
 import com.vetsoftware.app.quote.application.port.in.CreateQuoteUseCase;
@@ -37,6 +41,7 @@ import com.vetsoftware.app.quote.domain.InvalidQuoteStatusTransitionException;
 import com.vetsoftware.app.quote.domain.QuoteExpiredException;
 import com.vetsoftware.app.quote.domain.QuoteNotFoundException;
 import com.vetsoftware.app.quote.domain.QuoteStatus;
+import com.vetsoftware.app.quote.domain.TaxTreatment;
 import com.vetsoftware.app.quote.testsupport.QuoteMother;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
@@ -146,6 +151,54 @@ class QuoteControllerTest {
              "lines":[{"catalogItemId":1,"quantity":1,"discountPercent":"0.00"}]}
             """;
 
+    /**
+     * Un pack y quince usuarios extra: la seleccion que la calculadora de la
+     * landing manda de verdad, y la que sale como TRES renglones porque la escalera
+     * de {@code EXTRA_USER} parte las quince unidades en dos tramos.
+     */
+    private static final String PREVIEW_JSON = """
+            {"billingCycle":"MONTHLY",
+             "lines":[{"code":"PACK_CLINIC","quantity":1},
+                      {"code":"EXTRA_USER","quantity":15}]}
+            """;
+
+    /** Sin {@code lines}: el {@code @NotEmpty} del request tiene que rechazarlo. */
+    private static final String PREVIEW_JSON_SIN_LINEAS = """
+            {"billingCycle":"MONTHLY","lines":[]}
+            """;
+
+    /**
+     * Rotulo en blanco. Lo declara {@code SelfServeQuoteLineRequest}, un tipo
+     * anidado dentro de la lista: sin el {@code @Valid} del componente
+     * {@code lines} esa restriccion esta escrita y no se evalua nunca
+     * ({@code CUERPO_CON_RESTRICCIONES_SE_VALIDA}, #135).
+     */
+    private static final String PREVIEW_JSON_CODIGO_EN_BLANCO = """
+            {"billingCycle":"MONTHLY","lines":[{"code":"   ","quantity":1}]}
+            """;
+
+    /** Cero unidades no es una seleccion: {@code @Positive} en la linea anidada. */
+    private static final String PREVIEW_JSON_CANTIDAD_CERO = """
+            {"billingCycle":"MONTHLY","lines":[{"code":"PACK_CLINIC","quantity":0}]}
+            """;
+
+    /** Ciclo fuera de la lista cerrada: el {@code @Pattern} del request. */
+    private static final String PREVIEW_JSON_CICLO_INVENTADO = """
+            {"billingCycle":"WEEKLY","lines":[{"code":"PACK_CLINIC","quantity":1}]}
+            """;
+
+    /**
+     * El mismo cuerpo con terminos economicos colados. {@code PreviewQuoteRequest}
+     * y {@code SelfServeQuoteLineRequest} no declaran esos componentes, asi que
+     * Jackson los ignora y la comprobacion util es que el command llegue con lo que
+     * el cliente SI puede elegir y nada mas.
+     */
+    private static final String PREVIEW_JSON_CON_DINERO_COLADO = """
+            {"billingCycle":"MONTHLY","priceListId":7,"companyId":999,
+             "lines":[{"code":"PACK_CLINIC","quantity":1,"discountPercent":"100.00",
+                       "unitAmount":"1.00"}]}
+            """;
+
     private static final String ACEPTAR_JSON = """
             {"acceptedByEmail":"ana@ejemplo.com"}
             """;
@@ -211,6 +264,22 @@ class QuoteControllerTest {
 
     private static PageResult<QuoteSummaryDto> pagina(QuoteSummaryDto... filas) {
         return PageResult.of(List.of(filas), 0, 20, filas.length);
+    }
+
+    /**
+     * <b>Ni un solo numero repetido entre los once campos de un renglon.</b>
+     * {@code toPreviewLineResponse} copia el DTO al response campo a campo y por
+     * posicion; con dos valores iguales, intercambiarlos deja el test en verde. Los
+     * tres enteros son 15/2/13 y ningun importe coincide con otro.
+     */
+    private static QuotePreviewDto vistaPrevia() {
+        return new QuotePreviewDto("COP", "MONTHLY",
+                List.of(new QuotePreviewLineDto("EXTRA_USER", "Usuario adicional", 15, 2, 13,
+                        new BigDecimal("12000.00"), new BigDecimal("156000.00"),
+                        new BigDecimal("19.00"), TaxTreatment.TAXED, new BigDecimal("29640.00"),
+                        new BigDecimal("185640.00"))),
+                new BigDecimal("156000.00"), new BigDecimal("0.00"), new BigDecimal("29640.00"),
+                new BigDecimal("185640.00"));
     }
 
     @Nested
@@ -335,6 +404,144 @@ class QuoteControllerTest {
                     .content(CREAR_JSON_SIN_LLAVE)).andExpect(status().isBadRequest());
 
             verifyNoInteractions(createUseCase);
+        }
+    }
+
+    /**
+     * <b>Es la unica superficie anonima que devuelve dinero calculado</b>, asi que
+     * lo que se fija aqui es que el cuerpo no pueda traer un solo termino economico
+     * y que los once campos del renglon salgan en su sitio:
+     * {@code toPreviewLineResponse} copia por posicion, y una permutacion
+     * publicaria el impuesto como importe unitario sin que el compilador dijera
+     * nada.
+     */
+    @Nested
+    @DisplayName("POST /quotes/preview")
+    class VistaPrevia {
+
+        @Test
+        @DisplayName("responde 200 con los cuatro totales y el desglose por tramo")
+        void responde_200_con_los_totales_y_el_desglose() throws Exception {
+            when(previewUseCase.preview(any())).thenReturn(vistaPrevia());
+
+            mockMvc.perform(post("/quotes/preview").contentType(MediaType.APPLICATION_JSON)
+                    .content(PREVIEW_JSON)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.currency").value("COP"))
+                    .andExpect(jsonPath("$.billingCycle").value("MONTHLY"))
+                    .andExpect(jsonPath("$.subtotalAmount").value(156000.00))
+                    .andExpect(jsonPath("$.discountAmount").value(0.00))
+                    .andExpect(jsonPath("$.taxAmount").value(29640.00))
+                    .andExpect(jsonPath("$.totalAmount").value(185640.00))
+                    .andExpect(jsonPath("$.lines.length()").value(1))
+                    .andExpect(jsonPath("$.lines[0].code").value("EXTRA_USER"))
+                    .andExpect(jsonPath("$.lines[0].name").value("Usuario adicional"))
+                    .andExpect(jsonPath("$.lines[0].contractedQuantity").value(15))
+                    .andExpect(jsonPath("$.lines[0].includedQuantity").value(2))
+                    .andExpect(jsonPath("$.lines[0].quantity").value(13))
+                    .andExpect(jsonPath("$.lines[0].unitAmount").value(12000.00))
+                    .andExpect(jsonPath("$.lines[0].grossAmount").value(156000.00))
+                    .andExpect(jsonPath("$.lines[0].taxRate").value(19.00))
+                    .andExpect(jsonPath("$.lines[0].taxTreatment").value("TAXED"))
+                    .andExpect(jsonPath("$.lines[0].taxAmount").value(29640.00))
+                    .andExpect(jsonPath("$.lines[0].lineTotal").value(185640.00));
+        }
+
+        /**
+         * No es una oferta: sin numero, sin vigencia, sin estado y sin id de nada. Lo
+         * pide un anonimo y se habla por rotulos.
+         */
+        @Test
+        @DisplayName("no publica ningun id, ni numero, ni vigencia, ni estado")
+        void no_publica_ningun_id_ni_estado() throws Exception {
+            when(previewUseCase.preview(any())).thenReturn(vistaPrevia());
+
+            mockMvc.perform(post("/quotes/preview").contentType(MediaType.APPLICATION_JSON)
+                    .content(PREVIEW_JSON)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").doesNotExist())
+                    .andExpect(jsonPath("$.quoteNumber").doesNotExist())
+                    .andExpect(jsonPath("$.status").doesNotExist())
+                    .andExpect(jsonPath("$.validUntil").doesNotExist())
+                    .andExpect(jsonPath("$.priceListId").doesNotExist())
+                    .andExpect(jsonPath("$.company").doesNotExist())
+                    .andExpect(jsonPath("$.lines[0].catalogItemId").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("traduce el request al command respetando el orden de las lineas")
+        void traduce_el_request_al_command() throws Exception {
+            when(previewUseCase.preview(any())).thenReturn(vistaPrevia());
+
+            mockMvc.perform(post("/quotes/preview").contentType(MediaType.APPLICATION_JSON)
+                    .content(PREVIEW_JSON)).andExpect(status().isOk());
+
+            ArgumentCaptor<PreviewQuoteCommand> comando = ArgumentCaptor
+                    .forClass(PreviewQuoteCommand.class);
+            verify(previewUseCase).preview(comando.capture());
+            assertThat(comando.getValue()).isEqualTo(new PreviewQuoteCommand("MONTHLY",
+                    List.of(new SelfServeQuoteLineCommand("PACK_CLINIC", 1),
+                            new SelfServeQuoteLineCommand("EXTRA_USER", 15))));
+        }
+
+        /**
+         * El precio lo pone el servidor y la garantia no es una validacion sino el
+         * tipo: ni {@code PreviewQuoteRequest} ni {@code SelfServeQuoteLineRequest}
+         * declaran donde escribir un descuento, una tarifa o un importe. Lo colado se
+         * queda fuera del command porque no hay campo que lo reciba.
+         */
+        @Test
+        @DisplayName("un termino economico colado en el cuerpo no llega al command")
+        void un_termino_economico_colado_no_llega_al_command() throws Exception {
+            when(previewUseCase.preview(any())).thenReturn(vistaPrevia());
+
+            mockMvc.perform(post("/quotes/preview").contentType(MediaType.APPLICATION_JSON)
+                    .content(PREVIEW_JSON_CON_DINERO_COLADO)).andExpect(status().isOk());
+
+            ArgumentCaptor<PreviewQuoteCommand> comando = ArgumentCaptor
+                    .forClass(PreviewQuoteCommand.class);
+            verify(previewUseCase).preview(comando.capture());
+            assertThat(comando.getValue()).isEqualTo(new PreviewQuoteCommand("MONTHLY",
+                    List.of(new SelfServeQuoteLineCommand("PACK_CLINIC", 1))));
+        }
+
+        @Test
+        @DisplayName("sin lineas no hay nada que tarifar: 400 y el caso de uso no se llama")
+        void sin_lineas_no_hay_nada_que_tarifar() throws Exception {
+            mockMvc.perform(post("/quotes/preview").contentType(MediaType.APPLICATION_JSON)
+                    .content(PREVIEW_JSON_SIN_LINEAS)).andExpect(status().isBadRequest());
+
+            verifyNoInteractions(previewUseCase);
+        }
+
+        /**
+         * Las dos restricciones de la linea anidada solo se evaluan porque el
+         * componente {@code lines} lleva {@code @Valid}: sin el estan escritas y no las
+         * dispara nadie, y un rotulo en blanco llegaria al caso de uso.
+         */
+        @Test
+        @DisplayName("un rotulo en blanco dentro de la lista se rechaza en el borde")
+        void un_rotulo_en_blanco_se_rechaza_en_el_borde() throws Exception {
+            mockMvc.perform(post("/quotes/preview").contentType(MediaType.APPLICATION_JSON)
+                    .content(PREVIEW_JSON_CODIGO_EN_BLANCO)).andExpect(status().isBadRequest());
+
+            verifyNoInteractions(previewUseCase);
+        }
+
+        @Test
+        @DisplayName("cero unidades no es una seleccion: 400")
+        void cero_unidades_no_es_una_seleccion() throws Exception {
+            mockMvc.perform(post("/quotes/preview").contentType(MediaType.APPLICATION_JSON)
+                    .content(PREVIEW_JSON_CANTIDAD_CERO)).andExpect(status().isBadRequest());
+
+            verifyNoInteractions(previewUseCase);
+        }
+
+        @Test
+        @DisplayName("un ciclo fuera de la lista cerrada se rechaza antes de consultar precios")
+        void un_ciclo_fuera_de_la_lista_cerrada_se_rechaza() throws Exception {
+            mockMvc.perform(post("/quotes/preview").contentType(MediaType.APPLICATION_JSON)
+                    .content(PREVIEW_JSON_CICLO_INVENTADO)).andExpect(status().isBadRequest());
+
+            verifyNoInteractions(previewUseCase);
         }
     }
 

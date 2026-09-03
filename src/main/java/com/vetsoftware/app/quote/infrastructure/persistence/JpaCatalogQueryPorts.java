@@ -268,19 +268,28 @@ public final class JpaCatalogQueryPorts {
     public static class JpaPublishedCatalogItemQueryPort implements PublishedCatalogItemQueryPort {
 
         /**
-         * <b>Este WHERE es el gate, y cada rama replica un predicado de
-         * {@code JpaPublicPlanQueryPort}</b> —el que alimenta {@code GET /plans}—, no
-         * uno parecido:
+         * <b>Este WHERE es el gate</b>, y su gemelo proyectado es el {@code CASE} de
+         * {@code JpaPublicCatalogQueryPort.SQL_ITEMS}: los dos tienen que aceptar
+         * exactamente el mismo conjunto, o la portada anuncia una cosa y la
+         * contratacion aplica otra.
          *
          * <ul>
          * <li><b>La rama del paquete</b> es la de {@code SQL_PLANS}: {@code BUNDLE}
          * {@code ACTIVE} y habilitado.</li>
-         * <li><b>La rama del componente</b> es la de {@code SQL_COMPONENTS}:
-         * {@code MODULE} o {@code CAPACITY} {@code ACTIVE} y habilitado, colgando por
-         * {@code bundle_components} de un paquete que a su vez esta publicado. Deja
-         * fuera los {@code ONE_TIME} —implantacion, migracion, capacitacion: cargos
-         * negociados que la portada no anuncia— y los articulos activos que no forman
-         * parte de ningun plan, que son catalogo interno.</li>
+         * <li><b>La rama del componente</b> acepta un {@code MODULE} o una
+         * {@code CAPACITY} {@code ACTIVE} y habilitado por <em>dos</em> vias: colgar
+         * por {@code bundle_components} de un paquete publicado, o llevar
+         * {@code self_service = TRUE}. La segunda no es un atajo de la primera: una
+         * fila de {@code bundle_components} significa «incluido en el precio del
+         * paquete» —asi la leen el rechazo de cobro doble, la composicion congelada al
+         * firmar y {@code componentCodes}—, y los cuatro {@code EXTRA_*} son lo
+         * contrario, vendibles y no incluidos. Colgarlos de un pack para abrirles el
+         * gate los anunciaria como regalados y ademas dejaria a
+         * {@code SelfServeCartGuard} rechazando por cobro doble justo la cesta que se
+         * quiere vender: pack mas capacidad extra. Deja fuera los {@code ONE_TIME}
+         * —implantacion, migracion, capacitacion: cargos negociados que la portada no
+         * anuncia— y los articulos activos que ni cuelgan de un plan ni estan marcados,
+         * que son catalogo interno.</li>
          * <li><b>El {@code JOIN} con {@code catalog_prices}</b> exige precio de entrada
          * ({@code tier_min = 1}) <em>en la tarifa y el ciclo con los que se esta
          * cotizando</em>. Es lo que {@code SQL_PLANS} exige al paquete, aplicado
@@ -320,14 +329,15 @@ public final class JpaCatalogQueryPorts {
                    AND ci.enabled = TRUE
                    AND (ci.item_type = 'BUNDLE'
                         OR (ci.item_type IN ('MODULE', 'CAPACITY')
-                            AND EXISTS (SELECT 1
-                                          FROM bundle_components bc
-                                          JOIN catalog_items b ON b.id = bc.bundle_item_id
-                                         WHERE bc.component_item_id = ci.id
-                                           AND bc.enabled = TRUE
-                                           AND b.enabled = TRUE
-                                           AND b.item_type = 'BUNDLE'
-                                           AND b.status = 'ACTIVE')))
+                            AND (ci.self_service = TRUE
+                                 OR EXISTS (SELECT 1
+                                              FROM bundle_components bc
+                                              JOIN catalog_items b ON b.id = bc.bundle_item_id
+                                             WHERE bc.component_item_id = ci.id
+                                               AND bc.enabled = TRUE
+                                               AND b.enabled = TRUE
+                                               AND b.item_type = 'BUNDLE'
+                                               AND b.status = 'ACTIVE'))))
                 """;
 
         /**

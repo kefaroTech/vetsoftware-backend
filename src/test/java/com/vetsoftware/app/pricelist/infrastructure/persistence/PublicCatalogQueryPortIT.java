@@ -2,11 +2,14 @@ package com.vetsoftware.app.pricelist.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogAreaRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackComponentRowDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogRequirementRowDto;
-import com.vetsoftware.app.pricelist.application.dto.PublicPlanRowDto;
 import com.vetsoftware.app.pricelist.domain.TaxTreatment;
+import com.vetsoftware.app.quote.domain.BillingCycle;
+import com.vetsoftware.app.quote.infrastructure.persistence.JpaCatalogQueryPorts;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
 import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
 import com.vetsoftware.app.testsupport.SchemaSeed;
@@ -26,14 +29,14 @@ import org.springframework.context.annotation.Import;
 
 /**
  * La rodaja que le faltaba a {@link JpaPublicCatalogQueryPort}, y que su propio
- * javadoc reclama: sus cuatro consultas nativas quedan <b>fuera</b> de
+ * javadoc reclama: sus consultas nativas quedan <b>fuera</b> de
  * {@code ADAPTADOR_JPA_CON_RODAJA} —esa regla solo alcanza a los
  * {@code Jpa<Algo>Repository}—, asi que sin esta clase no las ejecutaria nadie
  * en el build. Es exactamente como sobrevivio meses la incidencia #196.
  *
  * <p>
  * <b>Aqui el SQL decide cuanto se le cobra a alguien</b>, asi que lo que se
- * fija son las cuatro cosas que un mock no puede comprobar:
+ * fija es lo que un mock no puede comprobar:
  *
  * <ul>
  * <li><b>{@code structural_minimum} llega como {@code Byte}, no como
@@ -53,8 +56,7 @@ import org.springframework.context.annotation.Import;
  * arcos DIRECTOS y no el cierre transitivo, que los cinco predicados de
  * {@code SQL_REQUIREMENTS} descarten cada arco muerto por su propio motivo, y
  * que un requisito sin tarifar se siga anunciando aunque no salga en ninguna de
- * las cuatro listas. Contra un mock las cuatro cosas son la palabra del
- * test.</li>
+ * las listas. Contra un mock todo eso es la palabra del test.</li>
  * </ul>
  *
  * <p>
@@ -100,6 +102,13 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
     private static final String COD_RETIRADO = "TESTCAT_RETIRADO";
     private static final String COD_DE_BAJA = "TESTCAT_DE_BAJA";
 
+    private static final Long AREA_CLINICA = 2780L;
+    private static final Long AREA_MOSTRADOR = 2781L;
+    private static final Long AREA_APAGADA = 2782L;
+    private static final String COD_AREA_CLINICA = "TESTCAT_CLINICA";
+    private static final String COD_AREA_MOSTRADOR = "TESTCAT_MOSTRADOR";
+    private static final String COD_AREA_APAGADA = "TESTCAT_APAGADA";
+
     /**
      * La cadena de dos saltos que siembra el changeset 309 en TODOS los entornos,
      * contenedor de test incluido. No se siembra aqui a proposito: es el catalogo
@@ -115,13 +124,32 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
 
     private JpaPublicCatalogQueryPort port;
 
+    /**
+     * El paso vinculante, instanciado aqui a proposito. {@code pricelist} y
+     * {@code quote} son rodajas independientes y su codigo de produccion no se
+     * importa entre si; este es el unico punto del build donde las <b>dos</b>
+     * sentencias nativas se ejecutan sobre las mismas filas, que es lo que hace
+     * falta para demostrar que aceptan el mismo conjunto. La alternativa —copiar el
+     * predicado en una tercera consulta— probaria la copia y no el original.
+     */
+    private JpaCatalogQueryPorts.JpaPublishedCatalogItemQueryPort gate;
+
     @BeforeEach
     void sembrar() {
         port = new JpaPublicCatalogQueryPort(entityManager);
+        gate = new JpaCatalogQueryPorts.JpaPublishedCatalogItemQueryPort(entityManager);
         SchemaSeed.seed(entityManager);
 
         tarifa(LISTA, "TESTCAT-LISTA", LocalDate.of(2026, 8, 1));
         tarifa(LISTA_OTRA, "TESTCAT-OTRA", LocalDate.of(2025, 1, 1));
+
+        // El orden importa: fk_catalog_items_area exige el area antes que el modulo que
+        // la referencia. Los sort_order van en el rango 9xxx porque
+        // uq_catalog_areas_sort_order es UNIQUE global y la semilla comercial ocupa las
+        // decenas bajas.
+        area(AREA_MOSTRADOR, COD_AREA_MOSTRADOR, "Mostrador de prueba", 9200, true);
+        area(AREA_CLINICA, COD_AREA_CLINICA, "Clinica de prueba", 9100, true);
+        area(AREA_APAGADA, COD_AREA_APAGADA, "Area retirada", 9300, false);
 
         articulo(PACK, COD_PACK, "Pack de prueba", "BUNDLE", null, false, 1, 1, "ACTIVE",
                 "NEVER_FREE", null, null);
@@ -182,6 +210,17 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
         precio(2751L, LISTA, MOD_RETIRADO, "MONTHLY", 1, null, 0, "50000.00", "0.00", true);
         precio(2752L, LISTA, MOD_DE_BAJA, "MONTHLY", 1, null, 0, "50000.00", "0.00", true);
         precio(2753L, LISTA_OTRA, MOD_SIN_PRECIO, "MONTHLY", 1, null, 0, "99000.00", "0.00", true);
+
+        // uq_catalog_items_recommended_bundle es UNIQUE entre los paquetes vivos de
+        // toda la tabla, y la semilla comercial ya trae uno marcado: sin apagarlo
+        // primero, marcar el de prueba choca contra el indice. El rollback de
+        // @DataJpaTest lo devuelve a su sitio al terminar cada caso.
+        entityManager
+                .createNativeQuery(
+                        "UPDATE catalog_items SET recommended = FALSE WHERE recommended = TRUE")
+                .executeUpdate();
+        recomendar(PACK);
+        rotular(MOD_EN_PACK, "En pack");
         entityManager.flush();
     }
 
@@ -341,6 +380,111 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
                         assertThat(f.annualAmount()).isNull();
                     });
         }
+
+        /**
+         * <b>La segunda via del gate: la capacidad extra, que no cuelga de nada.</b>
+         * {@link #CAP_NUCLEO} es una {@code CAPACITY} sin una sola fila en
+         * {@code bundle_components} —la misma forma que los cuatro {@code EXTRA_*}— y
+         * hasta ahora salia como no contratable. Colgarla de un pack para abrirle el
+         * gate no era la salida: esa tabla significa «incluido en el precio del
+         * paquete», asi que la anunciaria como regalada y el rechazo de cobro doble
+         * prohibiria justo la cesta que se quiere vender.
+         */
+        @Test
+        @DisplayName("una capacidad marcada self_service es contratable sin colgar de ningun pack")
+        void una_capacidad_marcada_es_contratable_sin_colgar_de_ningun_pack() {
+            assertThat(articulosDePrueba()).filteredOn(f -> COD_CAP_NUCLEO.equals(f.code()))
+                    .singleElement().satisfies(f -> assertThat(f.selfServiceEligible()).isFalse());
+
+            autoservicio(CAP_NUCLEO);
+
+            assertThat(articulosDePrueba()).filteredOn(f -> COD_CAP_NUCLEO.equals(f.code()))
+                    .singleElement().satisfies(f -> assertThat(f.selfServiceEligible()).isTrue());
+        }
+
+        /**
+         * Ampliar el gate es aditivo: la marca abre una via mas, no sustituye a la de
+         * {@code bundle_components} ni contagia a los vecinos.
+         */
+        @Test
+        @DisplayName("marcar uno no mueve al que colgaba del pack ni al que no colgaba de nada")
+        void marcar_uno_no_mueve_a_los_demas() {
+            autoservicio(CAP_NUCLEO);
+
+            assertThat(articulosDePrueba()).filteredOn(f -> COD_MOD_EN_PACK.equals(f.code()))
+                    .singleElement().satisfies(f -> assertThat(f.selfServiceEligible()).isTrue());
+            assertThat(articulosDePrueba()).filteredOn(f -> COD_MOD_SUELTO.equals(f.code()))
+                    .singleElement().satisfies(f -> assertThat(f.selfServiceEligible()).isFalse());
+        }
+    }
+
+    /**
+     * <b>La invariante que ninguna constraint puede declarar</b>: el gate y la
+     * bandera que lo anuncia son dos sentencias nativas distintas, en dos rodajas
+     * distintas, y que acepten el mismo conjunto solo se sostiene por revision. Si
+     * divergen, la portada ofrece un articulo que la contratacion rechaza —o
+     * esconde uno que aceptaria— y el prospecto se estrella <em>despues</em> de
+     * registrarse y verificar el correo, con un error deliberadamente mudo.
+     *
+     * <p>
+     * La comparacion se acota a los articulos con importe mensual porque el paso
+     * vinculante exige precio de entrada en el ciclo pedido con un {@code JOIN}
+     * interno, mientras que {@code SQL_ITEMS} lo trae por {@code LEFT JOIN} y deja
+     * al consumidor leerlo del importe. Fuera de esa condicion los dos no responden
+     * la misma pregunta.
+     */
+    @Nested
+    @DisplayName("el gate y selfServiceEligible aceptan el mismo conjunto")
+    class ElGateYLaProyeccionCoinciden {
+
+        @Test
+        @DisplayName("cada articulo tarifado al mes: la bandera dice lo que el gate resuelve")
+        void la_bandera_dice_lo_que_el_gate_resuelve() {
+            assertThat(articulosDePrueba()).filteredOn(f -> f.monthlyAmount() != null).isNotEmpty()
+                    .allSatisfy(f -> assertThat(f.selfServiceEligible())
+                            .as("%s: la portada y la contratacion tienen que coincidir", f.code())
+                            .isEqualTo(gate
+                                    .findPublishedIdByCode(f.code(), LISTA, BillingCycle.MONTHLY)
+                                    .isPresent()));
+        }
+
+        @Test
+        @DisplayName("y siguen coincidiendo despues de marcar una capacidad como self_service")
+        void siguen_coincidiendo_con_una_capacidad_marcada() {
+            autoservicio(CAP_NUCLEO);
+
+            assertThat(gate.findPublishedIdByCode(COD_CAP_NUCLEO, LISTA, BillingCycle.MONTHLY))
+                    .contains(CAP_NUCLEO);
+            assertThat(articulosDePrueba()).filteredOn(f -> f.monthlyAmount() != null).isNotEmpty()
+                    .allSatisfy(f -> assertThat(f.selfServiceEligible())
+                            .as("%s: la portada y la contratacion tienen que coincidir", f.code())
+                            .isEqualTo(gate
+                                    .findPublishedIdByCode(f.code(), LISTA, BillingCycle.MONTHLY)
+                                    .isPresent()));
+        }
+
+        /**
+         * La marca abre una via dentro del gate, no lo esquiva: el resto de predicados
+         * —estado, baja logica y precio de entrada en el ciclo pedido— siguen mandando.
+         * Sin este caso, la union podria haberse escrito como un {@code OR} por encima
+         * del {@code WHERE} entero y nadie lo notaria.
+         */
+        @Test
+        @DisplayName("la marca no salta el estado, la baja logica ni el precio del ciclo")
+        void la_marca_no_salta_los_demas_predicados() {
+            autoservicio(MOD_BORRADOR);
+            autoservicio(MOD_DE_BAJA);
+            autoservicio(MOD_SOLO_MENSUAL);
+
+            assertThat(gate.findPublishedIdByCode(COD_BORRADOR, LISTA, BillingCycle.MONTHLY))
+                    .isEmpty();
+            assertThat(gate.findPublishedIdByCode(COD_DE_BAJA, LISTA, BillingCycle.MONTHLY))
+                    .isEmpty();
+            assertThat(gate.findPublishedIdByCode(COD_SOLO_MENSUAL, LISTA, BillingCycle.ANNUAL))
+                    .isEmpty();
+            assertThat(gate.findPublishedIdByCode(COD_SOLO_MENSUAL, LISTA, BillingCycle.MONTHLY))
+                    .contains(MOD_SOLO_MENSUAL);
+        }
     }
 
     @Nested
@@ -374,6 +518,86 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
             assertThat(port.findContractableItems(null)).isEmpty();
             assertThat(port.findPacks(null)).isEmpty();
             assertThat(port.findPackComponents(null)).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("area, rotulo corto y combinacion recomendada")
+    class Presentacion {
+
+        /**
+         * &#9888; Los bucles leen su {@code Object[]} por posicion, asi que intercalar
+         * una columna desplaza los indices posteriores sin que el compilador diga nada.
+         */
+        @Test
+        @DisplayName("el modulo publica su area y su rotulo corto sin mover las columnas de antes")
+        void el_modulo_publica_su_area_y_su_rotulo() {
+            assertThat(articulosDePrueba()).filteredOn(f -> COD_MOD_EN_PACK.equals(f.code()))
+                    .singleElement().satisfies(f -> {
+                        assertThat(f.areaCode()).isEqualTo(COD_AREA_CLINICA);
+                        assertThat(f.shortLabel()).isEqualTo("En pack");
+                        assertThat(f.name()).isEqualTo("Modulo dentro del pack");
+                        assertThat(f.monthlyAmount()).isEqualByComparingTo("38000.00");
+                        assertThat(f.trialDays()).isEqualTo(30);
+                        assertThat(f.selfServiceEligible()).isTrue();
+                    });
+        }
+
+        @Test
+        @DisplayName("un rotulo corto sin escribir llega nulo")
+        void un_rotulo_corto_sin_escribir_llega_nulo() {
+            assertThat(articulosDePrueba()).filteredOn(f -> COD_MOD_SUELTO.equals(f.code()))
+                    .singleElement().satisfies(f -> assertThat(f.shortLabel()).isNull());
+        }
+
+        /** El {@code CHECK} de la tabla prohibe el area fuera de los MODULE. */
+        @Test
+        @DisplayName("un contador y un cargo unico llegan sin area")
+        void un_contador_y_un_cargo_unico_llegan_sin_area() {
+            assertThat(articulosDePrueba())
+                    .filteredOn(
+                            f -> COD_CAP_NUCLEO.equals(f.code()) || COD_ONE_TIME.equals(f.code()))
+                    .hasSize(2).allSatisfy(f -> assertThat(f.areaCode()).isNull());
+        }
+
+        /**
+         * MySQL entrega el {@code BOOLEAN} como {@code TINYINT}, o sea {@code Byte}:
+         * proyectarlo a un {@code Boolean} revienta con {@code ClassCastException} y un
+         * literal booleano en el {@code SELECT} depende del dialecto. Es el defecto de
+         * #196 y #472, y contra un mock no se ve nada.
+         */
+        @Test
+        @DisplayName("recommended llega desde TINYINT y se convierte, no se castea")
+        void recommended_llega_desde_tinyint() {
+            assertThat(port.findPacks(LISTA)).filteredOn(p -> COD_PACK.equals(p.code()))
+                    .singleElement().satisfies(p -> assertThat(p.recommended()).isTrue());
+        }
+
+        @Test
+        @DisplayName("las areas salen en el orden de presentacion y las apagadas no salen")
+        void las_areas_salen_ordenadas_y_sin_las_apagadas() {
+            List<PublicCatalogAreaRowDto> areas = port.findAreas().stream()
+                    .filter(a -> a.code().startsWith("TESTCAT_")).toList();
+
+            assertThat(areas).containsExactly(
+                    new PublicCatalogAreaRowDto(COD_AREA_CLINICA, "Clinica de prueba"),
+                    new PublicCatalogAreaRowDto(COD_AREA_MOSTRADOR, "Mostrador de prueba"));
+            assertThat(areas).extracting(PublicCatalogAreaRowDto::code)
+                    .doesNotContain(COD_AREA_APAGADA);
+        }
+
+        /**
+         * El area del modulo tiene que casar con alguna de las publicadas, o la
+         * cabecera bajo la que el front lo pinta no existiria.
+         */
+        @Test
+        @DisplayName("el areaCode de un modulo casa con un area publicada")
+        void el_area_del_modulo_casa_con_un_area_publicada() {
+            List<String> publicadas = port.findAreas().stream().map(PublicCatalogAreaRowDto::code)
+                    .toList();
+
+            assertThat(articulosDePrueba()).filteredOn(f -> f.areaCode() != null).isNotEmpty()
+                    .allSatisfy(f -> assertThat(publicadas).contains(f.areaCode()));
         }
     }
 
@@ -451,8 +675,8 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
          * <b>Esto es intencionado y esta aqui para que no se «arregle».</b>
          * {@code catalog_item_dependencies} no tiene columna de tarifa y la consulta no
          * filtra por precio, asi que un {@code requiredItemCode} puede apuntar a un
-         * articulo que no sale en ninguna de las cuatro listas publicadas. El servidor
-         * lo anadiria al carrito igual —{@code RequiredItemsClosure} recorre el mismo
+         * articulo que no sale en ninguna de las listas publicadas. El servidor lo
+         * anadiria al carrito igual —{@code RequiredItemsClosure} recorre el mismo
          * grafo—, asi que el front tiene que poder anticiparlo. Filtrarlo aqui dejaria
          * una respuesta que anuncia una cosa y cobra otra.
          */
@@ -463,7 +687,7 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
                     .contains(new PublicCatalogRequirementRowDto(COD_SOLO_MENSUAL, COD_SIN_PRECIO));
             assertThat(articulosDePrueba()).extracting(PublicCatalogItemRowDto::code)
                     .doesNotContain(COD_SIN_PRECIO);
-            assertThat(port.findPacks(LISTA)).extracting(PublicPlanRowDto::code)
+            assertThat(port.findPacks(LISTA)).extracting(PublicCatalogPackRowDto::code)
                     .doesNotContain(COD_SIN_PRECIO);
         }
     }
@@ -490,12 +714,15 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
                                                            capacity_unit, structural_minimum, min_quantity, max_quantity,
                                                            sort_order, status, trial_eligibility,
                                                            default_trial_days, trial_outcome, service_nature,
-                                                           created_date, enabled, version)
+                                                           created_date, enabled, version,
+                                                           area_code, short_label, recommended)
                                 VALUES (:id, :code, :name, NULL, :itemType, :capacityUnit, :core, :minQuantity,
                                         NULL, :sortOrder, :status, :elegibilidad, :dias, :desenlace,
-                                        'SOFTWARE_LICENSING', '2026-01-01 00:00:00', TRUE, 0)
+                                        'SOFTWARE_LICENSING', '2026-01-01 00:00:00', TRUE, 0,
+                                        :area, NULL, FALSE)
                                 """)
                 .setParameter("id", id).setParameter("code", code).setParameter("name", name)
+                .setParameter("area", "MODULE".equals(itemType) ? COD_AREA_CLINICA : null)
                 .setParameter("itemType", itemType).setParameter("capacityUnit", capacityUnit)
                 .setParameter("core", core).setParameter("minQuantity", minQuantity)
                 .setParameter("sortOrder", sortOrder).setParameter("status", status)
@@ -511,12 +738,48 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
                                                            capacity_unit, structural_minimum, min_quantity, max_quantity,
                                                            sort_order, status, trial_eligibility,
                                                            default_trial_days, trial_outcome, service_nature,
-                                                           created_date, enabled, version)
+                                                           created_date, enabled, version,
+                                                           area_code, short_label, recommended)
                                 VALUES (:id, :code, :name, NULL, 'MODULE', NULL, FALSE, 1, NULL, 20, 'ACTIVE',
                                         'NEVER_FREE', NULL, NULL, 'SOFTWARE_LICENSING',
-                                        '2026-01-01 00:00:00', FALSE, 0)
+                                        '2026-01-01 00:00:00', FALSE, 0,
+                                        :area, NULL, FALSE)
                                 """)
-                .setParameter("id", id).setParameter("code", code).setParameter("name", name)
+                .setParameter("area", COD_AREA_CLINICA).setParameter("id", id)
+                .setParameter("code", code).setParameter("name", name).executeUpdate();
+    }
+
+    private void area(Long id, String code, String name, int sortOrder, boolean enabled) {
+        entityManager.createNativeQuery("""
+                INSERT INTO catalog_areas (id, code, name, sort_order, created_date, enabled,
+                                           version)
+                VALUES (:id, :code, :name, :orden, '2026-01-01 00:00:00', :enabled, 0)
+                """).setParameter("id", id).setParameter("code", code).setParameter("name", name)
+                .setParameter("orden", sortOrder).setParameter("enabled", enabled).executeUpdate();
+    }
+
+    private void recomendar(Long catalogItemId) {
+        entityManager
+                .createNativeQuery("UPDATE catalog_items SET recommended = TRUE WHERE id = :id")
+                .setParameter("id", catalogItemId).executeUpdate();
+    }
+
+    /**
+     * {@code chk_catalog_items_self_service} solo la admite en {@code MODULE} y
+     * {@code CAPACITY}: marcar un {@code BUNDLE} o un {@code ONE_TIME} aqui muere
+     * en la base, no en la asercion.
+     */
+    private void autoservicio(Long catalogItemId) {
+        entityManager
+                .createNativeQuery("UPDATE catalog_items SET self_service = TRUE WHERE id = :id")
+                .setParameter("id", catalogItemId).executeUpdate();
+        entityManager.flush();
+    }
+
+    private void rotular(Long catalogItemId, String shortLabel) {
+        entityManager
+                .createNativeQuery("UPDATE catalog_items SET short_label = :rotulo WHERE id = :id")
+                .setParameter("rotulo", shortLabel).setParameter("id", catalogItemId)
                 .executeUpdate();
     }
 

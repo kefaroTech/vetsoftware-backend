@@ -197,7 +197,7 @@ Se cobra.
 | Un componente de pack no se puede cobrar además del pack | `SelfServeCartGuard` (código) — **no declarable en la base**, sigue igual que hoy |
 | Lo vendible por autoservicio tiene precio de entrada en el ciclo pedido | El `JOIN` del gate, fail-closed. **No es una constraint**: es cross-tabla y depende de la tarifa vigente. Debe cubrirlo un IT del *slice* de `pricelist`/`quote` |
 | El gate y `selfServiceEligible` evalúan el mismo predicado | **No declarable**: son dos SQL nativos. Hoy ya es así por convención; el cambio debe tocarlos en el mismo commit |
-| Un `EXTRA_*` comprado sube el techo del cliente | **No garantizado hoy**: ver la sección 6 |
+| Un `EXTRA_*` comprado sube el techo del cliente | **Garantizado desde DC-2** (verificado en código, no en 2026-08-29): ver la sección 6, punto 1, corregido |
 
 ### 4.6 Forma del changeset y coste del `ALTER`
 
@@ -258,16 +258,31 @@ ya declara — no hay nada nuevo que escribir. En la forma 2, `dropColumn` + inv
 ## 6. Hallazgos colaterales, del mismo bloque y con la misma raíz
 
 Se enumeran porque cualquier plan de monetización de capacidad extra los pisa. **Ninguno se
-resuelve aquí.**
+resuelve aquí**, salvo el punto 1, que quedó **obsoleto y se corrige abajo** (verificado leyendo
+código, no reafirmado por confianza en esta misma auditoría — sesión de changesets 404-406,
+2026-09-02).
 
-1. **[Bloqueante para el objetivo del dueño] Comprar capacidad extra no subiría el techo de
-   nadie.** No existe el eslabón cotización aceptada → suscripción (javadoc de
-   `SelfServeQuoteService`), y el alta inicial solo aprovisiona capacidades `structural_minimum = TRUE`
-   (`PlatformCatalogTemplateJpaRepository.java:125`). El techo sale de
-   `included_quantity + quantity` sobre `subscription_items`
-   (`ContractItemJpaRepository.java:130`, `CapacityGrantLine.java:62`). Sin ese camino, marcar los
-   `EXTRA_*` como vendibles produce **cobro sin entrega**, que es peor que no vender. La
-   elegibilidad es condición necesaria y no suficiente.
+1. **[RESUELTO desde que se escribió este documento — YA NO ES CIERTO] "Comprar capacidad extra
+   no subiría el techo de nadie".** Cuando esto se redactó (changelog en 379) no existía el
+   eslabón cotización aceptada → suscripción. **Ya existe**: DC-2 lo cierra con
+   `AcceptQuoteService.execute` (`quote/application/usecase/AcceptQuoteService.java:68-71`), que
+   —en la misma transacción de la aceptación, si la cotización tiene empresa— llama a
+   `SubscriptionProvisioningPort.provisionFromAcceptedQuote`. Su único adaptador,
+   `AcceptedQuoteSubscriptionProvisioner`
+   (`quote/infrastructure/orchestration/AcceptedQuoteSubscriptionProvisioner.java:72-77`), invoca
+   `ReplaceSubscriptionFromQuoteUseCase`, y `ReplaceSubscriptionFromQuoteService.execute`
+   (`subscription/application/usecase/ReplaceSubscriptionFromQuoteService.java:135-184`) traduce
+   **cada línea de la cotización aceptada** —vía `AcceptedQuoteContractLines.from`, que copia
+   `quote.items()` campo a campo, sin recalcular nada— en un `SubscriptionItemLineCommand` que
+   `createSubscriptionUseCase.execute(...)` persiste como `subscription_items`. Una línea
+   `EXTRA_USER` o `EXTRA_BRANCH` en la cotización aceptada entra con su propio
+   `capacityUnit`/`quantity`, y `EntitlementCalculator` (línea 335) suma los `ceiling()` de todas
+   las líneas del mismo eje (`CapacityGrantLine.ceiling() = included_quantity + quantity`), así
+   que **sí sube el techo**. No es un camino nuevo escrito para esta tarea: es DC-2, ya en
+   producción, y se aplica igual a una cotización de autoservicio que a una de consola —
+   `AcceptQuoteUseCase` no distingue el origen—. **La condición "elegibilidad es necesaria y no
+   suficiente" ya no aplica**: con el gate abierto (404-406 + el cambio de SQL en el mismo PR),
+   comprar un `EXTRA_*` por autoservicio y aceptarlo entrega la capacidad.
 2. **[Grave] Los packs publican una terminal incluida que nadie concede.** `CAPACITY_TERMINAL` es
    componente de los tres packs con `quantity = 1` (309:229-262) y se publica como `included = 1`;
    pero es `structural_minimum = FALSE` (308:246 y ss.), así que no lo aprovisiona el alta inicial, y

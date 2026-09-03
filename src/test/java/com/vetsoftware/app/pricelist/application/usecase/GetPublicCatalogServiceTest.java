@@ -1,19 +1,21 @@
 package com.vetsoftware.app.pricelist.application.usecase;
 
+import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.AREA;
 import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.CARGO_UNICO;
 import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.CONTADOR;
 import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.CORE;
 import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.MODULO;
 import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.PAQUETE;
+import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.area;
 import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.cargoUnico;
 import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.componente;
 import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.contador;
 import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.modulo;
 import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.moduloSoloMensual;
 import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.nucleo;
+import static com.vetsoftware.app.pricelist.testsupport.PublicCatalogMother.paquete;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.HOY;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.TARIFA_VIGENTE_ID;
-import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.plan;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.tarifaCaducada;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.tarifaFutura;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.tarifaVigente;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.infrastructure.config.ClockConfig;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogCapacityDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogAreaDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemDto;
 import com.vetsoftware.app.pricelist.application.port.out.PublicCatalogQueryPort;
 import com.vetsoftware.app.pricelist.application.port.out.PublicPlanQueryPort;
@@ -70,14 +73,15 @@ class GetPublicCatalogServiceTest {
         return new GetPublicCatalogService(priceListQueryPort, queryPort, RELOJ);
     }
 
-    /** La tarifa vigente existe y devuelve los cuatro grupos sembrados. */
+    /** La tarifa vigente existe y devuelve los grupos sembrados. */
     private void elCatalogoDeLaTarifaVigente() {
         when(priceListQueryPort.findPublishedPriceLists()).thenReturn(List.of(tarifaVigente()));
         when(queryPort.findContractableItems(TARIFA_VIGENTE_ID))
                 .thenReturn(List.of(nucleo(), modulo(), contador(), cargoUnico()));
-        when(queryPort.findPacks(TARIFA_VIGENTE_ID)).thenReturn(List.of(plan(PAQUETE)));
+        when(queryPort.findPacks(TARIFA_VIGENTE_ID)).thenReturn(List.of(paquete(PAQUETE, true)));
         when(queryPort.findPackComponents(TARIFA_VIGENTE_ID))
                 .thenReturn(List.of(componente(CORE), componente(MODULO)));
+        when(queryPort.findAreas()).thenReturn(List.of(area(AREA), area("HOSPITAL")));
     }
 
     @Nested
@@ -162,8 +166,10 @@ class GetPublicCatalogServiceTest {
         void un_paquete_sin_componentes_sale_con_la_lista_vacia() {
             when(priceListQueryPort.findPublishedPriceLists()).thenReturn(List.of(tarifaVigente()));
             when(queryPort.findContractableItems(TARIFA_VIGENTE_ID)).thenReturn(List.of());
-            when(queryPort.findPacks(TARIFA_VIGENTE_ID)).thenReturn(List.of(plan("PACK_HUERFANO")));
+            when(queryPort.findPacks(TARIFA_VIGENTE_ID))
+                    .thenReturn(List.of(paquete("PACK_HUERFANO", false)));
             when(queryPort.findPackComponents(TARIFA_VIGENTE_ID)).thenReturn(List.of());
+            when(queryPort.findAreas()).thenReturn(List.of());
 
             PublicCatalogDto catalogo = servicio().get();
 
@@ -190,6 +196,7 @@ class GetPublicCatalogServiceTest {
                     .thenReturn(List.of(moduloSoloMensual()));
             when(queryPort.findPacks(TARIFA_VIGENTE_ID)).thenReturn(List.of());
             when(queryPort.findPackComponents(TARIFA_VIGENTE_ID)).thenReturn(List.of());
+            when(queryPort.findAreas()).thenReturn(List.of());
 
             PublicCatalogDto catalogo = servicio().get();
 
@@ -213,7 +220,9 @@ class GetPublicCatalogServiceTest {
             assertThat(catalogo.capacities()).isEmpty();
             assertThat(catalogo.oneTimeItems()).isEmpty();
             assertThat(catalogo.packs()).isEmpty();
+            assertThat(catalogo.areas()).isEmpty();
             verify(queryPort, never()).findContractableItems(any());
+            verify(queryPort, never()).findAreas();
         }
     }
 
@@ -296,6 +305,94 @@ class GetPublicCatalogServiceTest {
     }
 
     @Nested
+    @DisplayName("Areas, rotulos y combinacion recomendada")
+    class Presentacion {
+
+        /**
+         * <b>El orden de la lista es el orden de presentacion</b>, y la respuesta no
+         * lleva ningun {@code sortOrder} con el que rehacerlo: el servicio no puede
+         * reordenar ni reagrupar lo que le da el puerto. Con las areas devueltas al
+         * reves de su alfabeto, un servicio que las ordenara por su cuenta se ve.
+         */
+        @Test
+        @DisplayName("publica las areas en el orden del puerto, sin reordenarlas")
+        void publica_las_areas_en_el_orden_del_puerto() {
+            elCatalogoDeLaTarifaVigente();
+
+            PublicCatalogDto catalogo = servicio().get();
+
+            assertThat(catalogo.areas()).extracting(PublicCatalogAreaDto::code)
+                    .containsExactly(AREA, "HOSPITAL");
+        }
+
+        /**
+         * El area es atributo del articulo y solo la llevan los {@code MODULE}:
+         * {@code chk_catalog_items_area} la prohibe en el resto, asi que un contador
+         * con area seria una fila que la base no admite. {@code CORE} es la excepcion
+         * dentro de los {@code MODULE}: el changeset 399 lo deja sin area porque se
+         * pinta en una fila fija sobre las cabeceras, y aun asi lleva rotulo corto.
+         */
+        @Test
+        @DisplayName("el modulo lleva area y rotulo corto; ni CORE ni el contador llevan area")
+        void el_modulo_lleva_area_y_rotulo_corto() {
+            elCatalogoDeLaTarifaVigente();
+
+            PublicCatalogDto catalogo = servicio().get();
+
+            assertThat(catalogo.modules()).filteredOn(m -> MODULO.equals(m.code())).singleElement()
+                    .satisfies(m -> {
+                        assertThat(m.areaCode()).isEqualTo("HOSPITAL");
+                        assertThat(m.shortLabel()).isEqualTo("Cirugia");
+                    });
+            assertThat(catalogo.modules()).filteredOn(m -> CORE.equals(m.code())).singleElement()
+                    .satisfies(m -> {
+                        assertThat(m.areaCode()).isNull();
+                        assertThat(m.shortLabel()).isEqualTo("Nucleo");
+                    });
+            assertThat(catalogo.capacities()).singleElement()
+                    .satisfies(c -> assertThat(c.code()).isEqualTo(CONTADOR));
+            assertThat(catalogo.oneTimeItems()).singleElement()
+                    .satisfies(item -> assertThat(item.areaCode()).isNull());
+        }
+
+        /**
+         * Un rotulo corto ausente <b>no se rellena aqui</b>. Caer a {@code name} es
+         * decision de quien pinta: sustituirlo en el servidor haria imposible
+         * distinguir «no se ha escrito» de «se escribio igual que el nombre», y el dia
+         * que la casilla necesite otro texto por defecto habria que cambiarlo en los
+         * dos sitios.
+         */
+        @Test
+        @DisplayName("un rotulo corto sin escribir viaja nulo, no relleno con el nombre")
+        void un_rotulo_corto_sin_escribir_viaja_nulo() {
+            when(priceListQueryPort.findPublishedPriceLists()).thenReturn(List.of(tarifaVigente()));
+            when(queryPort.findContractableItems(TARIFA_VIGENTE_ID))
+                    .thenReturn(List.of(moduloSoloMensual()));
+            when(queryPort.findPacks(TARIFA_VIGENTE_ID)).thenReturn(List.of());
+            when(queryPort.findPackComponents(TARIFA_VIGENTE_ID)).thenReturn(List.of());
+            when(queryPort.findAreas()).thenReturn(List.of());
+
+            PublicCatalogDto catalogo = servicio().get();
+
+            assertThat(catalogo.modules()).singleElement().satisfies(m -> {
+                assertThat(m.shortLabel()).isNull();
+                assertThat(m.name()).isNotNull();
+            });
+        }
+
+        @Test
+        @DisplayName("la marca de recomendado llega al paquete y no se confunde con mandatory")
+        void la_marca_de_recomendado_llega_al_paquete() {
+            elCatalogoDeLaTarifaVigente();
+
+            PublicCatalogDto catalogo = servicio().get();
+
+            assertThat(catalogo.packs()).singleElement()
+                    .satisfies(pack -> assertThat(pack.recommended()).isTrue());
+        }
+    }
+
+    @Nested
     @DisplayName("Recorte")
     class Recorte {
 
@@ -311,7 +408,7 @@ class GetPublicCatalogServiceTest {
             assertThat(PublicCatalogDto.class.getRecordComponents())
                     .extracting(RecordComponent::getName).containsExactly("currency",
                             "priceValidFrom", "modules", "capacities", "oneTimeItems", "packs",
-                            "requirements");
+                            "requirements", "areas");
         }
 
         @Test

@@ -1,9 +1,10 @@
 package com.vetsoftware.app.pricelist.infrastructure.persistence;
 
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogAreaRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackComponentRowDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogRequirementRowDto;
-import com.vetsoftware.app.pricelist.application.dto.PublicPlanRowDto;
 import com.vetsoftware.app.pricelist.application.port.out.PublicCatalogQueryPort;
 import com.vetsoftware.app.pricelist.domain.TaxTreatment;
 import jakarta.persistence.EntityManager;
@@ -22,8 +23,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>
  * <b>Nada de esto tiene {@code company_id}</b>: {@code price_lists},
- * {@code catalog_prices}, {@code catalog_items} y {@code bundle_components} son
- * catalogo global de plataforma. Solo lee.
+ * {@code catalog_prices}, {@code catalog_items}, {@code bundle_components} y
+ * {@code catalog_areas} son catalogo global de plataforma. Solo lee.
  *
  * <p>
  * <b>Queda fuera de {@code ADAPTADOR_JPA_CON_RODAJA}</b>, que solo alcanza a
@@ -38,8 +39,15 @@ import org.springframework.stereotype.Component;
  * las dos reglas de ArchUnit vigila —las dos miran metodos anotados con
  * {@code @Query}, y aqui se usa {@code createNativeQuery}—. MySQL entrega
  * {@code TINYINT} como {@code Byte} y el {@code CASE} devuelve un entero: las
- * dos columnas llegan como {@code Number} a un {@code Object[]} y las convierte
- * {@link #asBoolean(Object)}, en Java, donde el tipo se ve.
+ * columnas de verdad/mentira llegan como {@code Number} a un {@code Object[]} y
+ * las convierte {@link #asBoolean(Object)}, en Java, donde el tipo se ve.
+ *
+ * <p>
+ * <b>Toda columna que se anada va al FINAL de su {@code SELECT}.</b> Los bucles
+ * leen su {@code Object[]} por posicion, asi que intercalar una columna
+ * desplaza todos los indices posteriores y el fallo aparece en ejecucion y no
+ * al compilar —{@code asString(columns[7])} sobre un {@code BigDecimal} compila
+ * igual—.
  */
 @Component
 public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
@@ -56,13 +64,22 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
      * politica de descuento por volumen y no se publica.
      *
      * <p>
-     * <b>La ultima columna es el gate, proyectado.</b> Ese {@code CASE} replica el
-     * conjunto de aceptacion de
+     * <b>El {@code CASE} es el gate, proyectado.</b> Replica el conjunto de
+     * aceptacion de
      * {@code JpaPublishedCatalogItemQueryPort.SQL_PUBLISHED_ID_BY_CODE}, que es el
      * paso vinculante: o el articulo es un {@code BUNDLE}, o es un {@code MODULE} o
-     * una {@code CAPACITY} que cuelga de algun paquete {@code ACTIVE} publicado.
-     * Junto con "tiene importe en el ciclo pedido", que el consumidor lee de los
-     * dos importes, es la condicion exacta que la autocontratacion va a evaluar.
+     * una {@code CAPACITY} que cuelga de algun paquete {@code ACTIVE} publicado
+     * <em>o</em> lleva {@code self_service = TRUE}. Junto con "tiene importe en el
+     * ciclo pedido", que el consumidor lee de los dos importes, es la condicion
+     * exacta que la autocontratacion va a evaluar.
+     *
+     * <p>
+     * <b>La rama de {@code self_service} es la elegibilidad escrita como atributo
+     * del articulo.</b> Una fila de {@code bundle_components} significa «incluido
+     * en el precio del paquete» y no «vendible aparte»; los cuatro {@code EXTRA_*}
+     * son vendibles y no incluidos, asi que la unica forma de abrirles el gate sin
+     * anunciarlos como regalados es una columna propia. Los dos SQL cambian a la
+     * vez o esta columna miente.
      *
      * <p>
      * <b>El {@code item_type IN ('MODULE', 'CAPACITY')} es lo que sostiene la
@@ -117,15 +134,18 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
                    COALESCE(pm.tax_treatment, pa.tax_treatment),
                    CASE WHEN ci.item_type = 'BUNDLE'
                              OR (ci.item_type IN ('MODULE', 'CAPACITY')
-                                 AND EXISTS (SELECT 1
-                                               FROM bundle_components bc
-                                               JOIN catalog_items b ON b.id = bc.bundle_item_id
-                                              WHERE bc.component_item_id = ci.id
-                                                AND bc.enabled = TRUE
-                                                AND b.enabled = TRUE
-                                                AND b.item_type = 'BUNDLE'
-                                                AND b.status = 'ACTIVE'))
-                        THEN 1 ELSE 0 END
+                                 AND (ci.self_service = TRUE
+                                      OR EXISTS (SELECT 1
+                                                   FROM bundle_components bc
+                                                   JOIN catalog_items b ON b.id = bc.bundle_item_id
+                                                  WHERE bc.component_item_id = ci.id
+                                                    AND bc.enabled = TRUE
+                                                    AND b.enabled = TRUE
+                                                    AND b.item_type = 'BUNDLE'
+                                                    AND b.status = 'ACTIVE')))
+                        THEN 1 ELSE 0 END,
+                   ci.area_code,
+                   ci.short_label
               FROM catalog_items ci
               LEFT JOIN catalog_prices pm
                      ON pm.catalog_item_id = ci.id
@@ -147,9 +167,8 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
             """;
 
     /**
-     * Los paquetes. Es el mismo {@code SELECT} que
-     * {@code JpaPublicPlanQueryPort.SQL_PLANS} y proyecta al mismo record, porque
-     * es la misma pregunta: un paquete vendible con precio de entrada.
+     * {@code recommended} sale por un {@code CASE … THEN 1 ELSE 0} por lo que dice
+     * el javadoc de clase sobre #196 y #472.
      */
     private static final String SQL_PACKS = """
             SELECT b.code,
@@ -159,7 +178,8 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
                    pa.unit_amount,
                    COALESCE(pm.setup_amount, pa.setup_amount),
                    COALESCE(pm.tax_rate, pa.tax_rate),
-                   COALESCE(pm.tax_treatment, pa.tax_treatment)
+                   COALESCE(pm.tax_treatment, pa.tax_treatment),
+                   CASE WHEN b.recommended = TRUE THEN 1 ELSE 0 END
               FROM catalog_items b
               LEFT JOIN catalog_prices pm
                      ON pm.catalog_item_id = b.id
@@ -242,6 +262,21 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
              ORDER BY ci.sort_order, ci.id, req.sort_order, req.id
             """;
 
+    /**
+     * <b>El {@code ORDER BY} es el contrato de presentacion.</b> La respuesta
+     * publica no lleva {@code sort_order}: el orden de la lista <em>es</em> el
+     * orden en que se pintan, misma convencion que ya sostienen los articulos y los
+     * paquetes. El desempate por {@code id} sobra hoy —
+     * {@code uq_catalog_areas_sort_order} impide el empate— y se escribe igual para
+     * que la lista siga siendo estable si esa unica se retirara.
+     */
+    private static final String SQL_AREAS = """
+            SELECT a.code, a.name
+              FROM catalog_areas a
+             WHERE a.enabled = TRUE
+             ORDER BY a.sort_order, a.id
+            """;
+
     private final EntityManager entityManager;
 
     public JpaPublicCatalogQueryPort(EntityManager entityManager) {
@@ -263,24 +298,25 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
                     asString(columns[5]), asInteger(columns[6]), asAmount(columns[7]),
                     asAmount(columns[8]), asInteger(columns[9]), asInteger(columns[10]),
                     asAmount(columns[11]), asAmount(columns[12]), asTaxTreatment(columns[13]),
-                    asBoolean(columns[14])));
+                    asBoolean(columns[14]), asString(columns[15]), asString(columns[16])));
         }
         return List.copyOf(articulos);
     }
 
     @Override
-    public List<PublicPlanRowDto> findPacks(Long priceListId) {
+    public List<PublicCatalogPackRowDto> findPacks(Long priceListId) {
         if (priceListId == null) {
             return List.of();
         }
         Query query = entityManager.createNativeQuery(SQL_PACKS).setParameter("priceListId",
                 priceListId);
-        List<PublicPlanRowDto> paquetes = new ArrayList<>();
+        List<PublicCatalogPackRowDto> paquetes = new ArrayList<>();
         for (Object row : query.getResultList()) {
             Object[] columns = (Object[]) row;
-            paquetes.add(new PublicPlanRowDto(asString(columns[0]), asString(columns[1]),
+            paquetes.add(new PublicCatalogPackRowDto(asString(columns[0]), asString(columns[1]),
                     asString(columns[2]), asAmount(columns[3]), asAmount(columns[4]),
-                    asAmount(columns[5]), asAmount(columns[6]), asTaxTreatment(columns[7])));
+                    asAmount(columns[5]), asAmount(columns[6]), asTaxTreatment(columns[7]),
+                    asBoolean(columns[8])));
         }
         return List.copyOf(paquetes);
     }
@@ -310,6 +346,17 @@ public class JpaPublicCatalogQueryPort implements PublicCatalogQueryPort {
                     new PublicCatalogRequirementRowDto(asString(columns[0]), asString(columns[1])));
         }
         return List.copyOf(arcos);
+    }
+
+    @Override
+    public List<PublicCatalogAreaRowDto> findAreas() {
+        Query query = entityManager.createNativeQuery(SQL_AREAS);
+        List<PublicCatalogAreaRowDto> areas = new ArrayList<>();
+        for (Object row : query.getResultList()) {
+            Object[] columns = (Object[]) row;
+            areas.add(new PublicCatalogAreaRowDto(asString(columns[0]), asString(columns[1])));
+        }
+        return List.copyOf(areas);
     }
 
     private static String asString(Object value) {

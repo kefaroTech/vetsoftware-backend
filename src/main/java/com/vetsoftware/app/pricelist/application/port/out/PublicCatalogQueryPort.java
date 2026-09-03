@@ -1,9 +1,10 @@
 package com.vetsoftware.app.pricelist.application.port.out;
 
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogAreaRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackComponentRowDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogRequirementRowDto;
-import com.vetsoftware.app.pricelist.application.dto.PublicPlanRowDto;
 import java.util.List;
 
 /**
@@ -54,13 +55,12 @@ public interface PublicCatalogQueryPort {
      * Los paquetes con precio de entrada en esa tarifa.
      *
      * <p>
-     * Devuelve {@link PublicPlanRowDto} —el mismo record que
-     * {@link PublicPlanQueryPort#findPlans(Long)}— y no uno nuevo: la cabecera de
-     * un paquete es exactamente la misma pregunta con la misma respuesta, y
-     * duplicar el record duplicaria tambien el esquema en el contrato OpenAPI sin
-     * anadir un solo campo.
+     * <strong>Record propio y no el de
+     * {@link PublicPlanQueryPort#findPlans(Long)}.</strong> {@code recommended} es
+     * de este catalogo: en el record comun quedaria al alcance del servicio de
+     * planes, que es la fuga que la separacion de estos dos read models evita.
      */
-    List<PublicPlanRowDto> findPacks(Long priceListId);
+    List<PublicCatalogPackRowDto> findPacks(Long priceListId);
 
     /**
      * El grafo paquete → componente, por rotulos. Es el mismo grafo contra el que
@@ -87,9 +87,20 @@ public interface PublicCatalogQueryPort {
      * Publicar un grafo distinto del que se aplica es prometer una cosa y cobrar
      * otra, que es el defecto que este endpoint existe para cerrar. Consecuencia
      * conocida y aceptada: como aquel no filtra por precio, un requisito puede
-     * apuntar a un articulo que no sale en ninguna de las cuatro listas por no
-     * estar tarifado en la tarifa vigente. El servidor lo anadiria igual, asi que
+     * apuntar a un articulo que no sale en ninguna de las listas por no estar
+     * tarifado en la tarifa vigente. El servidor lo anadiria igual, asi que
      * publicarlo es la unica forma de que el front pueda anticiparlo.
      */
     List<PublicCatalogRequirementRowDto> findRequirements();
+
+    /**
+     * Las areas funcionales vivas, en el orden en que se pintan sus cabeceras.
+     *
+     * <p>
+     * <strong>Sin {@code priceListId}, y por el mismo motivo que
+     * {@link #findRequirements()}</strong>: {@code catalog_areas} no tiene columna
+     * de tarifa. Un area existe aunque hoy no cuelgue de ella ningun modulo
+     * tarifado.
+     */
+    List<PublicCatalogAreaRowDto> findAreas();
 }

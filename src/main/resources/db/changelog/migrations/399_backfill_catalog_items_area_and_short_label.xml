@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Asigna área y rótulo corto a los 14 MODULE del catálogo
+         (docs/db/landing-nucleo-modulos-areas.md §4.2-§4.3). Un solo UPDATE para las 14 filas:
+         la regla de lotes es para tablas grandes y catalog_items tiene 26. CORE recibe
+         short_label = 'Núcleo' pero area_code se queda NULL a propósito -es MODULE obligatorio
+         por structural_minimum, no un módulo dentro de una casilla de área-.
+
+         UPDATE_MASIVO_MUEVE_LA_VERSION (CLAUDE.md, dura, #53): catalog_items lleva @Version, y
+         este UPDATE no pasa por el ciclo leer-modificar-guardar de Hibernate, así que
+         version = version + 1 va en el SET, nunca en el WHERE -mismo patrón que 308:281 y
+         311:55-.
+
+         El CHECK que exige area_code NOT NULL en todo MODULE (chk_catalog_items_area) va en el
+         changeset 400, DESPUÉS de este backfill: si fuera antes, rechazaría estas mismas 14
+         filas mientras siguen en NULL. -->
+    <changeSet id="399_backfill_catalog_items_area_and_short_label" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_items ci
+              JOIN (
+                SELECT 'CORE' AS code, CAST(NULL AS CHAR(30)) AS area_code, 'Núcleo' AS short_label
+                UNION ALL SELECT 'SCHEDULING', 'PATIENT_CARE', 'Agenda de citas'
+                UNION ALL SELECT 'CLINICAL_HISTORY', 'PATIENT_CARE', 'Historia clínica'
+                UNION ALL SELECT 'VACCINATION_DEWORMING', 'PATIENT_CARE', 'Vacunación'
+                UNION ALL SELECT 'GROOMING', 'PATIENT_CARE', 'Spa y estética'
+                UNION ALL SELECT 'CASH_REGISTER', 'FRONT_DESK', 'Caja y mostrador'
+                UNION ALL SELECT 'SERVICES', 'FRONT_DESK', 'Tarifas y promociones'
+                UNION ALL SELECT 'OPEN_ACCOUNTS', 'FRONT_DESK', 'Cartera'
+                UNION ALL SELECT 'ELECTRONIC_INVOICING', 'FRONT_DESK', 'Facturación DIAN'
+                UNION ALL SELECT 'HOSPITALIZATION', 'HOSPITAL', 'Hospitalización'
+                UNION ALL SELECT 'SURGERY', 'HOSPITAL', 'Cirugía'
+                UNION ALL SELECT 'LAB_IMAGING', 'HOSPITAL', 'Laboratorio'
+                UNION ALL SELECT 'INVENTORY', 'WAREHOUSE', 'Inventario'
+                UNION ALL SELECT 'PURCHASES', 'WAREHOUSE', 'Compras'
+              ) seed ON seed.code = ci.code
+               SET ci.area_code   = seed.area_code,
+                   ci.short_label = seed.short_label,
+                   ci.version     = ci.version + 1
+             WHERE ci.item_type = 'MODULE'
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                UPDATE catalog_items
+                   SET area_code = NULL, short_label = NULL, version = version + 1
+                 WHERE item_type = 'MODULE'
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

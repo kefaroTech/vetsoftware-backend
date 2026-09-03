@@ -23,10 +23,12 @@ import java.util.List;
  * codigo, ni su estado.
  *
  * <p>
- * {@code currency} y {@code priceValidFrom} nulos con las cuatro listas vacias
+ * {@code currency} y {@code priceValidFrom} nulos con todas las listas vacias
  * es una respuesta 200 valida: «hoy no hay precio publicado» no es un error del
  * cliente ni del servidor, y un 404 dejaria la portada rota por un dato de
- * configuracion.
+ * configuracion. {@code areas} tambien viaja vacia ahi aunque el area no
+ * dependa de la tarifa: sin modulos que agrupar, una cabecera es un titulo
+ * sobre la nada.
  *
  * <p>
  * <strong>{@code requirements} va aqui arriba y no dentro de cada
@@ -47,5 +49,6 @@ public record PublicCatalogResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Contadores que se compran por unidades") List<PublicCatalogCapacityResponse> capacities,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Cargos unicos con precio de lista; se cotizan con un comercial, no por autoservicio") List<PublicCatalogItemResponse> oneTimeItems,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Paquetes, con su precio y su composicion") List<PublicCatalogPackResponse> packs,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Grafo de requisitos: arcos DIRECTOS «si eliges itemCode, se anade requiredItemCode». No es el cierre transitivo; recorrelos en anchura si lo necesitas") List<PublicCatalogRequirementResponse> requirements) {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Grafo de requisitos: arcos DIRECTOS «si eliges itemCode, se anade requiredItemCode». No es el cierre transitivo; recorrelos en anchura si lo necesitas") List<PublicCatalogRequirementResponse> requirements,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Cabeceras funcionales, YA ORDENADAS: el orden de la lista es el de presentacion y no se reordena en el cliente. Vacia si no hay tarifa vigente") List<PublicCatalogAreaResponse> areas) {
 }

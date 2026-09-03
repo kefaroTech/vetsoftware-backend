@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Separa "qué contiene un paquete" de "qué es contratable por autoservicio"
+         (docs/db/capacidad-extra-autoservicio-elegibilidad.md §3-§4). Hoy las dos preguntas las
+         responde bundle_components, y los cuatro EXTRA_* -vendibles y no incluidos en ningún
+         paquete- no tienen dónde decirlo: el gate de
+         quote/infrastructure/persistence/JpaCatalogQueryPorts.java (SQL_PUBLISHED_ID_BY_CODE)
+         solo acepta un MODULE o CAPACITY colgado de un BUNDLE activo, así que cotizar una sede o
+         un usuario adicional devuelve 400 hoy.
+
+         self_service nace al FINAL de la tabla, no donde el documento de diseño situaría el
+         atributo por cercanía semántica: JpaPublicCatalogQueryPort.findContractableItems lee su
+         Object[] por POSICIÓN (mismo contrato que fijó 397 para area_code/short_label/recommended).
+         Si entrara en medio desplazaría los índices existentes y el fallo aparecería en tiempo de
+         ejecución, no en compilación.
+
+         DEFAULT FALSE: sobre las 26 filas de hoy nace conservador -nada gana elegibilidad que no
+         tuviera- y el changeset siguiente (405) marca explícitamente los cuatro EXTRA_*. Sin
+         GENERATED, sin STORED: mismo online DDL "Instant: Yes / Rebuilds Table: No / Permits
+         Concurrent DML: Yes" que 397.
+
+         type="BOOLEAN", nunca TINYINT(1): con display width Connector/J (tinyInt1isBit=true)
+         reporta la columna como Types#BIT y ddl-auto: validate tumba el arranque -misma trampa que
+         394 y 397 ya documentaron-.
+
+         chk_catalog_items_self_service deja fuera ONE_TIME (implantación, migración: cargos
+         negociados) y BUNDLE (ya elegible por tipo en el gate; marcarlo sería un segundo sitio
+         donde decir lo mismo). La columna es NOT NULL, así que el CHECK nunca evalúa contra NULL
+         -la trampa de MySQL que 229 ya dejó escrita: un CHECK que da NULL se acepta como si diera
+         TRUE-. -->
+    <changeSet id="404_add_self_service_to_catalog_items" author="orlando">
+        <addColumn tableName="catalog_items">
+            <column name="self_service" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_items
+                ADD CONSTRAINT chk_catalog_items_self_service
+                    CHECK (self_service = FALSE OR item_type IN ('MODULE','CAPACITY'))
+        ]]></sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE catalog_items
+                    DROP CONSTRAINT chk_catalog_items_self_service,
+                    DROP COLUMN self_service
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

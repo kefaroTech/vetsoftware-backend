@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Copy comercial del rediseño de landing para los tres BUNDLE
+         (docs/db/landing-nucleo-modulos-areas.md, tabla de §6). CORE no se toca: su name ya es
+         "Núcleo: clientes y mascotas" (308) y su short_description ya es texto de escaparate
+         razonable ("Clientes, mascotas y administración de la propia cuenta"), no una nota
+         interna.
+
+         Cierra de paso el defecto #708: PACK_FULL.short_description era "Todo el producto:
+         quince piezas enumeradas, sin anidar paquetes" (308), una nota de modelado dirigida a
+         quien mantiene bundle_components -aclara que las 15 piezas van enumeradas y no hay un
+         BUNDLE anidado dentro de otro-, no un texto para el visitante de la landing. La fila de
+         abajo la sustituye por un tagline real.
+
+         bundle_components NO se toca aquí. La composición real sembrada por 309 sigue siendo:
+         PACK_SPA = CORE, SCHEDULING, SERVICES, GROOMING, CASH_REGISTER, CAPACITY_TERMINAL (6);
+         PACK_CLINIC = CORE, SCHEDULING, CLINICAL_HISTORY, VACCINATION_DEWORMING, CASH_REGISTER,
+         CAPACITY_TERMINAL (6); PACK_FULL, las 15 piezas enumeradas en 309 sin anidar paquetes.
+         El mockup del rediseño propone otros nombres para los tres paquetes, no otra
+         composición; si el negocio quiere cambiar QUÉ trae cada paquete, eso es un changeset
+         propio sobre bundle_components, no este.
+
+         UPDATE_MASIVO_MUEVE_LA_VERSION: catalog_items está versionada, version = version + 1 en
+         el SET. -->
+    <changeSet id="403_rename_bundle_commercial_copy" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_items ci
+              JOIN (
+                SELECT 'PACK_SPA' AS code,
+                       'Estética y guardería' AS name,
+                       'Lo mínimo para agendar, atender y cobrar el spa' AS short_description
+                UNION ALL SELECT 'PACK_CLINIC',
+                       'Consulta de barrio',
+                       'Agenda, historia clínica, vacunación y mostrador'
+                UNION ALL SELECT 'PACK_FULL',
+                       'Clínica con hospitalización',
+                       'Los 13 módulos, de la cirugía a la facturación DIAN'
+              ) seed ON seed.code = ci.code
+               SET ci.name               = seed.name,
+                   ci.short_description  = seed.short_description,
+                   ci.version            = ci.version + 1
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                UPDATE catalog_items ci
+                  JOIN (
+                    SELECT 'PACK_SPA' AS code,
+                           'Pack Spa' AS name,
+                           'Núcleo, agenda, servicios, spa y caja' AS short_description
+                    UNION ALL SELECT 'PACK_CLINIC',
+                           'Pack Clínica',
+                           'Núcleo, agenda, historia clínica, vacunación y caja'
+                    UNION ALL SELECT 'PACK_FULL',
+                           'Pack Clínica completa',
+                           'Todo el producto: quince piezas enumeradas, sin anidar paquetes'
+                  ) seed ON seed.code = ci.code
+                   SET ci.name               = seed.name,
+                       ci.short_description  = seed.short_description,
+                       ci.version            = ci.version + 1
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

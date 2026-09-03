@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Los cuatro EXTRA_* (308: 'EXTRA_USER','EXTRA_BRANCH','EXTRA_TERMINAL','EXTRA_STORAGE',
+         todos item_type = 'CAPACITY') son el único caso hoy donde "vendible" y "contenido de un
+         paquete" divergen (docs/db/capacidad-extra-autoservicio-elegibilidad.md §4.3): no cuelgan
+         de ningún bundle_components, así que sin esta marca el gate ampliado -que backend-feature
+         cambia en el mismo PR a "cuelga de un BUNDLE activo" O self_service = TRUE- los seguiría
+         rechazando igual que hoy.
+
+         Los otros 22 artículos NO se tocan aquí a propósito: quedan en FALSE por el DEFAULT de 404,
+         exactamente el conjunto que el gate acepta hoy -incluidos CAPACITY_USER, CAPACITY_BRANCH y
+         CAPACITY_TERMINAL, que son contenido de paquete y no venta suelta-. El criterio del encargo
+         es "lo que hoy es contratable sigue siéndolo, ni uno más ni uno menos, salvo los cuatro
+         EXTRA_*", y un UPDATE dirigido por code lo cumple sin tocar una fila de más.
+
+         UPDATE_MASIVO_MUEVE_LA_VERSION: catalog_items está versionada (229) y este UPDATE no pasa
+         por el ciclo de Hibernate, así que version = version + 1 va en el SET, nunca en el WHERE
+         -mismo patrón que 401 y 403-. -->
+    <changeSet id="405_backfill_self_service_extra_capacities" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_items
+               SET self_service = TRUE, version = version + 1
+             WHERE code IN ('EXTRA_USER','EXTRA_BRANCH','EXTRA_TERMINAL','EXTRA_STORAGE')
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                UPDATE catalog_items
+                   SET self_service = FALSE, version = version + 1
+                 WHERE code IN ('EXTRA_USER','EXTRA_BRANCH','EXTRA_TERMINAL','EXTRA_STORAGE')
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

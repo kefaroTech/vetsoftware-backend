@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Las cuatro áreas funcionales de la landing (docs/db/landing-nucleo-modulos-areas.md §4.1).
+         sort_order en decenas, mismo criterio que catalog_items: intercalar un área quinta es un
+         INSERT, sin renumerar las demás. CORE no entra aquí -queda con area_code NULL, es MODULE
+         obligatorio fuera de cualquier casilla por structural_minimum, no por falta de área-. -->
+    <changeSet id="398_seed_catalog_areas" author="orlando">
+        <insert tableName="catalog_areas">
+            <column name="code" value="PATIENT_CARE"/>
+            <column name="name" value="Atención a los pacientes"/>
+            <column name="sort_order" valueNumeric="10"/>
+        </insert>
+        <insert tableName="catalog_areas">
+            <column name="code" value="FRONT_DESK"/>
+            <column name="name" value="Mostrador y dinero"/>
+            <column name="sort_order" valueNumeric="20"/>
+        </insert>
+        <insert tableName="catalog_areas">
+            <column name="code" value="HOSPITAL"/>
+            <column name="name" value="Hospital y quirófano"/>
+            <column name="sort_order" valueNumeric="30"/>
+        </insert>
+        <insert tableName="catalog_areas">
+            <column name="code" value="WAREHOUSE"/>
+            <column name="name" value="Bodega y compras"/>
+            <column name="sort_order" valueNumeric="40"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="catalog_areas">
+                <where>code IN ('PATIENT_CARE','FRONT_DESK','HOSPITAL','WAREHOUSE')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

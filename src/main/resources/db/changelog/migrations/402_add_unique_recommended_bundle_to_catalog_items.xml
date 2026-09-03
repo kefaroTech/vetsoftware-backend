@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- "A lo sumo un paquete recomendado, entre los vivos" (docs/db/landing-nucleo-modulos-
+         areas.md §4.4). MySQL no tiene índice único parcial; se emula con una columna GENERATED
+         ALWAYS ... STORED que vale NULL fuera de alcance -MySQL admite múltiples NULL en un
+         índice único-, mismo patrón que 206_unique_open_cash_session_per_employee,
+         210_scope_open_accounts_by_branch y 226_add_unique_active_appointment_slot. El borrado
+         lógico entra en la expresión -enabled = 1-, así que recomendar un paquete nuevo tras
+         apagar el anterior no choca con el vigente.
+
+         EN SU PROPIA SENTENCIA, separada del resto de columnas de esta feature (397): el manual
+         de online DDL de InnoDB 8.4 clasifica "Adding a STORED column" como "Instant: No /
+         In Place: No / Rebuilds Table: Yes / Permits Concurrent DML: No", solo
+         ALGORITHM=COPY -no se puede combinar en el mismo ALTER con un ADD COLUMN instantáneo-.
+         Sobre las 26 filas de hoy la reconstrucción es instantánea en la práctica, pero sigue
+         siendo la única operación de toda esta tanda que reconstruye la tabla entera.
+
+         La preCondition es la guardia real y va HALT: si algún día hubiera dos BUNDLE
+         recomendados a la vez -por ejemplo por una carrera entre dos operadores de consola-, el
+         ADD CONSTRAINT fallaría a mitad de un ALTER que ya reconstruyó la tabla, dejando el
+         changeset a medias. Hoy solo PACK_CLINIC lleva recommended = TRUE (401), así que se
+         espera COUNT(*) = 1. -->
+    <changeSet id="402_add_unique_recommended_bundle_to_catalog_items" author="orlando">
+        <preConditions onFail="HALT" onError="HALT"
+                       onFailMessage="Hay más de un catalog_items con recommended = TRUE y enabled = TRUE: decide con un humano cuál es la combinación recomendada antes de crear la restricción única.">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM catalog_items
+                 WHERE recommended = TRUE AND item_type = 'BUNDLE' AND enabled = TRUE
+            </sqlCheck>
+        </preConditions>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_items
+                ADD COLUMN recommended_bundle_singleton TINYINT
+                    GENERATED ALWAYS AS (
+                        CASE WHEN recommended = 1 AND item_type = 'BUNDLE' AND enabled = 1
+                             THEN 1 END) STORED
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE catalog_items
+                ADD CONSTRAINT uq_catalog_items_recommended_bundle
+                    UNIQUE (recommended_bundle_singleton)
+        ]]></sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE catalog_items
+                    DROP INDEX uq_catalog_items_recommended_bundle,
+                    DROP COLUMN recommended_bundle_singleton
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
