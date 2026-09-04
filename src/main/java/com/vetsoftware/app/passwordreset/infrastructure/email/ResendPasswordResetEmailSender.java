@@ -31,7 +31,7 @@ public class ResendPasswordResetEmailSender implements PasswordResetEmailSender 
 
     private static final Logger log = LoggerFactory.getLogger(ResendPasswordResetEmailSender.class);
 
-    private static final String SUBJECT = "Restablece tu contraseña de Vetrina";
+    private static final String SUBJECT = "Restablece tu contraseña de Lumbre";
 
     private final ResendEmailClient email;
     private final String resetBaseUrl;

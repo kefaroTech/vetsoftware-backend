@@ -1,7 +1,7 @@
 package com.vetsoftware.app.platformtaxprofile.domain;
 
 /**
- * Con que documento se identifica VetSoftware ante la DIAN.
+ * Con que documento se identifica Lumbre ante la DIAN.
  *
  * <p>
  * <strong>La base NO impone esta lista.</strong> {@code document_type} es un
@@ -17,12 +17,12 @@ package com.vetsoftware.app.platformtaxprofile.domain;
  * <strong>Los cuatro valores y sus codigos DIAN son los mismos que
  * {@code companytaxprofile.domain.CompanyDocumentType}, literalmente y a
  * proposito.</strong> Aquella describe con que documento se identifica una
- * clinica que emite; esta, con cual se identifica VetSoftware. El hecho del
- * mundo es el mismo —la tabla 3.1 de la resolucion de facturacion electronica—,
- * asi que un tercer vocabulario para el mismo concepto seria exactamente la
- * divergencia silenciosa que el documento de esquema persigue: el dia que
- * alguien cotejara las dos columnas, {@code NIT} y {@code Nit} no cuadrarian y
- * nadie sabria cual de las dos esta mal.
+ * clinica que emite; esta, con cual se identifica Lumbre. El hecho del mundo es
+ * el mismo —la tabla 3.1 de la resolucion de facturacion electronica—, asi que
+ * un tercer vocabulario para el mismo concepto seria exactamente la divergencia
+ * silenciosa que el documento de esquema persigue: el dia que alguien cotejara
+ * las dos columnas, {@code NIT} y {@code Nit} no cuadrarian y nadie sabria cual
+ * de las dos esta mal.
  *
  * <p>
  * <strong>Por que es un enum propio y no el de

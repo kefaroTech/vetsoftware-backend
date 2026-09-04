@@ -19,7 +19,7 @@ import org.hibernate.annotations.Generated;
 import org.hibernate.generator.EventType;
 
 /**
- * La cuenta de cobro que VetSoftware calcula y numera.
+ * La cuenta de cobro que Lumbre calcula y numera.
  *
  * <p>
  * <b>Lleva {@code @Version}</b> (BE-26): es la cabecera del agregado, y sobre

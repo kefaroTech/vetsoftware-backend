@@ -24,12 +24,12 @@ public interface FindExternalInvoiceReconciliationUseCase {
      *
      * <p>
      * <strong>El motivo, textual:</strong> la conciliacion es el cuadre entre
-     * VetSoftware y su facturador externo, y ensenarsela al cliente es ensenarle el
-     * margen y los datos de terceros. Aqui viven el total que VetSoftware calculo
-     * frente al que emitio el tercero, el numero y el rango de la resolucion de
-     * numeracion ajena, y la nota interna con la que alguien de la plataforma
-     * explico un descuadre. Nada de eso es informacion del cliente: es la
-     * contabilidad de quien le cobra.
+     * Lumbre y su facturador externo, y ensenarsela al cliente es ensenarle el
+     * margen y los datos de terceros. Aqui viven el total que Lumbre calculo frente
+     * al que emitio el tercero, el numero y el rango de la resolucion de numeracion
+     * ajena, y la nota interna con la que alguien de la plataforma explico un
+     * descuadre. Nada de eso es informacion del cliente: es la contabilidad de
+     * quien le cobra.
      *
      * <p>
      * <strong>Este parrafo existe para el dia que llegue la peticion de

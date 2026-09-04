@@ -12,11 +12,10 @@ public interface OpenExternalInvoiceReconciliationUseCase {
      *
      * <p>
      * <strong>{@code hasRole('SYSTEM')} a secas, sin alternativa por permiso y sin
-     * comprobacion de tenant.</strong> La conciliacion es el cuadre entre
-     * VetSoftware y su facturador externo, no un documento del cliente: ver el
-     * parrafo completo en
-     * {@link FindExternalInvoiceReconciliationUseCase#findById(Long)}, que es donde
-     * vive la decision.
+     * comprobacion de tenant.</strong> La conciliacion es el cuadre entre Lumbre y
+     * su facturador externo, no un documento del cliente: ver el parrafo completo
+     * en {@link FindExternalInvoiceReconciliationUseCase#findById(Long)}, que es
+     * donde vive la decision.
      */
     @PreAuthorize("hasRole('SYSTEM')")
     ExternalInvoiceReconciliationDto execute(OpenExternalInvoiceReconciliationCommand command);

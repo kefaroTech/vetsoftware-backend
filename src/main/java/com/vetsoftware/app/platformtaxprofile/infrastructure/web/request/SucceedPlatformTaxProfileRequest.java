@@ -40,6 +40,6 @@ public record SucceedPlatformTaxProfileRequest(
         @NotBlank(message = "El correo fiscal es obligatorio.") @Size(max = 255, message = "El correo fiscal no puede superar los 255 caracteres.") String fiscalEmail,
         @Size(max = 150, message = "El nombre comercial no puede superar los 150 caracteres.") String commercialName,
         @Schema(description = "Opcional: la columna es nulable.") Long economicActivityId,
-        @jakarta.validation.constraints.NotNull(message = "Debes declarar si VetSoftware es autorretenedor.") Boolean selfWithholder,
+        @jakarta.validation.constraints.NotNull(message = "Debes declarar si Lumbre es autorretenedor.") Boolean selfWithholder,
         @NotNull(message = "Debes indicar desde cuando rige la identidad fiscal nueva.") @Schema(description = "Estrictamente posterior al validFrom de la vigente: una identidad abierta hoy no se puede suceder hoy.") LocalDate effectiveFrom) {
 }

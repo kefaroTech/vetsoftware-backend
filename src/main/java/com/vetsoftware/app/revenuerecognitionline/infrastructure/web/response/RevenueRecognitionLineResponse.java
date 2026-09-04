@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 /**
  * Un renglon del libro tal como sale por HTTP. Solo lo ve la consola de
- * plataforma: el reconocimiento de ingreso es contabilidad de VetSoftware.
+ * plataforma: el reconocimiento de ingreso es contabilidad de Lumbre.
  *
  * <p>
  * <strong>Lleva {@code companyId}, y aqui eso no es una fuga.</strong> El

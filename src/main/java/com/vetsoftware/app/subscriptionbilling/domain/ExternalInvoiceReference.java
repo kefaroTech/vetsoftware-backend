@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * La referencia de la factura que se emitió <b>fuera</b> de VetSoftware.
+ * La referencia de la factura que se emitió <b>fuera</b> de Lumbre.
  *
  * <p>
  * Es todo lo que este software sabe de esa factura: no la calcula, no la

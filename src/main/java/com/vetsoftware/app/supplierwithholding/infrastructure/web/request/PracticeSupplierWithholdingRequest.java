@@ -16,7 +16,7 @@ import java.time.LocalDate;
 
 /**
  * <strong>Sin {@code companyId} por ninguna via</strong>: la retencion la
- * practica VetSoftware.
+ * practica Lumbre.
  *
  * @param supplierInvoiceRef
  *            la referencia del soporte. <b>Obligatoria</b>: sin ella no se

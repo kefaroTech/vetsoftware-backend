@@ -34,9 +34,9 @@ import org.springframework.web.bind.annotation.RestController;
  * <strong>No hay controller de tenant, y esa ausencia es la decision.</strong>
  * En {@code withholding_rate_rules} el catalogo lo escribe plataforma y lo leen
  * los dos, porque la tarifa que le van a retener al cliente es informacion
- * suya. Aqui no: {@code accounting_accounts} son los libros de VetSoftware, y
- * una clinica no tiene nada que consultar en ellos. Por eso los cinco puertos
- * van cerrados a {@code hasRole('SYSTEM')} a secas y no hay una sola
+ * suya. Aqui no: {@code accounting_accounts} son los libros de Lumbre, y una
+ * clinica no tiene nada que consultar en ellos. Por eso los cinco puertos van
+ * cerrados a {@code hasRole('SYSTEM')} a secas y no hay una sola
  * {@code hasAuthority} — que es ademas lo que exige
  * {@code GATE_COHERENTE_EN_FEATURE_DE_SYSTEM}.
  *

@@ -24,7 +24,7 @@ import java.time.LocalDate;
 public class PlatformTaxProfileAlreadyOpenException extends RuntimeException {
 
     public PlatformTaxProfileAlreadyOpenException(Long id, LocalDate validFrom) {
-        super("VetSoftware already has a platform tax profile in force (id " + id + ", since "
+        super("Lumbre already has a platform tax profile in force (id " + id + ", since "
                 + validFrom + "): change it with a succession, which closes the current one and"
                 + " opens the next in a single transaction, instead of opening a second one");
     }

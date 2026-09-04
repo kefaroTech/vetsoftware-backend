@@ -13,8 +13,8 @@ package com.vetsoftware.app.subscriptionpayment.domain;
  * en la fuente y le gira 205.850. Con solo {@link #PAYMENT} y
  * {@link #CREDIT_NOTE} quedan 7.160 vivos, arranca la mora, se agotan los cinco
  * dias de gracia y la clinica cae a solo lectura <em>por una deuda que
- * fiscalmente no existe</em>: ese dinero esta en la DIAN a nombre de
- * VetSoftware y Ana tiene el certificado que lo prueba.
+ * fiscalmente no existe</em>: ese dinero esta en la DIAN a nombre de Lumbre y
+ * Ana tiene el certificado que lo prueba.
  *
  * <p>
  * <strong>La comision de la pasarela NO esta en esta lista y no debe

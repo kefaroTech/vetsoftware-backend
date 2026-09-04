@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Abre la <strong>primera</strong> identidad fiscal de VetSoftware.
+ * Abre la <strong>primera</strong> identidad fiscal de Lumbre.
  *
  * <p>
  * <strong>Este es el caso de uso que la tabla lleva esperando desde el

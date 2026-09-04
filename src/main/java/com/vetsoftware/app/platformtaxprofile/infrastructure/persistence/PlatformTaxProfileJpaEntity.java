@@ -19,7 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * {@code platform_tax_profiles} — quien es VetSoftware ante la DIAN.
+ * {@code platform_tax_profiles} — quien es Lumbre ante la DIAN.
  *
  * <h2>{@code current_profile_marker} NO se mapea, y es lo primero que hay que
  * saber de esta clase</h2>
@@ -122,7 +122,7 @@ public class PlatformTaxProfileJpaEntity {
     private EconomicActivityJpaEntity economicActivity;
 
     /**
-     * Si <strong>VetSoftware</strong> es autorretenedor.
+     * Si <strong>Lumbre</strong> es autorretenedor.
      *
      * <p>
      * <strong>Sin {@code columnDefinition}, y nunca {@code TINYINT(1)}.</strong> El

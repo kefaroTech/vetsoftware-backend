@@ -31216,7 +31216,7 @@
           },
           "selfWithholder" : {
             "type" : "boolean",
-            "description" : "Si VetSoftware es autorretenedor. Coexiste con que sus clientes le retengan; no se deduce lo uno de lo otro."
+            "description" : "Si Lumbre es autorretenedor. Coexiste con que sus clientes le retengan; no se deduce lo uno de lo otro."
           },
           "validFrom" : {
             "type" : "string",
@@ -31278,7 +31278,7 @@
           },
           "selfWithholder" : {
             "type" : "boolean",
-            "description" : "Si VetSoftware es autorretenedor. Hoy ningun calculo lo consume todavia."
+            "description" : "Si Lumbre es autorretenedor. Hoy ningun calculo lo consume todavia."
           },
           "validFrom" : {
             "type" : "string",

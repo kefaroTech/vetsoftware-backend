@@ -28,9 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * <b>Es el único camino para corregir un documento con factura externa.</b> El
  * original no se toca: ni su importe, ni su periodo, ni su tipo. Si se tocara,
- * lo que dice VetSoftware dejaría de coincidir con lo que tiene la DIAN y no
- * habría forma de saber cuál de los dos miente. Los dos documentos quedan
- * visibles y encadenados.
+ * lo que dice Lumbre dejaría de coincidir con lo que tiene la DIAN y no habría
+ * forma de saber cuál de los dos miente. Los dos documentos quedan visibles y
+ * encadenados.
  *
  * <p>
  * <b>Los cargos que agrupa tienen que ser todos negativos</b>, y lo comprueba

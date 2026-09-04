@@ -6,7 +6,7 @@ import java.time.LocalDate;
 /**
  * <strong>Sin {@code companyId}, y aqui ni siquiera es la regla de siempre: es
  * que no existe la columna.</strong> {@code accounting_accounts} es el plan de
- * cuentas de VetSoftware, no de la clinica.
+ * cuentas de Lumbre, no de la clinica.
  *
  * @param parentCode
  *            codigo de la cuenta padre. Vacio si y solo si

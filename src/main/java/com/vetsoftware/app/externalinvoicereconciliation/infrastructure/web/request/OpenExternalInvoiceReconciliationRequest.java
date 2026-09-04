@@ -12,7 +12,7 @@ import java.math.BigDecimal;
  * {@code @RequestBody} sin mirar la ruta ni el rol.
  *
  * @param computedTotal
- *            el total que calculo VetSoftware. {@code @PositiveOrZero} y no
+ *            el total que calculo Lumbre. {@code @PositiveOrZero} y no
  *            {@code @Positive}: un documento de cero es raro pero legitimo -una
  *            nota que se compensa entera- y rechazarlo en el binder impediria
  *            registrar su conciliacion

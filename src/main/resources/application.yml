@@ -513,11 +513,14 @@ vetsoftware:
       sales-code: ${DIAN_POS_SALES_CODE:POS01}
       address: ${DIAN_POS_ADDRESS:N/A}
       default-cashier: ${DIAN_POS_DEFAULT_CASHIER:Cajero}
-    # Identidad del fabricante del software (VetSoftware) reportada en el documento POS.
+    # Identidad del fabricante del software (Lumbre) reportada en el documento POS.
+    # Estos tres nombres tienen que coincidir con los del registro del software en el portal de la
+    # DIAN: declarar un fabricante distinto del registrado es un incumplimiento, no una diferencia
+    # de marca. El software-id y el PIN NO se tocan al renombrar: los emite la DIAN.
     software:
-      owner-name: ${DIAN_SOFTWARE_OWNER_NAME:VetSoftware}
-      company-name: ${DIAN_SOFTWARE_COMPANY_NAME:VetSoftware}
-      name: ${DIAN_SOFTWARE_NAME:VetSoftware}
+      owner-name: ${DIAN_SOFTWARE_OWNER_NAME:Lumbre}
+      company-name: ${DIAN_SOFTWARE_COMPANY_NAME:Lumbre}
+      name: ${DIAN_SOFTWARE_NAME:Lumbre}
 
 # Jobs @Scheduled de documento electronico. Van en la raiz `dian` (no bajo `vetsoftware.dian`)
 # porque asi los declaran los @Value de ContingencyRetryJob y PendingReconciliationJob.

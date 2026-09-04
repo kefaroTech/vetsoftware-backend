@@ -25,9 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>
  * <strong>La fecha de firmeza si llega como dato, y eso es deliberado.</strong>
- * No se calcula aqui porque depende de si VetSoftware compensa perdidas
- * fiscales —tres años (art. 714 ET) o cinco—, y esa pregunta <b>sigue abierta
- * para un contador</b>. Un calculo inventado aqui produciria una ventana de
+ * No se calcula aqui porque depende de si Lumbre compensa perdidas fiscales
+ * —tres años (art. 714 ET) o cinco—, y esa pregunta <b>sigue abierta para un
+ * contador</b>. Un calculo inventado aqui produciria una ventana de
  * conservacion equivocada en la tabla mas grande del diseño, y el fallo aparece
  * el dia que la DIAN pide los soportes.
  */

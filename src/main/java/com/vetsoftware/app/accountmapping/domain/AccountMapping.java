@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * <h2>Catalogo global: aqui no hay empresa, y es a proposito</h2>
  *
  * <p>
- * El mapeo es de los libros de VetSoftware, no de la clinica.
+ * El mapeo es de los libros de Lumbre, no de la clinica.
  * {@code account_mappings} no tiene columna {@code company_id} y
  * {@code AccountMappingJpaEntity} no alcanza {@code CompanyJpaEntity} por
  * ninguna asociacion: si la alcanzara, las cuatro reglas duras de aislamiento

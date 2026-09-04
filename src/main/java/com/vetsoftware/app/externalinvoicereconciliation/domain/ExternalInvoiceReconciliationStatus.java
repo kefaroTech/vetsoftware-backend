@@ -1,8 +1,8 @@
 package com.vetsoftware.app.externalinvoicereconciliation.domain;
 
 /**
- * Los cuatro desenlaces posibles de enfrentar lo que VetSoftware calculo contra
- * lo que el facturador externo emitio. Dominio cerrado y espejo exacto de
+ * Los cuatro desenlaces posibles de enfrentar lo que Lumbre calculo contra lo
+ * que el facturador externo emitio. Dominio cerrado y espejo exacto de
  * {@code chk_eir_status}: si aqui aparece un valor que la constraint no admite,
  * el {@code INSERT} lo rechaza la base y el fallo llega como un error sin
  * explicacion.
@@ -10,7 +10,7 @@ package com.vetsoftware.app.externalinvoicereconciliation.domain;
  * <p>
  * <strong>{@link #MISSING_EXTERNAL} no es un valor mas de la lista: es el
  * estado inicial de la maquina.</strong> Un documento de cobro devengado que
- * nunca recibio factura externa es dinero que VetSoftware ya se apunto y que
+ * nunca recibio factura externa es dinero que Lumbre ya se apunto y que
  * <em>nadie facturo</em>. Es el peor de los cuatro y el mas facil de no ver,
  * <strong>porque no produce ninguna diferencia que llame la atencion</strong>:
  * los otros tres nacen de comparar dos numeros y saltan solos en cualquier

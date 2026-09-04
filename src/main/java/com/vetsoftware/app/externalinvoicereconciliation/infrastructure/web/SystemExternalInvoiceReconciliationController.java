@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * El cuadre entre VetSoftware y su facturador externo.
+ * El cuadre entre Lumbre y su facturador externo.
  *
  * <p>
  * <strong>Este es el UNICO controller de la feature, y la ausencia de un
@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>
  * <strong>El motivo, textual:</strong> la conciliacion es el cuadre entre
- * VetSoftware y su facturador externo, y ensenarsela al cliente es ensenarle el
+ * Lumbre y su facturador externo, y ensenarsela al cliente es ensenarle el
  * margen y los datos de terceros. Lo que se publica aqui es el total propio
  * frente al del tercero, el impuesto de cada uno, el numero y el rango de una
  * resolucion de numeracion ajena, y la nota interna con la que alguien de la

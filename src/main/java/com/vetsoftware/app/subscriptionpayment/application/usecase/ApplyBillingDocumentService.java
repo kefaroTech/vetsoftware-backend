@@ -43,8 +43,8 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code WITHHOLDING}: un cliente gira 205.850 de una factura de 213.010
  * practicando 7.160 de retencion, el saldo queda sin cerrar, pasan los cinco
  * dias de gracia y la cuenta cae a <em>solo lectura por una deuda que
- * fiscalmente no existe</em> -esa plata esta en la DIAN a nombre de VetSoftware
- * y el cliente tiene el certificado-. El sistema tenia razon segun sus propios
+ * fiscalmente no existe</em> -esa plata esta en la DIAN a nombre de Lumbre y el
+ * cliente tiene el certificado-. El sistema tenia razon segun sus propios
  * numeros, que es lo que hacia el fallo tan dificil de ver.
  *
  * <p>

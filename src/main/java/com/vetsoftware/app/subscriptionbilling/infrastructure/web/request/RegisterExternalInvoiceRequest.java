@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 /**
- * La referencia de la factura emitida <b>fuera</b> de VetSoftware.
+ * La referencia de la factura emitida <b>fuera</b> de Lumbre.
  *
  * <p>
  * {@code issuedAt} es la <b>fecha fiscal</b> y es obligatoria: es la única

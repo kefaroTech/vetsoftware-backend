@@ -11,7 +11,7 @@ public interface CreateAccountingAccountUseCase {
      *
      * <p>
      * <strong>{@code hasRole('SYSTEM')} a secas, y la ausencia de un camino de
-     * tenant es la decision.</strong> Estos son los libros de VetSoftware: no hay
+     * tenant es la decision.</strong> Estos son los libros de Lumbre: no hay
      * empresa a la que acotar y no hay nada que un tenant deba poder escribir ni
      * leer aqui. Toda la feature comparte ese gate, que es lo que exige
      * {@code GATE_COHERENTE_EN_FEATURE_DE_SYSTEM}: una {@code hasAuthority} suelta

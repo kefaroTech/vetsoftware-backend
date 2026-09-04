@@ -9,7 +9,7 @@ import java.math.BigDecimal;
  *
  * <p>
  * <strong>Sin {@code companyId}: la tabla no tiene esa columna.</strong> Son
- * declaraciones de VetSoftware, no de la clinica.
+ * declaraciones de Lumbre, no de la clinica.
  *
  * <p>
  * <strong>Sin {@code sequenceNumber} ni {@code correctsReturnId}</strong>: una

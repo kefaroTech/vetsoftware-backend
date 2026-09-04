@@ -31,7 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("ResendPasswordResetEmailSender")
 class ResendPasswordResetEmailSenderTest {
 
-    private static final String SUBJECT = "Restablece tu contraseña de Vetrina";
+    private static final String SUBJECT = "Restablece tu contraseña de Lumbre";
 
     @Mock
     private ResendEmailClient email;

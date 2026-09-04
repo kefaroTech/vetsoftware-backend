@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
 /**
- * Lo que VetSoftware calculo, enfrentado a lo que se emitio.
+ * Lo que Lumbre calculo, enfrentado a lo que se emitio.
  *
  * <p>
  * La factura de la suscripcion <strong>no la emite este software</strong>: la
@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  * <strong>El estado inicial es
  * {@link ExternalInvoiceReconciliationStatus#MISSING_EXTERNAL}, y no es un
  * valor mas de la lista.</strong> Es el documento de cobro devengado que nunca
- * recibio factura externa: dinero que VetSoftware ya se apunto y que <em>nadie
+ * recibio factura externa: dinero que Lumbre ya se apunto y que <em>nadie
  * facturo</em>. Es el peor de los cuatro estados y el mas facil de no ver,
  * <strong>porque no produce ninguna diferencia que llame la atencion</strong> —
  * los otros tres saltan solos en cualquier listado de descuadres; este no tiene

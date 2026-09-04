@@ -1,18 +1,18 @@
 package com.vetsoftware.app.platformtaxprofile.domain;
 
 /**
- * VetSoftware no tiene identidad fiscal vigente: {@code platform_tax_profiles}
- * no tiene ninguna fila con {@code valid_to} nulo.
+ * Lumbre no tiene identidad fiscal vigente: {@code platform_tax_profiles} no
+ * tiene ninguna fila con {@code valid_to} nulo.
  *
  * <h2>Esto no es un caso raro: hoy es el estado normal</h2>
  *
  * <p>
  * <strong>La tabla nace sin sembrar, a proposito.</strong> El changeset 367 lo
- * escribe con todas las letras: no habia razon social ni NIT reales de
- * VetSoftware, y no se inventaron. Una identidad fiscal inventada <em>acaba
- * impresa en la factura de cada cliente</em>, y ese error ya no es del
- * software. La fila inicial la siembra quien tenga la razon social y el NIT
- * reales; hasta entonces, cualquier lectura de «la vigente» llega aqui.
+ * escribe con todas las letras: no habia razon social ni NIT reales de Lumbre,
+ * y no se inventaron. Una identidad fiscal inventada <em>acaba impresa en la
+ * factura de cada cliente</em>, y ese error ya no es del software. La fila
+ * inicial la siembra quien tenga la razon social y el NIT reales; hasta
+ * entonces, cualquier lectura de «la vigente» llega aqui.
  *
  * <h2>Por que se falla en voz alta en vez de devolver vacio</h2>
  *
@@ -31,7 +31,7 @@ package com.vetsoftware.app.platformtaxprofile.domain;
 public class NoCurrentPlatformTaxProfileException extends RuntimeException {
 
     public NoCurrentPlatformTaxProfileException() {
-        super("VetSoftware has no platform tax profile in force: platform_tax_profiles has no row"
+        super("Lumbre has no platform tax profile in force: platform_tax_profiles has no row"
                 + " with valid_to null. The table is deliberately unseeded (changeset 367) because"
                 + " the real legal name and tax id were not available; seeding it is the owner's"
                 + " decision, not a pending deployment. Nothing here is retryable");

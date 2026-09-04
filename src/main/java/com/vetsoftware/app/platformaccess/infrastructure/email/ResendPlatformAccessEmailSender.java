@@ -59,7 +59,7 @@ public class ResendPlatformAccessEmailSender implements PlatformAccessEmailSende
     private static final String SUBJECT_REQUEST = "Nueva solicitud de acceso de plataforma";
     private static final String SUBJECT_APPROVED = "Tu acceso de plataforma fue aprobado";
     private static final String SUBJECT_REJECTED = "Sobre tu solicitud de acceso de plataforma";
-    private static final String SUBJECT_WELCOME = "Tu cuenta de plataforma de Vetrina";
+    private static final String SUBJECT_WELCOME = "Tu cuenta de plataforma de Lumbre";
 
     private static final DateTimeFormatter REQUESTED_AT = DateTimeFormatter
             .ofPattern("yyyy-MM-dd HH:mm");

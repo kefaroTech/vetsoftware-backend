@@ -7,7 +7,7 @@ import java.util.Optional;
 /**
  * <strong>Ningun metodo recibe {@code companyId}</strong>:
  * {@code supplier_withholdings} no tiene esa columna. La retencion la practica
- * VetSoftware.
+ * Lumbre.
  */
 public interface SupplierWithholdingRepository {
 

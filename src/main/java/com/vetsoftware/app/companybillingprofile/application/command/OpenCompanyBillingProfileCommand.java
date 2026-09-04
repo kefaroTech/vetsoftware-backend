@@ -21,8 +21,8 @@ import java.time.LocalDate;
  *            sale como un 400 con el id delante y no como una violacion de
  *            clave foranea
  * @param withholdingAgent
- *            si el <strong>cliente</strong> es agente de retencion. Que
- *            VetSoftware sea autorretenedor es dato propio y vive en
+ *            si el <strong>cliente</strong> es agente de retencion. Que Lumbre
+ *            sea autorretenedor es dato propio y vive en
  *            {@code platform_tax_profiles.is_self_withholder} (changeset 367):
  *            coexisten, no se deducen. <b>Antes este javadoc decia
  *            {@code platform_billing_config} y era falso</b> —esa tabla no

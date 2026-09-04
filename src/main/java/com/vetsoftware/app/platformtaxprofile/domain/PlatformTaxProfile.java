@@ -5,9 +5,8 @@ import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
 /**
- * <strong>Quien es VetSoftware ante la DIAN</strong>: la razon social, el NIT,
- * el regimen y la marca de autorretenedor de la propia plataforma, con
- * vigencia.
+ * <strong>Quien es Lumbre ante la DIAN</strong>: la razon social, el NIT, el
+ * regimen y la marca de autorretenedor de la propia plataforma, con vigencia.
  *
  * <h2>Este dato no existia en ninguna tabla, y tres sitios afirmaban que
  * si</h2>
@@ -16,7 +15,7 @@ import java.util.regex.Pattern;
  * {@code 316_create_company_billing_profiles.xml}, el javadoc de
  * {@code CompanyBillingProfile} y el de
  * {@code OpenCompanyBillingProfileCommand#withholdingAgent} decian por escrito
- * que «ser autorretenedor es dato propio de VetSoftware y vive en
+ * que «ser autorretenedor es dato propio de Lumbre y vive en
  * {@code platform_billing_config}». <strong>Verificado: era falso.</strong>
  * {@code platform_billing_config} (255) tiene nueve columnas —id, singleton,
  * lista de precios por defecto, dias de gracia, dias de prueba, dia de
@@ -34,9 +33,9 @@ import java.util.regex.Pattern;
  *
  * <ol>
  * <li><strong>Ser autorretenedor coexiste con que los clientes le retengan a
- * VetSoftware</strong>; no se deduce lo uno de lo otro. Es un insumo del
- * calculo de la retencion esperada y tiene que poder leerse con la misma
- * seriedad que cualquier otro dato de dinero.
+ * Lumbre</strong>; no se deduce lo uno de lo otro. Es un insumo del calculo de
+ * la retencion esperada y tiene que poder leerse con la misma seriedad que
+ * cualquier otro dato de dinero.
  * <li><strong>La razon social y el NIT van impresos en cada factura de cada
  * cliente</strong>, como fabricante del software. Si la razon social cambia,
  * las facturas de hace dos años tienen que seguir diciendo lo que decian
@@ -66,7 +65,7 @@ import java.util.regex.Pattern;
  *
  * <p>
  * {@code platform_tax_profiles} <strong>no tiene {@code company_id}</strong>:
- * hay una sola identidad fiscal para todo VetSoftware. Por eso el marcador de
+ * hay una sola identidad fiscal para todo Lumbre. Por eso el marcador de
  * vigente es un <strong>discriminador fijo</strong> —{@code 1}— y no
  * {@code company_id} como en 316 y 364. La consecuencia practica es que
  * {@code uq_platform_tax_profiles_current} admite <em>una fila vigente en toda
@@ -95,11 +94,11 @@ import java.util.regex.Pattern;
  * <h2>{@code selfWithholder} es el dato que faltaba</h2>
  *
  * <p>
- * No es deducible de nada mas. Que VetSoftware sea autorretenedor y que sus
- * clientes le practiquen retencion son <em>dos hechos independientes que
- * coexisten</em>, asi que deducir uno del otro seria falso. Hoy <strong>ningun
- * sitio del codigo lo consume</strong> para el calculo de la retencion
- * esperada: cablearlo es una funcionalidad aparte.
+ * No es deducible de nada mas. Que Lumbre sea autorretenedor y que sus clientes
+ * le practiquen retencion son <em>dos hechos independientes que coexisten</em>,
+ * asi que deducir uno del otro seria falso. Hoy <strong>ningun sitio del codigo
+ * lo consume</strong> para el calculo de la retencion esperada: cablearlo es
+ * una funcionalidad aparte.
  *
  * <h2>Con {@code version}</h2>
  *
@@ -154,7 +153,7 @@ public class PlatformTaxProfile {
     private final EconomicActivityRef economicActivity;
 
     /**
-     * Si <strong>VetSoftware</strong> es autorretenedor. Nada que ver con que sus
+     * Si <strong>Lumbre</strong> es autorretenedor. Nada que ver con que sus
      * clientes sean agentes de retencion: coexisten.
      */
     private final boolean selfWithholder;

@@ -7,7 +7,7 @@ import java.util.Optional;
 
 /**
  * <strong>Ningun metodo recibe {@code companyId}</strong>: los libros son de
- * VetSoftware y {@code accounting_exports} no tiene esa columna.
+ * Lumbre y {@code accounting_exports} no tiene esa columna.
  */
 public interface AccountingExportRepository {
 

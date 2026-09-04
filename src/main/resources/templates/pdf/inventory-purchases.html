@@ -9,42 +9,42 @@
       margin: 15mm 14mm 20mm 14mm;
       @bottom-center {
         content: "Libro de compras · Documento interno";
-        font-family: "Helvetica", "Arial", sans-serif; font-size: 7pt; color: #9a8e80;
+        font-family: Inter, "Helvetica", "Arial", sans-serif; font-size: 7pt; color: #475569;
       }
       @bottom-right {
         content: "Pág. " counter(page) "/" counter(pages);
-        font-family: "Helvetica", "Arial", sans-serif; font-size: 8pt; color: #6b6363;
+        font-family: Inter, "Helvetica", "Arial", sans-serif; font-size: 8pt; color: #475569;
       }
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; font-family: "Helvetica", "Arial", sans-serif; font-size: 9.5pt; color: #2a2424; }
-    .header { display: table; width: 100%; border-bottom: 2px solid #5c2d8c; padding-bottom: 9px; margin-bottom: 12px; }
+    html, body { margin: 0; padding: 0; font-family: Inter, "Helvetica", "Arial", sans-serif; font-size: 9.5pt; color: #0F172A; }
+    .header { display: table; width: 100%; border-bottom: 2px solid #4F46E5; padding-bottom: 9px; margin-bottom: 12px; }
     .header > div { display: table-cell; vertical-align: bottom; }
-    .brand { font-family: "Georgia", serif; font-size: 20pt; color: #5c2d8c; }
-    .doc-title { font-family: "Georgia", serif; font-size: 13pt; margin-bottom: 2px; }
-    .header-right { text-align: right; font-size: 9pt; color: #6b6363; }
+    .brand { font-family: Poppins, "Helvetica", "Arial", sans-serif; font-size: 20pt; color: #4F46E5; }
+    .doc-title { font-family: Poppins, "Helvetica", "Arial", sans-serif; font-size: 13pt; margin-bottom: 2px; }
+    .header-right { text-align: right; font-size: 9pt; color: #475569; }
     .meta { margin-bottom: 12px; font-size: 9pt; }
     .meta .kv { display: inline-block; vertical-align: top; margin: 0 22px 6px 0; }
-    .meta .kv .lbl { color: #8a7f72; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.06em; display: block; }
-    .meta .kv .val { color: #2a2424; font-weight: 600; }
+    .meta .kv .lbl { color: #475569; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.06em; display: block; }
+    .meta .kv .val { color: #0F172A; font-weight: 600; }
     table { width: 100%; border-collapse: collapse; font-size: 8.5pt; -fs-table-paginate: paginate; }
     thead { display: table-header-group; }
     tfoot { display: table-footer-group; }
     tr { page-break-inside: avoid; }
-    thead th { background: #5c2d8c; color: #fff; text-align: left; padding: 6px 8px; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
-    tbody td { padding: 5px 8px; border-bottom: 1px solid #eee4d8; }
-    tbody tr:nth-child(even) { background: #faf7f2; }
-    tfoot td { padding: 7px 8px; border-top: 2px solid #5c2d8c; font-weight: 700; }
+    thead th { background: #4F46E5; color: #fff; text-align: left; padding: 6px 8px; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
+    tbody td { padding: 5px 8px; border-bottom: 1px solid #E2E8F0; }
+    tbody tr:nth-child(even) { background: #F5F3FF; }
+    tfoot td { padding: 7px 8px; border-top: 2px solid #4F46E5; font-weight: 700; }
     .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .sku { font-size: 7.5pt; color: #8a7f72; }
-    .empty { text-align: center; color: #9a8e80; padding: 22px; }
+    .sku { font-size: 7.5pt; color: #475569; }
+    .empty { text-align: center; color: #475569; padding: 22px; }
   </style>
 </head>
 <body>
   <div class="header">
     <div>
-      <div class="brand">Vetrina</div>
-      <div style="font-size:8pt;color:#6b6363;">Libro de compras</div>
+      <div class="brand">Lumbre</div>
+      <div style="font-size:8pt;color:#475569;">Libro de compras</div>
     </div>
     <div class="header-right">
       <div class="doc-title">Compras</div>

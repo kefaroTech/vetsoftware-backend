@@ -8,7 +8,7 @@ import java.util.Optional;
  * <strong>Ningun metodo de este puerto recibe {@code companyId}, y esa ausencia
  * es una afirmacion sobre el modelo, no un olvido.</strong>
  * {@code platform_tax_profiles} no tiene columna de empresa: es la identidad
- * fiscal de VetSoftware, una sola para toda la plataforma. Añadir aqui un
+ * fiscal de Lumbre, una sola para toda la plataforma. Añadir aqui un
  * {@code findAllByCompanyId} exigiria inventarse la columna.
  *
  * <p>

@@ -32,8 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>
  * <strong>No hay controller de tenant.</strong> Contra que cuenta se asienta un
- * concepto es una decision sobre los libros de VetSoftware; una clinica no
- * tiene nada que consultar aqui. Los cinco puertos van cerrados a
+ * concepto es una decision sobre los libros de Lumbre; una clinica no tiene
+ * nada que consultar aqui. Los cinco puertos van cerrados a
  * {@code hasRole('SYSTEM')} a secas.
  *
  * <p>

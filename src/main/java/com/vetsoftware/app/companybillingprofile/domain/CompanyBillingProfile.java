@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
 /**
- * A quien se le factura: la ficha del tercero que recibe las facturas de
- * VetSoftware por la suscripcion de una clinica.
+ * A quien se le factura: la ficha del tercero que recibe las facturas de Lumbre
+ * por la suscripcion de una clinica.
  *
  * <h2>Esta ficha NO se edita: se sucede</h2>
  *
@@ -57,8 +57,8 @@ import java.util.regex.Pattern;
  * <h2>{@code withholdingAgent} es del CLIENTE</h2>
  *
  * <p>
- * Guarda si <strong>el cliente</strong> es agente de retencion. Que VetSoftware
- * sea autorretenedor es dato propio y vive en
+ * Guarda si <strong>el cliente</strong> es agente de retencion. Que Lumbre sea
+ * autorretenedor es dato propio y vive en
  * {@code platform_tax_profiles.is_self_withholder} (changeset 367): la norma
  * dice que las dos condiciones <em>coexisten</em>, asi que deducir una de la
  * otra seria falso. Las tarifas que se espera que aplique tampoco viven aqui
@@ -79,7 +79,7 @@ import java.util.regex.Pattern;
  *
  * <p>
  * <strong>La tabla nueva existe pero todavia no tiene ninguna fila</strong>, y
- * es deliberado: no habia razon social ni NIT reales de VetSoftware y no se
+ * es deliberado: no habia razon social ni NIT reales de Lumbre y no se
  * inventaron, porque una identidad fiscal inventada acaba impresa en la factura
  * de cada cliente. Sembrar la primera es una decision del dueño.
  *

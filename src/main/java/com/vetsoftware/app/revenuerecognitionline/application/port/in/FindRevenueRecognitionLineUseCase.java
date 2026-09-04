@@ -17,7 +17,7 @@ public interface FindRevenueRecognitionLineUseCase {
      * recibir de quien solo lo puede servir un principal cross-tenant. La
      * alternativa —abrirlo por permiso con {@code @authz.isMyCompany(#companyId)}—
      * se descarto a proposito: el reconocimiento de ingreso es contabilidad de
-     * VetSoftware, no un informe de cliente.
+     * Lumbre, no un informe de cliente.
      */
     @PreAuthorize("hasRole('SYSTEM')")
     RevenueRecognitionLineDto findById(Long id);

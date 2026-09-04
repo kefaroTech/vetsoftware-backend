@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 
 /**
  * <strong>Sin {@code companyId} por ninguna via</strong>: la exportacion es de
- * los libros de VetSoftware.
+ * los libros de Lumbre.
  *
  * <p>
  * <strong>Sin {@code attemptNumber} ni

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.platformtaxprofile.domain;
 
 /**
- * La actividad economica (CIIU) de VetSoftware, con lo unico que esta feature
+ * La actividad economica (CIIU) de Lumbre, con lo unico que esta feature
  * necesita saber de ella.
  *
  * <p>

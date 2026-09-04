@@ -12,8 +12,8 @@ public interface GenerateAccountingExportUseCase {
      *
      * <p>
      * <strong>{@code hasRole('SYSTEM')} a secas.</strong> Es un fichero de los
-     * libros de VetSoftware: no hay empresa a la que acotar y ningun permiso de
-     * tenant debe poder alcanzarlo. Toda la feature comparte ese gate
+     * libros de Lumbre: no hay empresa a la que acotar y ningun permiso de tenant
+     * debe poder alcanzarlo. Toda la feature comparte ese gate
      * ({@code GATE_COHERENTE_EN_FEATURE_DE_SYSTEM}).
      */
     @PreAuthorize("hasRole('SYSTEM')")

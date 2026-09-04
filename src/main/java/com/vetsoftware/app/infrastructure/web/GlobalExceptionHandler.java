@@ -2319,7 +2319,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // La tercera de la misma familia, y la unica cuya fila NO esta sembrada a
     // proposito: platform_tax_profiles (changeset 367) nace vacia porque nadie
-    // tenia la razon social ni el NIT reales de VetSoftware, y una identidad fiscal
+    // tenia la razon social ni el NIT reales de Lumbre, y una identidad fiscal
     // inventada acaba impresa en la factura de cada cliente -un error que ya no es
     // del software-. 503 y no 404 por el mismo motivo que sus dos hermanas: no
     // falta el recurso de negocio que se pidio, falta el suelo sobre el que la
@@ -2329,7 +2329,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             com.vetsoftware.app.platformtaxprofile.domain.NoCurrentPlatformTaxProfileException ex,
             HttpServletRequest request) {
         markObservationError(request, ex);
-        log.error("Platform tax profile row is missing; VetSoftware has no fiscal identity to"
+        log.error("Platform tax profile row is missing; Lumbre has no fiscal identity to"
                 + " print on the invoices it issues", ex);
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "PLATFORM_TAX_PROFILE_NOT_CONFIGURED",
                 ex.getMessage());

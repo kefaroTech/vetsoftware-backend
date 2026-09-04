@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * La identidad fiscal de VetSoftware tal como sale por HTTP.
+ * La identidad fiscal de Lumbre tal como sale por HTTP.
  *
  * <p>
  * <strong>Solo la ve la consola de plataforma.</strong> Los cinco endpoints van
@@ -37,7 +37,7 @@ public record PlatformTaxProfileResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) PlatformTaxRegime taxRegime,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String fiscalEmail,
         String commercialName, PlatformEconomicActivitySummary economicActivity,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Si VetSoftware es autorretenedor. Hoy ningun calculo lo consume todavia.") boolean selfWithholder,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Si Lumbre es autorretenedor. Hoy ningun calculo lo consume todavia.") boolean selfWithholder,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate validFrom,
         @Schema(description = "Nulo mientras la vigencia siga abierta.") LocalDate validTo,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate) {

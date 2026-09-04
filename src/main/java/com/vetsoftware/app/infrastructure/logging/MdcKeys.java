@@ -1,8 +1,8 @@
 package com.vetsoftware.app.infrastructure.logging;
 
 /**
- * Claves MDC propiedad de VetSoftware, fuente única de verdad para productores
- * y limpieza.
+ * Claves MDC propiedad de Lumbre, fuente única de verdad para productores y
+ * limpieza.
  *
  * <p>
  * Notación con punto, alineada con los eventos {@code AUDIT} y las semantic

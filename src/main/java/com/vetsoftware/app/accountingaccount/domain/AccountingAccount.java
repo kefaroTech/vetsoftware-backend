@@ -11,7 +11,7 @@ import java.util.Set;
  * <h2>Catalogo global: aqui no hay empresa, y es a proposito</h2>
  *
  * <p>
- * El plan de cuentas es de VetSoftware, no de la clinica: son <em>nuestros</em>
+ * El plan de cuentas es de Lumbre, no de la clinica: son <em>nuestros</em>
  * libros. La tabla {@code accounting_accounts} no tiene columna
  * {@code company_id} y {@code AccountingAccountJpaEntity} no alcanza
  * {@code CompanyJpaEntity} por ninguna asociacion. El dia que alguien le

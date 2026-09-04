@@ -11,7 +11,7 @@ public interface PracticeSupplierWithholdingUseCase {
      *
      * <p>
      * <strong>{@code hasRole('SYSTEM')} a secas.</strong> Es una obligacion fiscal
-     * de VetSoftware como agente de retencion: cero superficie de cliente, ninguna
+     * de Lumbre como agente de retencion: cero superficie de cliente, ninguna
      * empresa a la que acotar. Toda la feature comparte ese gate
      * ({@code GATE_COHERENTE_EN_FEATURE_DE_SYSTEM}).
      */

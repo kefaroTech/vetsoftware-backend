@@ -17,11 +17,10 @@ import java.time.LocalDate;
  *
  * @param firmezaUntil
  *            hasta cuando pueden revisarla. <strong>Llega como dato y no se
- *            calcula</strong> porque depende de si VetSoftware compensa
- *            perdidas fiscales —tres años (art. 714 ET) o cinco—, y esa
- *            pregunta sigue abierta para un contador. De esta fecha cuelga la
- *            ventana de conservacion de todos los soportes que la declaracion
- *            sostiene
+ *            calcula</strong> porque depende de si Lumbre compensa perdidas
+ *            fiscales —tres años (art. 714 ET) o cinco—, y esa pregunta sigue
+ *            abierta para un contador. De esta fecha cuelga la ventana de
+ *            conservacion de todos los soportes que la declaracion sostiene
  */
 public record FileTaxReturnRequest(
         @NotBlank(message = "Debes indicar el radicado.") @Size(max = 100, message = "El radicado no puede superar los 100 caracteres.") String receiptRef,

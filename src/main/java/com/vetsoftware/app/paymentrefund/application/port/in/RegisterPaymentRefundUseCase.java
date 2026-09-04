@@ -16,7 +16,7 @@ public interface RegisterPaymentRefundUseCase {
      * camino de tenant es la decision, no un olvido.</strong> El documento maestro
      * reparte este bloque -«Cobro y saldos»- como <em>escribe plataforma, leen
      * ambos</em>: el cliente ve sus devoluciones y no las hace. Sacar dinero de la
-     * caja de VetSoftware es tesoreria de la plataforma, y ademas exige firma
+     * caja de Lumbre es tesoreria de la plataforma, y ademas exige firma
      * ({@code authorized_by_system_user_id} es {@code NOT NULL}); una firma que
      * pudiera poner el propio beneficiario no es una firma.
      *

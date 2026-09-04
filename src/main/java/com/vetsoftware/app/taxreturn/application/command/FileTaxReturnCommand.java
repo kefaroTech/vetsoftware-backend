@@ -18,9 +18,9 @@ import java.time.LocalDate;
  *            toda la politica de conservacion de soportes</strong> (art. 632 ET
  *            modificado por el art. 46 de la Ley 962 de 2005: el termino de
  *            conservacion <em>es</em> el de firmeza de la renta que soportan).
- *            Llega como dato y no se calcula aqui porque depende de si
- *            VetSoftware compensa perdidas fiscales —tres años (art. 714 ET) o
- *            cinco—, y eso <b>sigue pendiente de confirmar con un contador</b>
+ *            Llega como dato y no se calcula aqui porque depende de si Lumbre
+ *            compensa perdidas fiscales —tres años (art. 714 ET) o cinco—, y
+ *            eso <b>sigue pendiente de confirmar con un contador</b>
  */
 public record FileTaxReturnCommand(Long id, Long filedBySystemUserId, String receiptRef,
         String fileRef, LocalDate firmezaUntil) {

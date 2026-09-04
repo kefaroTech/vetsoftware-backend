@@ -10,10 +10,10 @@ import java.time.LocalDateTime;
  * <p>
  * <strong>Sin {@code companyId}, y no por la regla de siempre: es que no existe
  * la columna.</strong> {@code security_incidents} es una tabla de plataforma
- * —el incidente es de VetSoftware, aunque alcance a varias clinicas— y el
- * reparto por clinica vive en {@code security_incident_companies}. Poner aqui
- * una empresa obligaria a elegir una de las alcanzadas, que es justamente lo
- * que la puente existe para no tener que hacer.
+ * —el incidente es de Lumbre, aunque alcance a varias clinicas— y el reparto
+ * por clinica vive en {@code security_incident_companies}. Poner aqui una
+ * empresa obligaria a elegir una de las alcanzadas, que es justamente lo que la
+ * puente existe para no tener que hacer.
  *
  * <p>
  * <strong>Sin {@code deadlineAt}.</strong> El vencimiento no lo escribe quien

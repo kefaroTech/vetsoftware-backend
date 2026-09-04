@@ -14,8 +14,7 @@ public interface ListTaxReturnsUseCase {
      * <strong>{@code hasRole('SYSTEM')} a secas porque el puerto no transporta
      * ningun {@code companyId}</strong>, la señal que examina
      * {@code LISTADOS_SIN_EMPRESA_SOLO_SYSTEM}. Aqui no hay empresa que
-     * transportar: la tabla no tiene la columna y las declaraciones son de
-     * VetSoftware.
+     * transportar: la tabla no tiene la columna y las declaraciones son de Lumbre.
      */
     @PreAuthorize("hasRole('SYSTEM')")
     PageResult<TaxReturnDto> listAll(int page, int pageSize);

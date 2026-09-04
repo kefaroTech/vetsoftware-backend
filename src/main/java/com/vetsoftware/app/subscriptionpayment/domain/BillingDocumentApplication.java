@@ -31,8 +31,8 @@ import java.time.LocalDateTime;
  * 213.010, su contadora le practica 7.160 de retencion y le gira 205.850. Sin
  * camino para la retencion quedan 7.160 vivos, pasan los cinco dias de gracia y
  * la cuenta cae a <b>solo lectura por una deuda que fiscalmente no existe</b>:
- * ese dinero esta en la DIAN a nombre de VetSoftware y Ana tiene el certificado
- * que lo prueba. El sistema tenia razon segun sus propios numeros, y esa es
+ * ese dinero esta en la DIAN a nombre de Lumbre y Ana tiene el certificado que
+ * lo prueba. El sistema tenia razon segun sus propios numeros, y esa es
  * justamente la parte que nadie iba a mirar.
  * <li><b>{@link ApplicationSourceKind#CUSTOMER_CREDIT}</b> — el saldo a favor
  * nacia y no podia aplicarse nunca. Existia y no servia.
