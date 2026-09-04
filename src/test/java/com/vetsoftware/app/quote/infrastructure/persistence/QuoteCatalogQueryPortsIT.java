@@ -298,7 +298,7 @@ class QuoteCatalogQueryPortsIT extends AbstractDataJpaTest {
             // reordena el SELECT, el codigo acaba en el nombre y nadie se entera hasta
             // que un cliente ve "CORE" como nombre de producto en su cotizacion.
             assertThat(itemPort.findActiveById(nucleo)).contains(new CatalogItemRef(nucleo, "CORE",
-                    "Núcleo: clientes y mascotas", QuoteItemType.MODULE));
+                    "Clientes y mascotas", QuoteItemType.MODULE));
         }
 
         @Test

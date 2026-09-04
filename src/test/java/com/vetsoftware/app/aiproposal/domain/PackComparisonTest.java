@@ -63,7 +63,7 @@ class PackComparisonTest {
                 assertThat(o.diasDePruebaPerdidos()).isEqualTo(30);
                 assertThat(o.sinCosteEnPrueba()).isFalse();
                 assertThat(o.currency()).isEqualTo("COP");
-                assertThat(o.modulosQuePierdenPrueba()).contains("Caja y punto de venta",
+                assertThat(o.modulosQuePierdenPrueba()).contains("Caja y ventas",
                         "Historia clinica y consultas");
             });
         }

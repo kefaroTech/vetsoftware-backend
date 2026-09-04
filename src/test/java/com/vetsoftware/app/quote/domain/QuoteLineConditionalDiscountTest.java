@@ -23,8 +23,8 @@ class QuoteLineConditionalDiscountTest {
     private static final LocalDateTime AYER = LocalDateTime.of(2026, 3, 1, 10, 0);
     private static final BigDecimal VEINTE_POR_CIENTO = new BigDecimal("20.00");
 
-    private static final CatalogItemRef PACK_SPA = new CatalogItemRef(42L, "PACK_SPA", "Pack Spa",
-            QuoteItemType.BUNDLE);
+    private static final CatalogItemRef PACK_SPA = new CatalogItemRef(42L, "PACK_SPA",
+            "Estetica y guarderia", QuoteItemType.BUNDLE);
     private static final CatalogPriceRef A_179000 = new CatalogPriceRef(new BigDecimal("179000.00"),
             new BigDecimal("19.00"), TaxTreatment.TAXED, 0);
 
@@ -94,11 +94,11 @@ class QuoteLineConditionalDiscountTest {
         // calculado sobre la base rebajada. Reconstruirla desde la base tiene que
         // fallar.
         org.assertj.core.api.Assertions
-                .assertThatThrownBy(() -> new QuoteLine(9L, 1, 42L, "PACK_SPA", "Pack Spa",
-                        QuoteItemType.BUNDLE, 1, null, 1, 0, 1, new BigDecimal("179000.00"),
-                        VEINTE_POR_CIENTO, new BigDecimal("35800.00"), true,
-                        new BigDecimal("19.00"), TaxTreatment.TAXED, new BigDecimal("27208.00"),
-                        new BigDecimal("170408.00"), AYER, true))
+                .assertThatThrownBy(() -> new QuoteLine(9L, 1, 42L, "PACK_SPA",
+                        "Estetica y guarderia", QuoteItemType.BUNDLE, 1, null, 1, 0, 1,
+                        new BigDecimal("179000.00"), VEINTE_POR_CIENTO, new BigDecimal("35800.00"),
+                        true, new BigDecimal("19.00"), TaxTreatment.TAXED,
+                        new BigDecimal("27208.00"), new BigDecimal("170408.00"), AYER, true))
                 .isInstanceOf(QuoteLineArithmeticException.class).hasMessageContaining("taxAmount");
     }
 }

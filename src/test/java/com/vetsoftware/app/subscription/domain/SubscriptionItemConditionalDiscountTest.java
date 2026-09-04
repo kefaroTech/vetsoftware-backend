@@ -25,8 +25,9 @@ class SubscriptionItemConditionalDiscountTest {
     private static final BigDecimal REBAJA = new BigDecimal("35800.00");
 
     private static SubscriptionItem linea(BigDecimal descuento, boolean condicionado) {
-        return SubscriptionItem.open(EMPRESA, CONTRATO, ARTICULO, "PACK_SPA", "Pack Spa",
-                SubscriptionItemType.BUNDLE, null, 1, null, 0, TaxTreatment.TAXED, 1, PRECIO,
+        return SubscriptionItem.open(EMPRESA, CONTRATO, ARTICULO, "PACK_SPA",
+                "Estetica y guarderia", SubscriptionItemType.BUNDLE, null, 1, null, 0,
+                TaxTreatment.TAXED, 1, PRECIO,
                 descuento.signum() == 0 ? BigDecimal.ZERO : VEINTE_POR_CIENTO, descuento,
                 condicionado, new BigDecimal("19.00"), EffectivePeriod.openFrom(MAYO_1),
                 ItemOrigin.INITIAL, null);

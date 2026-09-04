@@ -1101,4 +1101,10 @@
     <include file="db/changelog/migrations/405_backfill_self_service_extra_capacities.xml"/>
     <include file="db/changelog/migrations/406_seed_extra_capacity_requires_core.xml"/>
 
+    <!-- 407: VOCABULARIO "NEGOCIO / MASCOTAS" DEL REDISEÑO DE LANDING. Renombra un área
+         (PATIENT_CARE), seis MODULE.name, tres MODULE.short_label y el copy de dos de los tres
+         BUNDLE -PACK_CLINIC ya quedó en el vocabulario correcto tras 403 y no se toca-. Solo
+         datos: ningún `code` cambia y no hay DDL. -->
+    <include file="db/changelog/migrations/407_rename_catalog_landing_labels.xml"/>
+
 </databaseChangeLog>

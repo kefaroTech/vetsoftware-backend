@@ -45,6 +45,8 @@ import java.util.Set;
  * 19&nbsp;%.</li>
  * <li><b>380</b>: el decimo arco, {@code GROOMING REQUIRES SERVICES}, que es
  * una de las dos reglas de negocio que el golden set fija.</li>
+ * <li><b>403</b> y <b>407</b>: los rotulos comerciales vigentes. Renombran copy
+ * de escaparate y nada mas: ni un codigo, ni un importe, ni un arco.</li>
  * </ul>
  *
  * <p>
@@ -113,19 +115,19 @@ public final class CatalogoComercial2026 {
         anadir(items, modulo("SURGERY", "Cirugia",
                 "Registro del procedimiento, anestesia y desenlace", 29_000, PRUEBA_LARGA));
         anadir(items,
-                modulo("LAB_IMAGING", "Laboratorio e imagen",
+                modulo("LAB_IMAGING", "Laboratorio y radiografias",
                         "Resultados de examenes e imagenes dentro del expediente del paciente",
                         45_000, PRUEBA_LARGA));
         anadir(items, modulo("GROOMING", "Estetica, bano y guarderia",
                 "Bano, peluqueria, guarderia y hotel para mascotas sanas", 29_000, PRUEBA_LARGA));
         anadir(items,
-                modulo("SERVICES", "Servicios y tarifas",
+                modulo("SERVICES", "Tarifas y promociones",
                         "Lista de servicios con tarifas por tamano o raza, paquetes y promociones",
                         29_000, PRUEBA_LARGA));
-        anadir(items, modulo("CASH_REGISTER", "Caja y punto de venta",
+        anadir(items, modulo("CASH_REGISTER", "Caja y ventas",
                 "Registro de la venta, medios de pago y cierre de caja", 46_000, PRUEBA_CORTA));
         anadir(items,
-                modulo("INVENTORY", "Inventario",
+                modulo("INVENTORY", "Inventario de productos",
                         "Existencias, vencimientos y despacho de producto en mostrador", 39_000,
                         PRUEBA_CORTA));
         anadir(items,
@@ -133,7 +135,7 @@ public final class CatalogoComercial2026 {
                         "Ordenes de compra, recepcion de mercancia y factura del proveedor", 29_000,
                         PRUEBA_CORTA));
         anadir(items,
-                modulo("OPEN_ACCOUNTS", "Cuentas abiertas y cartera",
+                modulo("OPEN_ACCOUNTS", "Cuentas por cobrar",
                         "Consumos que se cobran despues, credito y cartera por cliente", 25_000,
                         PRUEBA_CORTA));
         anadir(items, modulo("ELECTRONIC_INVOICING", "Facturacion electronica",
@@ -181,7 +183,7 @@ public final class CatalogoComercial2026 {
     }
 
     public static SellableItem nucleo() {
-        return new SellableItem("CORE", "Nucleo: clientes, mascotas y cuenta",
+        return new SellableItem("CORE", "Clientes y mascotas",
                 "Duenos y mascotas, sedes, empleados, roles y suscripcion", SellableItemKind.MODULE,
                 true, true, PRUEBA_LARGA, new BigDecimal("69000.00"), IVA, COP);
     }
@@ -236,19 +238,19 @@ public final class CatalogoComercial2026 {
     }
 
     public static PackOffer packSpa() {
-        return new PackOffer("PACK_SPA", "Pack Spa", new BigDecimal("179000.00"), IVA, SIN_PRUEBA,
-                Set.of("CORE", "SCHEDULING", "SERVICES", "GROOMING", "CASH_REGISTER",
+        return new PackOffer("PACK_SPA", "Estetica y guarderia", new BigDecimal("179000.00"), IVA,
+                SIN_PRUEBA, Set.of("CORE", "SCHEDULING", "SERVICES", "GROOMING", "CASH_REGISTER",
                         "CAPACITY_TERMINAL"));
     }
 
     public static PackOffer packClinic() {
-        return new PackOffer("PACK_CLINIC", "Pack Clinica", new BigDecimal("189000.00"), IVA,
+        return new PackOffer("PACK_CLINIC", "Consulta de barrio", new BigDecimal("189000.00"), IVA,
                 SIN_PRUEBA, Set.of("CORE", "SCHEDULING", "CLINICAL_HISTORY",
                         "VACCINATION_DEWORMING", "CASH_REGISTER", "CAPACITY_TERMINAL"));
     }
 
     public static PackOffer packFull() {
-        return new PackOffer("PACK_FULL", "Pack Completo", new BigDecimal("449000.00"), IVA,
+        return new PackOffer("PACK_FULL", "Clinica completa", new BigDecimal("449000.00"), IVA,
                 SIN_PRUEBA,
                 Set.of("CORE", "SCHEDULING", "CLINICAL_HISTORY", "VACCINATION_DEWORMING",
                         "HOSPITALIZATION", "SURGERY", "LAB_IMAGING", "GROOMING", "SERVICES",

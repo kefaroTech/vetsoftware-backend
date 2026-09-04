@@ -45,8 +45,8 @@ public final class SellableCatalogMother {
         anadir(items, modulo("CLINICAL_HISTORY", "Historia clinica y consultas", 49_000, 30));
         anadir(items, modulo("VACCINATION", "Vacunacion y desparasitacion", 25_000, 30));
         anadir(items, modulo("SCHEDULING", "Agenda de citas", 35_000, 30));
-        anadir(items, modulo("CASH_REGISTER", "Caja y punto de venta", 46_000, 14));
-        anadir(items, modulo("LAB_IMAGING", "Laboratorio e imagen", 45_000, 30));
+        anadir(items, modulo("CASH_REGISTER", "Caja y ventas", 46_000, 14));
+        anadir(items, modulo("LAB_IMAGING", "Laboratorio y radiografias", 45_000, 30));
         anadir(items, capacidadContratable());
         anadir(items, capacidadNoAutoservicio());
         anadir(items, moduloEnBorrador());
@@ -71,7 +71,8 @@ public final class SellableCatalogMother {
      * cuestan 189.000. Ahorra 35.000 al mes y cuesta 30 dias de prueba.
      */
     public static PackOffer packClinicaMasBarato() {
-        return new PackOffer("PACK_CLINIC", "Pack Clinica", new BigDecimal("189000.00"), IVA, 0,
+        return new PackOffer("PACK_CLINIC", "Consulta de barrio", new BigDecimal("189000.00"), IVA,
+                0,
                 Set.of("CORE", "SCHEDULING", "CLINICAL_HISTORY", "VACCINATION", "CASH_REGISTER"));
     }
 
@@ -108,7 +109,7 @@ public final class SellableCatalogMother {
 
     /** El nucleo del catalogo de laboratorio, ya resuelto. */
     public static SellableItem nucleo() {
-        return modulo("CORE", "Nucleo: clientes y mascotas", 69_000, 30);
+        return modulo("CORE", "Clientes y mascotas", 69_000, 30);
     }
 
     /**

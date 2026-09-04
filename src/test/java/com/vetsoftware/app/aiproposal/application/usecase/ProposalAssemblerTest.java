@@ -62,7 +62,7 @@ class ProposalAssemblerTest {
 
             CartLine linea = carrito.lineas().getFirst();
             assertThat(linea.unitAmount()).isEqualByComparingTo(new BigDecimal("51000.00"));
-            assertThat(linea.name()).isEqualTo("Nucleo: clientes y mascotas");
+            assertThat(linea.name()).isEqualTo("Clientes y mascotas");
             assertThat(linea.trialDays()).isEqualTo(30);
             assertThat(linea.kind()).isEqualTo(SellableItemKind.MODULE);
         }

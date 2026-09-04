@@ -347,7 +347,7 @@ class GetPublicCatalogServiceTest {
             assertThat(catalogo.modules()).filteredOn(m -> CORE.equals(m.code())).singleElement()
                     .satisfies(m -> {
                         assertThat(m.areaCode()).isNull();
-                        assertThat(m.shortLabel()).isEqualTo("Nucleo");
+                        assertThat(m.shortLabel()).isEqualTo("Clientes y mascotas");
                     });
             assertThat(catalogo.capacities()).singleElement()
                     .satisfies(c -> assertThat(c.code()).isEqualTo(CONTADOR));
