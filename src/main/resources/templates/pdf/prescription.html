@@ -9,99 +9,99 @@
       margin: 16mm 15mm 22mm 15mm;
       @bottom-center {
         content: "Fórmula médica veterinaria · Documento confidencial · Consérvese mínimo 5 años (Consejo Profesional MVZ)";
-        font-family: "Helvetica", "Arial", sans-serif;
+        font-family: Inter, "Helvetica", "Arial", sans-serif;
         font-size: 7pt;
-        color: #9a8e80;
+        color: #475569;
       }
       @bottom-right {
         content: "Pág. " counter(page) "/" counter(pages);
-        font-family: "Helvetica", "Arial", sans-serif;
+        font-family: Inter, "Helvetica", "Arial", sans-serif;
         font-size: 8pt;
-        color: #6b6363;
+        color: #475569;
       }
     }
 
     * { box-sizing: border-box; }
     html, body {
       margin: 0; padding: 0;
-      font-family: "Helvetica", "Arial", sans-serif;
-      font-size: 10.5pt; color: #2a2424; line-height: 1.45;
+      font-family: Inter, "Helvetica", "Arial", sans-serif;
+      font-size: 10.5pt; color: #0F172A; line-height: 1.45;
     }
     .header {
       display: table; width: 100%;
-      border-bottom: 2px solid #5c2d8c; padding-bottom: 10px; margin-bottom: 14px;
+      border-bottom: 2px solid #4F46E5; padding-bottom: 10px; margin-bottom: 14px;
     }
     .header > div { display: table-cell; vertical-align: bottom; }
     .brand {
-      font-family: "Georgia", "Times New Roman", serif;
-      font-size: 21pt; font-weight: 400; color: #5c2d8c; letter-spacing: -0.01em;
+      font-family: Poppins, "Helvetica", "Arial", sans-serif;
+      font-size: 21pt; font-weight: 400; color: #4F46E5; letter-spacing: -0.01em;
     }
-    .brand-sub { font-size: 9pt; color: #6b6363; margin-top: 2px; }
-    .header-right { text-align: right; font-size: 9.5pt; color: #6b6363; }
+    .brand-sub { font-size: 9pt; color: #475569; margin-top: 2px; }
+    .header-right { text-align: right; font-size: 9.5pt; color: #475569; }
     .header-right .doc-title {
-      font-family: "Georgia", "Times New Roman", serif;
-      font-size: 13pt; color: #2a2424; margin-bottom: 2px;
+      font-family: Poppins, "Helvetica", "Arial", sans-serif;
+      font-size: 13pt; color: #0F172A; margin-bottom: 2px;
     }
-    .header-right strong { color: #2a2424; }
+    .header-right strong { color: #0F172A; }
 
     .cards { display: table; width: 100%; table-layout: fixed; border-spacing: 8px 0; margin: 0 -8px 12px; }
     .card {
       display: table-cell; width: 50%; vertical-align: top;
-      background: #f8f4ee; border: 1px solid #e6dccf;
+      background: #F5F3FF; border: 1px solid #E2E8F0;
       border-radius: 8px; padding: 11px 15px; page-break-inside: avoid;
     }
     .card-title {
-      font-size: 8.5pt; color: #5c2d8c; letter-spacing: 0.08em;
+      font-size: 8.5pt; color: #4F46E5; letter-spacing: 0.08em;
       text-transform: uppercase; font-weight: 600; margin-bottom: 7px;
     }
     .kv-grid { display: block; }
     .kv { display: inline-block; min-width: 110px; margin: 0 16px 6px 0; vertical-align: top; }
     .kv-label {
-      font-size: 8pt; color: #6b6363; letter-spacing: 0.03em;
+      font-size: 8pt; color: #475569; letter-spacing: 0.03em;
       text-transform: uppercase; margin-bottom: 1px;
     }
-    .kv-value { font-size: 10pt; color: #2a2424; font-weight: 500; }
+    .kv-value { font-size: 10pt; color: #0F172A; font-weight: 500; }
 
     .dx {
-      font-size: 10.5pt; padding: 8px 12px; background: #f3eee6;
+      font-size: 10.5pt; padding: 8px 12px; background: #F5F3FF;
       border-radius: 6px; margin-bottom: 14px;
     }
-    .dx .lbl { color: #6b6363; font-weight: 600; text-transform: uppercase; font-size: 8.5pt; letter-spacing: 0.04em; }
+    .dx .lbl { color: #475569; font-weight: 600; text-transform: uppercase; font-size: 8.5pt; letter-spacing: 0.04em; }
 
     .rp {
-      font-family: "Georgia", "Times New Roman", serif;
-      font-size: 15pt; color: #5c2d8c; margin: 0 0 6px 0;
+      font-family: Poppins, "Helvetica", "Arial", sans-serif;
+      font-size: 15pt; color: #4F46E5; margin: 0 0 6px 0;
     }
     table.tx { width: 100%; border-collapse: collapse; font-size: 10pt; -fs-table-paginate: paginate; }
     table.tx thead { display: table-header-group; }
     table.tx tr { page-break-inside: avoid; }
     table.tx th {
-      text-align: left; background: #efe9f5; color: #4a2470; font-weight: 600;
-      padding: 6px 9px; border: 1px solid #ddd0ea; font-size: 8pt;
+      text-align: left; background: #F5F3FF; color: #4F46E5; font-weight: 600;
+      padding: 6px 9px; border: 1px solid #E2E8F0; font-size: 8pt;
       text-transform: uppercase; letter-spacing: 0.03em;
     }
-    table.tx td { padding: 7px 9px; border: 1px solid #eee3d6; vertical-align: top; }
-    .tx-idx { width: 26px; text-align: center; color: #9a8e80; }
+    table.tx td { padding: 7px 9px; border: 1px solid #E2E8F0; vertical-align: top; }
+    .tx-idx { width: 26px; text-align: center; color: #475569; }
     .tx-qty { width: 62px; text-align: center; white-space: nowrap; }
-    .med-name { font-weight: 600; color: #2a2424; }
-    .med-pres { color: #6b6363; font-size: 9pt; }
-    .med-obs { color: #6b6363; font-size: 9pt; margin-top: 2px; }
+    .med-name { font-weight: 600; color: #0F172A; }
+    .med-pres { color: #475569; font-size: 9pt; }
+    .med-obs { color: #475569; font-size: 9pt; margin-top: 2px; }
     .med-obs .lbl { font-weight: 600; }
 
     .obs { margin-top: 12px; font-size: 10pt; }
     .obs .lbl {
-      color: #6b6363; font-weight: 600; text-transform: uppercase;
+      color: #475569; font-weight: 600; text-transform: uppercase;
       font-size: 8.5pt; letter-spacing: 0.04em; display: block; margin-bottom: 2px;
     }
     .obs .val { white-space: pre-line; }
 
     .signature { margin-top: 40px; padding-top: 8px; page-break-inside: avoid; }
     .sign-line {
-      width: 300px; border-top: 1px solid #2a2424; padding-top: 5px;
+      width: 300px; border-top: 1px solid #0F172A; padding-top: 5px;
     }
-    .sign-role { font-size: 9.5pt; color: #6b6363; }
-    .sign-name { font-size: 11pt; font-weight: 600; color: #2a2424; margin-top: 2px; }
-    .sign-fields { font-size: 9pt; color: #6b6363; margin-top: 6px; }
+    .sign-role { font-size: 9.5pt; color: #475569; }
+    .sign-name { font-size: 11pt; font-weight: 600; color: #0F172A; margin-top: 2px; }
+    .sign-fields { font-size: 9pt; color: #475569; margin-top: 6px; }
     .sign-fields span { display: inline-block; min-width: 150px; }
   </style>
 </head>
@@ -202,7 +202,7 @@
     </thead>
     <tbody>
       <tr th:if="${!hasMedicaments}">
-        <td colspan="4" style="text-align:center; color:#9a8e80; font-style:italic;">
+        <td colspan="4" style="text-align:center; color:#475569; font-style:italic;">
           Sin medicamentos registrados en esta fórmula.
         </td>
       </tr>

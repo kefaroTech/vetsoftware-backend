@@ -9,21 +9,21 @@
       margin: 18mm 16mm 24mm 16mm;
       @bottom-center {
         content: "Documento clínico confidencial · Uso exclusivo del titular y del médico veterinario tratante";
-        font-family: "Helvetica", "Arial", sans-serif;
+        font-family: Inter, "Helvetica", "Arial", sans-serif;
         font-size: 7.5pt;
-        color: #9a8e80;
+        color: #475569;
       }
       @bottom-right {
         content: "Página " counter(page) " de " counter(pages);
-        font-family: "Helvetica", "Arial", sans-serif;
+        font-family: Inter, "Helvetica", "Arial", sans-serif;
         font-size: 9pt;
-        color: #6b6363;
+        color: #475569;
       }
       @bottom-left {
         content: "Generado el " attr(data-gen);
-        font-family: "Helvetica", "Arial", sans-serif;
+        font-family: Inter, "Helvetica", "Arial", sans-serif;
         font-size: 9pt;
-        color: #6b6363;
+        color: #475569;
       }
     }
 
@@ -31,45 +31,45 @@
     html, body {
       margin: 0;
       padding: 0;
-      font-family: "Helvetica", "Arial", sans-serif;
+      font-family: Inter, "Helvetica", "Arial", sans-serif;
       font-size: 11pt;
-      color: #2a2424;
+      color: #0F172A;
       line-height: 1.45;
     }
 
     .header {
       display: table;
       width: 100%;
-      border-bottom: 2px solid #5c2d8c;
+      border-bottom: 2px solid #4F46E5;
       padding-bottom: 10px;
       margin-bottom: 16px;
     }
     .header > div { display: table-cell; vertical-align: bottom; }
     .brand {
-      font-family: "Georgia", "Times New Roman", serif;
+      font-family: Poppins, "Helvetica", "Arial", sans-serif;
       font-size: 22pt;
       font-weight: 400;
-      color: #5c2d8c;
+      color: #4F46E5;
       letter-spacing: -0.01em;
     }
     .brand-sub {
       font-size: 9.5pt;
-      color: #6b6363;
+      color: #475569;
       margin-top: 2px;
     }
     .header-right {
       text-align: right;
       font-size: 9.5pt;
-      color: #6b6363;
+      color: #475569;
     }
-    .header-right strong { color: #2a2424; font-size: 11pt; }
+    .header-right strong { color: #0F172A; font-size: 11pt; }
 
     h1.report-title {
-      font-family: "Georgia", "Times New Roman", serif;
+      font-family: Poppins, "Helvetica", "Arial", sans-serif;
       font-weight: 400;
       font-size: 17pt;
       margin: 0 0 12px 0;
-      color: #2a2424;
+      color: #0F172A;
     }
 
     .cards { display: table; width: 100%; table-layout: fixed; border-spacing: 8px 0; margin: 0 -8px 12px; }
@@ -77,25 +77,25 @@
       display: table-cell;
       width: 50%;
       vertical-align: top;
-      background: #f8f4ee;
-      border: 1px solid #e6dccf;
+      background: #F5F3FF;
+      border: 1px solid #E2E8F0;
       border-radius: 8px;
       padding: 12px 16px;
       page-break-inside: avoid;
     }
     .card-title {
       font-size: 8.5pt;
-      color: #5c2d8c;
+      color: #4F46E5;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       font-weight: 600;
       margin-bottom: 8px;
     }
     .patient-name {
-      font-family: "Georgia", "Times New Roman", serif;
+      font-family: Poppins, "Helvetica", "Arial", sans-serif;
       font-size: 16pt;
       font-weight: 400;
-      color: #2a2424;
+      color: #0F172A;
       margin: 0 0 8px 0;
     }
     .deceased-badge {
@@ -115,56 +115,56 @@
     .kv { display: inline-block; min-width: 118px; margin: 0 18px 8px 0; vertical-align: top; }
     .kv-label {
       font-size: 8.5pt;
-      color: #6b6363;
+      color: #475569;
       letter-spacing: 0.03em;
       text-transform: uppercase;
       margin-bottom: 1px;
     }
     .kv-value {
       font-size: 10.5pt;
-      color: #2a2424;
+      color: #0F172A;
       font-weight: 500;
     }
 
     .filters {
       font-size: 9.5pt;
-      color: #6b6363;
+      color: #475569;
       padding: 8px 12px;
-      background: #f3eee6;
+      background: #F5F3FF;
       border-radius: 6px;
       margin-bottom: 6px;
     }
-    .filters strong { color: #2a2424; }
+    .filters strong { color: #0F172A; }
     .type-counts {
       margin: 0 0 16px 0;
       font-size: 9pt;
-      color: #6b6363;
+      color: #475569;
     }
     .count-pill {
       display: inline-block;
       padding: 1px 8px;
       margin: 2px 4px 2px 0;
       border-radius: 12px;
-      background: #efe9f5;
-      color: #4a2470;
+      background: #F5F3FF;
+      color: #4F46E5;
       font-weight: 500;
     }
 
     .month-group { margin-bottom: 8px; }
     .month-head {
       font-size: 10pt;
-      color: #6b6363;
+      color: #475569;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       font-weight: 600;
-      border-bottom: 1px solid #e6dccf;
+      border-bottom: 1px solid #E2E8F0;
       padding-bottom: 4px;
       margin: 12px 0 6px 0;
     }
 
     .event {
       padding: 9px 0;
-      border-bottom: 1px solid #f0e9dd;
+      border-bottom: 1px solid #F5F3FF;
       page-break-inside: avoid;
     }
     .event:last-child { border-bottom: none; }
@@ -177,27 +177,27 @@
     .event-date {
       width: 132px;
       font-size: 9.5pt;
-      color: #6b6363;
+      color: #475569;
       white-space: nowrap;
     }
-    .event-title { font-weight: 600; font-size: 11pt; color: #2a2424; padding-right: 10px; }
+    .event-title { font-weight: 600; font-size: 11pt; color: #0F172A; padding-right: 10px; }
     .event-id {
       font-size: 8.5pt;
-      color: #b3a89a;
-      font-family: "Courier New", monospace;
+      color: #475569;
+      font-family: "JetBrains Mono", monospace;
       white-space: nowrap;
       text-align: right;
     }
     .event-body { margin-left: 142px; }
     .field { margin-bottom: 2px; font-size: 10.5pt; }
-    .field-label { color: #6b6363; font-weight: 600; }
-    .field-value { color: #2a2424; white-space: pre-line; }
-    .no-detail { font-size: 10pt; color: #9a8e80; font-style: italic; }
+    .field-label { color: #475569; font-weight: 600; }
+    .field-value { color: #0F172A; white-space: pre-line; }
+    .no-detail { font-size: 10pt; color: #475569; font-style: italic; }
 
     .detail-table { margin: 6px 0 4px 0; page-break-inside: avoid; }
     .detail-table-title {
       font-size: 9pt;
-      color: #5c2d8c;
+      color: #4F46E5;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.04em;
@@ -208,19 +208,19 @@
     table.dt tr { page-break-inside: avoid; }
     table.dt th {
       text-align: left;
-      background: #f3eee6;
-      color: #6b6363;
+      background: #F5F3FF;
+      color: #475569;
       font-weight: 600;
       padding: 3px 6px;
-      border: 1px solid #e6dccf;
+      border: 1px solid #E2E8F0;
       font-size: 8pt;
       text-transform: uppercase;
       letter-spacing: 0.03em;
     }
     table.dt td {
       padding: 3px 6px;
-      border: 1px solid #eee3d6;
-      color: #2a2424;
+      border: 1px solid #E2E8F0;
+      color: #0F172A;
       vertical-align: top;
     }
 
@@ -232,7 +232,7 @@
       font-weight: 600;
       letter-spacing: 0.01em;
     }
-    .t-CONSULTATION { background: #ede3f5; color: #5c2d8c; }
+    .t-CONSULTATION { background: #ede3f5; color: #4F46E5; }
     .t-SURGERY { background: #f8dada; color: #9a3030; }
     .t-VACCINATION { background: #d8ecd3; color: #2b6020; }
     .t-DEWORMING { background: #d3e9ec; color: #265b62; }
@@ -245,9 +245,9 @@
     .empty {
       padding: 32px 20px;
       text-align: center;
-      color: #6b6363;
-      background: #f8f4ee;
-      border: 1px dashed #e6dccf;
+      color: #475569;
+      background: #F5F3FF;
+      border: 1px dashed #E2E8F0;
       border-radius: 8px;
       font-size: 11pt;
     }
@@ -283,11 +283,11 @@
     .problems { margin-bottom: 14px; page-break-inside: avoid; }
     .problems-title {
       font-size: 10pt;
-      color: #5c2d8c;
+      color: #4F46E5;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       font-weight: 600;
-      border-bottom: 1px solid #e6dccf;
+      border-bottom: 1px solid #E2E8F0;
       padding-bottom: 4px;
       margin-bottom: 6px;
     }
@@ -295,11 +295,11 @@
     table.problems-table thead { display: table-header-group; }
     table.problems-table tr { page-break-inside: avoid; }
     table.problems-table th {
-      text-align: left; background: #f3eee6; color: #6b6363; font-weight: 600;
-      padding: 4px 8px; border: 1px solid #e6dccf; font-size: 8pt;
+      text-align: left; background: #F5F3FF; color: #475569; font-weight: 600;
+      padding: 4px 8px; border: 1px solid #E2E8F0; font-size: 8pt;
       text-transform: uppercase; letter-spacing: 0.03em;
     }
-    table.problems-table td { padding: 4px 8px; border: 1px solid #eee3d6; vertical-align: top; }
+    table.problems-table td { padding: 4px 8px; border: 1px solid #E2E8F0; vertical-align: top; }
     .status-pill {
       display: inline-block; padding: 0 8px; border-radius: 10px;
       font-size: 8.5pt; font-weight: 600;
@@ -313,10 +313,10 @@
     }
     .sign-line {
       width: 280px;
-      border-top: 1px solid #2a2424;
+      border-top: 1px solid #0F172A;
       padding-top: 4px;
       font-size: 9.5pt;
-      color: #6b6363;
+      color: #475569;
     }
   </style>
 </head>
@@ -396,7 +396,7 @@
           <div class="kv-label">Peso actual</div>
           <div class="kv-value">
             <span th:text="${animal.currentWeight != null ? animal.currentWeight : 'Sin registro'}">—</span>
-            <span th:if="${animal.weightMeasuredAt != null}" style="font-weight:400; color:#6b6363; font-size:9pt"
+            <span th:if="${animal.weightMeasuredAt != null}" style="font-weight:400; color:#475569; font-size:9pt"
                   th:text="'· ' + ${#temporals.format(animal.weightMeasuredAt, 'dd MMM yyyy')}">fecha</span>
           </div>
         </div>
