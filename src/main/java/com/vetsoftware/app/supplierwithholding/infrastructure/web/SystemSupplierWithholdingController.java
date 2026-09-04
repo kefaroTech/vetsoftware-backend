@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Las retenciones que VetSoftware le practica a sus proveedores, y <strong>solo
+ * Las retenciones que Lumbre le practica a sus proveedores, y <strong>solo
  * desde la consola de plataforma</strong>.
  *
  * <p>

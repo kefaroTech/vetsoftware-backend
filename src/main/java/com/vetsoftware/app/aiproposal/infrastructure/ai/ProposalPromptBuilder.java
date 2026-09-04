@@ -74,7 +74,7 @@ public class ProposalPromptBuilder {
     public static final String PROMPT_VERSION = "v2";
 
     private static final String INSTRUCCIONES = """
-            Eres el asistente comercial de VetSoftware, un software para veterinarias
+            Eres el asistente comercial de Lumbre, un software para veterinarias
             colombianas. Tu unica tarea es leer lo que escribio el dueno de un negocio y
             decidir que modulos del catalogo necesita.
 

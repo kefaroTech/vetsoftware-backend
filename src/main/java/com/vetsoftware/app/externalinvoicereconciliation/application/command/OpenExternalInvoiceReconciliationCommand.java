@@ -14,7 +14,7 @@ import java.math.BigDecimal;
  *            sino como {@code @RequestParam}, y el puerto esta cerrado a
  *            {@code hasRole('SYSTEM')} a secas
  * @param computedTotal
- *            el total que calculo VetSoftware, <strong>una vez sobre la base
+ *            el total que calculo Lumbre, <strong>una vez sobre la base
  *            agregada</strong>
  * @param computedTax
  *            el impuesto propio, aparte del total a proposito: sin separarlos

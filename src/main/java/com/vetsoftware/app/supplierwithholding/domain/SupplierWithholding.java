@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
 /**
- * Lo que VetSoftware le retiene a un proveedor: la gemela de
+ * Lo que Lumbre le retiene a un proveedor: la gemela de
  * {@code document_withholdings} en la direccion contraria.
  *
  * <h2>Sin empresa: la retenemos nosotros, no la clinica</h2>

@@ -12,7 +12,7 @@ public interface RegisterBankReceiptUseCase {
      * <p>
      * <strong>{@code hasRole('SYSTEM')} a secas, y la ausencia de un camino de
      * tenant es la decision, no un olvido.</strong> El extracto es el cuadre
-     * interno de VetSoftware contra su propio banco. Una entrada sin identificar no
+     * interno de Lumbre contra su propio banco. Una entrada sin identificar no
      * tiene todavia dueño —esa es literalmente su definicion—, asi que no hay
      * ninguna clinica a la que pudiera pertenecer y no existe un {@code companyId}
      * con el que acotarla.

@@ -59,8 +59,7 @@ public class BankReceipt {
     private final Long id;
 
     /**
-     * La cuenta de VetSoftware a la que entro el dinero, tal como la nombra el
-     * banco.
+     * La cuenta de Lumbre a la que entro el dinero, tal como la nombra el banco.
      */
     private final String bankAccountRef;
 

@@ -18,9 +18,9 @@ package com.vetsoftware.app.subscriptionbilling.domain;
  *
  * <p>
  * <b>Dos emisores, dos numeraciones, dos tablas.</b> Nomenclatura fijada:
- * {@code DC-} el documento de cobro que genera VetSoftware · {@code FE-} la
- * factura fiscal del sistema externo · {@code NC-} la nota crédito externa. El
- * número {@code DC} viaja impreso en la factura externa: es lo que permite
+ * {@code DC-} el documento de cobro que genera Lumbre · {@code FE-} la factura
+ * fiscal del sistema externo · {@code NC-} la nota crédito externa. El número
+ * {@code DC} viaja impreso en la factura externa: es lo que permite
  * emparejarlas después sin adivinar. El día que alguien mezcle los dos
  * circuitos, la contabilidad de los clientes y la propia quedan enredadas.
  *

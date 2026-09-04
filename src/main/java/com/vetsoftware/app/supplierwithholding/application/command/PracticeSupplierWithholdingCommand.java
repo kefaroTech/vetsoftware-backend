@@ -10,7 +10,7 @@ import java.time.LocalDate;
  *
  * <p>
  * <strong>Sin {@code companyId}: la tabla no tiene esa columna.</strong> La
- * retencion la practica VetSoftware.
+ * retencion la practica Lumbre.
  *
  * @param supplierInvoiceRef
  *            la referencia del soporte. <b>Obligatoria</b>: sin ella no se

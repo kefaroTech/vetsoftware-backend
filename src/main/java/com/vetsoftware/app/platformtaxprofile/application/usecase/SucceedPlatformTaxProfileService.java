@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * El cambio de identidad fiscal de VetSoftware: cierra la vigente y abre su
+ * El cambio de identidad fiscal de Lumbre: cierra la vigente y abre su
  * sucesora, <strong>en una sola transaccion</strong>.
  *
  * <h2>Por que no es un update</h2>

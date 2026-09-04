@@ -38,7 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
  * la ausencia de siempre.</strong> En otros bloques de plataforma la empresa
  * viaja como {@code @RequestParam} porque un principal SYSTEM no tiene empresa
  * propia y elige a que clinica afecta. Aqui el incidente no es de nadie en
- * particular: es de VetSoftware, y alcanza a las clinicas que alcance. El
+ * particular: es de Lumbre, y alcanza a las clinicas que alcance. El
  * {@code companyId} que si aparece —en la ruta de afectados— no dice quien
  * llama sino <em>a quien alcanzo</em>, y va en la URL y no en el cuerpo porque
  * {@code EMPRESA_NO_VIAJA_EN_EL_CUERPO} no puede distinguir las dos cosas

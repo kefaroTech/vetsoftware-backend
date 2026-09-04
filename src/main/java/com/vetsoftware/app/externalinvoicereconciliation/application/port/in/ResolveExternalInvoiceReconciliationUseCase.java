@@ -13,7 +13,7 @@ public interface ResolveExternalInvoiceReconciliationUseCase {
      *
      * <p>
      * <strong>{@code hasRole('SYSTEM')} a secas.</strong> Resolver es decidir en
-     * que periodo contable de VetSoftware se imputa un ajuste; no hay lectura ni
+     * que periodo contable de Lumbre se imputa un ajuste; no hay lectura ni
      * escritura de tenant en este bloque -ver
      * {@link FindExternalInvoiceReconciliationUseCase#findById(Long)}-.
      */

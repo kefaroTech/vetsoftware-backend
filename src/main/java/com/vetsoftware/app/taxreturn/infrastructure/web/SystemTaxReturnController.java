@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Las declaraciones de VetSoftware, y <strong>solo desde la consola de
+ * Las declaraciones de Lumbre, y <strong>solo desde la consola de
  * plataforma</strong>.
  *
  * <p>

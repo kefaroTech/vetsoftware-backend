@@ -48,8 +48,8 @@ public final class RequestLoggingContextFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Limpia exclusivamente el contexto propiedad de VetSoftware. El ciclo de vida
-     * de traceId/spanId pertenece a Micrometer Tracing y nunca se manipula desde la
+     * Limpia exclusivamente el contexto propiedad de Lumbre. El ciclo de vida de
+     * traceId/spanId pertenece a Micrometer Tracing y nunca se manipula desde la
      * aplicación.
      */
     private static void clearApplicationContext() {

@@ -1,7 +1,7 @@
 package com.vetsoftware.app.platformtaxprofile.domain;
 
 /**
- * El regimen de IVA de VetSoftware.
+ * El regimen de IVA de Lumbre.
  *
  * <p>
  * <strong>La base NO impone esta lista.</strong> {@code tax_regime} es un
@@ -13,10 +13,10 @@ package com.vetsoftware.app.platformtaxprofile.domain;
  * <strong>Los dos valores son los de
  * {@code companytaxprofile.domain.TaxRegime}, palabra por palabra.</strong> El
  * regimen no cambia de significado segun quien lo declare: responsable de IVA
- * es responsable de IVA lo emita una clinica o lo emita VetSoftware. Escribir
- * aqui {@code IVA_RESPONSIBLE} o {@code COMUN} crearia un segundo vocabulario
- * para el mismo concepto —el defecto que el documento de esquema persigue tabla
- * por tabla— y haria incomparables dos columnas que un dia habra que cotejar.
+ * es responsable de IVA lo emita una clinica o lo emita Lumbre. Escribir aqui
+ * {@code IVA_RESPONSIBLE} o {@code COMUN} crearia un segundo vocabulario para
+ * el mismo concepto —el defecto que el documento de esquema persigue tabla por
+ * tabla— y haria incomparables dos columnas que un dia habra que cotejar.
  */
 public enum PlatformTaxRegime {
 

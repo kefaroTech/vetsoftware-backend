@@ -13,7 +13,7 @@ public interface ListSupplierWithholdingsUseCase {
      * <strong>{@code hasRole('SYSTEM')} a secas porque el puerto no transporta
      * ningun {@code companyId}</strong>, la señal que examina
      * {@code LISTADOS_SIN_EMPRESA_SOLO_SYSTEM}. Aqui no hay empresa que
-     * transportar: la retencion la practica VetSoftware.
+     * transportar: la retencion la practica Lumbre.
      */
     @PreAuthorize("hasRole('SYSTEM')")
     PageResult<SupplierWithholdingDto> listAll(int page, int pageSize);

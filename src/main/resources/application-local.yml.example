@@ -89,7 +89,7 @@ vetsoftware:
         enabled: true
   email:
     enabled: ${EMAIL_ENABLED:false}
-    from: "${EMAIL_FROM:VetSoftware Local <local@vetsoftware.test>}"
+    from: "${EMAIL_FROM:Lumbre Local <local@vetsoftware.test>}"
     resend:
       api-key: ${RESEND_API_KEY:}
   registration:

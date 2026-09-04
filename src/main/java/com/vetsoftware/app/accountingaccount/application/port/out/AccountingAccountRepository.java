@@ -8,8 +8,8 @@ import java.util.Optional;
  * <strong>Ningun metodo de este puerto recibe {@code companyId}, y esa ausencia
  * es una afirmacion sobre el modelo, no un olvido.</strong>
  * {@code accounting_accounts} no tiene columna de empresa: el plan de cuentas
- * es de VetSoftware. Anadir aqui un {@code findAllByCompanyId} exigiria
- * inventarse la columna.
+ * es de Lumbre. Anadir aqui un {@code findAllByCompanyId} exigiria inventarse
+ * la columna.
  */
 public interface AccountingAccountRepository {
 

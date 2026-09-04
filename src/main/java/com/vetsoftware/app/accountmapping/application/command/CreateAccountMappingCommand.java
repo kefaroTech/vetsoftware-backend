@@ -5,7 +5,7 @@ import java.time.LocalDate;
 
 /**
  * <strong>Sin {@code companyId}: la tabla no tiene esa columna.</strong> El
- * puente concepto → cuenta es de los libros de VetSoftware.
+ * puente concepto → cuenta es de los libros de Lumbre.
  *
  * @param mappingKey
  *            la subclave dentro de la clase. Nunca nula: donde no hay subclave

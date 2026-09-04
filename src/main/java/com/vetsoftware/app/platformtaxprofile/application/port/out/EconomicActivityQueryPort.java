@@ -4,8 +4,7 @@ import com.vetsoftware.app.platformtaxprofile.domain.EconomicActivityRef;
 import java.util.Optional;
 
 /**
- * La actividad economica (CIIU) de VetSoftware, resuelta contra el catalogo
- * maestro.
+ * La actividad economica (CIIU) de Lumbre, resuelta contra el catalogo maestro.
  *
  * <p>
  * <strong>Solo {@code findById}, y no falta la variante acotada por

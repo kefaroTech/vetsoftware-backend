@@ -7,8 +7,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public interface ReportSecurityIncidentUseCase {
 
     /**
-     * Anota el reporte a la autoridad con su radicado. Solo plataforma: es
-     * VetSoftware quien reporta, no la clinica.
+     * Anota el reporte a la autoridad con su radicado. Solo plataforma: es Lumbre
+     * quien reporta, no la clinica.
      *
      * <p>
      * {@code hasRole('SYSTEM')} a secas satisface tambien a

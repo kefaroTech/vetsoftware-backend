@@ -14,8 +14,8 @@ public interface AttachProviderInvoiceUseCase {
      * <strong>{@code hasRole('SYSTEM')} a secas.</strong> El command recibe un
      * {@code id} y ningun {@code companyId}, que es exactamente el supuesto de
      * {@code OPERACIONES_POR_ID_SIN_EMPRESA_SOLO_SYSTEM}. Aqui no hay una empresa
-     * con la que acotar la fila y tampoco la habria: el gasto es de VetSoftware
-     * frente a su pasarela, no de ninguna clinica.
+     * con la que acotar la fila y tampoco la habria: el gasto es de Lumbre frente a
+     * su pasarela, no de ninguna clinica.
      */
     @PreAuthorize("hasRole('SYSTEM')")
     GatewaySettlementDto execute(AttachProviderInvoiceCommand command);

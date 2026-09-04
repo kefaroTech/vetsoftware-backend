@@ -7,7 +7,7 @@ import java.util.Optional;
 
 /**
  * <strong>Ningun metodo recibe {@code companyId}</strong>: {@code tax_returns}
- * no tiene esa columna. Son declaraciones de VetSoftware.
+ * no tiene esa columna. Son declaraciones de Lumbre.
  */
 public interface TaxReturnRepository {
 

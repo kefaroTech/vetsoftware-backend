@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>
  * Este es el <strong>unico</strong> controller de la feature. No existe un
  * {@code BankReceiptController} bajo la ruta del tenant, y no falta por
- * escribir: el extracto bancario es el cuadre interno de VetSoftware contra su
+ * escribir: el extracto bancario es el cuadre interno de Lumbre contra su
  * propio banco, y <strong>una entrada sin identificar no tiene todavia
  * dueño</strong>. Esa es literalmente su definicion — una consignacion que
  * llega al banco es un importe, una fecha y una referencia, y averiguar quien

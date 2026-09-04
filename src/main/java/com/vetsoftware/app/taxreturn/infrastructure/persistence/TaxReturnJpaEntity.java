@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
  *
  * <p>
  * <strong>Esta clase NO alcanza {@code CompanyJpaEntity} por ninguna
- * asociacion.</strong> Son declaraciones de VetSoftware: la tabla no tiene
+ * asociacion.</strong> Son declaraciones de Lumbre: la tabla no tiene
  * {@code company_id}, y el dia que alguien le cuelgue un {@code @ManyToOne} a
  * companies las cuatro reglas duras de aislamiento de BE-COV se activan sobre
  * la feature entera y rompen el build.

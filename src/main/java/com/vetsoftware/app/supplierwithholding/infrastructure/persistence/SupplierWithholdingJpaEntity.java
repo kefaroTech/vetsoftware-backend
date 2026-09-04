@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
  *
  * <p>
  * <strong>Esta clase NO alcanza {@code CompanyJpaEntity} por ninguna
- * asociacion.</strong> La retencion la practica VetSoftware y la tabla no tiene
+ * asociacion.</strong> La retencion la practica Lumbre y la tabla no tiene
  * {@code company_id}; el dia que alguien le cuelgue un {@code @ManyToOne} a
  * companies, las cuatro reglas duras de aislamiento de BE-COV se activan sobre
  * la feature entera y rompen el build.

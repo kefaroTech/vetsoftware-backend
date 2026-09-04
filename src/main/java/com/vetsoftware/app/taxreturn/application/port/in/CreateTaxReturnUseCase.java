@@ -11,8 +11,8 @@ public interface CreateTaxReturnUseCase {
      *
      * <p>
      * <strong>{@code hasRole('SYSTEM')} a secas.</strong> Son las declaraciones de
-     * VetSoftware ante la DIAN: cero superficie de cliente, ninguna empresa a la
-     * que acotar y ningun permiso de tenant que deba alcanzarlas. Toda la feature
+     * Lumbre ante la DIAN: cero superficie de cliente, ninguna empresa a la que
+     * acotar y ningun permiso de tenant que deba alcanzarlas. Toda la feature
      * comparte ese gate ({@code GATE_COHERENTE_EN_FEATURE_DE_SYSTEM}).
      */
     @PreAuthorize("hasRole('SYSTEM')")

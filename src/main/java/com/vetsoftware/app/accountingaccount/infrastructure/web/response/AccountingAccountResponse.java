@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 /**
  * La cuenta contable tal como sale por HTTP. Solo la ve la consola de
- * plataforma: son los libros de VetSoftware.
+ * plataforma: son los libros de Lumbre.
  *
  * <p>
  * <strong>No lleva {@code version}</strong> —es una barandilla del que escribe,

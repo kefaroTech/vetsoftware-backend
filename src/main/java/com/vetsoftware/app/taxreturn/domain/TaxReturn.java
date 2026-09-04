@@ -6,10 +6,10 @@ import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
 /**
- * Lo que VetSoftware declaro ante la DIAN o el municipio, y hasta cuando pueden
+ * Lo que Lumbre declaro ante la DIAN o el municipio, y hasta cuando pueden
  * revisarlo.
  *
- * <h2>Sin empresa: son declaraciones de VetSoftware, no de la clinica</h2>
+ * <h2>Sin empresa: son declaraciones de Lumbre, no de la clinica</h2>
  *
  * <p>
  * Cero superficie de cliente. {@code tax_returns} no tiene columna
@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
  * precios de transferencia.
  *
  * <p>
- * <strong>Cual de las dos aplica a VetSoftware sigue sin confirmar por un
+ * <strong>Cual de las dos aplica a Lumbre sigue sin confirmar por un
  * contador</strong>, y son dos años de diferencia sobre la purga de
  * {@code company_usage_events}. Por eso {@code firmezaUntil} es un dato que se
  * escribe y no una formula que se calcula aqui: el dominio no puede decidir

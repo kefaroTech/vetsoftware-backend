@@ -27,9 +27,9 @@ public class MatiasPosConfig {
             @Value("${vetsoftware.dian.pos.sales-code:POS01}") String salesCode,
             @Value("${vetsoftware.dian.pos.address:N/A}") String address,
             @Value("${vetsoftware.dian.pos.default-cashier:Cajero}") String defaultCashier,
-            @Value("${vetsoftware.dian.software.owner-name:VetSoftware}") String softwareOwnerName,
-            @Value("${vetsoftware.dian.software.company-name:VetSoftware}") String softwareCompanyName,
-            @Value("${vetsoftware.dian.software.name:VetSoftware}") String softwareName) {
+            @Value("${vetsoftware.dian.software.owner-name:Lumbre}") String softwareOwnerName,
+            @Value("${vetsoftware.dian.software.company-name:Lumbre}") String softwareCompanyName,
+            @Value("${vetsoftware.dian.software.name:Lumbre}") String softwareName) {
         this.terminalNumber = terminalNumber;
         this.cashierType = cashierType;
         this.salesCode = salesCode;

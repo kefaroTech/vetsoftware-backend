@@ -5,7 +5,7 @@ import com.vetsoftware.app.platformtaxprofile.domain.PlatformTaxRegime;
 import java.time.LocalDate;
 
 /**
- * Apertura de la <strong>primera</strong> identidad fiscal de VetSoftware.
+ * Apertura de la <strong>primera</strong> identidad fiscal de Lumbre.
  *
  * <p>
  * <strong>Sin {@code companyId}, y aqui no es la regla de siempre: es que no
@@ -29,8 +29,8 @@ import java.time.LocalDate;
  *            un id inexistente salga como un 400 con el id delante y no como
  *            una violacion de clave foranea
  * @param selfWithholder
- *            si <strong>VetSoftware</strong> es autorretenedor. No se deduce de
- *            que sus clientes le retengan: los dos hechos coexisten
+ *            si <strong>Lumbre</strong> es autorretenedor. No se deduce de que
+ *            sus clientes le retengan: los dos hechos coexisten
  * @param validFrom
  *            desde cuando rige. Va explicito y no se toma del reloj porque una
  *            identidad puede registrarse hoy para regir desde el primero del

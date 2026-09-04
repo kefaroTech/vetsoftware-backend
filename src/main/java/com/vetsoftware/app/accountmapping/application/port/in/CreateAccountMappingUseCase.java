@@ -11,9 +11,9 @@ public interface CreateAccountMappingUseCase {
      *
      * <p>
      * <strong>{@code hasRole('SYSTEM')} a secas.</strong> Decidir contra que cuenta
-     * se asienta cada concepto es una decision del contador de VetSoftware sobre
-     * sus propios libros; no hay empresa a la que acotar ni permiso de tenant que
-     * pueda alcanzarla. Toda la feature comparte ese gate, que es lo que exige
+     * se asienta cada concepto es una decision del contador de Lumbre sobre sus
+     * propios libros; no hay empresa a la que acotar ni permiso de tenant que pueda
+     * alcanzarla. Toda la feature comparte ese gate, que es lo que exige
      * {@code GATE_COHERENTE_EN_FEATURE_DE_SYSTEM}.
      */
     @PreAuthorize("hasRole('SYSTEM')")

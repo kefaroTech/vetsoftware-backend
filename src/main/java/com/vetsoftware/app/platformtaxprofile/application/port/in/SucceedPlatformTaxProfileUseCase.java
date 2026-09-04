@@ -5,12 +5,12 @@ import com.vetsoftware.app.platformtaxprofile.application.dto.PlatformTaxProfile
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
- * Cambia la identidad fiscal de VetSoftware cerrando la vigente y abriendo su
+ * Cambia la identidad fiscal de Lumbre cerrando la vigente y abriendo su
  * sucesora, en una sola transaccion.
  *
  * <p>
  * <strong>Este puerto es el que ocupa el sitio del {@code update} que no
- * existe.</strong> Quien busque «como se corrige el NIT de VetSoftware» acabara
+ * existe.</strong> Quien busque «como se corrige el NIT de Lumbre» acabara
  * aqui, y lo que tiene que leer es que no se corrige: se sucede. La ficha vieja
  * se queda intacta porque las facturas ya emitidas tienen que seguir diciendo
  * con que razon social se emitieron.

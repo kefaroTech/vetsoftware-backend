@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 
 /**
  * <strong>Sin {@code companyId} por ninguna via</strong>: son las declaraciones
- * de VetSoftware, no de la clinica.
+ * de Lumbre, no de la clinica.
  *
  * @param fiscalPeriodKey
  *            su forma depende del impuesto —{@code 2026-A} para renta,

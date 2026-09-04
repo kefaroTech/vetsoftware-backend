@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Quien es VetSoftware ante la DIAN: razon social, NIT, regimen y marca de
+ * Quien es Lumbre ante la DIAN: razon social, NIT, regimen y marca de
  * autorretenedor, con vigencia.
  *
  * <h2>Es una pantalla de consola de plataforma, y solo eso</h2>
@@ -39,9 +39,9 @@ import org.springframework.web.bind.annotation.RestController;
  * <h2>La tabla esta vacia hoy, a proposito</h2>
  *
  * <p>
- * El changeset 367 no la sembro: no habia razon social ni NIT reales de
- * VetSoftware y no se inventaron, porque una identidad fiscal inventada acaba
- * impresa en la factura de cada cliente. Hasta que alguien use
+ * El changeset 367 no la sembro: no habia razon social ni NIT reales de Lumbre
+ * y no se inventaron, porque una identidad fiscal inventada acaba impresa en la
+ * factura de cada cliente. Hasta que alguien use
  * {@code POST /system/platform-tax-profiles}, {@code GET .../current} contesta
  * <strong>503</strong> con {@code NoCurrentPlatformTaxProfileException} y el
  * codigo {@code PLATFORM_TAX_PROFILE_NOT_CONFIGURED}. 503 y no 404 ni 409 por

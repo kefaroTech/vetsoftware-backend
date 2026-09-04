@@ -14,8 +14,8 @@ public interface ListAccountingAccountsUseCase {
      * ningun {@code companyId}</strong>, que es exactamente la señal que examina
      * {@code LISTADOS_SIN_EMPRESA_SOLO_SYSTEM} (regla dura, BE-29). Aqui no es una
      * concesion: la tabla no tiene columna de empresa y la lista es la de los
-     * libros de VetSoftware. Anadir un {@code companyId} solo para abrirla por
-     * permiso seria fingir un filtro que no existe.
+     * libros de Lumbre. Anadir un {@code companyId} solo para abrirla por permiso
+     * seria fingir un filtro que no existe.
      */
     @PreAuthorize("hasRole('SYSTEM')")
     PageResult<AccountingAccountDto> listAll(int page, int pageSize);

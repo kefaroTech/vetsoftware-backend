@@ -4,9 +4,9 @@ package com.vetsoftware.app.subscriptionbilling.domain;
  * El número interno de un documento de cobro: {@code DC-000001}.
  *
  * <p>
- * <b>No es el número de la factura fiscal.</b> Este lo genera VetSoftware y
- * existe <b>desde que se calcula el cobro</b>, antes de que exista ninguna
- * factura; el fiscal lo pone el emisor externo y llega después, en
+ * <b>No es el número de la factura fiscal.</b> Este lo genera Lumbre y existe
+ * <b>desde que se calcula el cobro</b>, antes de que exista ninguna factura; el
+ * fiscal lo pone el emisor externo y llega después, en
  * {@code external_invoice_number}. Ver {@link IssueStatus} para la distinción
  * completa entre los dos circuitos.
  */

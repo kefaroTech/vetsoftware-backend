@@ -16,10 +16,10 @@ import java.time.LocalDateTime;
  * <p>
  * <strong>No declara {@code authorizedBySystemUserId}, y esa ausencia es la
  * regla, no un olvido.</strong> Ese campo es el id interno del operador de
- * VetSoftware que autorizo la salida de caja: entero pequeño y enumerable, y
- * visible para cualquier empleado con permiso de lectura de cualquier clinica
- * permite mapear la plantilla interna y correlacionar que operador atiende a
- * que clinica. Quien necesita el dato es la tesoreria, y lo publica
+ * Lumbre que autorizo la salida de caja: entero pequeño y enumerable, y visible
+ * para cualquier empleado con permiso de lectura de cualquier clinica permite
+ * mapear la plantilla interna y correlacionar que operador atiende a que
+ * clinica. Quien necesita el dato es la tesoreria, y lo publica
  * {@link SystemPaymentRefundResponse}.
  *
  * <p>

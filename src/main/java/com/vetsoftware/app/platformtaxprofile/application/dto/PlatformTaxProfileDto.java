@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * La identidad fiscal de VetSoftware tal como la consume la aplicacion.
+ * La identidad fiscal de Lumbre tal como la consume la aplicacion.
  *
  * <p>
  * <strong>Sin {@code version}</strong>: el numero de version es la barandilla

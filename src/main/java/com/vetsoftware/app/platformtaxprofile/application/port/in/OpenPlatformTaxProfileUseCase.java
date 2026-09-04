@@ -7,7 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public interface OpenPlatformTaxProfileUseCase {
 
     /**
-     * Abre la primera identidad fiscal de VetSoftware.
+     * Abre la primera identidad fiscal de Lumbre.
      *
      * <p>
      * <strong>{@code hasRole('SYSTEM')} a secas, y la ausencia de un camino de

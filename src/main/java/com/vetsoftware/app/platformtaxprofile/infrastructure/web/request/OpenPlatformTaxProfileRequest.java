@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 /**
- * Alta de la primera identidad fiscal de VetSoftware.
+ * Alta de la primera identidad fiscal de Lumbre.
  *
  * <p>
  * <strong>Sin {@code companyId} por ninguna via, y aqui no hace falta ni
@@ -36,8 +36,8 @@ import java.time.LocalDate;
  *            es nulable. Si viene, tiene que existir y estar habilitada en
  *            {@code economic_activities}
  * @param selfWithholder
- *            si <strong>VetSoftware</strong> es autorretenedor. No se deduce de
- *            que sus clientes le retengan: los dos hechos coexisten
+ *            si <strong>Lumbre</strong> es autorretenedor. No se deduce de que
+ *            sus clientes le retengan: los dos hechos coexisten
  * @param validFrom
  *            desde cuando rige. Explicito y no del reloj, porque una identidad
  *            puede registrarse hoy para regir desde el primero del mes que
@@ -52,6 +52,6 @@ public record OpenPlatformTaxProfileRequest(
         @NotBlank(message = "El correo fiscal es obligatorio.") @Size(max = 255, message = "El correo fiscal no puede superar los 255 caracteres.") String fiscalEmail,
         @Size(max = 150, message = "El nombre comercial no puede superar los 150 caracteres.") String commercialName,
         @Schema(description = "Opcional: la columna es nulable.") Long economicActivityId,
-        @Schema(description = "Si VetSoftware es autorretenedor. Coexiste con que sus clientes le retengan; no se deduce lo uno de lo otro.") @jakarta.validation.constraints.NotNull(message = "Debes declarar si VetSoftware es autorretenedor.") Boolean selfWithholder,
+        @Schema(description = "Si Lumbre es autorretenedor. Coexiste con que sus clientes le retengan; no se deduce lo uno de lo otro.") @jakarta.validation.constraints.NotNull(message = "Debes declarar si Lumbre es autorretenedor.") Boolean selfWithholder,
         @NotNull(message = "Debes indicar desde cuando rige la identidad fiscal.") LocalDate validFrom) {
 }

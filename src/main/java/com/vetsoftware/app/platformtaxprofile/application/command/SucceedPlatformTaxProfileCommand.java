@@ -5,7 +5,7 @@ import com.vetsoftware.app.platformtaxprofile.domain.PlatformTaxRegime;
 import java.time.LocalDate;
 
 /**
- * Cambio de identidad fiscal de VetSoftware. <strong>No es una
+ * Cambio de identidad fiscal de Lumbre. <strong>No es una
  * actualizacion</strong>: cierra la ficha vigente y abre una nueva con estos
  * datos, en una sola transaccion.
  *

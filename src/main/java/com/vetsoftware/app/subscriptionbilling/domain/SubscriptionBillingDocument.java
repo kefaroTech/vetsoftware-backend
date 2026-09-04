@@ -8,8 +8,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * La cuenta de cobro que VetSoftware calcula y numera ({@code DC-}), con su
- * desglose fiscal y la referencia de la factura que se emitió fuera.
+ * La cuenta de cobro que Lumbre calcula y numera ({@code DC-}), con su desglose
+ * fiscal y la referencia de la factura que se emitió fuera.
  *
  * <p>
  * <b>No se edita ni se borra.</b> No hay mutador de {@code subtotalAmount},
@@ -159,8 +159,8 @@ public final class SubscriptionBillingDocument {
      *
      * <p>
      * Solo se hace <b>una vez</b>. Registrarla de nuevo es cambiar la factura
-     * fiscal de un documento que ya la tiene, y ahí es donde VetSoftware y la DIAN
-     * dejan de coincidir.
+     * fiscal de un documento que ya la tiene, y ahí es donde Lumbre y la DIAN dejan
+     * de coincidir.
      */
     public void registerExternalInvoice(ExternalInvoiceReference reference, int paymentTermDays) {
         if (reference == null)
@@ -180,9 +180,9 @@ public final class SubscriptionBillingDocument {
      *
      * <p>
      * <b>Un documento con su factura externa ya registrada no se anula aquí</b>:
-     * anularlo dejaría a VetSoftware diciendo que ese cobro no existe mientras la
-     * DIAN tiene la factura. Se corrige con una nota crédito emitida fuera y
-     * registrada aquí, encadenada por {@code correctsDocumentId}.
+     * anularlo dejaría a Lumbre diciendo que ese cobro no existe mientras la DIAN
+     * tiene la factura. Se corrige con una nota crédito emitida fuera y registrada
+     * aquí, encadenada por {@code correctsDocumentId}.
      */
     public void voidDocument() {
         if (issueStatus == IssueStatus.VOIDED)

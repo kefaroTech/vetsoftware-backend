@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
  * <h2>Catalogo global: aqui no hay empresa</h2>
  *
  * <p>
- * Los libros son de VetSoftware. La tabla no tiene {@code company_id} y
+ * Los libros son de Lumbre. La tabla no tiene {@code company_id} y
  * {@code AccountingExportJpaEntity} no alcanza {@code CompanyJpaEntity} por
  * ninguna asociacion; si la alcanzara, las cuatro reglas duras de aislamiento
  * de BE-COV caerian sobre la feature entera.
