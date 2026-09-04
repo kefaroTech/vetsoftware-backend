@@ -55,7 +55,7 @@ public class ResendProposalLinkEmailSender implements ProposalLinkEmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(ResendProposalLinkEmailSender.class);
 
-    private static final String SUBJECT = "Tu propuesta de Vetrina";
+    private static final String SUBJECT = "Tu propuesta de Lumbre";
 
     private static final String TEMPLATE_PATH = "email-templates/ai-proposal-link.html";
 

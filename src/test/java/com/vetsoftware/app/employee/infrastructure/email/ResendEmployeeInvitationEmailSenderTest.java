@@ -48,7 +48,7 @@ class ResendEmployeeInvitationEmailSenderTest {
             @SuppressWarnings("unchecked")
             ArgumentCaptor<Map<String, Object>> variables = ArgumentCaptor.forClass(Map.class);
             verify(email).sendTemplate(eq("mariana@vetrina.co"), isNull(),
-                    eq("Tu cuenta de Vetrina está lista"), eq(TEMPLATE_ID), variables.capture());
+                    eq("Tu cuenta de Lumbre está lista"), eq(TEMPLATE_ID), variables.capture());
 
             Map<String, Object> vars = variables.getValue();
             org.assertj.core.api.Assertions.assertThat(vars)
@@ -70,7 +70,7 @@ class ResendEmployeeInvitationEmailSenderTest {
             @SuppressWarnings("unchecked")
             ArgumentCaptor<Map<String, Object>> variables = ArgumentCaptor.forClass(Map.class);
             verify(email).sendTemplate(eq("mariana@vetrina.co"), isNull(),
-                    eq("Tu cuenta de Vetrina está lista"), eq(TEMPLATE_ID), variables.capture());
+                    eq("Tu cuenta de Lumbre está lista"), eq(TEMPLATE_ID), variables.capture());
 
             Map<String, Object> vars = variables.getValue();
             org.assertj.core.api.Assertions.assertThat(vars).containsEntry("EMPLOYEE_NAME", "")

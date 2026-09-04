@@ -38,7 +38,7 @@ import org.springframework.stereotype.Component;
 public class ResendCodeRecoveryEmailSender implements CodeRecoveryEmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(ResendCodeRecoveryEmailSender.class);
-    private static final String SUBJECT = "Tu código de usuario de Vetrina";
+    private static final String SUBJECT = "Tu código de usuario de Lumbre";
     private static final String TEMPLATE_PATH = "email-templates/recover-code.html";
 
     // Fila del listado (usa las clases .acct-* del <style> de la plantilla). {DIV}

@@ -35,7 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("ResendCodeRecoveryEmailSender")
 class ResendCodeRecoveryEmailSenderTest {
 
-    private static final String SUBJECT = "Tu código de usuario de Vetrina";
+    private static final String SUBJECT = "Tu código de usuario de Lumbre";
 
     @Mock
     private ResendEmailClient email;

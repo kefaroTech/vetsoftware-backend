@@ -26,7 +26,7 @@ public class ResendEmployeeInvitationEmailSender implements EmployeeInvitationEm
     private static final Logger log = LoggerFactory
             .getLogger(ResendEmployeeInvitationEmailSender.class);
 
-    private static final String SUBJECT = "Tu cuenta de Vetrina está lista";
+    private static final String SUBJECT = "Tu cuenta de Lumbre está lista";
 
     private final ResendEmailClient email;
     private final String templateId;

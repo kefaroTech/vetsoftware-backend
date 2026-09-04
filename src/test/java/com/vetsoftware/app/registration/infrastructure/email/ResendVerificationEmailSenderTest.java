@@ -66,8 +66,7 @@ class ResendVerificationEmailSenderTest {
             @SuppressWarnings("unchecked")
             ArgumentCaptor<Map<String, Object>> variables = ArgumentCaptor.forClass(Map.class);
             verify(email).sendTemplate(eq("orlando@vetrina.co"), isNull(),
-                    eq("Verifica tu cuenta de VetSoftware"), eq("template-123"),
-                    variables.capture());
+                    eq("Verifica tu cuenta de Lumbre"), eq("template-123"), variables.capture());
             assertThat(variables.getValue()).containsEntry("ADMIN_NAME", "Orlando Velásquez")
                     .containsEntry("COMPANY_NAME", "Veterinaria Vetrina")
                     .containsEntry("HELP_URL", "https://vetsoftware.co/ayuda")

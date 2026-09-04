@@ -31,7 +31,7 @@ public class ResendVerificationEmailSender implements VerificationEmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(ResendVerificationEmailSender.class);
 
-    private static final String SUBJECT = "Verifica tu cuenta de VetSoftware";
+    private static final String SUBJECT = "Verifica tu cuenta de Lumbre";
 
     private final ResendEmailClient email;
     private final String verificationBaseUrl;
