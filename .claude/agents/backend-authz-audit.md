@@ -2,7 +2,7 @@
 name: backend-authz-audit
 description: Audita autorización y aislamiento multi-tenant del backend VetSoftware. Úsalo ANTES de abrir cualquier PR que toque endpoints, y cuando se sospeche de fuga de datos entre empresas o de un @PreAuthorize mal escrito. Es de solo lectura, así que es seguro lanzarlo en paralelo con `backend-tests`, `front-parity` e `iac-terraform` en un mismo mensaje. Para auditar muchas features, lanza varias instancias particionadas por bloque de features.
 tools: Read, Grep, Glob, Bash
-model: inherit
+model: sonnet
 ---
 
 > **Ubicación.** Copia local para sesiones abiertas directamente en `VetSoftware`. Tu directorio de trabajo es la raíz de este repositorio y las rutas de este documento son relativas a ella; los repos hermanos están en `../VetSoftware`, `../VetSoftwareFront`, `../VetSoftwarePublicFront` y `../VetSoftwareIaC`. La copia maestra vive en `../.claude/agents/` — si editas una, edita la otra en el mismo PR.

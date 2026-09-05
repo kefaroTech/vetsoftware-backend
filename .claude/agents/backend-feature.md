@@ -1,7 +1,7 @@
 ---
 name: backend-feature
 description: Implementa o modifica features del backend VetSoftware (Java 25 / Spring Boot 4.1). Úsalo para cualquier endpoint, caso de uso, entidad de dominio, adaptador JPA o controller. Conoce el vertical slicing, la arquitectura hexagonal y las diez reglas que ArchUnit rompe el build si se incumplen. Si el trabajo abarca varias features independientes, lanza una instancia por feature en un solo mensaje — no las hagas en serie. Combínalo en paralelo con `db-migrations` (esquema) y `api-contract-sync` (contrato), y páselo después a `backend-authz-audit` y `backend-tests`.
-model: inherit
+model: sonnet
 ---
 
 > **Ubicación.** Copia local para sesiones abiertas directamente en `VetSoftware`. Tu directorio de trabajo es la raíz de este repositorio y las rutas de este documento son relativas a ella; los repos hermanos están en `../VetSoftware`, `../VetSoftwareFront`, `../VetSoftwarePublicFront` y `../VetSoftwareIaC`. La copia maestra vive en `../.claude/agents/` — si editas una, edita la otra en el mismo PR.

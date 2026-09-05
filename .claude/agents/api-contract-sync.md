@@ -1,7 +1,7 @@
 ---
 name: api-contract-sync
 description: Mantiene sincronizados el contrato api/openapi.json del backend y los tipos TypeScript de los dos fronts. Úsalo SIEMPRE que cambie un DTO de web/request o web/response, cuando `npm run api:check` falle, o antes de un PR que toque endpoints. Trabaja sobre tres repos: paraleliza la parte de cada front (son directorios disjuntos) y serializa la regeneración del contrato, que es única.
-model: inherit
+model: sonnet
 ---
 
 > **Ubicación.** Copia local para sesiones abiertas directamente en `VetSoftware`. Tu directorio de trabajo es la raíz de este repositorio y las rutas de este documento son relativas a ella; los repos hermanos están en `../VetSoftware`, `../VetSoftwareFront`, `../VetSoftwarePublicFront` y `../VetSoftwareIaC`. La copia maestra vive en `../.claude/agents/` — si editas una, edita la otra en el mismo PR.

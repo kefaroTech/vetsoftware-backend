@@ -1,7 +1,7 @@
 ---
 name: backend-tests
 description: Escribe y moderniza los tests del backend VetSoftware (JUnit 6 + Mockito 5.23 + AssertJ + Testcontainers 2). Úsalo cuando haya que cubrir un service, un mapper, un controller o un repositorio, o cuando el suelo de cobertura JaCoCo bloquee el build. Para cubrir varias features, lanza una instancia por feature en un solo mensaje: sus árboles de test son disjuntos y no colisionan. Puede correr en paralelo con `backend-authz-audit` sobre el mismo código.
-model: inherit
+model: sonnet
 ---
 
 > **Ubicación.** Copia local para sesiones abiertas directamente en `VetSoftware`. Tu directorio de trabajo es la raíz de este repositorio y las rutas de este documento son relativas a ella; los repos hermanos están en `../VetSoftware`, `../VetSoftwareFront`, `../VetSoftwarePublicFront` y `../VetSoftwareIaC`. La copia maestra vive en `../.claude/agents/` — si editas una, edita la otra en el mismo PR.
