@@ -147,7 +147,7 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
             assertThat(tramo).get().satisfies(publicado -> {
                 assertThat(publicado.catalogItemId()).isEqualTo(nucleo);
                 assertThat(publicado.itemCode()).isEqualTo("CORE");
-                assertThat(publicado.itemName()).isEqualTo("Núcleo: clientes y mascotas");
+                assertThat(publicado.itemName()).isEqualTo("Clientes y mascotas");
                 assertThat(publicado.itemType()).isEqualTo(SubscriptionItemType.MODULE);
                 assertThat(publicado.capacityUnit()).isNull();
                 // D-66: devuelve TODOS los tramos, no el que cubre la cantidad. El nucleo
@@ -231,7 +231,7 @@ class SubscriptionOutboundPortsPersistenceIT extends AbstractDataJpaTest {
                 assertThat(template.priceListId()).isEqualTo(SchemaSeed.PRICE_LIST_ID);
                 assertThat(template.catalogItemId()).isEqualTo(nucleo);
                 assertThat(template.itemCode()).isEqualTo("CORE");
-                assertThat(template.itemName()).isEqualTo("Núcleo: clientes y mascotas");
+                assertThat(template.itemName()).isEqualTo("Clientes y mascotas");
                 assertThat(template.itemType()).isEqualTo(SubscriptionItemType.MODULE);
                 assertThat(template.capacityUnit()).isNull();
                 assertThat(template.includedQuantity()).isEqualTo(2);

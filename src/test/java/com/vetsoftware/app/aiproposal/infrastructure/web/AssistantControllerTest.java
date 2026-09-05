@@ -81,7 +81,8 @@ class AssistantControllerTest {
     private static ProposalViewDto propuesta() {
         return new ProposalViewDto(TOKEN, ProposalPresentation.PROPOSAL,
                 LocalDateTime.of(2026, 9, 13, 10, 0), 3L,
-                List.of(new ProposalLineDto("CORE", "Nucleo", "Clientes y mascotas", "MODULE", 1,
+                List.of(new ProposalLineDto("CORE", "Clientes y mascotas",
+                        "Clientes, mascotas y administracion de la propia cuenta", "MODULE", 1,
                         new BigDecimal("69000.00"), new BigDecimal("19.00"),
                         new BigDecimal("13110.00"), new BigDecimal("82110.00"), 30, "COP",
                         "Porque atiendes mascotas.")),
@@ -91,9 +92,9 @@ class AssistantControllerTest {
                         "Por si algun dia haces analitica.")),
                 4, "COP", new BigDecimal("69000.00"), new BigDecimal("13110.00"),
                 new BigDecimal("82110.00"), new BigDecimal("0.00"),
-                new PackComparisonResult("PACK_CLINIC", "Pack Clinica", new BigDecimal("189000.00"),
-                        new BigDecimal("224000.00"), new BigDecimal("35000.00"), "COP", 30,
-                        List.of("SCHEDULING")),
+                new PackComparisonResult("PACK_CLINIC", "Consulta de barrio",
+                        new BigDecimal("189000.00"), new BigDecimal("224000.00"),
+                        new BigDecimal("35000.00"), "COP", 30, List.of("SCHEDULING")),
                 3, true);
     }
 

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ====================================================================================
+         VOCABULARIO COMERCIAL DEL REDISEÑO: "negocio / mascotas" en vez de "clínica /
+         paciente / núcleo". El público objetivo ya no es solo la clínica veterinaria -entran
+         petshops, spas y guarderías-, así que el catálogo público deja de hablar de
+         "pacientes" y de un "núcleo" técnico.
+
+         Solo copy comercial: ningún `code` cambia, ninguna FK se mueve, no hay DDL. 308, 398 y
+         399 están aplicados y sus checksums son intocables; esto entra como changeset nuevo.
+
+         UPDATE_MASIVO_MUEVE_LA_VERSION en las cuatro operaciones: catalog_areas y catalog_items
+         están versionadas y estos UPDATE no pasan por el ciclo leer-modificar-guardar de
+         Hibernate, así que version = version + 1 va siempre en el SET.
+
+         PACK_CLINIC QUEDA FUERA A PROPÓSITO. 403_rename_bundle_commercial_copy ya dejó
+         PACK_CLINIC en name = 'Consulta de barrio' y short_description = 'Agenda, historia
+         clínica, vacunación y mostrador' -literalmente el par que pide este rediseño-, así que
+         no hay nada que tocar: un UPDATE que fijara los mismos valores solo subiría `version`
+         sin cambiar un dato, y eso no es lo que UPDATE_MASIVO_MUEVE_LA_VERSION protege. Por el
+         mismo motivo PACK_SPA no toca su `name` -'Estética y guardería' ya es el de 403-, solo
+         su `short_description`.
+         ==================================================================================== -->
+
+    <!-- catalog_areas: una sola fila. FRONT_DESK, HOSPITAL y WAREHOUSE no llevan "paciente" en
+         su rótulo y se quedan como están (398). -->
+    <changeSet id="407_rename_catalog_area_patient_care" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_areas
+               SET name = 'Atención a las mascotas', version = version + 1
+             WHERE code = 'PATIENT_CARE'
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                UPDATE catalog_areas
+                   SET name = 'Atención a los pacientes', version = version + 1
+                 WHERE code = 'PATIENT_CARE'
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+    <!-- catalog_items.name de seis MODULE. Los otros ocho (SCHEDULING, CLINICAL_HISTORY,
+         VACCINATION_DEWORMING, HOSPITALIZATION, SURGERY, GROOMING, PURCHASES,
+         ELECTRONIC_INVOICING) ya hablan en el vocabulario del rediseño y no se tocan. -->
+    <changeSet id="407_rename_catalog_items_module_names" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_items ci
+              JOIN (
+                SELECT 'CORE' AS code, 'Clientes y mascotas' AS name
+                UNION ALL SELECT 'LAB_IMAGING', 'Laboratorio y radiografías'
+                UNION ALL SELECT 'SERVICES', 'Tarifas y promociones'
+                UNION ALL SELECT 'CASH_REGISTER', 'Caja y ventas'
+                UNION ALL SELECT 'INVENTORY', 'Inventario de productos'
+                UNION ALL SELECT 'OPEN_ACCOUNTS', 'Cuentas por cobrar'
+              ) seed ON seed.code = ci.code
+               SET ci.name    = seed.name,
+                   ci.version = ci.version + 1
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                UPDATE catalog_items ci
+                  JOIN (
+                    SELECT 'CORE' AS code, 'Núcleo: clientes y mascotas' AS name
+                    UNION ALL SELECT 'LAB_IMAGING', 'Laboratorio e imagen diagnóstica'
+                    UNION ALL SELECT 'SERVICES', 'Servicios, tarifas y promociones'
+                    UNION ALL SELECT 'CASH_REGISTER', 'Caja y punto de venta'
+                    UNION ALL SELECT 'INVENTORY', 'Inventario y kardex'
+                    UNION ALL SELECT 'OPEN_ACCOUNTS', 'Cuentas abiertas y cartera'
+                  ) seed ON seed.code = ci.code
+                   SET ci.name    = seed.name,
+                       ci.version = ci.version + 1
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+    <!-- catalog_items.short_label de tres MODULE (399). Los once restantes se quedan como
+         están. -->
+    <changeSet id="407_rename_catalog_items_short_labels" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_items ci
+              JOIN (
+                SELECT 'CORE' AS code, 'Clientes y mascotas' AS short_label
+                UNION ALL SELECT 'CASH_REGISTER', 'Caja y ventas'
+                UNION ALL SELECT 'OPEN_ACCOUNTS', 'Por cobrar'
+              ) seed ON seed.code = ci.code
+               SET ci.short_label = seed.short_label,
+                   ci.version     = ci.version + 1
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                UPDATE catalog_items ci
+                  JOIN (
+                    SELECT 'CORE' AS code, 'Núcleo' AS short_label
+                    UNION ALL SELECT 'CASH_REGISTER', 'Caja y mostrador'
+                    UNION ALL SELECT 'OPEN_ACCOUNTS', 'Cartera'
+                  ) seed ON seed.code = ci.code
+                   SET ci.short_label = seed.short_label,
+                       ci.version     = ci.version + 1
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Los BUNDLE dejan de llamarse "Pack X": en el rediseño son combinaciones frecuentes,
+         atajos de selección sobre los módulos sueltos, y el nombre lo dice. PACK_CLINIC no
+         aparece aquí -ver la nota de cabecera-. -->
+    <changeSet id="407_rename_catalog_items_bundle_copy" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_items
+               SET name = 'Clínica completa',
+                   short_description = 'Todo: desde la cirugía hasta la factura electrónica',
+                   version = version + 1
+             WHERE code = 'PACK_FULL'
+        ]]></sql>
+        <sql><![CDATA[
+            UPDATE catalog_items
+               SET short_description = 'Para agendar, atender y cobrar el spa',
+                   version = version + 1
+             WHERE code = 'PACK_SPA'
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                UPDATE catalog_items
+                   SET short_description = 'Lo mínimo para agendar, atender y cobrar el spa',
+                       version = version + 1
+                 WHERE code = 'PACK_SPA'
+            ]]></sql>
+            <sql><![CDATA[
+                UPDATE catalog_items
+                   SET name = 'Clínica con hospitalización',
+                       short_description = 'Los 13 módulos, de la cirugía a la facturación DIAN',
+                       version = version + 1
+                 WHERE code = 'PACK_FULL'
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

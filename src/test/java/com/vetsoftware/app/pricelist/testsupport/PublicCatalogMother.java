@@ -46,11 +46,11 @@ public final class PublicCatalogMother {
      * la semilla no produce.
      */
     public static PublicCatalogItemRowDto nucleo() {
-        return new PublicCatalogItemRowDto(CORE, "Nucleo: clientes y mascotas",
+        return new PublicCatalogItemRowDto(CORE, "Clientes y mascotas",
                 "Lo que toda clinica necesita", "MODULE", true, null, null,
                 new BigDecimal("49000.00"), new BigDecimal("490000.00"), null, null,
                 new BigDecimal("0.00"), new BigDecimal("19.00"), TaxTreatment.TAXED, true, null,
-                "Nucleo");
+                "Clientes y mascotas");
     }
 
     /**

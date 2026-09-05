@@ -67,10 +67,11 @@ class PublicCatalogControllerTest {
     @DisplayName("publica el precio suelto de cada pieza y la composicion del paquete")
     void publica_el_precio_suelto_y_la_composicion_del_paquete() throws Exception {
         when(useCase.get()).thenReturn(new PublicCatalogDto("COP", LocalDate.of(2026, 8, 1),
-                List.of(new PublicCatalogItemDto("CORE", "Nucleo", "Clientes y mascotas", true,
-                        null, new BigDecimal("49000.00"), new BigDecimal("490000.00"),
+                List.of(new PublicCatalogItemDto("CORE", "Clientes y mascotas",
+                        "Clientes, mascotas y administracion de la propia cuenta", true, null,
+                        new BigDecimal("49000.00"), new BigDecimal("490000.00"),
                         new BigDecimal("0.00"), new BigDecimal("19.00"), TaxTreatment.TAXED, true,
-                        null, "Nucleo"),
+                        null, "Clientes y mascotas"),
                         new PublicCatalogItemDto("SURGERY", "Cirugia", null, false, 30,
                                 new BigDecimal("38000.00"), null, new BigDecimal("0.00"),
                                 new BigDecimal("19.00"), TaxTreatment.TAXED, true, "HOSPITAL",
@@ -88,7 +89,7 @@ class PublicCatalogControllerTest {
                         List.of("CORE", "SURGERY"), true)),
                 List.of(new PublicCatalogRequirementDto("ELECTRONIC_INVOICING", "CASH_REGISTER"),
                         new PublicCatalogRequirementDto("EXTRA_STORAGE", "LAB_IMAGING")),
-                List.of(new PublicCatalogAreaDto("PATIENT_CARE", "Atencion a pacientes"),
+                List.of(new PublicCatalogAreaDto("PATIENT_CARE", "Atencion a las mascotas"),
                         new PublicCatalogAreaDto("HOSPITAL", "Hospital y quirofano"))));
 
         mockMvc.perform(get("/catalog")).andExpect(status().isOk())
@@ -112,7 +113,7 @@ class PublicCatalogControllerTest {
                 .andExpect(jsonPath("$.modules[1].shortLabel").value("Cirugia"))
                 .andExpect(jsonPath("$.packs[0].recommended").value(true))
                 .andExpect(jsonPath("$.areas[0].code").value("PATIENT_CARE"))
-                .andExpect(jsonPath("$.areas[0].name").value("Atencion a pacientes"))
+                .andExpect(jsonPath("$.areas[0].name").value("Atencion a las mascotas"))
                 .andExpect(jsonPath("$.areas[1].code").value("HOSPITAL"))
                 .andExpect(jsonPath("$.areas[0].sortOrder").doesNotExist());
     }
