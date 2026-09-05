@@ -16,8 +16,11 @@ La pausa de diagramas suspende la convención de "diagramas sincronizados". El r
 `HexagonalArchitectureTest` y `PiramideDeTestsTest` (ArchUnit) ejecutan **veinticinco** de las reglas de aquí y **rompen el build** si se incumplen. Antes de discutir si algo "va contra el CLAUDE.md", córrelas:
 
 ```bash
-mvn test -Dtest='HexagonalArchitectureTest,PiramideDeTestsTest'
+mvn -o -B -ntp -Dspotless.check.skip -Dcheckstyle.skip test-compile surefire:test@archunit-tests   # las dos clases, una sola vez: ~22 s
 ```
+
+(`mvn test -Dtest='HexagonalArchitectureTest,PiramideDeTestsTest'` sigue siendo correcto, pero
+corre `HexagonalArchitectureTest` dos veces: 41 s medidos por 22 s.)
 
 **Diecinueve** reglas son duras: dominio sin framework, sin cruce de dominios, **todo puerto de entrada con `@PreAuthorize`**, validar el tenant cuando el puerto recibe `companyId`, **todo `@RequestBody` con restricciones validado con `@Valid`** (#135), sin HTTP externo dentro de una transacción, **cerrar a `ROLE_SYSTEM` los listados que no filtran por empresa**, las **cuatro de la familia «por id»** de BE-COV —ver «Autorización»—, las tres de paginación (BE-21) —**un solo contrato**, **un solo sitio donde se acota el tamaño de página** y **el puente con Spring Data confinado a `infrastructure/persistence`**—, las **tres de bloqueo optimista** de BE-26 —**toda `@Entity` con `@Version` o exenta por escrito**, **el `@SQLDelete` de una entidad versionada acotado por `version`** y **la lista de exenciones sin entradas podridas**—, **el `UPDATE` masivo que mueve la `version`** (#53) y **ningún doble de test escaneable**. Las otras **seis** encontraron deuda anterior y van **congeladas** (`FreezingArchRule`): lo registrado en `config/archunit/violation-store` se tolera, cualquier violación nueva falla. El store se versiona; solo puede encoger.
 
@@ -149,16 +152,25 @@ disciplina, y por eso está escrita aquí en vez de en una regla de test.
 
 ## Commands
 
+En el bucle de trabajo **no** se usa `mvn test` ni `mvn verify`: cada invocación de la fase
+`test` arrastra la ejecución `archunit-tests` entera (31 tests, ~21 s) además de lo pedido.
+El protocolo proporcional, con los costes medidos y cuándo sí toca el `verify` completo, está
+en `.claude/rules/verificacion-backend.md` (entra solo en contexto al leer un fichero del repo).
+
 ```bash
 mvn clean package          # build
 mvn spring-boot:run        # run
-mvn test                   # all tests + informe de cobertura en target/site/jacoco/index.html
-mvn test -Dtest=ClassName  # single test class
-mvn verify                 # tests + suelo de cobertura (jacoco:check) + checkstyle + spotless
+mvn verify                 # TODO el gate: unitarias + rodajas *IT + suelo JaCoCo + checkstyle + spotless + contrato. Es lo que corre el CI del PR
+
+# Las tres formas baratas del bucle (offline, sin gates de fuente, goal por ejecución):
+mvn -o -B -ntp -Dspotless.check.skip -Dcheckstyle.skip test-compile surefire:test@default-test "-Dtest=**/<feature>/**/*Test"   # tests de una feature (~22 s) o -Dtest=Clase (~8 s)
+mvn -o -B -ntp -Dspotless.check.skip -Dcheckstyle.skip test-compile surefire:test@archunit-tests                                 # las 25 reglas de ArchUnit, una vez (~22 s)
+mvn -o -B -ntp -Dspotless.check.skip -Dcheckstyle.skip test-compile failsafe:integration-test failsafe:verify "-Dit.test=<Feature>*IT"   # rodajas de una feature contra MySQL real (Docker; ~150 s por invocación: agrúpalas)
+mvn -o -B -ntp spotless:apply checkstyle:check "-DspotlessFiles=.*(Clase1|Clase2)[.]java" "-Dcheckstyle.includes=ruta/Clase1.java,ruta/Clase2.java"   # formato y estilo solo de lo tocado (~6 s)
 
 # El contrato OpenAPI vive en api/openapi.json y `mvn verify` falla si se quedó atrás.
-# Tras un cambio deliberado de API, regenéralo y commitéalo:
-mvn verify -Dit.test=OpenApiContractIT -Dopenapi.write=true
+# Tras un cambio deliberado de API, regenéralo y commitéalo (Docker):
+mvn -o -B -ntp -Dspotless.check.skip -Dcheckstyle.skip test-compile failsafe:integration-test -Dit.test=OpenApiContractIT -Dopenapi.write=true
 mvn clean verify sonar:sonar -Dsonar.login=<token>   # análisis de código (SonarQube 9.9 LTS en localhost:9000)
 ```
 
