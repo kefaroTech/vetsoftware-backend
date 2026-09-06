@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.quote.application.command.AcceptQuoteCommand;
@@ -168,6 +169,36 @@ class QuoteTransitionServicesTest {
                     .execute(new AcceptQuoteCommand(ID, null, "ana@ejemplo.com", "1.1.1.1"));
 
             verify(repository, never()).findByIdAndCompanyId(any(), any());
+        }
+
+        @Test
+        @DisplayName("un segundo accept con el mismo correo devuelve la aceptada sin aprovisionar de nuevo")
+        void un_reintento_con_el_mismo_correo_no_vuelve_a_aceptar() {
+            Quote yaAceptada = persistida(ID, QuoteStatus.SENT);
+            yaAceptada.accept("ana@ejemplo.com", "190.85.1.7", AHORA, AHORA.toLocalDate());
+            when(repository.findByIdAndCompanyId(ID, EMPRESA)).thenReturn(Optional.of(yaAceptada));
+
+            QuoteDto dto = new AcceptQuoteService(repository, provisioning, RELOJ)
+                    .execute(new AcceptQuoteCommand(ID, EMPRESA, "ana@ejemplo.com", "190.85.1.7"));
+
+            assertThat(dto.status()).isEqualTo("ACCEPTED");
+            assertThat(dto.acceptedByEmail()).isEqualTo("ana@ejemplo.com");
+            verify(repository, never()).save(any());
+            verifyNoInteractions(provisioning);
+        }
+
+        @Test
+        @DisplayName("un accept ya aceptado por otro correo sigue rechazandose")
+        void un_accept_ya_aceptado_por_otro_correo_sigue_rechazandose() {
+            Quote yaAceptada = persistida(ID, QuoteStatus.SENT);
+            yaAceptada.accept("ana@ejemplo.com", "190.85.1.7", AHORA, AHORA.toLocalDate());
+            when(repository.findByIdAndCompanyId(ID, EMPRESA)).thenReturn(Optional.of(yaAceptada));
+
+            assertThatThrownBy(() -> new AcceptQuoteService(repository, provisioning, RELOJ)
+                    .execute(new AcceptQuoteCommand(ID, EMPRESA, "otro@ejemplo.com", "1.1.1.1")))
+                    .isInstanceOf(InvalidQuoteStatusTransitionException.class);
+
+            verify(repository, never()).save(any());
         }
     }
 

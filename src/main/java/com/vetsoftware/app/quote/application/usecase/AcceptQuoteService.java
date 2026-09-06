@@ -7,6 +7,7 @@ import com.vetsoftware.app.quote.application.port.out.QuoteRepository;
 import com.vetsoftware.app.quote.application.port.out.SubscriptionProvisioningPort;
 import com.vetsoftware.app.quote.domain.Quote;
 import com.vetsoftware.app.quote.domain.QuoteNotFoundException;
+import com.vetsoftware.app.quote.domain.QuoteStatus;
 import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -52,6 +53,16 @@ public class AcceptQuoteService implements AcceptQuoteUseCase {
                 ? repository.findById(command.id())
                 : repository.findByIdAndCompanyId(command.id(), command.companyId()))
                 .orElseThrow(() -> new QuoteNotFoundException(command.id()));
+
+        // Reintento tras una respuesta HTTP perdida: la aceptacion y el contrato ya
+        // nacieron en el commit anterior, asi que se devuelve el mismo documento sin
+        // volver a firmar. Aceptada por OTRO correo sigue cayendo en Quote.accept, que
+        // la rechaza con 409 al no estar en SENT.
+        if (quote.getStatus() == QuoteStatus.ACCEPTED
+                && command.acceptedByEmail().equals(quote.getAcceptedByEmail())) {
+            return QuoteDto.from(quote);
+        }
+
         LocalDateTime now = LocalDateTime.now(clock);
         quote.accept(command.acceptedByEmail(), command.acceptedIp(), now, now.toLocalDate());
         Quote accepted = repository.save(quote);
