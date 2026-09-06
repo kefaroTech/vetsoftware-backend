@@ -63,6 +63,14 @@ regexes = ['''TOKEN\s*=\s*"(?:Zm9vYmFyYmF6cXV4|foobarbazqux)''']
 # src/main/resources/application-local.yml desde el inicio del repositorio.
 # ---------------------------------------------------------------------------
 
+[[allowlists]]
+description = "Marcador sintetico de llave privada de Wompi en el test del cliente HTTP: solo afirma el encabezado Bearer y la redaccion del mensaje de error."
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''src/test/java/com/vetsoftware/app/paymentgateway/infrastructure/gateway/WompiGatewayClientTest\.java$''']
+regexes = ['''String PRIVATE_KEY = "prv_test_67890";''']
+
 [[rules]]
 id          = "vetsoftware-legacy-local-password"
 description = "Contrasena local historica de VetSoftware (familia cronos20XX)"
