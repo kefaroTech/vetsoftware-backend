@@ -163,6 +163,25 @@ class PreviewQuoteServiceTest {
 
             assertThat(servicio().preview(comando(13)).currency()).isEqualTo("COP");
         }
+
+        /**
+         * D-66 / R-PRICE-04 desde el otro lado: {@code included_quantity = 0} en el
+         * articulo, asi que las 3 unidades del comando son las 3 que se facturan. Si el
+         * servicio restara algo aqui, esta linea saldria en 0.
+         */
+        @Test
+        @DisplayName("una linea EXTRA_USER de 3 unidades se cobra por 3: la cantidad es la extra, no el total")
+        void una_linea_extra_user_de_tres_unidades_se_cobra_por_tres() {
+            hayTarifaVigente();
+            cestaLimpia();
+            laEscaleraDeLaSemilla();
+
+            QuotePreviewDto vista = servicio().preview(comando(3));
+
+            assertThat(vista.lines()).extracting(QuotePreviewLineDto::quantity).containsExactly(3);
+            assertThat(vista.subtotalAmount()).isEqualByComparingTo(
+                    new BigDecimal("12000.00").multiply(BigDecimal.valueOf(3)));
+        }
     }
 
     @Nested

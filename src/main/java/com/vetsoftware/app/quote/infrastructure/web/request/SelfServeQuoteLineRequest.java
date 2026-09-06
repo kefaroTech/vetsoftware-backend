@@ -1,5 +1,6 @@
 package com.vetsoftware.app.quote.infrastructure.web.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -55,5 +56,5 @@ import jakarta.validation.constraints.Size;
  * menos no es conservador: es falso, y los dos fronts generan sus tipos de ahi.
  */
 public record SelfServeQuoteLineRequest(@NotBlank @Size(min = 1, max = 50) String code,
-        @Positive int quantity) {
+        @Positive @Schema(description = "Cantidad a contratar de este articulo. En una capacidad adicional (EXTRA_USER, EXTRA_BRANCH...) es la cantidad POR ENCIMA de la que concede el nucleo, nunca el total contratado: el servidor no resta nada.", minimum = "1", requiredMode = Schema.RequiredMode.REQUIRED) int quantity) {
 }
