@@ -94,6 +94,6 @@ class BillingDocumentApplicationPersistenceIT extends AbstractDataJpaTest {
                 SchemaSeed.COMPANY_ID, LocalDateTime.now(CLOCK));
         return SubscriptionBillingDocument.issue(new DocumentNumber("APP", 1),
                 SchemaSeed.COMPANY_ID, SchemaSeed.SUBSCRIPTION_ID, DocumentKind.INVOICE,
-                BillingReason.ONE_TIME, PERIOD, breakdown, null, CLOCK);
+                BillingReason.ONE_TIME, PERIOD, breakdown, null, 15, CLOCK);
     }
 }

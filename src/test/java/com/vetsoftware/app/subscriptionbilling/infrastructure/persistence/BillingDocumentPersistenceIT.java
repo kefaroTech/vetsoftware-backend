@@ -60,7 +60,7 @@ class BillingDocumentPersistenceIT extends AbstractDataJpaTest {
         SubscriptionBillingDocument saved = repository
                 .save(SubscriptionBillingDocument.issue(new DocumentNumber("DCT", 1),
                         SchemaSeed.COMPANY_ID, SchemaSeed.SUBSCRIPTION_ID, DocumentKind.INVOICE,
-                        BillingReason.RECURRING_CYCLE, PERIOD, breakdown, null, CLOCK));
+                        BillingReason.RECURRING_CYCLE, PERIOD, breakdown, null, 15, CLOCK));
         entityManager.flush();
         entityManager.clear();
 

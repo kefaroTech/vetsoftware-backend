@@ -312,7 +312,8 @@ public class SubscriptionController {
                 dto.startDate(), dto.trialEndDate(), dto.currentPeriodStart(),
                 dto.currentPeriodEnd(), dto.nextBillingDate(), dto.commitmentEndDate(),
                 dto.graceDays(), dto.pastDueSince(), dto.autoRenew(), dto.cancelRequestedAt(),
-                dto.cancelEffectiveDate(), dto.cancelReason(), dto.createdDate(), dto.enabled());
+                dto.cancelEffectiveDate(), dto.cancelReason(), dto.createdDate(), dto.enabled(),
+                dto.origin());
     }
 
     private SubscriptionItemResponse toResponse(SubscriptionItemDto dto) {

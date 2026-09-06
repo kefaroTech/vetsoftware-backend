@@ -111,22 +111,29 @@ public final class SubscriptionBillingDocument {
 
     /**
      * Calcula el documento a partir de su desglose. Nace {@code DRAFT}, sin
-     * referencia externa, <b>sin vencimiento</b> y con cero saldado.
+     * referencia externa, con cero saldado y <b>ya con vencimiento a plazo</b>.
      *
      * <p>
-     * <b>Sin {@code dueDate} a propósito</b>: el vencimiento se cuenta desde la
-     * fecha fiscal y aquí todavía no existe ninguna. Ver
-     * {@link #registerExternalInvoice}.
+     * <b>El plazo se cuenta desde la fecha de cálculo interno, no desde la fecha
+     * fiscal.</b> Todavía no existe ninguna factura externa de la que colgar el
+     * plazo, y un documento sin vencimiento nunca entra en mora aunque nadie lo
+     * facture: es la fecha cierta más temprana que hay. En cuanto exista la factura
+     * externa, {@link #registerExternalInvoice} la sustituye por la fecha fiscal
+     * real.
      */
     public static SubscriptionBillingDocument issue(DocumentNumber documentNumber, Long companyId,
             Long subscriptionId, DocumentKind documentKind, BillingReason billingReason,
-            ServicePeriod period, TaxBreakdown breakdown, Long correctsDocumentId, Clock clock) {
+            ServicePeriod period, TaxBreakdown breakdown, Long correctsDocumentId,
+            int paymentTermDays, Clock clock) {
         if (breakdown == null)
             throw new IllegalArgumentException("tax breakdown is required");
+        if (paymentTermDays < 0)
+            throw new IllegalArgumentException("paymentTermDays cannot be negative");
         LocalDateTime ahora = LocalDateTime.now(clock);
+        LocalDate dueDate = ahora.toLocalDate().plusDays(paymentTermDays);
         return new SubscriptionBillingDocument(null, documentNumber.formatted(), companyId,
                 subscriptionId, documentKind, billingReason, period, IssueStatus.DRAFT, null,
-                correctsDocumentId, null, breakdown.subtotalAmount(), breakdown.taxAmount(),
+                correctsDocumentId, dueDate, breakdown.subtotalAmount(), breakdown.taxAmount(),
                 breakdown.totalAmount(), Money.zero(), breakdown.lineas(), ahora, null);
     }
 

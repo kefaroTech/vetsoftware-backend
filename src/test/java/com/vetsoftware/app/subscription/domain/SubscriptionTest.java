@@ -324,6 +324,31 @@ class SubscriptionTest {
     }
 
     @Nested
+    @DisplayName("Origen del contrato")
+    class OrigenDelContrato {
+
+        @Test
+        @DisplayName("sin cotizacion el origen es el alta inicial")
+        void sinCotizacionEsInicial() {
+            Subscription contrato = Subscription.create("SUS-2026-00184", 42L, null, 3L,
+                    BillingCycle.MONTHLY, SubscriptionStatus.ACTIVE, INICIO, null, INICIO,
+                    FIN_PERIODO, FIN_PERIODO, null, 0, true);
+
+            assertThat(contrato.origin()).isEqualTo(SubscriptionOrigin.INITIAL);
+        }
+
+        @Test
+        @DisplayName("con cotizacion el origen es la oferta aceptada")
+        void conCotizacionEsCotizacion() {
+            Subscription contrato = Subscription.create("SUS-2026-00184", 42L, 55L, 3L,
+                    BillingCycle.MONTHLY, SubscriptionStatus.ACTIVE, INICIO, null, INICIO,
+                    FIN_PERIODO, FIN_PERIODO, null, 0, true);
+
+            assertThat(contrato.origin()).isEqualTo(SubscriptionOrigin.QUOTE);
+        }
+    }
+
+    @Nested
     @DisplayName("Lo que cambia sin tocar lo firmado")
     class CambiosDeCabecera {
 

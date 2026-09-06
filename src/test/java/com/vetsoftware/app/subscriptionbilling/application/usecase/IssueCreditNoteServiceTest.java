@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -14,6 +15,7 @@ import com.vetsoftware.app.subscriptionbilling.application.command.IssueCreditNo
 import com.vetsoftware.app.subscriptionbilling.application.dto.BillingDocumentDto;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentSequenceRepository;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingPolicyPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingReason;
 import com.vetsoftware.app.subscriptionbilling.domain.ChargeStatus;
@@ -60,13 +62,18 @@ class IssueCreditNoteServiceTest {
     private SubscriptionChargeRepository chargeRepository;
     @Mock
     private BillingDocumentSequenceRepository sequenceRepository;
+    @Mock
+    private BillingPolicyPort billingPolicyPort;
 
     private IssueCreditNoteService service;
 
     @BeforeEach
     void setUp() {
         service = new IssueCreditNoteService(documentRepository, chargeRepository,
-                sequenceRepository, RELOJ);
+                sequenceRepository, billingPolicyPort, RELOJ);
+        // Compartido por los tests que llegan a guardar la nota; los que fallan antes
+        // (validaciones, signos mezclados) nunca lo invocan.
+        lenient().when(billingPolicyPort.defaultPaymentTermDays()).thenReturn(15);
     }
 
     private static SubscriptionBillingDocument facturaRegistrada() {

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Punto 7 del ciclo de autoservicio: la mora nunca arranca sola porque
+         overdue_marker (249_create_subscription_billing_documents.xml) solo valía no nulo con
+         issue_status = 'EXTERNAL_REGISTERED', y un documento recurrente nace en DRAFT/
+         AWAITING_EXTERNAL. Se amplía a cualquier INVOICE con saldo pendiente y due_date fijado
+         cuyo issue_status no sea VOIDED (chk_sbd_issue_status admite DRAFT, AWAITING_EXTERNAL,
+         EXTERNAL_REGISTERED, VOIDED). ix_sbd_overdue depende de la columna generada: se
+         elimina antes de redefinirla y se recrea después con la misma forma. -->
+    <changeSet id="410_redefine_overdue_marker" author="orlando">
+        <dropIndex tableName="subscription_billing_documents" indexName="ix_sbd_overdue"/>
+
+        <sql><![CDATA[
+            ALTER TABLE subscription_billing_documents
+                MODIFY COLUMN overdue_marker BIGINT
+                    GENERATED ALWAYS AS (
+                        CASE
+                            WHEN issue_status <> 'VOIDED'
+                             AND document_kind = 'INVOICE'
+                             AND total_amount > settled_amount
+                             AND due_date IS NOT NULL
+                            THEN company_id
+                            ELSE NULL
+                        END
+                    ) STORED
+        ]]></sql>
+
+        <createIndex tableName="subscription_billing_documents" indexName="ix_sbd_overdue">
+            <column name="overdue_marker"/>
+            <column name="due_date"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="subscription_billing_documents" indexName="ix_sbd_overdue"/>
+            <sql><![CDATA[
+                ALTER TABLE subscription_billing_documents
+                    MODIFY COLUMN overdue_marker BIGINT
+                        GENERATED ALWAYS AS (
+                            CASE
+                                WHEN issue_status = 'EXTERNAL_REGISTERED'
+                                 AND document_kind = 'INVOICE'
+                                 AND total_amount > settled_amount
+                                 AND due_date IS NOT NULL
+                                THEN company_id
+                                ELSE NULL
+                            END
+                        ) STORED
+            ]]></sql>
+            <createIndex tableName="subscription_billing_documents" indexName="ix_sbd_overdue">
+                <column name="overdue_marker"/>
+                <column name="due_date"/>
+            </createIndex>
+        </rollback>
+    </changeSet>
+
+    <!-- Punto 7: default_payment_term_days quedó en 0 en 255_create_platform_billing_config.xml,
+         así que todo documento nacía vencido el mismo día de su emisión. 15 es un plazo inicial
+         de negocio, ajustable después desde la consola de plataforma (platformbillingconfig);
+         condicional para no pisar un valor que ya se haya cambiado ahí. -->
+    <changeSet id="410_seed_default_payment_term_days" author="orlando">
+        <sql><![CDATA[
+            UPDATE platform_billing_config
+               SET default_payment_term_days = 15, version = version + 1
+             WHERE singleton = 1
+               AND default_payment_term_days = 0
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                UPDATE platform_billing_config
+                   SET default_payment_term_days = 0, version = version + 1
+                 WHERE singleton = 1
+                   AND default_payment_term_days = 15
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

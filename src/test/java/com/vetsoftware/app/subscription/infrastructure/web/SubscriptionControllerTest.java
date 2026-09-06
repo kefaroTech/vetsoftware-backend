@@ -18,6 +18,7 @@ import com.vetsoftware.app.subscription.application.command.ChangeSubscriptionIt
 import com.vetsoftware.app.subscription.application.command.ChangeSubscriptionStatusCommand;
 import com.vetsoftware.app.subscription.application.command.CreateRequestedSubscriptionCommand;
 import com.vetsoftware.app.subscription.application.command.RemoveSubscriptionItemCommand;
+import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionItemDto;
 import com.vetsoftware.app.subscription.application.port.in.AddSubscriptionItemUseCase;
 import com.vetsoftware.app.subscription.application.port.in.CancelSubscriptionUseCase;
@@ -143,7 +144,19 @@ class SubscriptionControllerTest {
                     .andExpect(jsonPath("$.graceDays").value(5))
                     .andExpect(jsonPath("$.autoRenew").value(true))
                     .andExpect(jsonPath("$.cancelRequestedAt").isEmpty())
-                    .andExpect(jsonPath("$.enabled").value(true));
+                    .andExpect(jsonPath("$.enabled").value(true))
+                    .andExpect(jsonPath("$.origin").value("INITIAL"));
+        }
+
+        @Test
+        @DisplayName("un contrato nacido de una cotizacion sale con origin QUOTE")
+        void contrato_de_cotizacion_sale_con_origin_quote() throws Exception {
+            when(findCurrentUseCase.findCurrent(WebMvcSliceConfig.COMPANY_ID))
+                    .thenReturn(SubscriptionDto.from(SubscriptionMother.contratoDeCotizacion()));
+
+            mockMvc.perform(get("/subscriptions/current")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.origin").value("QUOTE"))
+                    .andExpect(jsonPath("$.quoteId").value(SubscriptionMother.COTIZACION));
         }
 
         @Test

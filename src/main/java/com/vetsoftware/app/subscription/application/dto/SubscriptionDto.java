@@ -3,6 +3,7 @@ package com.vetsoftware.app.subscription.application.dto;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
 import com.vetsoftware.app.subscription.domain.CancellationRequest;
 import com.vetsoftware.app.subscription.domain.Subscription;
+import com.vetsoftware.app.subscription.domain.SubscriptionOrigin;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,7 +23,7 @@ public record SubscriptionDto(Long id, String subscriptionNumber, Long companyId
         LocalDate currentPeriodEnd, LocalDate nextBillingDate, LocalDate commitmentEndDate,
         int graceDays, LocalDate pastDueSince, boolean autoRenew, LocalDateTime cancelRequestedAt,
         LocalDate cancelEffectiveDate, String cancelReason, LocalDateTime createdDate,
-        boolean enabled) {
+        boolean enabled, SubscriptionOrigin origin) {
 
     public static SubscriptionDto from(Subscription subscription) {
         CancellationRequest cancellation = subscription.getCancellation();
@@ -37,6 +38,6 @@ public record SubscriptionDto(Long id, String subscriptionNumber, Long companyId
                 cancellation == null ? null : cancellation.requestedAt(),
                 cancellation == null ? null : cancellation.effectiveDate(),
                 cancellation == null ? null : cancellation.reason(), subscription.getCreatedDate(),
-                subscription.isEnabled());
+                subscription.isEnabled(), subscription.origin());
     }
 }

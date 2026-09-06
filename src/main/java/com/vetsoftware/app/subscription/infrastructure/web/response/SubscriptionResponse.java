@@ -1,7 +1,9 @@
 package com.vetsoftware.app.subscription.infrastructure.web.response;
 
 import com.vetsoftware.app.subscription.domain.BillingCycle;
+import com.vetsoftware.app.subscription.domain.SubscriptionOrigin;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -19,5 +21,6 @@ public record SubscriptionResponse(Long id, String subscriptionNumber, Long comp
         LocalDate currentPeriodEnd, LocalDate nextBillingDate, LocalDate commitmentEndDate,
         int graceDays, LocalDate pastDueSince, boolean autoRenew, LocalDateTime cancelRequestedAt,
         LocalDate cancelEffectiveDate, String cancelReason, LocalDateTime createdDate,
-        boolean enabled) {
+        boolean enabled,
+        @Schema(description = "INITIAL si nacio del alta de la empresa, QUOTE si nacio de una cotizacion aceptada.") SubscriptionOrigin origin) {
 }

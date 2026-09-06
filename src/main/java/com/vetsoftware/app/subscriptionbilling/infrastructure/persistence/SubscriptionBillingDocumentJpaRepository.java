@@ -69,12 +69,12 @@ public interface SubscriptionBillingDocumentJpaRepository
      * {@code (overdue_marker, due_date)}.
      *
      * <p>
-     * <b>El marcador codifica «registrada, factura y no saldada»; el «vencida» lo
-     * pone este {@code WHERE}.</b> No puede estar dentro de la columna generada
-     * porque su expresión tiene que ser determinista y {@code CURRENT_DATE} no lo
-     * es. Y {@code :today} llega por parámetro en vez de escribir
-     * {@code CURRENT_DATE} aquí para que el caso del cambio de día se pueda fijar
-     * desde un test.
+     * <b>El marcador codifica «factura no anulada, con vencimiento y no saldada»;
+     * el «vencida» lo pone este {@code WHERE}.</b> No puede estar dentro de la
+     * columna generada porque su expresión tiene que ser determinista y
+     * {@code CURRENT_DATE} no lo es. Y {@code :today} llega por parámetro en vez de
+     * escribir {@code CURRENT_DATE} aquí para que el caso del cambio de día se
+     * pueda fijar desde un test.
      *
      * <p>
      * Una factura saldada <b>sale sola</b> del rango en cuanto sube
@@ -100,7 +100,7 @@ public interface SubscriptionBillingDocumentJpaRepository
             WHERE subscription_id = :subscriptionId
               AND company_id = :companyId
               AND document_kind = 'INVOICE'
-              AND issue_status = 'EXTERNAL_REGISTERED'
+              AND issue_status <> 'VOIDED'
               AND balance_amount > 0
               AND due_date < :today
             ORDER BY due_date, id

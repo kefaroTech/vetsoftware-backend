@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -16,6 +17,7 @@ import com.vetsoftware.app.subscriptionbilling.application.command.GenerateBilli
 import com.vetsoftware.app.subscriptionbilling.application.dto.BillingDocumentDto;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentSequenceRepository;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingPolicyPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingAuditPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingMetrics;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
@@ -72,13 +74,19 @@ class GenerateBillingDocumentServiceTest {
     private SubscriptionBillingMetrics metrics;
     @Mock
     private SubscriptionBillingAuditPort audit;
+    @Mock
+    private BillingPolicyPort billingPolicyPort;
 
     private GenerateBillingDocumentService service;
 
     @BeforeEach
     void setUp() {
         service = new GenerateBillingDocumentService(documentRepository, chargeRepository,
-                sequenceRepository, subscriptionQueryPort, metrics, audit, RELOJ);
+                sequenceRepository, subscriptionQueryPort, metrics, audit, billingPolicyPort,
+                RELOJ);
+        // Compartido por todos los tests que llegan a guardar el documento; los que
+        // fallan antes (validaciones, barandilla) nunca lo invocan.
+        lenient().when(billingPolicyPort.defaultPaymentTermDays()).thenReturn(15);
     }
 
     private static SubscriptionCharge cargo(Long id, String subtotal) {
@@ -135,9 +143,27 @@ class GenerateBillingDocumentServiceTest {
             assertThat(dto.subtotalAmount()).isEqualByComparingTo("150000.00");
             assertThat(dto.taxAmount()).isEqualByComparingTo("28500.00");
             assertThat(dto.totalAmount()).isEqualByComparingTo("178500.00");
-            assertThat(dto.dueDate()).isNull();
+            assertThat(dto.dueDate()).isEqualTo(LocalDate.of(2026, 9, 16));
             assertThat(dto.taxes()).hasSize(1);
             verify(chargeRepository).sealAsInvoiced(List.of(1L, 2L), EMPRESA, 900L);
+        }
+
+        @Test
+        @DisplayName("el vencimiento del borrador sale de la politica de plazo de pago, no de"
+                + " un valor fijo en el codigo")
+        void el_vencimiento_sale_de_la_politica() {
+            contratoExiste();
+            when(chargeRepository.findPendingByCompanyIdAndSubscription(EMPRESA, CONTRATO, AGOSTO_1,
+                    AGOSTO_31)).thenReturn(List.of(cargo(1L, "100000.00")));
+            when(sequenceRepository.nextNumber("DC")).thenReturn(new DocumentNumber("DC", 1L));
+            when(billingPolicyPort.defaultPaymentTermDays()).thenReturn(30);
+            devuelveElDocumentoGuardado();
+            when(chargeRepository.sealAsInvoiced(List.of(1L), EMPRESA, 900L)).thenReturn(1);
+
+            BillingDocumentDto dto = service
+                    .execute(comando(AGOSTO_1, AGOSTO_31, BillingReason.RECURRING_CYCLE));
+
+            assertThat(dto.dueDate()).isEqualTo(LocalDate.of(2026, 10, 1));
         }
 
         @Test
