@@ -311,6 +311,7 @@ cambiar el contrato del que cuelga esta alerta):
 | `quote.expiration` | `0 25 3 * * *` | 03:25 | sí |
 | `subscription.dunning` | `0 40 3 * * *` | 03:40 | sí |
 | `usage.reconciliation` | `0 10 4 * * *` | 04:10 | sí |
+| `payment.collection` | `0 10 5 * * *` | 05:10 | sí |
 | `security.tokens.cleanup` | `0 20 * * * *` | cada hora, :20 | sí |
 | `dian.contingency.retry` | `0 15 2,14 * * *` | 02:15 y 14:15 | no (lease por lote) |
 | `dian.pending.reconciliation` | `0 30 2,14 * * *` | 02:30 y 14:30 | no (lease por lote) |
