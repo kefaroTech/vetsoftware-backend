@@ -10,24 +10,18 @@ import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.paymentgateway.application.command.ChargeContractFirstPeriodCommand;
 import com.vetsoftware.app.paymentgateway.application.dto.FirstPeriodChargeDto;
+import com.vetsoftware.app.paymentgateway.application.dto.GatewayChargeResult;
 import com.vetsoftware.app.paymentgateway.application.port.out.BillingDocumentIssuerPort;
-import com.vetsoftware.app.paymentgateway.application.port.out.CompanyBillingEmailQueryPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.DefaultCardPaymentMethodQueryPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.FirstPeriodPaymentQueryPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.PaymentAttemptRecorderPort;
-import com.vetsoftware.app.paymentgateway.application.port.out.PaymentGatewayPort;
-import com.vetsoftware.app.paymentgateway.application.port.out.SubscriptionPaymentLedgerPort;
-import com.vetsoftware.app.paymentgateway.domain.ChargeRequest;
 import com.vetsoftware.app.paymentgateway.domain.FirstPeriodChargeOutcome;
 import com.vetsoftware.app.paymentgateway.domain.FirstPeriodPaymentSnapshot;
 import com.vetsoftware.app.paymentgateway.domain.GatewayDeclineKind;
-import com.vetsoftware.app.paymentgateway.domain.GatewayTransaction;
-import com.vetsoftware.app.paymentgateway.domain.GatewayTransactionStatus;
 import com.vetsoftware.app.paymentgateway.domain.IssuedPeriodDocument;
 import com.vetsoftware.app.paymentgateway.domain.PaymentMethodRef;
 import java.math.BigDecimal;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -37,6 +31,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -60,15 +55,9 @@ class ChargeContractFirstPeriodServiceTest {
     @Mock
     private DefaultCardPaymentMethodQueryPort defaultCardPaymentMethodQueryPort;
     @Mock
-    private CompanyBillingEmailQueryPort companyBillingEmailQueryPort;
-    @Mock
-    private PaymentGatewayPort paymentGatewayPort;
-    @Mock
-    private SubscriptionPaymentLedgerPort subscriptionPaymentLedgerPort;
-    @Mock
     private PaymentAttemptRecorderPort paymentAttemptRecorderPort;
     @Mock
-    private GatewayOutcomeSettler outcomeSettler;
+    private GatewayCharger gatewayCharger;
 
     private ChargeContractFirstPeriodService service;
 
@@ -76,8 +65,7 @@ class ChargeContractFirstPeriodServiceTest {
     void setUp() {
         service = new ChargeContractFirstPeriodService(firstPeriodPaymentQueryPort,
                 billingDocumentIssuerPort, defaultCardPaymentMethodQueryPort,
-                companyBillingEmailQueryPort, paymentGatewayPort, subscriptionPaymentLedgerPort,
-                paymentAttemptRecorderPort, outcomeSettler, RELOJ);
+                paymentAttemptRecorderPort, gatewayCharger, RELOJ);
     }
 
     private ChargeContractFirstPeriodCommand comando() {
@@ -95,7 +83,7 @@ class ChargeContractFirstPeriodServiceTest {
 
         assertThat(result.outcome()).isEqualTo(FirstPeriodChargeOutcome.APPROVED);
         assertThat(result.gatewayReference()).isEqualTo("tx-1");
-        verifyNoInteractions(billingDocumentIssuerPort, paymentGatewayPort);
+        verifyNoInteractions(billingDocumentIssuerPort, gatewayCharger);
     }
 
     @Test
@@ -109,7 +97,7 @@ class ChargeContractFirstPeriodServiceTest {
         FirstPeriodChargeDto result = service.execute(comando());
 
         assertThat(result.outcome()).isEqualTo(FirstPeriodChargeOutcome.NOT_CONFIGURED);
-        verifyNoInteractions(paymentGatewayPort);
+        verifyNoInteractions(gatewayCharger);
     }
 
     @Test
@@ -128,7 +116,7 @@ class ChargeContractFirstPeriodServiceTest {
         verify(paymentAttemptRecorderPort).record(eq(EMPRESA), eq(900L), isNull(), eq("WOMPI"),
                 eq(new BigDecimal("45000")), isNull(), eq(GatewayDeclineKind.CONFIGURATION), any(),
                 isNull());
-        verifyNoInteractions(paymentGatewayPort);
+        verifyNoInteractions(gatewayCharger);
     }
 
     @Nested
@@ -143,49 +131,49 @@ class ChargeContractFirstPeriodServiceTest {
                     new IssuedPeriodDocument(900L, "FV-1", new BigDecimal("45000"), "COP", true));
             when(defaultCardPaymentMethodQueryPort.findDefaultActiveCard(eq(EMPRESA), eq("WOMPI")))
                     .thenReturn(Optional.of(new PaymentMethodRef(15L, "9911")));
-            when(companyBillingEmailQueryPort.findFiscalEmail(EMPRESA))
-                    .thenReturn(Optional.of("facturacion@clinica.co"));
-            when(paymentGatewayPort.charge(any())).thenReturn(new GatewayTransaction("tx-1",
-                    GatewayTransactionStatus.PENDING, null, REFERENCIA, 4500000L, "CARD"));
-            when(subscriptionPaymentLedgerPort.registerAndApply(eq(EMPRESA),
-                    eq(new BigDecimal("45000")), eq("COP"), eq("tx-1"), any(), eq(REFERENCIA),
-                    eq(900L))).thenReturn(501L);
         }
 
         @Test
-        @DisplayName("aprobado en el sondeo: cobra en centavos exactos y confirma")
-        void aprobado_en_el_sondeo() {
-            when(paymentGatewayPort.statusPollAttempts()).thenReturn(3);
-            when(paymentGatewayPort.statusPollInterval()).thenReturn(Duration.ofMillis(1));
-            when(paymentGatewayPort.findTransaction("tx-1")).thenReturn(new GatewayTransaction(
-                    "tx-1", GatewayTransactionStatus.APPROVED, null, REFERENCIA, 4500000L, "CARD"));
-            when(outcomeSettler.settle(eq(GatewayTransactionStatus.APPROVED), any(), eq(EMPRESA),
-                    eq(501L), eq(900L), eq(15L), eq(new BigDecimal("45000"))))
-                    .thenReturn(FirstPeriodChargeOutcome.APPROVED);
+        @DisplayName("aprobado: delega en GatewayCharger con el total del documento")
+        void aprobado() {
+            when(gatewayCharger.charge(eq(EMPRESA), eq(900L), eq(new PaymentMethodRef(15L, "9911")),
+                    eq(new BigDecimal("45000")), eq("COP"), eq(REFERENCIA)))
+                    .thenReturn(new GatewayChargeResult(FirstPeriodChargeOutcome.APPROVED, "tx-1",
+                            null));
 
             FirstPeriodChargeDto result = service.execute(comando());
 
             assertThat(result.outcome()).isEqualTo(FirstPeriodChargeOutcome.APPROVED);
-            org.mockito.ArgumentCaptor<ChargeRequest> captor = org.mockito.ArgumentCaptor
-                    .forClass(ChargeRequest.class);
-            verify(paymentGatewayPort).charge(captor.capture());
-            assertThat(captor.getValue().amountInCents()).isEqualTo(4500000L);
-            assertThat(captor.getValue().paymentSourceId()).isEqualTo(9911L);
-            assertThat(captor.getValue().reference()).isEqualTo(REFERENCIA);
+            assertThat(result.gatewayReference()).isEqualTo("tx-1");
+
+            ArgumentCaptor<BigDecimal> montoCaptor = ArgumentCaptor.forClass(BigDecimal.class);
+            verify(gatewayCharger).charge(eq(EMPRESA), eq(900L), any(PaymentMethodRef.class),
+                    montoCaptor.capture(), eq("COP"), eq(REFERENCIA));
+            assertThat(montoCaptor.getValue()).isEqualByComparingTo("45000");
         }
 
         @Test
-        @DisplayName("agota el sondeo sin desenlace final: se queda en PENDING sin liquidar")
-        void pendiente_agotado() {
-            when(paymentGatewayPort.statusPollAttempts()).thenReturn(2);
-            when(paymentGatewayPort.statusPollInterval()).thenReturn(Duration.ofMillis(1));
-            when(paymentGatewayPort.findTransaction("tx-1")).thenReturn(new GatewayTransaction(
-                    "tx-1", GatewayTransactionStatus.PENDING, null, REFERENCIA, 4500000L, "CARD"));
+        @DisplayName("pendiente: traslada el desenlace de GatewayCharger tal cual")
+        void pendiente() {
+            when(gatewayCharger.charge(any(), any(), any(), any(), any(), any())).thenReturn(
+                    new GatewayChargeResult(FirstPeriodChargeOutcome.PENDING, "tx-1", null));
 
             FirstPeriodChargeDto result = service.execute(comando());
 
             assertThat(result.outcome()).isEqualTo(FirstPeriodChargeOutcome.PENDING);
-            verifyNoInteractions(outcomeSettler);
+        }
+
+        @Test
+        @DisplayName("rechazado: propaga el motivo del rechazo")
+        void rechazado() {
+            when(gatewayCharger.charge(any(), any(), any(), any(), any(), any()))
+                    .thenReturn(new GatewayChargeResult(FirstPeriodChargeOutcome.DECLINED, "tx-1",
+                            "Fondos insuficientes"));
+
+            FirstPeriodChargeDto result = service.execute(comando());
+
+            assertThat(result.outcome()).isEqualTo(FirstPeriodChargeOutcome.DECLINED);
+            assertThat(result.declineReason()).isEqualTo("Fondos insuficientes");
         }
     }
 }

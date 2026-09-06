@@ -35,10 +35,29 @@ public interface PaymentAttemptJpaRepository extends JpaRepository<PaymentAttemp
      * el unico puerto de entrada que lo consume,
      * {@code ListDuePaymentAttemptsUseCase}, esta cerrado a
      * {@code hasRole('SYSTEM')} a secas ({@code LISTADOS_SIN_EMPRESA_SOLO_SYSTEM}).
+     *
+     * <p>
+     * <strong>Solo el ultimo intento de cada documento, nunca uno
+     * superado.</strong> Un documento con dos filas -la vieja, vencida, y una nueva
+     * que ya la sustituyo con su propio {@code next_attempt_at}- volveria a salir
+     * por la vieja para siempre si no se filtrara: su fecha ya paso y nada la
+     * mueve. El subselect exige que el numero de intento sea el maximo del
+     * documento. Y solo mientras el documento siga debiendo: un pago manual o una
+     * nota credito que lo salden dejarian la fila vencida saliendo cada dia sin
+     * nada que cobrar.
      */
     @Query("""
             select a from PaymentAttemptJpaEntity a
             where a.nextAttemptAt is not null and a.nextAttemptAt <= :dueBefore
+              and a.attemptNumber = (
+                  select max(a2.attemptNumber) from PaymentAttemptJpaEntity a2
+                  where a2.companyId = a.companyId and a2.billingDocumentId = a.billingDocumentId
+              )
+              and exists (
+                  select d.id from SubscriptionBillingDocumentJpaEntity d
+                  where d.id = a.billingDocumentId and d.companyId = a.companyId
+                    and d.balanceAmount > 0
+              )
             """)
     Page<PaymentAttemptJpaEntity> findAllDueForRetry(@Param("dueBefore") LocalDateTime dueBefore,
             Pageable pageable);

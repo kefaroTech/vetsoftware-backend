@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.vetsoftware.app.paymentgateway.application.port.out.PaymentAttemptQueryPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.PaymentAttemptRecorderPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.SubscriptionPaymentLedgerPort;
 import com.vetsoftware.app.paymentgateway.domain.FirstPeriodChargeOutcome;
@@ -41,12 +42,14 @@ class GatewayOutcomeSettlerTest {
     private SubscriptionPaymentLedgerPort ledgerPort;
     @Mock
     private PaymentAttemptRecorderPort attemptPort;
+    @Mock
+    private PaymentAttemptQueryPort attemptQueryPort;
 
     private GatewayOutcomeSettler settler;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        settler = new GatewayOutcomeSettler(ledgerPort, attemptPort, RELOJ);
+        settler = new GatewayOutcomeSettler(ledgerPort, attemptPort, attemptQueryPort, RELOJ);
     }
 
     @Test
@@ -80,6 +83,26 @@ class GatewayOutcomeSettlerTest {
                     nextAttempt.capture());
             assertThat(nextAttempt.getValue()).isEqualTo(
                     LocalDateTime.ofInstant(RELOJ.instant(), RELOJ.getZone()).plusDays(1));
+        }
+
+        @Test
+        @DisplayName("un tercer rechazo SOFT consulta la ventana de 14 dias y salta a la"
+                + " escalera de RetrySchedule")
+        void tercer_rechazo_soft_usa_la_escalera() {
+            org.mockito.Mockito
+                    .when(attemptQueryPort.countRetryableSince(eq(EMPRESA), eq(DOCUMENTO), any()))
+                    .thenReturn(2);
+
+            settler.settle(GatewayTransactionStatus.DECLINED, "Fondos insuficientes", EMPRESA, PAGO,
+                    DOCUMENTO, MEDIO_DE_PAGO, MONTO);
+
+            ArgumentCaptor<LocalDateTime> nextAttempt = ArgumentCaptor
+                    .forClass(LocalDateTime.class);
+            verify(attemptPort).record(eq(EMPRESA), eq(DOCUMENTO), eq(MEDIO_DE_PAGO), eq("WOMPI"),
+                    eq(MONTO), eq("Fondos insuficientes"), eq(GatewayDeclineKind.SOFT), any(),
+                    nextAttempt.capture());
+            assertThat(nextAttempt.getValue()).isEqualTo(
+                    LocalDateTime.ofInstant(RELOJ.instant(), RELOJ.getZone()).plusDays(4));
         }
 
         @Test

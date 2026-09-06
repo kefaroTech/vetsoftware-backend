@@ -101,6 +101,20 @@ public enum ScheduledJobCatalog {
      */
     SUBSCRIPTION_BILLING("subscription.billing", "subscription.billing.cron", "0 40 4 * * *", true),
 
+    /**
+     * <b>Cobro recurrente con Wompi</b>: documentos {@code RECURRING_CYCLE} nuevos
+     * y reintentos vencidos, de todas las clínicas. 05:10, después de la
+     * facturación recurrente (04:40) que es la que emite lo que aquí se cobra.
+     *
+     * <p>
+     * Exige una sola réplica: recorre {@code subscription_billing_documents} y la
+     * cola de {@code payment_attempts} con cursor/página y no arbitra nada, así que
+     * dos copias examinarían el mismo lote. La referencia idempotente por documento
+     * e intento ({@code VS-DOC-<id>-A<n>}) impide el doble cobro; dos réplicas
+     * duplicarían el trabajo, no el cargo.
+     */
+    PAYMENT_COLLECTION("payment.collection", "payment.collection.cron", "0 10 5 * * *", true),
+
     /** Caducidad de cotizaciones. 03:25, entre los dos anteriores. */
     QUOTE_EXPIRATION("quote.expiration", "quote.expiration.cron", "0 25 3 * * *", true),
 

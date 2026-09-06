@@ -46,6 +46,7 @@ class PaymentAttemptPersistenceIT extends AbstractDataJpaTest {
     private static final Long DOCUMENTO = 8400L;
     private static final Long OTRO_DOCUMENTO = 8401L;
     private static final Long DOCUMENTO_AJENO = 8402L;
+    private static final Long DOCUMENTO_NO_VENCIDO = 8403L;
     private static final Long MEDIO_DE_PAGO = 8410L;
 
     /**
@@ -73,6 +74,8 @@ class PaymentAttemptPersistenceIT extends AbstractDataJpaTest {
                 SchemaSeed.SUBSCRIPTION_ID, "2026-04-01", "2026-04-30");
         documento(DOCUMENTO_AJENO, "FV-INTENTO-0003", SchemaSeed.OTRA_COMPANY_ID,
                 SchemaSeed.OTRA_SUBSCRIPTION_ID, "2026-03-01", "2026-03-31");
+        documento(DOCUMENTO_NO_VENCIDO, "FV-INTENTO-0004", SchemaSeed.COMPANY_ID,
+                SchemaSeed.SUBSCRIPTION_ID, "2026-05-01", "2026-05-31");
         medioDePago(MEDIO_DE_PAGO, SchemaSeed.COMPANY_ID);
         entityManager.flush();
     }
@@ -338,8 +341,10 @@ class PaymentAttemptPersistenceIT extends AbstractDataJpaTest {
                     .save(intento(1, DeclineKind.SOFT, AHORA.minusDays(5), AHORA.minusHours(1)));
             PaymentAttempt vencidoPronto = repository.save(intentoDe(SchemaSeed.OTRA_COMPANY_ID,
                     DOCUMENTO_AJENO, 1, DeclineKind.SOFT, AHORA.minusDays(6), AHORA.minusDays(2)));
-            // Aun no le toca.
-            repository.save(intento(2, DeclineKind.SOFT, AHORA.minusDays(4), AHORA.plusDays(1)));
+            // Aun no le toca: documento propio, pero es el unico intento y esta en el
+            // futuro.
+            repository.save(intentoDe(SchemaSeed.COMPANY_ID, DOCUMENTO_NO_VENCIDO, 1,
+                    DeclineKind.SOFT, AHORA.minusDays(4), AHORA.plusDays(1)));
             // Y este no tiene siguiente: un rechazo duro no vuelve a la cola jamas.
             repository.save(intentoDe(SchemaSeed.COMPANY_ID, OTRO_DOCUMENTO, 1, DeclineKind.HARD,
                     AHORA.minusDays(3), null));
@@ -349,6 +354,21 @@ class PaymentAttemptPersistenceIT extends AbstractDataJpaTest {
             assertThat(repository.findAllDueForRetry(AHORA, 0, 20).content())
                     .extracting(PaymentAttempt::getId)
                     .containsExactly(vencidoPronto.getId(), vencidoTarde.getId());
+        }
+
+        @Test
+        @DisplayName("un intento superado por uno mas reciente del mismo documento no vuelve a la cola")
+        void un_intento_superado_no_vuelve_a_la_cola() {
+            // El primer rechazo ya se reintento -eso es lo que creo el segundo-, asi que su
+            // next_attempt_at vencido es historia, no trabajo pendiente.
+            repository.save(intento(1, DeclineKind.SOFT, AHORA.minusDays(3), AHORA.minusDays(2)));
+            PaymentAttempt ultimo = repository
+                    .save(intento(2, DeclineKind.SOFT, AHORA.minusDays(2), AHORA.minusHours(1)));
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(repository.findAllDueForRetry(AHORA, 0, 20).content())
+                    .extracting(PaymentAttempt::getId).containsExactly(ultimo.getId());
         }
 
         @Test
