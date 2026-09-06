@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.vetsoftware.app.pricelist.application.dto.PublicPlanComponentRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicPlanRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicPriceListDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicStructuralCapacityRowDto;
 import com.vetsoftware.app.pricelist.domain.TaxTreatment;
 import com.vetsoftware.app.testsupport.AbstractDataJpaTest;
 import com.vetsoftware.app.testsupport.PersistenceSliceConfig;
@@ -110,8 +111,28 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
 
     private static final Long NEVER_FREE_CON_DIAS = 2629L;
 
+    /**
+     * Los ejes de las capacidades estructurales de esta clase son
+     * {@code limit_dimensions} que ningun articulo real usa: {@code USER} y
+     * {@code BRANCH} ya tienen su propio nucleo y su propio vendible en el catalogo
+     * comercial (changesets 308/405) que comparte este mismo contenedor, y
+     * {@code capacity_unit} lleva FK a {@code limit_dimensions} desde el 333 —no
+     * admite un codigo inventado—.
+     */
+    private static final Long CORE_ANIMAL = 2680L;
+    private static final Long SELLABLE_ANIMAL = 2681L;
+    private static final Long CORE_OWNER = 2682L;
+    private static final Long SELLABLE_OWNER = 2683L;
+    private static final Long CORE_APPOINTMENT = 2684L;
+    private static final Long MOD_APPOINTMENT_NO_VENDIBLE = 2685L;
+    private static final Long MOD_APPOINTMENT_VENDIBLE_RETIRADO = 2686L;
+    private static final Long CORE_INVOICE_RETIRADO = 2687L;
+    private static final Long SELLABLE_INVOICE = 2688L;
+
     private static final String CODIGO_PACK = "TEST_PACK_ESENCIAL";
     private static final String CODIGO_PACK_ANUAL = "TEST_PACK_SOLO_ANUAL";
+    private static final String CODIGO_EXTRA_ANIMAL = "TEST_EXTRA_ANIMAL";
+    private static final String CODIGO_EXTRA_OWNER = "TEST_EXTRA_OWNER";
 
     private static final LocalDate DESDE_VIGENTE = LocalDate.of(2026, 8, 1);
 
@@ -214,6 +235,45 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
         // Agenda solo esta tarifada en anual: el SQL de lineas solo mira MONTHLY.
         precio(2670L, LISTA_VIGENTE, MOD_AGENDA, "ANNUAL", 1, null, "300000.00", "0.00", "19.00",
                 "TAXED", true);
+
+        estructural(CORE_ANIMAL, "TEST_NUCLEO_ANIMAL", "Animal nucleo", "ANIMAL", 1, 30, "ACTIVE",
+                true);
+        vendible(SELLABLE_ANIMAL, CODIGO_EXTRA_ANIMAL, "Mascota adicional", "ANIMAL", 31, "ACTIVE",
+                true);
+        estructural(CORE_OWNER, "TEST_NUCLEO_OWNER", "Propietario nucleo", "OWNER", 1, 32, "ACTIVE",
+                true);
+        vendible(SELLABLE_OWNER, CODIGO_EXTRA_OWNER, "Propietario adicional", "OWNER", 33, "ACTIVE",
+                true);
+
+        // Un eje con nucleo activo pero sin ningun vendible valido: uno sin
+        // self_service y otro self_service pero retirado. Ninguno cumple el WHERE,
+        // asi que el eje no se publica.
+        estructural(CORE_APPOINTMENT, "TEST_NUCLEO_APPOINTMENT", "Cita nucleo", "APPOINTMENT", 1,
+                34, "ACTIVE", true);
+        articulo(MOD_APPOINTMENT_NO_VENDIBLE, "TEST_APPOINTMENT_NO_VENDIBLE", "Cita no vendible",
+                null, "CAPACITY", "APPOINTMENT", 35, "ACTIVE", true, "NEVER_FREE", null, null);
+        vendible(MOD_APPOINTMENT_VENDIBLE_RETIRADO, "TEST_EXTRA_APPOINTMENT", "Cita retirada",
+                "APPOINTMENT", 36, "DEPRECATED", true);
+
+        estructural(CORE_INVOICE_RETIRADO, "TEST_NUCLEO_INVOICE", "Factura retirada", "INVOICE", 1,
+                37, "DEPRECATED", true);
+        vendible(SELLABLE_INVOICE, "TEST_EXTRA_INVOICE", "Factura adicional", "INVOICE", 38,
+                "ACTIVE", true);
+
+        precio(2690L, LISTA_VIGENTE, CORE_ANIMAL, "MONTHLY", 1, null, 2, "0.00", "0.00", "0.00",
+                "EXEMPT", true);
+        precio(2691L, LISTA_VIGENTE, SELLABLE_ANIMAL, "MONTHLY", 1, null, "12000.00", "0.00",
+                "19.00", "TAXED", true);
+        precio(2692L, LISTA_VIGENTE, SELLABLE_ANIMAL, "ANNUAL", 1, null, "120000.00", "0.00",
+                "19.00", "TAXED", true);
+        precio(2693L, LISTA_VIGENTE, CORE_OWNER, "MONTHLY", 1, null, 1, "0.00", "0.00", "0.00",
+                "EXEMPT", true);
+        // Sin precio anual a proposito: el importe anual sale nulo y el mensual no.
+        precio(2694L, LISTA_VIGENTE, SELLABLE_OWNER, "MONTHLY", 1, null, "45000.00", "0.00",
+                "19.00", "TAXED", true);
+        // El mismo vendible, en OTRA tarifa: no puede colarse en la vigente.
+        precio(2695L, LISTA_CADUCADA, SELLABLE_ANIMAL, "MONTHLY", 1, null, "99000.00", "0.00",
+                "19.00", "TAXED", true);
 
         entityManager.flush();
         entityManager.clear();
@@ -453,6 +513,70 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
     }
 
     @Nested
+    @DisplayName("findStructuralCapacities — el eje que el nucleo concede a TODOS los planes")
+    class Estructurales {
+
+        @Test
+        @DisplayName("el eje sale con el codigo y nombre del vendible, y lo incluido y el minimo"
+                + " del estructural")
+        void el_eje_sale_con_los_datos_cruzados() {
+            assertThat(port.findStructuralCapacities(LISTA_VIGENTE))
+                    .filteredOn(fila -> "ANIMAL".equals(fila.capacityUnit())).singleElement()
+                    .usingRecursiveComparison()
+                    .withEqualsForType((a, b) -> a.compareTo(b) == 0, BigDecimal.class)
+                    .isEqualTo(new PublicStructuralCapacityRowDto(CODIGO_EXTRA_ANIMAL,
+                            "Mascota adicional", "ANIMAL", 2, 1, new BigDecimal("12000.00"),
+                            new BigDecimal("120000.00")));
+        }
+
+        @Test
+        @DisplayName("un eje sin precio ANNUAL sale con el importe anual nulo y el mensual"
+                + " presente")
+        void sin_precio_anual_sale_con_el_anual_nulo() {
+            assertThat(port.findStructuralCapacities(LISTA_VIGENTE))
+                    .filteredOn(fila -> "OWNER".equals(fila.capacityUnit())).singleElement()
+                    .usingRecursiveComparison()
+                    .withEqualsForType((a, b) -> a.compareTo(b) == 0, BigDecimal.class)
+                    .isEqualTo(new PublicStructuralCapacityRowDto(CODIGO_EXTRA_OWNER,
+                            "Propietario adicional", "OWNER", 1, 1, new BigDecimal("45000.00"),
+                            null));
+        }
+
+        @Test
+        @DisplayName("sin ningun articulo self_service en el eje, o con el vendible retirado, el"
+                + " eje no se publica")
+        void sin_vendible_o_con_el_vendible_retirado_no_se_publica() {
+            assertThat(port.findStructuralCapacities(LISTA_VIGENTE))
+                    .extracting(PublicStructuralCapacityRowDto::capacityUnit)
+                    .doesNotContain("APPOINTMENT");
+        }
+
+        @Test
+        @DisplayName("con el articulo estructural retirado, el eje no se publica aunque el"
+                + " vendible este activo")
+        void con_el_estructural_retirado_no_se_publica() {
+            assertThat(port.findStructuralCapacities(LISTA_VIGENTE))
+                    .extracting(PublicStructuralCapacityRowDto::capacityUnit)
+                    .doesNotContain("INVOICE");
+        }
+
+        @Test
+        @DisplayName("el precio del vendible de otra tarifa no se cuela en la vigente")
+        void el_precio_de_otra_tarifa_no_se_cuela() {
+            assertThat(port.findStructuralCapacities(LISTA_VIGENTE))
+                    .filteredOn(fila -> "ANIMAL".equals(fila.capacityUnit())).singleElement()
+                    .extracting(PublicStructuralCapacityRowDto::monthlyExtraUnitAmount)
+                    .isEqualTo(new BigDecimal("12000.00"));
+        }
+
+        @Test
+        @DisplayName("sin tarifa —priceListId nulo— devuelve lista vacia, no un fallo")
+        void sin_tarifa_devuelve_lista_vacia() {
+            assertThat(port.findStructuralCapacities(null)).isEmpty();
+        }
+    }
+
+    @Nested
     @DisplayName("La politica de prueba: el CASE, no la columna a pelo (#196)")
     class PoliticaDePrueba {
 
@@ -547,6 +671,19 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
                     .extracting(RecordComponent::getName)
                     .containsExactly("id", "currency", "validFrom", "validTo");
         }
+
+        /**
+         * El codigo y el nombre son del vendible; {@code includedQuantity} y
+         * {@code minQuantity} son del estructural. Ningun campo es un id.
+         */
+        @Test
+        @DisplayName("el minimo estructural proyecta siete campos")
+        void el_minimo_estructural_proyecta_siete_campos() {
+            assertThat(PublicStructuralCapacityRowDto.class.getRecordComponents())
+                    .extracting(RecordComponent::getName).containsExactly("code", "name",
+                            "capacityUnit", "includedQuantity", "minQuantity",
+                            "monthlyExtraUnitAmount", "annualExtraUnitAmount");
+        }
     }
 
     /**
@@ -598,6 +735,14 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
     private void articulo(Long id, String code, String name, String shortDescription,
             String itemType, String capacityUnit, int sortOrder, String status, boolean enabled,
             String trialEligibility, Integer trialDays, String trialOutcome) {
+        articulo(id, code, name, shortDescription, itemType, capacityUnit, false, 1, sortOrder,
+                status, enabled, trialEligibility, trialDays, trialOutcome);
+    }
+
+    private void articulo(Long id, String code, String name, String shortDescription,
+            String itemType, String capacityUnit, boolean structuralMinimum, int minQuantity,
+            int sortOrder, String status, boolean enabled, String trialEligibility,
+            Integer trialDays, String trialOutcome) {
         entityManager
                 .createNativeQuery(
                         """
@@ -606,16 +751,41 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
                                                            sort_order, status, trial_eligibility,
                                                            default_trial_days, trial_outcome, service_nature,
                                                            created_date, enabled, version)
-                                VALUES (:id, :code, :name, :descripcion, :itemType, :capacityUnit, false, 1, NULL,
+                                VALUES (:id, :code, :name, :descripcion, :itemType, :capacityUnit, :core, :minQuantity, NULL,
                                         :sortOrder, :status, :elegibilidad, :dias, :desenlace,
                                         'SOFTWARE_LICENSING', '2026-01-01 00:00:00', :enabled, 0)
                                 """)
                 .setParameter("id", id).setParameter("code", code).setParameter("name", name)
                 .setParameter("descripcion", shortDescription).setParameter("itemType", itemType)
-                .setParameter("capacityUnit", capacityUnit).setParameter("sortOrder", sortOrder)
+                .setParameter("capacityUnit", capacityUnit).setParameter("core", structuralMinimum)
+                .setParameter("minQuantity", minQuantity).setParameter("sortOrder", sortOrder)
                 .setParameter("status", status).setParameter("elegibilidad", trialEligibility)
                 .setParameter("dias", trialDays).setParameter("desenlace", trialOutcome)
                 .setParameter("enabled", enabled).executeUpdate();
+    }
+
+    /**
+     * El articulo del minimo estructural de un eje:
+     * {@code structural_minimum = TRUE}.
+     */
+    private void estructural(Long id, String code, String name, String unit, int minQuantity,
+            int sortOrder, String status, boolean enabled) {
+        articulo(id, code, name, null, "CAPACITY", unit, true, minQuantity, sortOrder, status,
+                enabled, "NEVER_FREE", null, null);
+    }
+
+    /**
+     * El articulo vendible suelto del mismo eje: {@code self_service = TRUE}, con
+     * un {@code UPDATE} aparte para no anadir un parametro mas a
+     * {@code articulo(...)} que solo necesitan los dos ejes de esta clase.
+     */
+    private void vendible(Long id, String code, String name, String unit, int sortOrder,
+            String status, boolean enabled) {
+        articulo(id, code, name, null, "CAPACITY", unit, false, 1, sortOrder, status, enabled,
+                "NEVER_FREE", null, null);
+        entityManager
+                .createNativeQuery("UPDATE catalog_items SET self_service = TRUE WHERE id = :id")
+                .setParameter("id", id).executeUpdate();
     }
 
     private void linea(Long id, Long bundleId, Long componentId, int quantity, boolean enabled) {
@@ -631,16 +801,24 @@ class PublicPlanQueryPortIT extends AbstractDataJpaTest {
     private void precio(Long id, Long priceListId, Long catalogItemId, String cycle, int tierMin,
             Integer tierMax, String unitAmount, String setupAmount, String taxRate,
             String taxTreatment, boolean enabled) {
+        precio(id, priceListId, catalogItemId, cycle, tierMin, tierMax, 0, unitAmount, setupAmount,
+                taxRate, taxTreatment, enabled);
+    }
+
+    private void precio(Long id, Long priceListId, Long catalogItemId, String cycle, int tierMin,
+            Integer tierMax, int includedQuantity, String unitAmount, String setupAmount,
+            String taxRate, String taxTreatment, boolean enabled) {
         entityManager.createNativeQuery("""
                 INSERT INTO catalog_prices (id, price_list_id, catalog_item_id, billing_cycle,
                                             tier_min, tier_max, included_quantity, unit_amount,
                                             setup_amount, tax_rate, tax_treatment,
                                             created_date, enabled, version)
-                VALUES (:id, :lista, :articulo, :ciclo, :tierMin, :tierMax, 0, :importe,
+                VALUES (:id, :lista, :articulo, :ciclo, :tierMin, :tierMax, :incluidas, :importe,
                         :implantacion, :tasa, :tratamiento, '2026-01-01 00:00:00', :enabled, 0)
                 """).setParameter("id", id).setParameter("lista", priceListId)
                 .setParameter("articulo", catalogItemId).setParameter("ciclo", cycle)
                 .setParameter("tierMin", tierMin).setParameter("tierMax", tierMax)
+                .setParameter("incluidas", includedQuantity)
                 .setParameter("importe", new BigDecimal(unitAmount))
                 .setParameter("implantacion", new BigDecimal(setupAmount))
                 .setParameter("tasa", new BigDecimal(taxRate))

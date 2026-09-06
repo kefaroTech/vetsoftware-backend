@@ -11,11 +11,16 @@ import java.math.BigDecimal;
  *            {@code BRANCH}...). Es un rotulo estable, no una llave de
  *            escritura.
  * @param included
- *            las unidades del eje que el paquete trae dentro
- *            ({@code bundle_components.quantity}). No es
- *            {@code catalog_prices.included_quantity}, que es cuantas regala la
- *            tarifa dentro de un tramo: son dos cosas distintas y la que le
- *            importa a quien compara planes es esta.
+ *            las unidades del eje que trae el plan. Para una capacidad de
+ *            paquete es {@code bundle_components.quantity}; para una capacidad
+ *            del <strong>minimo estructural</strong> —las que
+ *            {@code GetPublicPlansService} anade a todos los planes por igual—
+ *            es el techo que firma el alta inicial:
+ *            {@code includedQuantity + max(minQuantity, 1)}
+ *            ({@code CreateInitialSubscriptionService.capacityLine},
+ *            {@code CapacityGrantLine.ceiling()}). En ningun caso es
+ *            {@code catalog_prices.included_quantity} tal cual, que es cuantas
+ *            regala la tarifa dentro de un tramo: son dos cosas distintas.
  * @param monthlyExtraUnitAmount
  *            el precio de la unidad adicional en el <strong>tramo de
  *            entrada</strong> del ciclo mensual. Nulo si el eje no esta
