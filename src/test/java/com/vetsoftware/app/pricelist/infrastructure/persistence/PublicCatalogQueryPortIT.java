@@ -2,6 +2,9 @@ package com.vetsoftware.app.pricelist.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.vetsoftware.app.aiproposal.domain.ProposalBillingCycle;
+import com.vetsoftware.app.aiproposal.domain.SellableCatalog;
+import com.vetsoftware.app.aiproposal.infrastructure.persistence.JpaSellableCatalogQueryPort;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogAreaRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogItemRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicCatalogPackComponentRowDto;
@@ -16,8 +19,11 @@ import com.vetsoftware.app.testsupport.SchemaSeed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -484,6 +490,65 @@ class PublicCatalogQueryPortIT extends AbstractDataJpaTest {
                     .isEmpty();
             assertThat(gate.findPublishedIdByCode(COD_SOLO_MENSUAL, LISTA, BillingCycle.MONTHLY))
                     .contains(MOD_SOLO_MENSUAL);
+        }
+    }
+
+    /**
+     * La tercera copia del mismo gate: {@code JpaSellableCatalogQueryPort}, la que
+     * consulta el asistente comercial. Vive en otra rodaja ({@code aiproposal}) y
+     * su SQL nunca se importa desde aqui; instanciarla en este test es el unico
+     * punto del build donde las TRES sentencias nativas del autoservicio se
+     * ejecutan sobre las mismas filas.
+     */
+    @Nested
+    @DisplayName("la tercera copia del gate -el asistente comercial- coincide con las otras dos")
+    class LasTresCopiasDelGateCoinciden {
+
+        private static final Clock RELOJ = Clock.fixed(Instant.parse("2026-08-30T10:00:00Z"),
+                ZoneOffset.UTC);
+
+        private JpaSellableCatalogQueryPort sellable;
+
+        @BeforeEach
+        void marcarNucleo() {
+            sellable = new JpaSellableCatalogQueryPort(entityManager, RELOJ);
+            // SellableCatalog exige un MODULE structural_minimum cotizable para
+            // construirse; MOD_EN_PACK ya cuelga del pack y esta ACTIVE, asi que sirve
+            // de nucleo sin alterar nada del resto de la semilla.
+            entityManager
+                    .createNativeQuery(
+                            "UPDATE catalog_items SET structural_minimum = TRUE WHERE id = :id")
+                    .setParameter("id", MOD_EN_PACK).executeUpdate();
+            entityManager.flush();
+        }
+
+        private SellableCatalog catalogoVendible() {
+            return sellable.loadCatalog(LISTA, ProposalBillingCycle.MONTHLY).orElseThrow();
+        }
+
+        @Test
+        @DisplayName("cada articulo tarifado al mes: el asistente comercial coincide con el gate")
+        void la_tercera_copia_coincide_con_el_gate() {
+            assertThat(catalogoVendible().items().values()).isNotEmpty()
+                    .allSatisfy(item -> assertThat(item.selfServiceEligible())
+                            .as("%s: las tres copias del gate tienen que coincidir", item.code())
+                            .isEqualTo(gate
+                                    .findPublishedIdByCode(item.code(), LISTA, BillingCycle.MONTHLY)
+                                    .isPresent()));
+        }
+
+        @Test
+        @DisplayName("y sigue coincidiendo despues de marcar una capacidad como self_service")
+        void siguen_coincidiendo_con_una_capacidad_marcada() {
+            autoservicio(CAP_NUCLEO);
+
+            assertThat(gate.findPublishedIdByCode(COD_CAP_NUCLEO, LISTA, BillingCycle.MONTHLY))
+                    .contains(CAP_NUCLEO);
+            assertThat(catalogoVendible().find(COD_CAP_NUCLEO)).isPresent().get()
+                    .satisfies(item -> assertThat(item.selfServiceEligible())
+                            .as("el asistente comercial tiene que abrir la misma via que las"
+                                    + " otras dos copias del gate")
+                            .isTrue());
         }
     }
 

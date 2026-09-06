@@ -185,8 +185,8 @@ public final class BusinessMetricCardinalityFilter implements MeterFilter, Meter
             // presentation esta determinado por outcome salvo cuando el modelo
             // respondio, y failure.kind solo deja de valer "none" cuando
             // outcome=model_failed (2 combinaciones mas, no 3 x lo anterior).
-            // reason.rejected = 9; invalid.lines = 5; retention.rows = 6; spend y
-            // spend.today no llevan etiqueta. Total <= 232 series, ~39 reales.
+            // reason.rejected = 9; invalid.lines = 6; retention.rows = 6; spend y
+            // spend.today no llevan etiqueta. Total <= 233 series, ~40 reales.
             //
             // El quinto valor de ai.presentation es no_catalog, y no anade
             // combinaciones reales: solo lo emiten ServedProposal.sinCatalogo y
@@ -220,7 +220,7 @@ public final class BusinessMetricCardinalityFilter implements MeterFilter, Meter
             // con el medidor entero denegado en silencio.
             Map.entry("line.verdict",
                     Set.of("accepted", "unknown_code", "not_sellable", "not_self_service",
-                            "duplicate")),
+                            "duplicate", "capacity_derived")),
             Map.entry("retention.step",
                     Set.of("anonymize_proposals", "redact_turns", "redact_line_reasons",
                             "purge_lines", "purge_turns", "purge_acceptances", "purge_proposals")));

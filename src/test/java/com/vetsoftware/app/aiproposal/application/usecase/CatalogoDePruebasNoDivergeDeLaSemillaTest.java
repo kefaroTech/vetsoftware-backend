@@ -49,6 +49,16 @@ class CatalogoDePruebasNoDivergeDeLaSemillaTest {
     private static final String RECURSO = "db/changelog/migrations/308_seed_commercial_catalog_items.xml";
 
     /**
+     * Los cuatro codigos que 405 marca {@code self_service = TRUE}. Es la lista
+     * literal del propio {@code UPDATE ... WHERE code IN (...)}: no hace falta un
+     * parser para un {@code UPDATE} de una sola linea.
+     */
+    private static final String RECURSO_SELF_SERVICE = "db/changelog/migrations/405_backfill_self_service_extra_capacities.xml";
+
+    private static final List<String> CODIGOS_SELF_SERVICE = List.of("EXTRA_USER", "EXTRA_BRANCH",
+            "EXTRA_TERMINAL", "EXTRA_STORAGE");
+
+    /**
      * Cuantos articulos siembra la 308. No es una asercion de negocio: es el seguro
      * contra un parser que se rompa en silencio y deje el resto del test pasando
      * sobre un mapa vacio, que es la forma clasica de que una medicion mienta.
@@ -210,6 +220,36 @@ class CatalogoDePruebasNoDivergeDeLaSemillaTest {
         assertThat(nucleosDeLaSemilla()).contains(nucleo.code());
         assertThat(semilla.get(nucleo.code()).itemType()).isEqualTo("MODULE");
         assertThat(nucleo.esCotizable()).isTrue();
+    }
+
+    /**
+     * &#9940; <b>El otro campo que el fixture afirma copiar y que #713 toco.</b> La
+     * 405 marca cuatro codigos {@code self_service = TRUE}; si alguno se desmarcara
+     * en la migracion, este test lo detecta sin tener que releer el fixture entero.
+     */
+    @Test
+    @DisplayName("el fixture marca self_service exactamente en los codigos que backfilla 405")
+    void el_fixture_copia_el_self_service_de_405() throws IOException {
+        String xml = readClasspathResource(RECURSO_SELF_SERVICE);
+        assertThat(xml).as("la migracion 405 tiene que estar en el classpath de test")
+                .contains("WHERE code IN (");
+        CODIGOS_SELF_SERVICE.forEach(code -> assertThat(xml)
+                .as("405 tiene que seguir marcando %s como self_service", code).contains(code));
+
+        SellableCatalog catalogo = CatalogoComercial2026.catalogo();
+        CODIGOS_SELF_SERVICE.forEach(code -> assertThat(catalogo.find(code))
+                .as("el catalogo de pruebas no tiene %s", code).get()
+                .satisfies(item -> assertThat(item.selfServiceEligible())
+                        .as("405 marca %s self_service = TRUE", code).isTrue()));
+    }
+
+    private static String readClasspathResource(String recurso) throws IOException {
+        try (InputStream entrada = CatalogoDePruebasNoDivergeDeLaSemillaTest.class.getClassLoader()
+                .getResourceAsStream(recurso)) {
+            assertThat(entrada).as("%s tiene que estar en el classpath de test", recurso)
+                    .isNotNull();
+            return new String(entrada.readAllBytes(), StandardCharsets.UTF_8);
+        }
     }
 
     /** Lo que la 308 fija de cada articulo y este test vigila. */

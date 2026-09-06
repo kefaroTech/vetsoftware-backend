@@ -171,7 +171,7 @@ public class GenerateProposalService implements GenerateProposalUseCase {
         CartResult carrito = draft.outOfDomain()
                 ? ProposalAssembler.vacio(catalog)
                 : ProposalCart.build(draft.necessaryCodes(), draft.recommendedCodes(),
-                        draft.textosDeMotivo(), catalog);
+                        draft.textosDeMotivo(), catalog, draft.capacities());
 
         AiProposal guardada = writer.cerrarTurno(abierto.proposal(), abierto.turn(), resultado,
                 carrito, draft.contradictedCodes(), catalogQueryPort.findItemIdsByCode());

@@ -1,8 +1,10 @@
 package com.vetsoftware.app.aiproposal.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import com.vetsoftware.app.aiproposal.testsupport.SellableCatalogMother;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -38,6 +40,25 @@ class ProposalCartTest {
         return lineas.stream().map(CartLine::code).toList();
     }
 
+    private static CartResult carritoConCapacidad(List<String> necesarios, CapacityHint capacidad) {
+        Map<String, String> motivos = necesarios.stream()
+                .collect(java.util.stream.Collectors.toMap(c -> c, c -> MOTIVO));
+        return ProposalCart.build(necesarios, List.of(), motivos, CATALOGO, capacidad);
+    }
+
+    private static CartLine linea(CartResult resultado, String code) {
+        return resultado.lineas().stream().filter(l -> l.code().equals(code)).findFirst()
+                .orElseThrow();
+    }
+
+    /**
+     * El margen que deja el aplanamiento a dos decimales de {@link ProposalCart}:
+     * medio centavo de redondeo por unidad facturada.
+     */
+    private static BigDecimal margenDeAplanado(int cantidad) {
+        return BigDecimal.valueOf(cantidad).multiply(new BigDecimal("0.005"));
+    }
+
     @Nested
     @DisplayName("Validacion")
     class Validacion {
@@ -53,7 +74,7 @@ class ProposalCartTest {
         @DisplayName("distingue codigo inventado, no publicado y no contratable")
         void los_tres_rechazos_tienen_veredicto_propio() {
             CartResult resultado = carrito(
-                    List.of("PACK_ENTERPRISE_2027", "DRAFT_MODULE", "EXTRA_USER"), List.of());
+                    List.of("PACK_ENTERPRISE_2027", "DRAFT_MODULE", "EXTRA_LOCKER"), List.of());
 
             assertThat(resultado.lineas()).filteredOn(l -> !l.verdict().esAceptado())
                     .extracting(CartLine::code, CartLine::verdict).containsExactly(
@@ -61,7 +82,7 @@ class ProposalCartTest {
                                     LineVerdict.UNKNOWN_CODE),
                             org.assertj.core.groups.Tuple.tuple("DRAFT_MODULE",
                                     LineVerdict.NOT_SELLABLE),
-                            org.assertj.core.groups.Tuple.tuple("EXTRA_USER",
+                            org.assertj.core.groups.Tuple.tuple("EXTRA_LOCKER",
                                     LineVerdict.NOT_SELF_SERVICE));
             assertThat(resultado.descartadas()).isEqualTo(3);
             assertThat(codigos(resultado.aceptadas())).containsExactly("CORE");
@@ -234,6 +255,97 @@ class ProposalCartTest {
 
             assertThat(resultado.recomendaciones()).isEmpty();
             assertThat(resultado.descartadas()).isEqualTo(1);
+        }
+    }
+
+    /**
+     * El eje {@code USER}/{@code BRANCH} de {@link CapacityHint}: nadie lo pide por
+     * codigo, se dimensiona solo restando lo que el minimo estructural ya regala.
+     */
+    @Nested
+    @DisplayName("Capacidades dimensionadas")
+    class CapacidadesDimensionadas {
+
+        @Test
+        @DisplayName("un EXTRA_* en la lista del modelo no se acepta con cantidad 1: "
+                + "veredicto CAPACITY_DERIVED")
+        void un_extra_en_la_lista_del_modelo_no_se_acepta_literal() {
+            CartResult resultado = carritoConCapacidad(List.of("EXTRA_USER"),
+                    CapacityHint.desconocido());
+
+            assertThat(linea(resultado, "EXTRA_USER").verdict())
+                    .isEqualTo(LineVerdict.CAPACITY_DERIVED);
+            assertThat(codigos(resultado.aceptadas())).containsExactly("CORE");
+        }
+
+        @Test
+        @DisplayName("staff 9 con 2 incluidos dimensiona EXTRA_USER x 7, al precio de la escalera")
+        void staff_nueve_dimensiona_siete_extra() {
+            CartResult resultado = carritoConCapacidad(List.of(), new CapacityHint(9, 0, 0));
+
+            CartLine extra = linea(resultado, "EXTRA_USER");
+            assertThat(extra.quantity()).isEqualTo(7);
+            assertThat(extra.verdict()).isEqualTo(LineVerdict.ACCEPTED);
+            assertThat(extra.unitAmount().scale()).isEqualTo(2);
+            assertThat(extra.base()).isCloseTo(
+                    SellableCatalogMother.capacidadDeUsuarioExtra().amountFor(7),
+                    within(margenDeAplanado(7)));
+        }
+
+        @Test
+        @DisplayName("staff igual al incluido no anade ninguna linea de EXTRA_USER")
+        void staff_igual_al_incluido_no_anade_linea() {
+            CartResult resultado = carritoConCapacidad(List.of(), new CapacityHint(2, 0, 0));
+
+            assertThat(codigos(resultado.lineas())).doesNotContain("EXTRA_USER");
+        }
+
+        @Test
+        @DisplayName("branches igual al incluido no anade ninguna linea de EXTRA_BRANCH")
+        void branches_igual_al_incluido_no_anade_linea() {
+            CartResult resultado = carritoConCapacidad(List.of(), new CapacityHint(0, 1, 0));
+
+            assertThat(codigos(resultado.lineas())).doesNotContain("EXTRA_BRANCH");
+        }
+
+        @Test
+        @DisplayName("branches 4 con 1 incluido dimensiona EXTRA_BRANCH x 3, cruzando un tramo")
+        void branches_cuatro_dimensiona_tres_extra() {
+            CartResult resultado = carritoConCapacidad(List.of(), new CapacityHint(0, 4, 0));
+
+            CartLine extra = linea(resultado, "EXTRA_BRANCH");
+            assertThat(extra.quantity()).isEqualTo(3);
+            assertThat(extra.unitAmount().scale()).isEqualTo(2);
+            assertThat(extra.base()).isCloseTo(
+                    SellableCatalogMother.capacidadDeSedeExtra().amountFor(3),
+                    within(margenDeAplanado(3)));
+        }
+
+        /**
+         * La escalera real de D-66 (310:152-153): 1-8 a 12.000, 9 en adelante a 9.000.
+         * Trece extra son 8 x 12.000 + 5 x 9.000 = 141.000 exactos; el aplanado a dos
+         * decimales que persiste la linea queda dentro del margen.
+         */
+        @Test
+        @DisplayName("staff 15 con 2 incluidos cruza a 13 extra: el total exacto es 141.000 y "
+                + "el aplanado a dos decimales queda dentro del margen")
+        void staff_quince_dimensiona_trece_extra_cruzando_el_tramo_de_nueve() {
+            CartResult resultado = carritoConCapacidad(List.of(), new CapacityHint(15, 0, 0));
+
+            CartLine extra = linea(resultado, "EXTRA_USER");
+            BigDecimal totalReal = SellableCatalogMother.capacidadDeUsuarioExtra().amountFor(13);
+            assertThat(extra.quantity()).isEqualTo(13);
+            assertThat(totalReal).isEqualByComparingTo("141000.00");
+            assertThat(extra.unitAmount().scale()).isEqualTo(2);
+            assertThat(extra.base()).isCloseTo(totalReal, within(margenDeAplanado(13)));
+        }
+
+        @Test
+        @DisplayName("un hint desconocido no dimensiona nada")
+        void hint_desconocido_no_dimensiona_nada() {
+            CartResult resultado = carritoConCapacidad(List.of(), CapacityHint.desconocido());
+
+            assertThat(codigos(resultado.lineas())).doesNotContain("EXTRA_USER", "EXTRA_BRANCH");
         }
     }
 

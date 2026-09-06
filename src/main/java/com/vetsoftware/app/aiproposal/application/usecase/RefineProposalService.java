@@ -125,7 +125,7 @@ public class RefineProposalService implements RefineProposalUseCase {
         CartResult carrito = draft.outOfDomain()
                 ? ProposalAssembler.vacio(catalog)
                 : ProposalCart.build(fusionar(draft, turnos, vigente), draft.recommendedCodes(),
-                        draft.textosDeMotivo(), catalog);
+                        draft.textosDeMotivo(), catalog, draft.capacities());
 
         AiProposal guardada = writer.cerrarTurno(abierto.proposal(), abierto.turn(), resultado,
                 carrito, draft.contradictedCodes(), catalogQueryPort.findItemIdsByCode());
