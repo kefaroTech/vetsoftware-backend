@@ -3,6 +3,7 @@ package com.vetsoftware.app.pricelist.infrastructure.persistence;
 import com.vetsoftware.app.pricelist.application.dto.PublicPlanComponentRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicPlanRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicPriceListDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicStructuralCapacityRowDto;
 import com.vetsoftware.app.pricelist.application.port.out.PublicPlanQueryPort;
 import com.vetsoftware.app.pricelist.domain.TaxTreatment;
 import jakarta.persistence.EntityManager;
@@ -186,6 +187,60 @@ public class JpaPublicPlanQueryPort implements PublicPlanQueryPort {
              ORDER BY bi.code, ci.sort_order, ci.id
             """;
 
+    /**
+     * El {@code JOIN} interno por {@code capacity_unit} es deliberado: un eje del
+     * minimo estructural sin articulo vendible suelto no tiene precio que publicar
+     * y no sale.
+     *
+     * <p>
+     * Ni un literal booleano en la proyeccion (patron #196): los {@code = TRUE} van
+     * en el {@code WHERE}.
+     */
+    private static final String SQL_STRUCTURAL_CAPACITIES = """
+            SELECT extra.code,
+                   extra.name,
+                   nucleo.capacity_unit,
+                   COALESCE(pm_nucleo.included_quantity, pa_nucleo.included_quantity),
+                   nucleo.min_quantity,
+                   pm_extra.unit_amount,
+                   pa_extra.unit_amount
+              FROM catalog_items nucleo
+              JOIN catalog_items extra ON extra.capacity_unit = nucleo.capacity_unit
+              LEFT JOIN catalog_prices pm_nucleo
+                     ON pm_nucleo.catalog_item_id = nucleo.id
+                    AND pm_nucleo.price_list_id = :priceListId
+                    AND pm_nucleo.billing_cycle = 'MONTHLY'
+                    AND pm_nucleo.tier_min = 1
+                    AND pm_nucleo.enabled = TRUE
+              LEFT JOIN catalog_prices pa_nucleo
+                     ON pa_nucleo.catalog_item_id = nucleo.id
+                    AND pa_nucleo.price_list_id = :priceListId
+                    AND pa_nucleo.billing_cycle = 'ANNUAL'
+                    AND pa_nucleo.tier_min = 1
+                    AND pa_nucleo.enabled = TRUE
+              LEFT JOIN catalog_prices pm_extra
+                     ON pm_extra.catalog_item_id = extra.id
+                    AND pm_extra.price_list_id = :priceListId
+                    AND pm_extra.billing_cycle = 'MONTHLY'
+                    AND pm_extra.tier_min = 1
+                    AND pm_extra.enabled = TRUE
+              LEFT JOIN catalog_prices pa_extra
+                     ON pa_extra.catalog_item_id = extra.id
+                    AND pa_extra.price_list_id = :priceListId
+                    AND pa_extra.billing_cycle = 'ANNUAL'
+                    AND pa_extra.tier_min = 1
+                    AND pa_extra.enabled = TRUE
+             WHERE nucleo.item_type = 'CAPACITY'
+               AND nucleo.structural_minimum = TRUE
+               AND nucleo.status = 'ACTIVE'
+               AND nucleo.enabled = TRUE
+               AND extra.item_type = 'CAPACITY'
+               AND extra.self_service = TRUE
+               AND extra.status = 'ACTIVE'
+               AND extra.enabled = TRUE
+             ORDER BY nucleo.capacity_unit, extra.id
+            """;
+
     private final EntityManager entityManager;
 
     public JpaPublicPlanQueryPort(EntityManager entityManager) {
@@ -236,6 +291,23 @@ public class JpaPublicPlanQueryPort implements PublicPlanQueryPort {
                     asInteger(columns[5]), asAmount(columns[6]), asAmount(columns[7])));
         }
         return List.copyOf(lineas);
+    }
+
+    @Override
+    public List<PublicStructuralCapacityRowDto> findStructuralCapacities(Long priceListId) {
+        if (priceListId == null) {
+            return List.of();
+        }
+        Query query = entityManager.createNativeQuery(SQL_STRUCTURAL_CAPACITIES)
+                .setParameter("priceListId", priceListId);
+        List<PublicStructuralCapacityRowDto> capacidades = new ArrayList<>();
+        for (Object row : query.getResultList()) {
+            Object[] columns = (Object[]) row;
+            capacidades.add(new PublicStructuralCapacityRowDto(asString(columns[0]),
+                    asString(columns[1]), asString(columns[2]), asInt(columns[3]),
+                    asInt(columns[4]), asAmount(columns[5]), asAmount(columns[6])));
+        }
+        return List.copyOf(capacidades);
     }
 
     private static Long asLong(Object value) {

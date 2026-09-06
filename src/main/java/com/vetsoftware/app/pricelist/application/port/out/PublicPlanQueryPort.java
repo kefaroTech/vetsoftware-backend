@@ -3,6 +3,7 @@ package com.vetsoftware.app.pricelist.application.port.out;
 import com.vetsoftware.app.pricelist.application.dto.PublicPlanComponentRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicPlanRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicPriceListDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicStructuralCapacityRowDto;
 import java.util.List;
 
 /**
@@ -43,4 +44,13 @@ public interface PublicPlanQueryPort {
 
     /** Las lineas de esos paquetes, resueltas contra esa misma tarifa. */
     List<PublicPlanComponentRowDto> findPlanComponents(Long priceListId);
+
+    /**
+     * Lo que el nucleo concede por cada eje de capacidad y a como se vende la
+     * unidad adicional en esa tarifa: la misma pregunta que
+     * {@code PlatformCatalogTemplateJpaRepository.findInitialCapacityTemplates}
+     * responde al firmar el alta inicial, formulada para la tarifa vigente de la
+     * portada.
+     */
+    List<PublicStructuralCapacityRowDto> findStructuralCapacities(Long priceListId);
 }

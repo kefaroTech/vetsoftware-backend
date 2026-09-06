@@ -5,6 +5,8 @@ import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.PLAN;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.TARIFA_VIGENTE_ID;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.contador;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.contadorSoloMensual;
+import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.estructuralConMinimoCero;
+import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.estructuralUsuario;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.moduloConPrueba;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.moduloSinPrueba;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.plan;
@@ -12,6 +14,7 @@ import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.tarifa;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.tarifaCaducada;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.tarifaFutura;
 import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.tarifaVigente;
+import static com.vetsoftware.app.pricelist.testsupport.PublicPlanMother.terminal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -79,10 +82,14 @@ class GetPublicPlansServiceTest {
         return new GetPublicPlansService(queryPort, reloj);
     }
 
-    /** Un solo plan tarifado, con las lineas que se le pasen. */
+    /**
+     * Un solo plan tarifado, con las lineas que se le pasen y sin minimo
+     * estructural: los casos que lo necesitan sobrescriben ese stub.
+     */
     private void catalogoDe(Long tarifaId, List<PublicPlanComponentRowDto> lineas) {
         when(queryPort.findPlans(tarifaId)).thenReturn(List.of(plan()));
         when(queryPort.findPlanComponents(tarifaId)).thenReturn(lineas);
+        when(queryPort.findStructuralCapacities(tarifaId)).thenReturn(List.of());
     }
 
     @Nested
@@ -122,6 +129,7 @@ class GetPublicPlansServiceTest {
                             tarifa(900L, LocalDate.of(2026, 8, 1), null)));
             when(queryPort.findPlans(900L)).thenReturn(List.of(plan()));
             when(queryPort.findPlanComponents(900L)).thenReturn(List.of(moduloConPrueba(PLAN)));
+            when(queryPort.findStructuralCapacities(900L)).thenReturn(List.of());
 
             assertThat(servicio(RELOJ).get().plans()).hasSize(1);
         }
@@ -143,6 +151,7 @@ class GetPublicPlansServiceTest {
 
             verify(queryPort, never()).findPlans(any());
             verify(queryPort, never()).findPlanComponents(any());
+            verify(queryPort, never()).findStructuralCapacities(any());
         }
 
         @Test
@@ -155,6 +164,7 @@ class GetPublicPlansServiceTest {
 
             verify(queryPort, never()).findPlans(any());
             verify(queryPort, never()).findPlanComponents(any());
+            verify(queryPort, never()).findStructuralCapacities(any());
         }
     }
 
@@ -272,6 +282,7 @@ class GetPublicPlansServiceTest {
             when(queryPort.findPlans(TARIFA_VIGENTE_ID)).thenReturn(List.of(plan()));
             when(queryPort.findPlanComponents(TARIFA_VIGENTE_ID))
                     .thenReturn(List.of(moduloConPrueba(PLAN), moduloSinPrueba("OTRO_PACK")));
+            when(queryPort.findStructuralCapacities(TARIFA_VIGENTE_ID)).thenReturn(List.of());
 
             PublicPlanCatalogDto catalogo = servicio(RELOJ).get();
 
@@ -292,6 +303,96 @@ class GetPublicPlansServiceTest {
 
             assertThat(catalogo.currency()).isEqualTo("COP");
             assertThat(catalogo.priceValidFrom()).isEqualTo(LocalDate.of(2026, 8, 1));
+        }
+    }
+
+    @Nested
+    @DisplayName("El minimo estructural: lo que el nucleo concede a TODOS los planes")
+    class MinimoEstructural {
+
+        @Test
+        @DisplayName("el minimo estructural se anade a todos los planes publicados")
+        void las_estructurales_se_anaden_a_cada_plan() {
+            when(queryPort.findPublishedPriceLists()).thenReturn(List.of(tarifaVigente()));
+            when(queryPort.findPlans(TARIFA_VIGENTE_ID)).thenReturn(List.of(plan()));
+            when(queryPort.findPlanComponents(TARIFA_VIGENTE_ID)).thenReturn(List.of());
+            when(queryPort.findStructuralCapacities(TARIFA_VIGENTE_ID))
+                    .thenReturn(List.of(estructuralUsuario()));
+
+            PublicPlanDto publicado = servicio(RELOJ).get().plans().get(0);
+
+            assertThat(publicado.capacities()).extracting(PublicPlanCapacityDto::code)
+                    .containsExactly("EXTRA_USER");
+        }
+
+        /**
+         * {@code estructuralUsuario()} trae {@code includedQuantity = 1} y
+         * {@code minQuantity = 1}: el techo es 2. {@code estructuralConMinimoCero()}
+         * trae {@code includedQuantity = 4} y {@code minQuantity = 0}: sin el suelo de
+         * {@code max(minQuantity, 1)} el techo saldria en 4 en vez de 5.
+         */
+        @Test
+        @DisplayName("included es includedQuantity + max(minQuantity, 1), con suelo cuando"
+                + " minQuantity es cero")
+        void el_incluido_estructural_aplica_el_techo_con_suelo() {
+            when(queryPort.findPublishedPriceLists()).thenReturn(List.of(tarifaVigente()));
+            when(queryPort.findPlans(TARIFA_VIGENTE_ID)).thenReturn(List.of(plan()));
+            when(queryPort.findPlanComponents(TARIFA_VIGENTE_ID)).thenReturn(List.of());
+            when(queryPort.findStructuralCapacities(TARIFA_VIGENTE_ID))
+                    .thenReturn(List.of(estructuralUsuario(), estructuralConMinimoCero()));
+
+            List<PublicPlanCapacityDto> capacidades = servicio(RELOJ).get().plans().get(0)
+                    .capacities();
+
+            assertThat(capacidades).filteredOn(c -> "EXTRA_USER".equals(c.code())).singleElement()
+                    .extracting(PublicPlanCapacityDto::included).isEqualTo(2);
+            assertThat(capacidades).filteredOn(c -> "EXTRA_BRANCH".equals(c.code())).singleElement()
+                    .extracting(PublicPlanCapacityDto::included).isEqualTo(5);
+        }
+
+        /**
+         * El paquete cuelga una capacidad de 99 unidades del mismo eje {@code USER} que
+         * la estructural: si el descarte fallara, saldrian dos filas del mismo eje o
+         * sobreviviria el 99 del paquete en vez del techo del nucleo.
+         */
+        @Test
+        @DisplayName("una capacidad de paquete del mismo eje se descarta: gana la estructural")
+        void una_capacidad_de_paquete_del_mismo_eje_se_descarta() {
+            PublicPlanComponentRowDto capacidadDePaquete = new PublicPlanComponentRowDto(PLAN,
+                    "USER_DEL_PAQUETE", "Usuario del paquete", "USER", 99, null,
+                    new BigDecimal("1.00"), new BigDecimal("2.00"));
+            when(queryPort.findPublishedPriceLists()).thenReturn(List.of(tarifaVigente()));
+            when(queryPort.findPlans(TARIFA_VIGENTE_ID)).thenReturn(List.of(plan()));
+            when(queryPort.findPlanComponents(TARIFA_VIGENTE_ID))
+                    .thenReturn(List.of(capacidadDePaquete));
+            when(queryPort.findStructuralCapacities(TARIFA_VIGENTE_ID))
+                    .thenReturn(List.of(estructuralUsuario()));
+
+            List<PublicPlanCapacityDto> capacidades = servicio(RELOJ).get().plans().get(0)
+                    .capacities();
+
+            assertThat(capacidades).extracting(PublicPlanCapacityDto::code)
+                    .containsExactly("EXTRA_USER");
+            assertThat(capacidades.get(0).included()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("una capacidad de paquete de un eje distinto —TERMINAL— sobrevive intacta")
+        void una_capacidad_de_paquete_de_otro_eje_sobrevive() {
+            when(queryPort.findPublishedPriceLists()).thenReturn(List.of(tarifaVigente()));
+            when(queryPort.findPlans(TARIFA_VIGENTE_ID)).thenReturn(List.of(plan()));
+            when(queryPort.findPlanComponents(TARIFA_VIGENTE_ID))
+                    .thenReturn(List.of(terminal(PLAN)));
+            when(queryPort.findStructuralCapacities(TARIFA_VIGENTE_ID))
+                    .thenReturn(List.of(estructuralUsuario()));
+
+            List<PublicPlanCapacityDto> capacidades = servicio(RELOJ).get().plans().get(0)
+                    .capacities();
+
+            assertThat(capacidades).extracting(PublicPlanCapacityDto::code)
+                    .containsExactlyInAnyOrder("EXTRA_USER", "EXTRA_TERMINAL");
+            assertThat(capacidades).filteredOn(c -> "EXTRA_TERMINAL".equals(c.code()))
+                    .singleElement().extracting(PublicPlanCapacityDto::included).isEqualTo(1);
         }
     }
 

@@ -3,6 +3,7 @@ package com.vetsoftware.app.pricelist.testsupport;
 import com.vetsoftware.app.pricelist.application.dto.PublicPlanComponentRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicPlanRowDto;
 import com.vetsoftware.app.pricelist.application.dto.PublicPriceListDto;
+import com.vetsoftware.app.pricelist.application.dto.PublicStructuralCapacityRowDto;
 import com.vetsoftware.app.pricelist.domain.TaxTreatment;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -96,5 +97,26 @@ public final class PublicPlanMother {
     public static PublicPlanComponentRowDto contadorSoloMensual(String planCode) {
         return new PublicPlanComponentRowDto(planCode, "EXTRA_BRANCH", "Sede adicional", "BRANCH",
                 1, null, new BigDecimal("45000.00"), null);
+    }
+
+    /** Un eje sin minimo estructural en estos fixtures: sobrevive al descarte. */
+    public static PublicPlanComponentRowDto terminal(String planCode) {
+        return new PublicPlanComponentRowDto(planCode, "EXTRA_TERMINAL", "Terminal adicional",
+                "TERMINAL", 1, null, new BigDecimal("8000.00"), new BigDecimal("80000.00"));
+    }
+
+    /** El eje USER del minimo estructural: 1 incluida mas el minimo de 1. */
+    public static PublicStructuralCapacityRowDto estructuralUsuario() {
+        return new PublicStructuralCapacityRowDto("EXTRA_USER", "Usuario adicional", "USER", 1, 1,
+                new BigDecimal("15000.00"), new BigDecimal("145000.00"));
+    }
+
+    /**
+     * Con {@code minQuantity = 0}: comprueba el suelo de
+     * {@code max(minQuantity, 1)}.
+     */
+    public static PublicStructuralCapacityRowDto estructuralConMinimoCero() {
+        return new PublicStructuralCapacityRowDto("EXTRA_BRANCH", "Sede adicional", "BRANCH", 4, 0,
+                new BigDecimal("45000.00"), null);
     }
 }
