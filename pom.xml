@@ -40,27 +40,37 @@
         <cyclonedx-maven-plugin.version>2.9.3</cyclonedx-maven-plugin.version>
 
         <!-- BE-27. Sobrescriben lo que gestiona spring-boot-dependencies 4.1.0 (netty
-             4.2.15.Final, httpcore5 5.4.2). El primer escaneo del SBOM encontro 7
-             vulnerabilidades HIGH con correccion publicada en ese arbol:
+             4.2.15.Final, httpcore5 5.4.2, tomcat 11.0.22). El escaneo del SBOM de
+             security.yml las encontro vulnerables con correccion ya publicada:
 
-               netty  4.2.15.Final -> CVE-2026-59901 (bucle infinito en bzip2),
+               netty  4.2.15.Final -> HIGH. CVE-2026-59901 (bucle infinito en bzip2),
                                       CVE-2026-55831, CVE-2026-55833, CVE-2026-56745
                                       (denegacion de servicio en SPDY),
                                       CVE-2026-56819 (fuga de memoria en HTTP/2)
-               httpcore5 5.4.2     -> CVE-2026-54399, CVE-2026-54428 (denegacion de
-                                      servicio por cabeceras HTTP y HPACK)
+               httpcore5 5.4.2     -> HIGH. CVE-2026-54399, CVE-2026-54428 (denegacion
+                                      de servicio por cabeceras HTTP y HPACK)
+               tomcat 11.0.22      -> CRITICOS, y los tres omiten autenticacion o
+                                      autorizacion en el contenedor de servlets:
+                                      CVE-2026-65182 (omision de restricciones de
+                                      seguridad), CVE-2026-65905 (omision de
+                                      autenticacion por repeticion limitada en el
+                                      autenticador DIGEST), CVE-2026-68525 (acceso no
+                                      autorizado por omision de la autenticacion FORM)
 
-             Netty entra por Lettuce (Redis) y httpcore5 por el cliente HTTP: los dos
-             viajan dentro del jar desplegado.
+             Netty entra por Lettuce (Redis), httpcore5 por el cliente HTTP y Tomcat es
+             el contenedor embebido de spring-boot-starter-webmvc: los tres viajan
+             dentro del jar desplegado. tomcat.version gobierna ademas embed-el y
+             embed-websocket, que suben con ella.
 
              OJO AL CADUCAR: una version fijada aqui GANA a la del parent. Cuando
              Spring Boot publique una version que ya incluya estas correcciones, estas
-             dos lineas pasan de proteger a frenar, y lo haran en silencio porque
+             tres lineas pasan de proteger a frenar, y lo haran en silencio porque
              Dependabot no ve una propiedad que no respalda ninguna declaracion de
-             dependencia. Se revisan al subir de version el parent y se borran en
-             cuanto la gestionada iguale o supere a esta. -->
+             dependencia. Se revisan al subir de version el parent y se borra cada una
+             en cuanto la gestionada iguale o supere a esta. -->
         <netty.version>4.2.17.Final</netty.version>
         <httpcore5.version>5.4.3</httpcore5.version>
+        <tomcat.version>11.0.25</tomcat.version>
         <!-- Suelo de cobertura global: solo puede SUBIR. Medido 98,83 % el 2026-08-17 tras
              la campana BE-COV; se fija un par de decimas por debajo para dejar margen a
              refactors que muevan el denominador. Ver "Cobertura" en CLAUDE.md.
