@@ -34877,10 +34877,12 @@
           },
           "quantity" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "Cantidad a contratar de este articulo. En una capacidad adicional (EXTRA_USER, EXTRA_BRANCH...) es la cantidad POR ENCIMA de la que concede el nucleo, nunca el total contratado: el servidor no resta nada.",
+            "minimum" : 1
           }
         },
-        "required" : [ "code" ]
+        "required" : [ "code", "quantity" ]
       },
       "SelfServeQuoteRequest" : {
         "type" : "object",

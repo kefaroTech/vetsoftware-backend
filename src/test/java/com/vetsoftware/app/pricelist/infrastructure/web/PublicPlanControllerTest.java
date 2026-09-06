@@ -111,6 +111,37 @@ class PublicPlanControllerTest {
                 .andExpect(jsonPath("$.plans[0].capacities[0].included").value(1));
     }
 
+    /**
+     * Una capacidad del minimo estructural es, en esta frontera, el mismo
+     * {@link PublicPlanCapacityDto} que una de paquete: el contrato no distingue su
+     * origen. Lo que fija este caso es que sigue publicando exactamente los seis
+     * campos de siempre —sin {@code minQuantity} ni {@code includedQuantity} del
+     * articulo estructural, que mueren en {@code GetPublicPlansService}.
+     */
+    @Test
+    @DisplayName("una capacidad estructural se serializa con los seis campos del contrato y"
+            + " ninguno mas")
+    void una_capacidad_estructural_se_serializa_con_seis_campos() throws Exception {
+        when(useCase.get()).thenReturn(new PublicPlanCatalogDto("COP", LocalDate.of(2026, 8, 1),
+                List.of(new PublicPlanDto("ESENCIAL", "Esencial", null, new BigDecimal("89000.00"),
+                        null, null, new BigDecimal("19.00"), TaxTreatment.TAXED, List.of(),
+                        List.of(new PublicPlanCapacityDto("EXTRA_USER", "Usuario adicional", "USER",
+                                2, new BigDecimal("15000.00"), new BigDecimal("145000.00")))))));
+
+        mockMvc.perform(get("/plans")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.plans[0].capacities[0].code").value("EXTRA_USER"))
+                .andExpect(jsonPath("$.plans[0].capacities[0].name").value("Usuario adicional"))
+                .andExpect(jsonPath("$.plans[0].capacities[0].unit").value("USER"))
+                .andExpect(jsonPath("$.plans[0].capacities[0].included").value(2))
+                .andExpect(
+                        jsonPath("$.plans[0].capacities[0].monthlyExtraUnitAmount").value(15000.00))
+                .andExpect(
+                        jsonPath("$.plans[0].capacities[0].annualExtraUnitAmount").value(145000.00))
+                .andExpect(jsonPath("$.plans[0].capacities[0].minQuantity").doesNotExist())
+                .andExpect(jsonPath("$.plans[0].capacities[0].includedQuantity").doesNotExist())
+                .andExpect(jsonPath("$.plans[0].capacities[0].capacityUnit").doesNotExist());
+    }
+
     @Test
     @DisplayName("no publica ningun id ni la fecha de caducidad de la tarifa")
     void no_publica_ningun_id_ni_la_fecha_de_caducidad() throws Exception {
