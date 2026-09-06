@@ -83,4 +83,12 @@ public interface BillingDocumentRepository {
      */
     boolean existsRecurringCycle(Long companyId, Long subscriptionId, LocalDate periodStart,
             LocalDate periodEnd);
+
+    /**
+     * El documento vivo de ese periodo exacto, cuando {@link #existsRecurringCycle}
+     * ya dijo que sí. Mismos criterios que esa barandilla: sirve para devolverle al
+     * llamador el documento que ya existe en vez de solo confirmar que existe.
+     */
+    Optional<SubscriptionBillingDocument> findRecurringCycleDocument(Long companyId,
+            Long subscriptionId, LocalDate periodStart, LocalDate periodEnd);
 }

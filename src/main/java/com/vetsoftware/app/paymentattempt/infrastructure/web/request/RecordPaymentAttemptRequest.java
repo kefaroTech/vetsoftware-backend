@@ -30,7 +30,7 @@ public record RecordPaymentAttemptRequest(
         Long paymentMethodId,
         @NotNull(message = "Debes indicar la pasarela.") @Size(max = 40, message = "La pasarela no puede superar los 40 caracteres.") String gateway,
         @NotNull(message = "El valor intentado es obligatorio.") @Positive(message = "El valor intentado debe ser mayor que cero.") BigDecimal requestedAmount,
-        @Size(max = 50, message = "El codigo de rechazo no puede superar los 50 caracteres.") String gatewayDeclineCode,
+        @Size(max = 160, message = "El codigo de rechazo no puede superar los 160 caracteres.") String gatewayDeclineCode,
         @NotNull(message = "Debes indicar la clase del rechazo.") DeclineKind declineKind,
         @NotNull(message = "Debes indicar cuando se intento el cobro.") LocalDateTime attemptedAt,
         LocalDateTime nextAttemptAt) {

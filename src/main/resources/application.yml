@@ -502,6 +502,19 @@ vetsoftware:
       locale: ${AI_PROPOSAL_LOCALE:es-CO}
       # Pagina del front del tenant a la que apunta el enlace del correo; recibe ?token=...
       link-base-url: ${AI_PROPOSAL_LINK_BASE_URL:}
+  # Pasarela de pago de la autocontratación (Wompi/Bancolombia). `enabled: false` (el
+  # default) hace que el checkout del tenant responda 409/503 y que el cobro del primer
+  # periodo rechace con CONFIGURATION: nunca aprueba en falso.
+  payments:
+    wompi:
+      enabled: ${WOMPI_ENABLED:false}
+      base-url: ${WOMPI_BASE_URL:https://sandbox.wompi.co/v1}
+      public-key: ${WOMPI_PUBLIC_KEY:}
+      private-key: ${WOMPI_PRIVATE_KEY:}
+      integrity-secret: ${WOMPI_INTEGRITY_SECRET:}
+      events-secret: ${WOMPI_EVENTS_SECRET:}
+      status-poll-attempts: ${WOMPI_STATUS_POLL_ATTEMPTS:6}
+      status-poll-interval: ${WOMPI_STATUS_POLL_INTERVAL:2s}
   dian:
     qr-base-url: ${DIAN_QR_BASE_URL:https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=}
     # B6 - Datos operativos del documento equivalente POS (Res. 000165/2023). Parametrizar por despliegue con

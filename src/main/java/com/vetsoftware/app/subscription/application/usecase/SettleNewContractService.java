@@ -22,19 +22,22 @@ import org.springframework.stereotype.Service;
  * <p>
  * <strong>&#9940; Esta clase NO lleva {@code @Transactional}, y quitarselo no
  * es un descuido: es el requisito.</strong> Llama a
- * {@link ContractPaymentPort}, que el dia que exista pasarela hara I/O HTTP.
- * Una llamada remota dentro de una transaccion retiene la conexion del pool y
- * los locks del contrato mientras dura, y la regla dura
- * {@code SIN_IO_EXTERNO_EN_TRANSACCION} <em>sigue la cadena de llamadas</em>
- * hasta aqui: anotar este metodo romperia el build en cuanto el adaptador
- * simulado se sustituya por el real. La escritura que si necesita transaccion
- * —el cambio de estado— la hace {@link ChangeSubscriptionStatusUseCase}, que
- * abre la suya.
+ * {@link ContractPaymentPort}, que hace I/O HTTP contra Wompi. Una llamada
+ * remota dentro de una transaccion retiene la conexion del pool y los locks del
+ * contrato mientras dura, y la regla dura {@code SIN_IO_EXTERNO_EN_TRANSACCION}
+ * <em>sigue la cadena de llamadas</em> hasta aqui. La escritura que si necesita
+ * transaccion —el cambio de estado— la hace
+ * {@link ChangeSubscriptionStatusUseCase}, que abre la suya.
  *
  * <p>
- * <strong>Lo que se lee se lee ANTES de cobrar.</strong> El contrato se carga
- * al principio para tener numero y ciclo sin dejar una consulta colgando
- * despues de la llamada remota.
+ * <strong>La prueba no se cobra.</strong> Un contrato {@code TRIALING} no tiene
+ * primer periodo que cobrar todavia: el mandato ya quedo guardado y el cobro
+ * real llega cuando el ciclo recurrente factura el primer periodo de pago.
+ * Fuera de {@code TRIALING} se cobra <strong>siempre</strong>, incluido un
+ * contrato ya {@code ACTIVE}: la idempotencia no la da el estado del contrato
+ * sino la referencia {@code VS-<numero>-P1} que gestiona
+ * {@code paymentgateway}, asi que un reintento legitimo de este metodo
+ * -{@code afterCommit} puede repetirse- no cobra dos veces.
  */
 @Observed(name = "subscription.settle.new")
 @Service
@@ -62,17 +65,14 @@ public class SettleNewContractService implements SettleNewContractUseCase {
                 .findByIdAndCompanyId(command.subscriptionId(), command.companyId())
                 .orElseThrow(() -> new SubscriptionNotFoundException(command.subscriptionId()));
 
-        // Un contrato que ya esta ACTIVE no tiene primer periodo que cobrar. Se
-        // comprueba aqui y no se delega en la excepcion de transicion invalida porque
-        // un reintento legitimo no es un error: este metodo lo dispara un
-        // afterCommit, y esos se repiten.
-        if (subscription.getStatus() == SubscriptionStatus.ACTIVE) {
+        if (subscription.getStatus() == SubscriptionStatus.TRIALING) {
             return;
         }
 
         ContractPaymentOutcome outcome = paymentPort.chargeFirstPeriod(command.companyId(),
                 subscription.getId(), subscription.getSubscriptionNumber(),
-                subscription.getBillingCycle());
+                subscription.getBillingCycle(), subscription.getCurrentPeriodStart(),
+                subscription.getCurrentPeriodEnd());
 
         if (!outcome.approved()) {
             // Ni se degrada ni se lanza: el contrato se queda donde nacio y el cliente
@@ -81,6 +81,10 @@ public class SettleNewContractService implements SettleNewContractUseCase {
             log.warn("El primer cobro del contrato {} no se aprobo; queda en {}. motivo={}",
                     subscription.getSubscriptionNumber(), subscription.getStatus(),
                     outcome.declineReason());
+            return;
+        }
+
+        if (subscription.getStatus() == SubscriptionStatus.ACTIVE) {
             return;
         }
 

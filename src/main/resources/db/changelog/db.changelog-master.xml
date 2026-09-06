@@ -1107,4 +1107,10 @@
          datos: ningún `code` cambia y no hay DDL. -->
     <include file="db/changelog/migrations/407_rename_catalog_landing_labels.xml"/>
 
+    <!-- 409: integracion Wompi, hallazgo 1 de docs/db/pasarela-wompi-modelo.md. Wompi devuelve
+         status_message en espanol como unico dato de rechazo; VARCHAR(50) ascii de 321 no lo
+         admite. Numero 409 y no 408: el 408 esta reservado por otra rama viva
+         (feature/verificacion-proporcional-agentes). -->
+    <include file="db/changelog/migrations/409_widen_payment_attempts_gateway_decline_code.xml"/>
+
 </databaseChangeLog>

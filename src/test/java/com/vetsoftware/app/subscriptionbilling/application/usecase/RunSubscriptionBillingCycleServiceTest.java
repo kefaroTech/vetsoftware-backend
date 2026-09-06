@@ -3,34 +3,23 @@ package com.vetsoftware.app.subscriptionbilling.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.vetsoftware.app.subscriptionbilling.application.command.GenerateBillingDocumentCommand;
+import com.vetsoftware.app.subscriptionbilling.application.command.IssueSubscriptionPeriodDocumentCommand;
+import com.vetsoftware.app.subscriptionbilling.application.dto.IssuedPeriodDocumentDto;
 import com.vetsoftware.app.subscriptionbilling.application.dto.SubscriptionBillingBatchResult;
-import com.vetsoftware.app.subscriptionbilling.application.port.in.GenerateBillingDocumentUseCase;
-import com.vetsoftware.app.subscriptionbilling.application.port.out.BillableSubscriptionItemPort;
+import com.vetsoftware.app.subscriptionbilling.application.port.in.IssueSubscriptionPeriodDocumentUseCase;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.DueSubscriptionQueryPort;
-import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionPeriodAdvancePort;
-import com.vetsoftware.app.subscriptionbilling.domain.BillableSubscriptionItem;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingCycleSubscription;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingPeriodicity;
-import com.vetsoftware.app.subscriptionbilling.domain.BillingReason;
-import com.vetsoftware.app.subscriptionbilling.domain.ChargeType;
-import com.vetsoftware.app.subscriptionbilling.domain.DuplicateBillingCycleException;
-import com.vetsoftware.app.subscriptionbilling.domain.EmptyBillingDocumentException;
-import com.vetsoftware.app.subscriptionbilling.domain.ItemChargeMode;
-import com.vetsoftware.app.subscriptionbilling.domain.RecurringChargeKey;
-import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionCharge;
-import com.vetsoftware.app.subscriptionbilling.domain.TaxTreatment;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,10 +35,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * El motor de facturacion recurrente.
  *
  * <p>
- * <b>Tres de las reglas que se comprueban aqui no las sostiene ninguna
- * restriccion de la base</b> —la llave antiduplicados del reinicio, el avance
- * del periodo y el filtro por modo de cobro de cada linea—, asi que este test
- * es la unica red que tienen.
+ * <b>El devengo y la emision en si ya no se prueban aqui</b>: viven en
+ * {@link IssueSubscriptionPeriodDocumentServiceTest}, que es donde vive el
+ * codigo desde que se extrajo. Lo que sigue siendo responsabilidad exclusiva de
+ * esta clase, y por eso su unica red de pruebas, es el calculo de la ventana a
+ * cobrar, el avance del periodo y la contabilidad del lote.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RunSubscriptionBillingCycleService — el barrido que factura solo")
@@ -60,15 +50,13 @@ class RunSubscriptionBillingCycleServiceTest {
     private static final LocalDate HOY = LocalDate.of(2026, 3, 2);
     private static final Clock RELOJ = Clock.fixed(HOY.atTime(4, 40).toInstant(ZoneOffset.UTC),
             ZoneOffset.UTC);
+    private static final IssuedPeriodDocumentDto SIN_EMITIR = new IssuedPeriodDocumentDto(null,
+            null, BigDecimal.ZERO, "COP", false, 0);
 
     @Mock
     private DueSubscriptionQueryPort dueSubscriptionQueryPort;
     @Mock
-    private BillableSubscriptionItemPort itemPort;
-    @Mock
-    private SubscriptionChargeRepository chargeRepository;
-    @Mock
-    private GenerateBillingDocumentUseCase generateUseCase;
+    private IssueSubscriptionPeriodDocumentUseCase issueUseCase;
     @Mock
     private SubscriptionPeriodAdvancePort periodAdvancePort;
 
@@ -76,8 +64,8 @@ class RunSubscriptionBillingCycleServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new RunSubscriptionBillingCycleService(dueSubscriptionQueryPort, itemPort,
-                chargeRepository, generateUseCase, periodAdvancePort, RELOJ);
+        service = new RunSubscriptionBillingCycleService(dueSubscriptionQueryPort, issueUseCase,
+                periodAdvancePort, RELOJ);
     }
 
     // ------------------------------------------------------------------ fixtures
@@ -99,17 +87,6 @@ class RunSubscriptionBillingCycleServiceTest {
                 LocalDate.of(2026, 2, 27), LocalDate.of(2026, 2, 28));
     }
 
-    private static BillableSubscriptionItem linea(Long id, ItemChargeMode modo, int cantidad,
-            int incluido, String tarifa) {
-        return new BillableSubscriptionItem(id, EMPRESA, CONTRATO, 500L, "Modulo agenda", modo,
-                cantidad, incluido, new BigDecimal(tarifa), new BigDecimal("19.00"),
-                TaxTreatment.TAXED, LocalDate.of(2026, 1, 1), null);
-    }
-
-    private static SubscriptionCharge cargoGuardado(SubscriptionCharge entrada) {
-        return entrada;
-    }
-
     // ------------------------------------------------------------------ pruebas
 
     @Nested
@@ -122,23 +99,16 @@ class RunSubscriptionBillingCycleServiceTest {
         void primer_periodo_completo_sin_prorrateo() {
             when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
                     .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.PAID, 1, 0, "59000.00")));
-            when(chargeRepository.existsRecurringCharge(any())).thenReturn(false);
-            when(chargeRepository.save(any())).thenAnswer(inv -> cargoGuardado(inv.getArgument(0)));
+            when(issueUseCase.execute(any())).thenReturn(SIN_EMITIR);
 
             service.processBatchAfter(0L, 100);
 
-            ArgumentCaptor<SubscriptionCharge> cargo = ArgumentCaptor
-                    .forClass(SubscriptionCharge.class);
-            verify(chargeRepository).save(cargo.capture());
+            ArgumentCaptor<IssueSubscriptionPeriodDocumentCommand> comando = ArgumentCaptor
+                    .forClass(IssueSubscriptionPeriodDocumentCommand.class);
+            verify(issueUseCase).execute(comando.capture());
             // Mes completo del 2 de marzo al 1 de abril: ni un dia prorrateado.
-            assertThat(cargo.getValue().getServicePeriod().start())
-                    .isEqualTo(LocalDate.of(2026, 3, 2));
-            assertThat(cargo.getValue().getServicePeriod().end())
-                    .isEqualTo(LocalDate.of(2026, 4, 1));
-            assertThat(cargo.getValue().getChargeType()).isEqualTo(ChargeType.RECURRING);
-            assertThat(cargo.getValue().getSubtotalAmount()).isEqualByComparingTo("59000.00");
+            assertThat(comando.getValue().periodStart()).isEqualTo(LocalDate.of(2026, 3, 2));
+            assertThat(comando.getValue().periodEnd()).isEqualTo(LocalDate.of(2026, 4, 1));
         }
 
         @Test
@@ -146,8 +116,7 @@ class RunSubscriptionBillingCycleServiceTest {
         void el_ancla_no_se_degrada() {
             when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
                     .thenReturn(List.of(contratoAncladoAl31()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 2, 28)))
-                    .thenReturn(List.of());
+            when(issueUseCase.execute(any())).thenReturn(SIN_EMITIR);
 
             service.processBatchAfter(0L, 100);
 
@@ -171,7 +140,7 @@ class RunSubscriptionBillingCycleServiceTest {
 
             assertThat(resultado.processed()).isEqualTo(1);
             assertThat(resultado.skipped()).isEqualTo(1);
-            verifyNoInteractions(itemPort, chargeRepository, generateUseCase, periodAdvancePort);
+            verifyNoInteractions(issueUseCase, periodAdvancePort);
         }
     }
 
@@ -184,10 +153,8 @@ class RunSubscriptionBillingCycleServiceTest {
         void avanza_despues_de_emitir() {
             when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
                     .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.PAID, 1, 0, "59000.00")));
-            when(chargeRepository.existsRecurringCharge(any())).thenReturn(false);
-            when(chargeRepository.save(any())).thenAnswer(inv -> cargoGuardado(inv.getArgument(0)));
+            when(issueUseCase.execute(any())).thenReturn(new IssuedPeriodDocumentDto(1L, "DOC-1",
+                    new BigDecimal("59000.00"), "COP", true, 1));
 
             service.processBatchAfter(0L, 100);
 
@@ -205,12 +172,9 @@ class RunSubscriptionBillingCycleServiceTest {
         void avanza_aunque_no_se_emita() {
             when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
                     .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.TRIAL, 1, 0, "59000.00")));
-            // Sin ni un cargo devengado, la emision falla con su excepcion propia. Eso no
-            // es un fallo del contrato y no puede impedir que el periodo avance.
-            when(generateUseCase.execute(any()))
-                    .thenThrow(new EmptyBillingDocumentException(CONTRATO));
+            // El caso de uso extraido absorbe EmptyBillingDocumentException y devuelve
+            // issued=false: no es un fallo del contrato y no puede impedir el avance.
+            when(issueUseCase.execute(any())).thenReturn(SIN_EMITIR);
 
             SubscriptionBillingBatchResult resultado = service.processBatchAfter(0L, 100);
 
@@ -223,10 +187,7 @@ class RunSubscriptionBillingCycleServiceTest {
         void no_avanza_si_fallo() {
             when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
                     .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.PAID, 1, 0, "59000.00")));
-            when(chargeRepository.existsRecurringCharge(any())).thenReturn(false);
-            when(chargeRepository.save(any())).thenThrow(new IllegalStateException("base caida"));
+            when(issueUseCase.execute(any())).thenThrow(new IllegalStateException("base caida"));
 
             SubscriptionBillingBatchResult resultado = service.processBatchAfter(0L, 100);
 
@@ -236,140 +197,21 @@ class RunSubscriptionBillingCycleServiceTest {
     }
 
     @Nested
-    @DisplayName("Se factura por linea en modo de pago, nunca por estado del contrato")
-    class PorLineaNoPorContrato {
-
-        /**
-         * <b>El caso de los cincuenta y nueve mil al mes.</b> El contrato sigue en
-         * prueba —{@code trial_end_date} en el futuro no es lo que decide— y una de sus
-         * lineas es de pago obligatorio: la facturacion electronica DIAN se cobra desde
-         * el dia 0. Filtrar por estado del contrato la dejaria sin cobrar.
-         */
-        @Test
-        @DisplayName("una linea PAID de un contrato que viene de prueba si devenga")
-        void una_linea_paid_devenga_aunque_el_contrato_venga_de_prueba() {
-            when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
-                    .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.TRIAL, 1, 0, "179000.00"),
-                            linea(901L, ItemChargeMode.PAID, 1, 0, "59000.00")));
-            when(chargeRepository.existsRecurringCharge(any())).thenReturn(false);
-            when(chargeRepository.save(any())).thenAnswer(inv -> cargoGuardado(inv.getArgument(0)));
-
-            SubscriptionBillingBatchResult resultado = service.processBatchAfter(0L, 100);
-
-            ArgumentCaptor<SubscriptionCharge> cargo = ArgumentCaptor
-                    .forClass(SubscriptionCharge.class);
-            verify(chargeRepository).save(cargo.capture());
-            assertThat(cargo.getValue().getSubscriptionItemId()).isEqualTo(901L);
-            assertThat(cargo.getValue().getSubtotalAmount()).isEqualByComparingTo("59000.00");
-            assertThat(resultado.chargesAccrued()).isEqualTo(1);
-        }
-
-        /**
-         * R-TRIAL-14: la linea gratuita <b>conserva su tarifa real</b>, asi que
-         * olvidarse del modo de cobro no produce ceros — produce la tarifa completa
-         * cobrada a todos los clientes en prueba.
-         */
-        @Test
-        @DisplayName("una linea TRIAL no devenga aunque lleve tarifa completa guardada")
-        void una_linea_trial_no_devenga() {
-            when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
-                    .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.TRIAL, 1, 0, "179000.00")));
-
-            service.processBatchAfter(0L, 100);
-
-            verify(chargeRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("una linea consumida entera dentro de lo incluido no genera cargo")
-        void todo_incluido_no_genera_cargo() {
-            when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
-                    .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.PAID, 3, 3, "59000.00")));
-
-            service.processBatchAfter(0L, 100);
-
-            verify(chargeRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("cobra solo lo que pasa de lo incluido")
-        void cobra_solo_el_exceso() {
-            when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
-                    .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.PAID, 5, 3, "10000.00")));
-            when(chargeRepository.existsRecurringCharge(any())).thenReturn(false);
-            when(chargeRepository.save(any())).thenAnswer(inv -> cargoGuardado(inv.getArgument(0)));
-
-            service.processBatchAfter(0L, 100);
-
-            ArgumentCaptor<SubscriptionCharge> cargo = ArgumentCaptor
-                    .forClass(SubscriptionCharge.class);
-            verify(chargeRepository).save(cargo.capture());
-            assertThat(cargo.getValue().getQuantity()).isEqualByComparingTo("2");
-            assertThat(cargo.getValue().getSubtotalAmount()).isEqualByComparingTo("20000.00");
-        }
-    }
-
-    @Nested
     @DisplayName("Un reinicio a mitad no duplica")
     class ReinicioIdempotente {
 
-        @Test
-        @DisplayName("la llave se calcula con la LINEA, no con el articulo")
-        void la_llave_lleva_la_linea() {
-            when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
-                    .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.PAID, 1, 0, "59000.00")));
-            when(chargeRepository.existsRecurringCharge(any())).thenReturn(false);
-            when(chargeRepository.save(any())).thenAnswer(inv -> cargoGuardado(inv.getArgument(0)));
-
-            service.processBatchAfter(0L, 100);
-
-            ArgumentCaptor<RecurringChargeKey> llave = ArgumentCaptor
-                    .forClass(RecurringChargeKey.class);
-            verify(chargeRepository).existsRecurringCharge(llave.capture());
-            assertThat(llave.getValue()).isEqualTo(new RecurringChargeKey(EMPRESA, CONTRATO, 900L,
-                    LocalDate.of(2026, 3, 2), LocalDate.of(2026, 4, 1)));
-        }
-
-        @Test
-        @DisplayName("el segundo arranque no vuelve a devengar la linea que ya tiene su cargo")
-        void el_segundo_arranque_no_devenga_dos_veces() {
-            when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
-                    .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.PAID, 1, 0, "59000.00")));
-            when(chargeRepository.existsRecurringCharge(any())).thenReturn(true);
-
-            SubscriptionBillingBatchResult resultado = service.processBatchAfter(0L, 100);
-
-            verify(chargeRepository, never()).save(any());
-            assertThat(resultado.chargesAccrued()).isZero();
-        }
-
         /**
-         * El barrido murio despues de emitir la factura: al volver, la barandilla de
-         * periodo duplicado lo rechaza, el contrato cuenta como {@code skipped} y —esto
-         * es lo importante— <b>el periodo si avanza</b>, que era el paso que faltaba.
+         * El barrido murio despues de emitir la factura: al volver, el caso de uso
+         * extraido absorbe {@code DuplicateBillingCycleException} y devuelve
+         * {@code issued=false}. El contrato cuenta como {@code skipped} y —esto es lo
+         * importante— <b>el periodo si avanza</b>, que era el paso que faltaba.
          */
         @Test
         @DisplayName("un periodo ya facturado se salta y aun asi avanza el periodo")
         void periodo_ya_facturado_se_salta_pero_avanza() {
             when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
                     .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.PAID, 1, 0, "59000.00")));
-            when(chargeRepository.existsRecurringCharge(any())).thenReturn(true);
-            when(generateUseCase.execute(any())).thenThrow(new DuplicateBillingCycleException(
-                    CONTRATO, LocalDate.of(2026, 3, 2), LocalDate.of(2026, 4, 1)));
+            when(issueUseCase.execute(any())).thenReturn(SIN_EMITIR);
 
             SubscriptionBillingBatchResult resultado = service.processBatchAfter(0L, 100);
 
@@ -384,11 +226,7 @@ class RunSubscriptionBillingCycleServiceTest {
         void periodo_sin_cargos_no_es_fallo() {
             when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
                     .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.PAID, 1, 0, "59000.00")));
-            when(chargeRepository.existsRecurringCharge(any())).thenReturn(true);
-            when(generateUseCase.execute(any()))
-                    .thenThrow(new EmptyBillingDocumentException(CONTRATO));
+            when(issueUseCase.execute(any())).thenReturn(SIN_EMITIR);
 
             SubscriptionBillingBatchResult resultado = service.processBatchAfter(0L, 100);
 
@@ -402,21 +240,19 @@ class RunSubscriptionBillingCycleServiceTest {
     class LoteYCursor {
 
         @Test
-        @DisplayName("emite el documento como factura del ciclo, con el periodo exacto")
-        void emite_como_factura_del_ciclo() {
+        @DisplayName("delega en el caso de uso extraido con el periodo exacto de la ventana")
+        void delega_con_el_periodo_exacto() {
             when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
                     .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.PAID, 1, 0, "59000.00")));
-            when(chargeRepository.existsRecurringCharge(any())).thenReturn(false);
-            when(chargeRepository.save(any())).thenAnswer(inv -> cargoGuardado(inv.getArgument(0)));
+            when(issueUseCase.execute(any())).thenReturn(SIN_EMITIR);
 
             service.processBatchAfter(0L, 100);
 
-            ArgumentCaptor<GenerateBillingDocumentCommand> comando = ArgumentCaptor
-                    .forClass(GenerateBillingDocumentCommand.class);
-            verify(generateUseCase).execute(comando.capture());
-            assertThat(comando.getValue().billingReason()).isEqualTo(BillingReason.RECURRING_CYCLE);
+            ArgumentCaptor<IssueSubscriptionPeriodDocumentCommand> comando = ArgumentCaptor
+                    .forClass(IssueSubscriptionPeriodDocumentCommand.class);
+            verify(issueUseCase).execute(comando.capture());
+            assertThat(comando.getValue().companyId()).isEqualTo(EMPRESA);
+            assertThat(comando.getValue().subscriptionId()).isEqualTo(CONTRATO);
             assertThat(comando.getValue().periodStart()).isEqualTo(LocalDate.of(2026, 3, 2));
             assertThat(comando.getValue().periodEnd()).isEqualTo(LocalDate.of(2026, 4, 1));
         }
@@ -430,7 +266,7 @@ class RunSubscriptionBillingCycleServiceTest {
 
             assertThat(resultado.processed()).isZero();
             assertThat(resultado.lastId()).isEqualTo(15L);
-            verifyNoInteractions(itemPort, chargeRepository, generateUseCase, periodAdvancePort);
+            verifyNoInteractions(issueUseCase, periodAdvancePort);
         }
 
         @Test
@@ -441,7 +277,7 @@ class RunSubscriptionBillingCycleServiceTest {
                     LocalDate.of(2026, 1, 31), LocalDate.of(2026, 3, 1), null);
             when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
                     .thenReturn(List.of(contratoQueSaleDePrueba(), otro));
-            when(itemPort.findCurrentOn(eq(EMPRESA), any(), any())).thenReturn(List.of());
+            when(issueUseCase.execute(any())).thenReturn(SIN_EMITIR);
 
             SubscriptionBillingBatchResult resultado = service.processBatchAfter(0L, 100);
 
@@ -457,10 +293,15 @@ class RunSubscriptionBillingCycleServiceTest {
                     LocalDate.of(2026, 1, 31), LocalDate.of(2026, 3, 1), null);
             when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
                     .thenReturn(List.of(contratoQueSaleDePrueba(), otro));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
+            // argThat null-safe: el placeholder de un segundo argThat en el mismo mock
+            // reevalua el primer matcher con null para detectar solapes.
+            when(issueUseCase
+                    .execute(argThat(cmd -> cmd != null && cmd.subscriptionId().equals(CONTRATO))))
                     .thenThrow(new IllegalStateException("linea ilegible"));
-            when(itemPort.findCurrentOn(EMPRESA, 31L, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of());
+            when(issueUseCase
+                    .execute(argThat(cmd -> cmd != null && cmd.subscriptionId().equals(31L))))
+                    .thenReturn(new IssuedPeriodDocumentDto(1L, "DOC-1", new BigDecimal("59000.00"),
+                            "COP", true, 1));
 
             SubscriptionBillingBatchResult resultado = service.processBatchAfter(0L, 100);
 
@@ -500,25 +341,6 @@ class RunSubscriptionBillingCycleServiceTest {
             service.processBatchAfter(0L, 50);
 
             verify(dueSubscriptionQueryPort).dueForBillingAfter(HOY, 0L, 50);
-        }
-
-        @Test
-        @DisplayName("el cargo devengado nace con la fecha del reloj inyectado")
-        void el_cargo_usa_el_reloj() {
-            when(dueSubscriptionQueryPort.dueForBillingAfter(HOY, 0L, 100))
-                    .thenReturn(List.of(contratoQueSaleDePrueba()));
-            when(itemPort.findCurrentOn(EMPRESA, CONTRATO, LocalDate.of(2026, 3, 2)))
-                    .thenReturn(List.of(linea(900L, ItemChargeMode.PAID, 1, 0, "59000.00")));
-            when(chargeRepository.existsRecurringCharge(any())).thenReturn(false);
-            when(chargeRepository.save(any())).thenAnswer(inv -> cargoGuardado(inv.getArgument(0)));
-
-            service.processBatchAfter(0L, 100);
-
-            ArgumentCaptor<SubscriptionCharge> cargo = ArgumentCaptor
-                    .forClass(SubscriptionCharge.class);
-            verify(chargeRepository).save(cargo.capture());
-            assertThat(cargo.getValue().getCreatedDate())
-                    .isEqualTo(LocalDateTime.of(2026, 3, 2, 4, 40));
         }
     }
 }

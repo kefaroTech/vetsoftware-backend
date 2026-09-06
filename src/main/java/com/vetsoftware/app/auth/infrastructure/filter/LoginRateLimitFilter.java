@@ -70,6 +70,12 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     private static final RouteLimit DIAN_WEBHOOK_LIMIT = new RouteLimit("dian-webhook-rl:",
             "/dian/webhooks", 120, Duration.ofMinutes(1), "DIAN_WEBHOOK_RATE_LIMITED",
             "Too many webhook requests. Try again later.", List.of());
+    // Mismo cupo que el webhook de la DIAN: es la misma clase de trafico -eventos
+    // asincronos de un proveedor externo, sin sesion-, y Wompi reintenta hasta 3
+    // veces en 24h si no ve un 200.
+    private static final RouteLimit WOMPI_WEBHOOK_LIMIT = new RouteLimit("wompi-webhook-rl:",
+            "/payment-gateway/wompi/events", 120, Duration.ofMinutes(1),
+            "WOMPI_WEBHOOK_RATE_LIMITED", "Too many webhook requests. Try again later.", List.of());
     // Mismo limite que /auth/forgot-password: las dos rutas disparan un correo, asi
     // que el recurso que hay que proteger es el mismo y el abuso tambien.
     private static final RouteLimit RECOVER_CODE_LIMIT = new RouteLimit("recover-code-rl:",
@@ -593,6 +599,8 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             return PLATFORM_INVITATION_ACCEPT_LIMIT;
         if (uri.startsWith(DIAN_WEBHOOK_LIMIT.path() + "/"))
             return DIAN_WEBHOOK_LIMIT;
+        if (uri.equals(WOMPI_WEBHOOK_LIMIT.path()))
+            return WOMPI_WEBHOOK_LIMIT;
         // equals en los dos: /assistant/proposal es el prefijo textual de /refine y
         // de /lines. Con startsWith, el refinamiento consumiria el cupo de 5/h que
         // protege la invocacion inicial de pago, y lo agotaria desde fuera.

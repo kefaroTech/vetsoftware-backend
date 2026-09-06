@@ -59,6 +59,12 @@ public final class PublicRoutes {
             new Route(HttpMethod.POST, "/auth/reset-password"),
             new Route(HttpMethod.POST, "/auth/recover-code"),
             new Route(HttpMethod.POST, "/dian/webhooks/**"),
+            // Webhook de la pasarela Wompi. Autenticado por el checksum SHA-256 firmado
+            // con el secreto de eventos (X-Event-Checksum), no por JWT: es Wompi quien
+            // llama, no un empleado con sesion. Con su propio RouteLimit -120/min, mismo
+            // cupo que el webhook de la DIAN- exigido por
+            // toda_ruta_publica_post_esta_limitada.
+            new Route(HttpMethod.POST, "/payment-gateway/wompi/events"),
             new Route(HttpMethod.GET, "/countries"),
             new Route(HttpMethod.GET, "/countries/{countryId}/states"),
             new Route(HttpMethod.GET, "/states/{stateId}/cities"),

@@ -1,25 +1,16 @@
 package com.vetsoftware.app.subscriptionbilling.application.usecase;
 
-import com.vetsoftware.app.subscriptionbilling.application.command.GenerateBillingDocumentCommand;
+import com.vetsoftware.app.subscriptionbilling.application.command.IssueSubscriptionPeriodDocumentCommand;
+import com.vetsoftware.app.subscriptionbilling.application.dto.IssuedPeriodDocumentDto;
 import com.vetsoftware.app.subscriptionbilling.application.dto.SubscriptionBillingBatchResult;
-import com.vetsoftware.app.subscriptionbilling.application.port.in.GenerateBillingDocumentUseCase;
+import com.vetsoftware.app.subscriptionbilling.application.port.in.IssueSubscriptionPeriodDocumentUseCase;
 import com.vetsoftware.app.subscriptionbilling.application.port.in.RunSubscriptionBillingCycleUseCase;
-import com.vetsoftware.app.subscriptionbilling.application.port.out.BillableSubscriptionItemPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.DueSubscriptionQueryPort;
-import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionPeriodAdvancePort;
-import com.vetsoftware.app.subscriptionbilling.domain.BillableSubscriptionItem;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingCycleSubscription;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingCycleWindow;
-import com.vetsoftware.app.subscriptionbilling.domain.BillingReason;
-import com.vetsoftware.app.subscriptionbilling.domain.ChargeType;
-import com.vetsoftware.app.subscriptionbilling.domain.DuplicateBillingCycleException;
-import com.vetsoftware.app.subscriptionbilling.domain.EmptyBillingDocumentException;
 import com.vetsoftware.app.subscriptionbilling.domain.RecurringChargeKey;
-import com.vetsoftware.app.subscriptionbilling.domain.ServicePeriod;
-import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionCharge;
 import io.micrometer.observation.annotation.Observed;
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
@@ -67,20 +58,15 @@ public class RunSubscriptionBillingCycleService implements RunSubscriptionBillin
             .getLogger(RunSubscriptionBillingCycleService.class);
 
     private final DueSubscriptionQueryPort dueSubscriptionQueryPort;
-    private final BillableSubscriptionItemPort itemPort;
-    private final SubscriptionChargeRepository chargeRepository;
-    private final GenerateBillingDocumentUseCase generateUseCase;
+    private final IssueSubscriptionPeriodDocumentUseCase issueUseCase;
     private final SubscriptionPeriodAdvancePort periodAdvancePort;
     private final Clock clock;
 
     public RunSubscriptionBillingCycleService(DueSubscriptionQueryPort dueSubscriptionQueryPort,
-            BillableSubscriptionItemPort itemPort, SubscriptionChargeRepository chargeRepository,
-            GenerateBillingDocumentUseCase generateUseCase,
+            IssueSubscriptionPeriodDocumentUseCase issueUseCase,
             SubscriptionPeriodAdvancePort periodAdvancePort, Clock clock) {
         this.dueSubscriptionQueryPort = dueSubscriptionQueryPort;
-        this.itemPort = itemPort;
-        this.chargeRepository = chargeRepository;
-        this.generateUseCase = generateUseCase;
+        this.issueUseCase = issueUseCase;
         this.periodAdvancePort = periodAdvancePort;
         this.clock = clock;
     }
@@ -144,80 +130,21 @@ public class RunSubscriptionBillingCycleService implements RunSubscriptionBillin
     }
 
     /**
-     * Los tres pasos de un contrato. El avance del periodo va <b>al final y siempre
-     * que no haya excepcion</b>, incluida la vuelta en la que no se emitio nada: un
-     * contrato cuyo periodo no avanza vuelve a salir en el barrido de manana con el
-     * mismo periodo, y asi todos los dias.
+     * Los dos pasos de un contrato: delega en
+     * {@link IssueSubscriptionPeriodDocumentUseCase} el devengo y la emision -el
+     * mismo {@code accrue()} + {@code issue()} de siempre, ver esa clase-, y avanza
+     * el periodo. El avance va <b>al final y siempre que no haya excepcion</b>,
+     * incluida la vuelta en la que no se emitio nada: un contrato cuyo periodo no
+     * avanza vuelve a salir en el barrido de manana con el mismo periodo, y asi
+     * todos los dias.
      */
     private Outcome billOne(BillingCycleSubscription subscription) {
         BillingCycleWindow window = subscription.windowToBill();
-        int accrued = accrue(subscription, window.period());
-        boolean issued = issue(subscription, window.period());
+        IssuedPeriodDocumentDto result = issueUseCase
+                .execute(new IssueSubscriptionPeriodDocumentCommand(subscription.companyId(),
+                        subscription.id(), window.period().start(), window.period().end()));
         periodAdvancePort.advanceTo(subscription.id(), subscription.companyId(),
                 window.period().start(), window.period().end(), window.nextBillingDate());
-        return new Outcome(issued, accrued);
-    }
-
-    /**
-     * Devenga una linea por cada linea del contrato que cobra y que todavia no
-     * tiene su cargo de este periodo.
-     *
-     * <p>
-     * La comprobacion de {@link RecurringChargeKey} <b>no filtra por estado del
-     * cargo</b>: un cargo ya facturado sigue bloqueando el duplicado, que es justo
-     * lo que hace falta cuando el barrido se reinicia despues de haber emitido la
-     * factura.
-     */
-    private int accrue(BillingCycleSubscription subscription, ServicePeriod period) {
-        List<BillableSubscriptionItem> items = itemPort.findCurrentOn(subscription.companyId(),
-                subscription.id(), period.start());
-        int accrued = 0;
-        for (BillableSubscriptionItem item : items) {
-            if (!item.devenga(period.start()))
-                continue;
-            int billable = item.billableQuantity();
-            // Todo dentro de lo incluido: no hay cargo, y no es lo mismo que un cargo de
-            // cero -SubscriptionCharge exige cantidad positiva-.
-            if (billable == 0)
-                continue;
-            RecurringChargeKey key = RecurringChargeKey.of(subscription.companyId(),
-                    subscription.id(), item.id(), period);
-            if (chargeRepository.existsRecurringCharge(key)) {
-                log.debug("Cargo recurrente ya devengado, se omite: {}", key.value());
-                continue;
-            }
-            chargeRepository.save(SubscriptionCharge.create(subscription.companyId(),
-                    subscription.id(), item.id(), ChargeType.RECURRING, item.itemName(), period,
-                    BigDecimal.valueOf(billable), item.unitAmount(), item.recurringSubtotal(),
-                    item.taxRate(), item.taxTreatment(), null, null, clock));
-            accrued++;
-        }
-        return accrued;
-    }
-
-    /**
-     * Emite la cuenta de cobro del periodo.
-     *
-     * <p>
-     * Las dos excepciones que se capturan son <b>desenlaces normales del
-     * barrido</b> y no fallos: el periodo ya facturado por una vuelta anterior y el
-     * periodo sin ni un cargo pendiente -un contrato cuyas lineas estan todas en
-     * prueba-. Las demas se propagan y cuentan como fallo del contrato.
-     */
-    private boolean issue(BillingCycleSubscription subscription, ServicePeriod period) {
-        try {
-            generateUseCase.execute(
-                    new GenerateBillingDocumentCommand(subscription.companyId(), subscription.id(),
-                            BillingReason.RECURRING_CYCLE, period.start(), period.end()));
-            return true;
-        } catch (DuplicateBillingCycleException alreadyBilled) {
-            log.debug("Periodo ya facturado para el contrato {}: {}", subscription.id(),
-                    alreadyBilled.getMessage());
-            return false;
-        } catch (EmptyBillingDocumentException nothingToBill) {
-            log.debug("Contrato {} sin cargos pendientes en {}..{}", subscription.id(),
-                    period.start(), period.end());
-            return false;
-        }
+        return new Outcome(result.issued(), result.accruedCharges());
     }
 }

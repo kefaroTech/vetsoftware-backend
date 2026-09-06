@@ -119,6 +119,15 @@ public class JpaBillingDocumentRepository implements BillingDocumentRepository {
                 periodEnd) > 0;
     }
 
+    @Override
+    public Optional<SubscriptionBillingDocument> findRecurringCycleDocument(Long companyId,
+            Long subscriptionId, LocalDate periodStart, LocalDate periodEnd) {
+        return jpaRepository
+                .findRecurringCycleDocument(companyId, subscriptionId, periodStart, periodEnd)
+                .map(entity -> mapper.toDomain(entity,
+                        leerDesglose(entity.getId(), entity.getCompanyId())));
+    }
+
     /**
      * Convierte la página de <b>una empresa</b> añadiéndole su desglose en una sola
      * consulta más, con el {@code companyId} puesto también en esa segunda
