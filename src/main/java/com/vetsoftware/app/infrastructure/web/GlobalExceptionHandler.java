@@ -109,6 +109,8 @@ import com.vetsoftware.app.openaccount.domain.OwnerAlreadyHasOpenAccountExceptio
 import com.vetsoftware.app.owner.domain.OwnerHasActiveChildrenException;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
 import com.vetsoftware.app.passwordreset.domain.InvalidPasswordResetTokenException;
+import com.vetsoftware.app.paymentgateway.domain.PaymentGatewayNotConfiguredException;
+import com.vetsoftware.app.paymentgateway.domain.WompiChecksumMismatchException;
 import com.vetsoftware.app.permission.domain.PermissionHasActiveChildrenException;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
 import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
@@ -618,6 +620,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             AdminEmployeeCannotBeDisabledException ex) {
         log.info("Cannot disable admin employee: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "ADMIN_EMPLOYEE_CANNOT_BE_DISABLED", ex.getMessage());
+    }
+
+    @ExceptionHandler(PaymentGatewayNotConfiguredException.class)
+    public ProblemDetail handlePaymentGatewayNotConfigured(
+            PaymentGatewayNotConfiguredException ex) {
+        log.info("Payment gateway not configured: {}", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "PAYMENT_GATEWAY_NOT_CONFIGURED", ex.getMessage());
     }
 
     @ExceptionHandler(InvalidAppointmentTransitionException.class)
@@ -1280,6 +1289,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.info("Unauthorized: {}", ex.getMessage());
         auditLogger.loginFailure(request.getRequestURI(), "invalid_credentials");
         return problem(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage());
+    }
+
+    @ExceptionHandler(WompiChecksumMismatchException.class)
+    public ProblemDetail handleWompiChecksumMismatch(WompiChecksumMismatchException ex) {
+        log.warn("Wompi webhook checksum mismatch: {}", ex.getMessage());
+        return problem(HttpStatus.UNAUTHORIZED, "WOMPI_CHECKSUM_MISMATCH", ex.getMessage());
     }
 
     @ExceptionHandler(SessionReplacedException.class)

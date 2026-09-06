@@ -146,7 +146,7 @@ class LoginRateLimitFilterTest {
                 "/register", "/auth/forgot-password", "/dian/webhooks/matias", "/auth/recover-code",
                 "/auth/reset-password", "/register/verify", "/platform/access-request",
                 "/platform/access-request/approve", "/platform/access-request/reject",
-                "/platform/invitation/accept"})
+                "/platform/invitation/accept", "/payment-gateway/wompi/events"})
         @DisplayName("cada ruta pública sensible pasa por el limitador")
         void cada_ruta_publica_sensible_pasa_por_el_limitador(String path) {
             assertThat(filter.shouldNotFilter(request("POST", path))).isFalse();
@@ -522,6 +522,20 @@ class LoginRateLimitFilterTest {
 
             assertThat(response.getStatus()).isEqualTo(429);
             verify(auditLogger).rateLimited("DIAN_WEBHOOK_RATE_LIMITED");
+            verifyNoInteractions(chain);
+        }
+
+        @Test
+        @DisplayName("un webhook de Wompi agota su propio cupo, aunque el de IP tenga margen")
+        void webhook_de_wompi_agota_su_propio_cupo() throws Exception {
+            when(bucket.tryConsume(1)).thenReturn(false);
+            MockHttpServletRequest request = request("POST", "/payment-gateway/wompi/events");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter.doFilterInternal(request, response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(429);
+            verify(auditLogger).rateLimited("WOMPI_WEBHOOK_RATE_LIMITED");
             verifyNoInteractions(chain);
         }
 

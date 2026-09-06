@@ -10121,6 +10121,63 @@
         }
       }
     },
+    "/payment-gateway/wompi/payment-sources" : {
+      "post" : {
+        "tags" : [ "wompi-payment-gateway-controller" ],
+        "operationId" : "createPaymentSource",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/WompiPaymentSourceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WompiPaymentMethodResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payment-gateway/wompi/events" : {
+      "post" : {
+        "tags" : [ "wompi-webhook-controller" ],
+        "operationId" : "events",
+        "parameters" : [ {
+          "name" : "X-Event-Checksum",
+          "in" : "header",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "string"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        }
+      }
+    },
     "/owners" : {
       "get" : {
         "tags" : [ "owner-controller" ],
@@ -21129,6 +21186,42 @@
         }
       }
     },
+    "/payment-gateway/wompi/first-period-payment" : {
+      "get" : {
+        "tags" : [ "wompi-payment-gateway-controller" ],
+        "operationId" : "firstPeriodPayment",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FirstPeriodPaymentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payment-gateway/wompi/checkout-config" : {
+      "get" : {
+        "tags" : [ "wompi-payment-gateway-controller" ],
+        "operationId" : "checkoutConfig",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WompiCheckoutConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/payment-attempts" : {
       "get" : {
         "tags" : [ "payment-attempt-controller" ],
@@ -31605,7 +31698,7 @@
           },
           "gatewayDeclineCode" : {
             "type" : "string",
-            "maxLength" : 50,
+            "maxLength" : 160,
             "minLength" : 0
           },
           "declineKind" : {
@@ -35514,6 +35607,68 @@
           }
         },
         "required" : [ "code", "name", "subModuleId" ]
+      },
+      "WompiPaymentSourceRequest" : {
+        "type" : "object",
+        "properties" : {
+          "cardToken" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 0
+          },
+          "acceptanceToken" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "personalDataAuthToken" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "brand" : {
+            "type" : "string",
+            "maxLength" : 30,
+            "minLength" : 0
+          },
+          "lastFour" : {
+            "type" : "string",
+            "pattern" : "^[0-9]{4}$"
+          },
+          "expMonth" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 12,
+            "minimum" : 1
+          },
+          "expYear" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 2099,
+            "minimum" : 2026
+          }
+        },
+        "required" : [ "acceptanceToken", "brand", "cardToken", "personalDataAuthToken" ]
+      },
+      "WompiPaymentMethodResponse" : {
+        "type" : "object",
+        "properties" : {
+          "paymentMethodId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "brand" : {
+            "type" : "string"
+          },
+          "lastFour" : {
+            "type" : "string"
+          },
+          "expiresOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "defaultMethod" : {
+            "type" : "boolean"
+          }
+        }
       },
       "CreateOwnerRequest" : {
         "type" : "object",
@@ -42665,6 +42820,58 @@
           }
         },
         "required" : [ "amount", "companyId", "createdDate", "id", "method", "paymentId", "reason", "reasonCode", "refundedAt", "valueDate" ]
+      },
+      "FirstPeriodPaymentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "gatewayReference" : {
+            "type" : "string"
+          },
+          "attemptedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "Acceptance" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string"
+          },
+          "permalink" : {
+            "type" : "string"
+          }
+        }
+      },
+      "WompiCheckoutConfigResponse" : {
+        "type" : "object",
+        "properties" : {
+          "environment" : {
+            "type" : "string"
+          },
+          "apiBaseUrl" : {
+            "type" : "string"
+          },
+          "publicKey" : {
+            "type" : "string"
+          },
+          "acceptance" : {
+            "$ref" : "#/components/schemas/Acceptance"
+          },
+          "personalDataAuthorization" : {
+            "$ref" : "#/components/schemas/Acceptance"
+          }
+        }
       },
       "PageResponsePaymentAttemptResponse" : {
         "type" : "object",

@@ -28,6 +28,8 @@ import com.vetsoftware.app.openaccount.domain.InvalidOpenAccountStatusTransition
 import com.vetsoftware.app.openaccount.domain.OpenAccountStatus;
 import com.vetsoftware.app.openaccount.domain.OpenAccountVersionConflictException;
 import com.vetsoftware.app.openaccount.domain.OwnerAlreadyHasOpenAccountException;
+import com.vetsoftware.app.paymentgateway.domain.PaymentGatewayNotConfiguredException;
+import com.vetsoftware.app.paymentgateway.domain.WompiChecksumMismatchException;
 import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
 import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
 import com.vetsoftware.app.product.domain.ProductNameAlreadyExistsException;
@@ -335,6 +337,34 @@ class GlobalExceptionHandlerUnitTest {
             assertThat(pd.getProperties()).containsEntry("code", "CONCURRENT_MODIFICATION");
             assertThat(pd.getDetail())
                     .isEqualTo("La cuenta fue modificada por otra operación. Reintenta.");
+        }
+    }
+
+    @Nested
+    @DisplayName("pasarela de pago Wompi: los dos codigos que no cubre ningun @WebMvcTest")
+    class PasarelaDePagoWompi {
+
+        @Test
+        @DisplayName("pasarela no configurada responde 409 con su propio codigo")
+        void pasarela_no_configurada_responde_409() {
+            ProblemDetail pd = handler
+                    .handlePaymentGatewayNotConfigured(new PaymentGatewayNotConfiguredException(
+                            "Wompi no está habilitado (vetsoftware.payments.wompi.enabled=false)"));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties()).containsEntry("code", "PAYMENT_GATEWAY_NOT_CONFIGURED");
+            assertThat(pd.getDetail()).contains("Wompi no está habilitado");
+        }
+
+        @Test
+        @DisplayName("checksum del webhook que no coincide responde 401, no 200: no se acusa recibo de un evento forjado")
+        void checksum_del_webhook_no_coincide_responde_401() {
+            ProblemDetail pd = handler.handleWompiChecksumMismatch(
+                    new WompiChecksumMismatchException("El checksum del webhook no coincide"));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+            assertThat(pd.getProperties()).containsEntry("code", "WOMPI_CHECKSUM_MISMATCH");
+            assertThat(pd.getDetail()).contains("checksum");
         }
     }
 

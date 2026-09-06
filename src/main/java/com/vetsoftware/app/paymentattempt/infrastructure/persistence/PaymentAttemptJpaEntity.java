@@ -81,7 +81,7 @@ public class PaymentAttemptJpaEntity {
      * pasarelas cambian su catalogo y una traduccion hecha hoy envejece. Se guarda
      * para poder revisar despues la traduccion; al cliente solo se le da su clase.
      */
-    @Column(name = "gateway_decline_code", length = 50)
+    @Column(name = "gateway_decline_code", length = 160)
     private String gatewayDeclineCode;
 
     @Enumerated(EnumType.STRING)

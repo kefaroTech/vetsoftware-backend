@@ -43,7 +43,7 @@ public class PaymentAttempt {
     public static final Duration RETRY_WINDOW = Duration.ofDays(14);
 
     private static final int MAX_GATEWAY_LENGTH = 40;
-    private static final int MAX_DECLINE_CODE_LENGTH = 50;
+    private static final int MAX_DECLINE_CODE_LENGTH = 160;
 
     private final Long id;
     private final Long companyId;
@@ -173,7 +173,7 @@ public class PaymentAttempt {
             throw new IllegalArgumentException(
                     "gatewayDeclineCode is required unless the decline is CONFIGURATION");
         if (gatewayDeclineCode != null && gatewayDeclineCode.length() > MAX_DECLINE_CODE_LENGTH)
-            throw new IllegalArgumentException("gatewayDeclineCode must be 50 chars or less");
+            throw new IllegalArgumentException("gatewayDeclineCode must be 160 chars or less");
         if (attemptedAt == null)
             throw new IllegalArgumentException("attemptedAt is required");
         // Espejo de chk_payment_attempts_hard_has_no_retry: en un rechazo duro el

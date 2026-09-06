@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- 321 asumio una pasarela con catalogo de codigos cortos y comparables. Wompi no tiene eso:
+         expone status_message, texto libre en espanol ("Transaccion rechazada por el banco emisor:
+         fondos insuficientes"). Dos problemas: no cabe en 50, y CHARACTER SET ascii rechaza
+         tildes y enes -MySQL en modo estricto tumba el INSERT y el intento fallido, la bitacora
+         que 321 promete, no queda registrado justo en el rechazo real. utf8mb4_0900_ai_ci y no
+         ascii_bin: no hay UNIQUE sobre esta columna, es texto para humanos, no un identificador
+         comparado exacto. payment_attempts no tiene trafico real de Wompi todavia: el ALTER es
+         barato hoy. -->
+    <changeSet id="409_widen_payment_attempts_gateway_decline_code" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE payment_attempts
+                MODIFY COLUMN gateway_decline_code VARCHAR(160)
+                    CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE payment_attempts
+                    MODIFY COLUMN gateway_decline_code VARCHAR(50)
+                        CHARACTER SET ascii COLLATE ascii_bin NULL
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -34,4 +34,14 @@ public record ContractPaymentOutcome(boolean approved, String reference, String 
     public static ContractPaymentOutcome declined(String declineReason) {
         return new ContractPaymentOutcome(false, null, declineReason);
     }
+
+    /**
+     * Wompi confirma por sondeo o por webhook, nunca en el acto: mientras no llega
+     * el desenlace final, el contrato no se activa pero tampoco se considera
+     * rechazado. Igual que {@link #declined(String)}, {@code approved = false}:
+     * solo un cobro aprobado activa el contrato.
+     */
+    public static ContractPaymentOutcome pending(String reference) {
+        return new ContractPaymentOutcome(false, reference, "PENDING");
+    }
 }

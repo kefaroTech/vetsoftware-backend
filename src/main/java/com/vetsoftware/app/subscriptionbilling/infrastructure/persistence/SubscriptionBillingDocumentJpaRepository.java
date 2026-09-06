@@ -164,4 +164,23 @@ public interface SubscriptionBillingDocumentJpaRepository
     long countRecurringCycle(@Param("companyId") Long companyId,
             @Param("subscriptionId") Long subscriptionId,
             @Param("periodStart") LocalDate periodStart, @Param("periodEnd") LocalDate periodEnd);
+
+    /**
+     * El documento que cuenta {@link #countRecurringCycle}, con los mismos
+     * criterios.
+     */
+    @Query(value = """
+            SELECT *
+            FROM subscription_billing_documents
+            WHERE company_id = :companyId
+              AND subscription_id = :subscriptionId
+              AND document_kind = 'INVOICE'
+              AND billing_reason = 'RECURRING_CYCLE'
+              AND issue_status <> 'VOIDED'
+              AND period_start = :periodStart
+              AND period_end = :periodEnd
+            """, nativeQuery = true)
+    Optional<SubscriptionBillingDocumentJpaEntity> findRecurringCycleDocument(
+            @Param("companyId") Long companyId, @Param("subscriptionId") Long subscriptionId,
+            @Param("periodStart") LocalDate periodStart, @Param("periodEnd") LocalDate periodEnd);
 }
