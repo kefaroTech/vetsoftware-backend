@@ -5,6 +5,7 @@ import com.vetsoftware.app.subscriptionbilling.application.dto.BillingDocumentDt
 import com.vetsoftware.app.subscriptionbilling.application.port.in.IssueCreditNoteUseCase;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentSequenceRepository;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingPolicyPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingReason;
 import com.vetsoftware.app.subscriptionbilling.domain.DocumentKind;
@@ -47,14 +48,17 @@ public class IssueCreditNoteService implements IssueCreditNoteUseCase {
     private final BillingDocumentRepository documentRepository;
     private final SubscriptionChargeRepository chargeRepository;
     private final BillingDocumentSequenceRepository sequenceRepository;
+    private final BillingPolicyPort billingPolicyPort;
     private final Clock clock;
 
     public IssueCreditNoteService(BillingDocumentRepository documentRepository,
             SubscriptionChargeRepository chargeRepository,
-            BillingDocumentSequenceRepository sequenceRepository, Clock clock) {
+            BillingDocumentSequenceRepository sequenceRepository,
+            BillingPolicyPort billingPolicyPort, Clock clock) {
         this.documentRepository = documentRepository;
         this.chargeRepository = chargeRepository;
         this.sequenceRepository = sequenceRepository;
+        this.billingPolicyPort = billingPolicyPort;
         this.clock = clock;
     }
 
@@ -84,7 +88,8 @@ public class IssueCreditNoteService implements IssueCreditNoteUseCase {
         DocumentNumber number = sequenceRepository.nextNumber(KIND.sequencePrefix());
         SubscriptionBillingDocument nota = SubscriptionBillingDocument.issue(number,
                 command.companyId(), corregido.getSubscriptionId(), KIND, BillingReason.ADJUSTMENT,
-                corregido.getPeriod(), breakdown, corregido.getId(), clock);
+                corregido.getPeriod(), breakdown, corregido.getId(),
+                billingPolicyPort.defaultPaymentTermDays(), clock);
 
         SubscriptionBillingDocument saved = documentRepository.save(nota);
         int sellados = chargeRepository.sealAsInvoiced(ids, command.companyId(), saved.getId());

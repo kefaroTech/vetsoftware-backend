@@ -1113,4 +1113,11 @@
          (feature/verificacion-proporcional-agentes). -->
     <include file="db/changelog/migrations/409_widen_payment_attempts_gateway_decline_code.xml"/>
 
+    <!-- 410: punto 7 del ciclo de autoservicio. overdue_marker exigía EXTERNAL_REGISTERED y un
+         documento recurrente nace en DRAFT/AWAITING_EXTERNAL, así que la mora nunca arrancaba
+         sola; se amplía a cualquier INVOICE con saldo pendiente y due_date fijado que no sea
+         VOIDED. default_payment_term_days pasa de 0 a 15 (plazo inicial, ajustable desde la
+         consola de plataforma) para que el documento no venza el mismo día que se emite. -->
+    <include file="db/changelog/migrations/410_widen_overdue_marker_and_seed_payment_term.xml"/>
+
 </databaseChangeLog>

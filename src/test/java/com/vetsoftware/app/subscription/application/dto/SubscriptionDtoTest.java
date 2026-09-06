@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.subscription.domain.Subscription;
+import com.vetsoftware.app.subscription.domain.SubscriptionOrigin;
 import com.vetsoftware.app.subscription.testsupport.SubscriptionMother;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -54,6 +55,27 @@ class SubscriptionDtoTest {
             // Sigue vigente: lo que el cliente ya pago se disfruta hasta el 30.
             assertThat(dto.current()).isTrue();
             assertThat(dto.autoRenew()).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("El origen viaja calculado desde el dominio")
+    class Origen {
+
+        @Test
+        @DisplayName("sin cotizacion el DTO expone INITIAL")
+        void sinCotizacionEsInicial() {
+            SubscriptionDto dto = SubscriptionDto.from(SubscriptionMother.contratoVigente());
+
+            assertThat(dto.origin()).isEqualTo(SubscriptionOrigin.INITIAL);
+        }
+
+        @Test
+        @DisplayName("con cotizacion el DTO expone QUOTE")
+        void conCotizacionEsCotizacion() {
+            SubscriptionDto dto = SubscriptionDto.from(SubscriptionMother.contratoDeCotizacion());
+
+            assertThat(dto.origin()).isEqualTo(SubscriptionOrigin.QUOTE);
         }
     }
 

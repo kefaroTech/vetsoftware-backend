@@ -5,6 +5,7 @@ import com.vetsoftware.app.subscriptionbilling.application.dto.BillingDocumentDt
 import com.vetsoftware.app.subscriptionbilling.application.port.in.GenerateBillingDocumentUseCase;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentRepository;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentSequenceRepository;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingPolicyPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingAuditPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingMetrics;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
@@ -57,19 +58,21 @@ public class GenerateBillingDocumentService implements GenerateBillingDocumentUs
     private final SubscriptionQueryPort subscriptionQueryPort;
     private final SubscriptionBillingMetrics metrics;
     private final SubscriptionBillingAuditPort audit;
+    private final BillingPolicyPort billingPolicyPort;
     private final Clock clock;
 
     public GenerateBillingDocumentService(BillingDocumentRepository documentRepository,
             SubscriptionChargeRepository chargeRepository,
             BillingDocumentSequenceRepository sequenceRepository,
             SubscriptionQueryPort subscriptionQueryPort, SubscriptionBillingMetrics metrics,
-            SubscriptionBillingAuditPort audit, Clock clock) {
+            SubscriptionBillingAuditPort audit, BillingPolicyPort billingPolicyPort, Clock clock) {
         this.documentRepository = documentRepository;
         this.chargeRepository = chargeRepository;
         this.sequenceRepository = sequenceRepository;
         this.subscriptionQueryPort = subscriptionQueryPort;
         this.metrics = metrics;
         this.audit = audit;
+        this.billingPolicyPort = billingPolicyPort;
         this.clock = clock;
     }
 
@@ -111,9 +114,9 @@ public class GenerateBillingDocumentService implements GenerateBillingDocumentUs
         LocalDateTime ahora = LocalDateTime.now(clock);
         TaxBreakdown breakdown = TaxBreakdown.of(charges, KIND, command.companyId(), ahora);
         DocumentNumber number = sequenceRepository.nextNumber(KIND.sequencePrefix());
-        SubscriptionBillingDocument saved = documentRepository
-                .save(SubscriptionBillingDocument.issue(number, command.companyId(),
-                        subscription.id(), KIND, reason, period, breakdown, null, clock));
+        SubscriptionBillingDocument saved = documentRepository.save(SubscriptionBillingDocument
+                .issue(number, command.companyId(), subscription.id(), KIND, reason, period,
+                        breakdown, null, billingPolicyPort.defaultPaymentTermDays(), clock));
 
         sellarCargos(charges, command.companyId(), saved.getId());
 

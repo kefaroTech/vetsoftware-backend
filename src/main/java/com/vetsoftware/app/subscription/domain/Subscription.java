@@ -205,6 +205,14 @@ public class Subscription {
         return enabled && status.isCurrent();
     }
 
+    /**
+     * De donde nace este contrato: {@link SubscriptionOrigin#QUOTE} solo si trae
+     * {@code quoteId}.
+     */
+    public SubscriptionOrigin origin() {
+        return quoteId == null ? SubscriptionOrigin.INITIAL : SubscriptionOrigin.QUOTE;
+    }
+
     public Long getId() {
         return id;
     }

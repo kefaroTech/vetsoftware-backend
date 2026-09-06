@@ -199,7 +199,7 @@ class BillingDocumentTaxQueryPersistenceIT extends AbstractDataJpaTest {
         SubscriptionBillingDocument documento = documentRepository
                 .save(SubscriptionBillingDocument.issue(new DocumentNumber(prefijo, 1), companyId,
                         subscriptionId, DocumentKind.INVOICE, BillingReason.ONE_TIME, PERIODO,
-                        desglose, null, CLOCK));
+                        desglose, null, 15, CLOCK));
         return documento.getId();
     }
 

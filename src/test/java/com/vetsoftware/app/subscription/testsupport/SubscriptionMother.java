@@ -37,6 +37,7 @@ public final class SubscriptionMother {
     public static final Long ARTICULO = 100L;
     public static final Long EMPLEADO = 4L;
     public static final Long USUARIO_DE_PLATAFORMA = 6L;
+    public static final Long COTIZACION = 55L;
 
     public static final LocalDate ENERO_1 = LocalDate.of(2026, 1, 1);
     public static final LocalDate ENERO_31 = LocalDate.of(2026, 1, 31);
@@ -61,6 +62,13 @@ public final class SubscriptionMother {
                 status, ENERO_1,
                 status == SubscriptionStatus.TRIALING ? LocalDate.of(2026, 1, 15) : null, ENERO_1,
                 ENERO_31, ENERO_31, null, 5, true);
+    }
+
+    /** Contrato ACTIVE nacido de una cotizacion aceptada, no del alta minima. */
+    public static Subscription contratoDeCotizacion() {
+        return Subscription.create("SUS-2026-00184", EMPRESA, COTIZACION, 3L, BillingCycle.MONTHLY,
+                SubscriptionStatus.ACTIVE, ENERO_1, null, ENERO_1, ENERO_31, ENERO_31, null, 5,
+                true);
     }
 
     /** Linea abierta de capacidad: 5 usuarios con 2 incluidos. */

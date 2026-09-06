@@ -33780,6 +33780,11 @@
           },
           "enabled" : {
             "type" : "boolean"
+          },
+          "origin" : {
+            "type" : "string",
+            "description" : "INITIAL si nacio del alta de la empresa, QUOTE si nacio de una cotizacion aceptada.",
+            "enum" : [ "INITIAL", "QUOTE" ]
           }
         }
       },

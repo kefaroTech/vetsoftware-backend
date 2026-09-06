@@ -54,19 +54,19 @@ class SubscriptionBillingDocumentTest {
     class Creacion {
 
         @Test
-        @DisplayName("nace DRAFT, sin referencia externa, SIN vencimiento y con cero saldado")
+        @DisplayName("nace DRAFT, sin referencia externa, CON vencimiento a plazo y cero saldado")
         void nace_en_borrador() {
             TaxBreakdown breakdown = TaxBreakdown.of(List.of(cuota("100000.00")),
                     DocumentKind.INVOICE, EMPRESA, AHORA);
 
             SubscriptionBillingDocument document = SubscriptionBillingDocument.issue(
                     new DocumentNumber("DC", 1L), EMPRESA, 7L, DocumentKind.INVOICE,
-                    BillingReason.RECURRING_CYCLE, AGOSTO, breakdown, null, RELOJ_DE_CALCULO);
+                    BillingReason.RECURRING_CYCLE, AGOSTO, breakdown, null, 15, RELOJ_DE_CALCULO);
 
             assertThat(document.getDocumentNumber()).isEqualTo("DC-000001");
             assertThat(document.getIssueStatus()).isEqualTo(IssueStatus.DRAFT);
             assertThat(document.getExternal()).isNull();
-            assertThat(document.getDueDate()).isNull();
+            assertThat(document.getDueDate()).isEqualTo(LocalDate.of(2026, 8, 16));
             assertThat(document.getSettledAmount()).isEqualByComparingTo("0.00");
             assertThat(document.getTotalAmount()).isEqualByComparingTo("119000.00");
         }
@@ -184,13 +184,22 @@ class SubscriptionBillingDocumentTest {
         }
 
         @Test
-        @DisplayName("mientras no hay factura externa no hay vencimiento")
-        void sin_factura_externa_no_hay_vencimiento() {
-            SubscriptionBillingDocument document = factura();
+        @DisplayName("nace con vencimiento a plazo desde la fecha de emision, sin esperar a"
+                + " la factura externa")
+        void nace_con_vencimiento_a_plazo_desde_la_emision() {
+            TaxBreakdown breakdown = TaxBreakdown.of(List.of(cuota("100000.00")),
+                    DocumentKind.INVOICE, EMPRESA, AHORA);
+            SubscriptionBillingDocument document = SubscriptionBillingDocument.issue(
+                    new DocumentNumber("DC", 1L), EMPRESA, 7L, DocumentKind.INVOICE,
+                    BillingReason.RECURRING_CYCLE, AGOSTO, breakdown, null, 15, RELOJ_DE_CALCULO);
+
+            LocalDate vencimientoDeBorrador = document.getDueDate();
             document.submitForExternalIssue();
 
             assertThat(document.getIssueStatus()).isEqualTo(IssueStatus.AWAITING_EXTERNAL);
-            assertThat(document.getDueDate()).isNull();
+            assertThat(vencimientoDeBorrador)
+                    .isEqualTo(document.getCreatedDate().toLocalDate().plusDays(15));
+            assertThat(document.getDueDate()).isEqualTo(vencimientoDeBorrador);
         }
 
         @Test
