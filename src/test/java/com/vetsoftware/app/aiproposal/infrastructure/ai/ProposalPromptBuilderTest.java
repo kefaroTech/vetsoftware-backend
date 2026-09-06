@@ -20,7 +20,7 @@ class ProposalPromptBuilderTest {
     private static final Map<String, String> HINTS = Map.of("CORE",
             "El nucleo: clientes y mascotas. Va siempre.", "CLINICAL_HISTORY",
             "Para quien atiende medicamente.", "DRAFT_MODULE", "Este no se vende todavia.",
-            "EXTRA_USER", "Una persona mas.");
+            "EXTRA_USER", "Una persona mas.", "CAPACITY_TERMINAL", "Un punto de venta.");
 
     private final ProposalPromptBuilder builder = new ProposalPromptBuilder();
 
@@ -65,15 +65,18 @@ class ProposalPromptBuilderTest {
     class Catalogo {
 
         @Test
-        @DisplayName("solo entra lo cotizable: ni el borrador ni lo que no es autoservicio")
+        @DisplayName("solo entra lo cotizable: ni el borrador, ni lo no autoservicio, ni una CAPACITY vendible")
         void solo_lo_cotizable() {
             String system = builder.build(peticion(List.of("Clinica de barrio"), List.of()), HINTS)
                     .orElseThrow().system();
 
             assertThat(system).contains("CORE").contains("CLINICAL_HISTORY");
             // Ensenarselos es pagarle tokens para que fabrique lineas que el motor
-            // rechaza despues.
-            assertThat(system).doesNotContain("DRAFT_MODULE").doesNotContain("EXTRA_USER");
+            // rechaza despues. CAPACITY_TERMINAL SI es cotizable y aun asi no entra:
+            // ninguna CAPACITY se elige por codigo, la arrastra el cierre o la
+            // dimensiona el propio motor desde staff/sedes.
+            assertThat(system).doesNotContain("DRAFT_MODULE").doesNotContain("EXTRA_USER")
+                    .doesNotContain("CAPACITY_TERMINAL");
         }
 
         @Test

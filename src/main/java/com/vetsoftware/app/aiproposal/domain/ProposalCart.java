@@ -1,7 +1,10 @@
 package com.vetsoftware.app.aiproposal.domain;
 
+import com.vetsoftware.app.shared.domain.Money;
+import java.math.BigDecimal;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -67,6 +70,13 @@ public final class ProposalCart {
 
     private static final String CAPACITY_TERMINAL = "CAPACITY_TERMINAL";
 
+    /**
+     * Los dos ejes que {@link CapacityHint} dimensiona por su cuenta. {@code
+     * TERMINAL} queda fuera a proposito: sigue la regla existente de
+     * {@code CASH_REGISTER} → {@code CAPACITY_TERMINAL} y no una cifra del modelo.
+     */
+    private static final Set<String> EJES_DIMENSIONADOS = Set.of("USER", "BRANCH");
+
     private ProposalCart() {
     }
 
@@ -82,7 +92,16 @@ public final class ProposalCart {
      */
     public static CartResult build(List<String> necesarios, List<String> recomendados,
             Map<String, String> motivos, SellableCatalog catalog) {
-        return build(necesarios, recomendados, motivos, catalog, LineSource.MODEL);
+        return build(necesarios, recomendados, motivos, catalog, LineSource.MODEL,
+                CapacityHint.desconocido());
+    }
+
+    /**
+     * La misma maquina, con las cifras de capacidad que el modelo dedujo del texto.
+     */
+    public static CartResult build(List<String> necesarios, List<String> recomendados,
+            Map<String, String> motivos, SellableCatalog catalog, CapacityHint capacidades) {
+        return build(necesarios, recomendados, motivos, catalog, LineSource.MODEL, capacidades);
     }
 
     /**
@@ -103,10 +122,19 @@ public final class ProposalCart {
      */
     public static CartResult build(List<String> necesarios, List<String> recomendados,
             Map<String, String> motivos, SellableCatalog catalog, LineSource origen) {
+        return build(necesarios, recomendados, motivos, catalog, origen,
+                CapacityHint.desconocido());
+    }
+
+    /** La forma completa: quien puso las lineas, mas las cifras de capacidad. */
+    public static CartResult build(List<String> necesarios, List<String> recomendados,
+            Map<String, String> motivos, SellableCatalog catalog, LineSource origen,
+            CapacityHint capacidades) {
         if (origen == null || origen == LineSource.DEPENDENCY_CLOSURE)
             throw new IllegalArgumentException("the seed source must be MODEL or CUSTOMER");
         if (catalog == null)
             throw new IllegalArgumentException("catalog is required");
+        CapacityHint hint = capacidades == null ? CapacityHint.desconocido() : capacidades;
         List<String> pedidos = necesarios == null ? List.of() : necesarios;
         List<String> sugeridos = recomendados == null ? List.of() : recomendados;
         Map<String, String> prosa = motivos == null ? Map.of() : motivos;
@@ -164,6 +192,10 @@ public final class ProposalCart {
         // Pasos 4 y 6: el cierre y la regla del terminal, en el mismo recorrido.
         cerrar(catalog, vistos, enCarrito, lineas);
 
+        // Las capacidades USER/BRANCH no las pide nadie por codigo: se dimensionan
+        // solas a partir de las cifras que dedujo el modelo.
+        dimensionarCapacidades(hint, catalog, vistos, lineas);
+
         return new CartResult(lineas, monedaDe(lineas, catalog));
     }
 
@@ -188,6 +220,16 @@ public final class ProposalCart {
             return Optional.empty();
         }
         SellableItem item = encontrado.get();
+        // Un EXTRA_* nunca aparece en el bloque de catalogo del prompt -lo excluye
+        // ProposalPromptBuilder-, asi que verlo en necesarios/recomendados es entrada
+        // no confiable. Solo se filtra en las fuentes que exigen motivo -MODEL y
+        // MODEL_RECOMMENDED-: una edicion del cliente o un cierre de dependencias no
+        // pasan por aqui.
+        if (source.exigeMotivo() && esDeEjeDimensionado(item)) {
+            lineas.add(rechazo(code, source, LineVerdict.CAPACITY_DERIVED, texto, catalog,
+                    lineas.size()));
+            return Optional.empty();
+        }
         if (!item.active()) {
             lineas.add(
                     rechazo(code, source, LineVerdict.NOT_SELLABLE, texto, catalog, lineas.size()));
@@ -259,6 +301,88 @@ public final class ProposalCart {
             Set<String> enCarrito, List<CartLine> lineas) {
         return evaluar(code, LineSource.DEPENDENCY_CLOSURE, null, catalog, vistos, lineas)
                 .map(item -> enCarrito.add(item.code())).orElse(false);
+    }
+
+    private static boolean esDeEjeDimensionado(SellableItem item) {
+        return item.kind() == SellableItemKind.CAPACITY && item.capacityUnit() != null
+                && EJES_DIMENSIONADOS.contains(item.capacityUnit());
+    }
+
+    /**
+     * USER y BRANCH, en ese orden fijo: es el orden en que {@link CapacityHint}
+     * declara sus dos campos dimensionables.
+     */
+    private static void dimensionarCapacidades(CapacityHint capacidades, SellableCatalog catalog,
+            Set<String> vistos, List<CartLine> lineas) {
+        dimensionarEje(capacidades.staff(), "USER", catalog, vistos, lineas);
+        dimensionarEje(capacidades.branches(), "BRANCH", catalog, vistos, lineas);
+    }
+
+    /**
+     * La cifra que dedujo el modelo, menos lo que el minimo estructural ya regala
+     * en ese eje. Sin articulo vendible en el eje -catalogo que no publica esa
+     * capacidad-, o con la cifra dentro de lo ya incluido, no se anade nada.
+     *
+     * <p>
+     * &#9940; <strong>La guarda mira {@code vistos}, no si ya hay una linea
+     * aceptada.</strong> Un {@code EXTRA_*} que el modelo puso en su lista ya dejo
+     * escrita su linea {@code CAPACITY_DERIVED} con el mismo codigo -ver
+     * {@link #evaluar}-, y anadir aqui una segunda con el mismo codigo chocaria
+     * contra {@code uq_ai_proposal_lines_code} igual que cualquier otro duplicado
+     * de esta clase. Es alcanzable solo con una entrada del modelo que no deberia
+     * existir -el codigo no esta en su prompt-, y el lado seguro es no cobrar antes
+     * que reventar el turno entero.
+     */
+    private static void dimensionarEje(int cifra, String eje, SellableCatalog catalog,
+            Set<String> vistos, List<CartLine> lineas) {
+        if (cifra <= 0)
+            return;
+        Optional<SellableItem> vendible = catalog.items().values().stream()
+                .filter(item -> eje.equals(item.capacityUnit())).filter(SellableItem::esCotizable)
+                .min(Comparator.comparing(SellableItem::code));
+        if (vendible.isEmpty() || vistos.contains(vendible.get().code()))
+            return;
+        SellableItem item = vendible.get();
+        int extra = cifra - item.includedQuantity();
+        if (extra <= 0)
+            return;
+        vistos.add(item.code());
+        lineas.add(lineaDeCapacidad(item, extra, lineas.size()));
+    }
+
+    /**
+     * Fuente {@code DEPENDENCY_CLOSURE}: nadie la pidio por codigo, la arrastro el
+     * calculo de capacidad igual que una dependencia arrastra su requisito.
+     */
+    private static CartLine lineaDeCapacidad(SellableItem item, int extra, int orden) {
+        BigDecimal total = item.amountFor(extra);
+        return new CartLine(item.code(), item.name(), item.shortDescription(), item.kind(),
+                LineSource.DEPENDENCY_CLOSURE, LineVerdict.ACCEPTED, extra,
+                importePorUnidad(total, extra), item.taxRate(), item.trialDays(), item.currency(),
+                null, orden);
+    }
+
+    /**
+     * &#9940; <strong>D-66 con cantidad distinta de uno.</strong> {@code CartLine}
+     * solo sabe cobrar {@code unitAmount x quantity}; el precio real de
+     * {@code extra} unidades es {@link SellableItem#amountFor(int)}, que no es un
+     * multiplo exacto de una sola unidad cuando la cantidad cruza un tramo. Ese
+     * total se aplana aqui a un unitario de dos decimales porque la linea se
+     * congela en {@code ai_proposal_lines.unit_amount DECIMAL(19,2)}: guardar mas
+     * cifras de las que la columna admite no evita el aplanamiento, solo lo esconde
+     * hasta que {@code ProposalAssembler.reconstruir} vuelve a leer la linea con el
+     * unitario ya truncado.
+     *
+     * <p>
+     * La desviacion maxima frente al total real es {@code 0,005 x extra} -medio
+     * centavo de redondeo por unidad-, que con el techo de 500 unidades de
+     * {@link CapacityHint} no pasa de 2,50. El importe vinculante para el cliente
+     * no sale de aqui: lo recalcula {@code POST /quotes/self-serve} con
+     * {@link SellableItem#amountFor(int)} a partir de la cantidad, que viaja exacta
+     * y no pasa por este unitario congelado.
+     */
+    private static BigDecimal importePorUnidad(BigDecimal total, int extra) {
+        return total.divide(BigDecimal.valueOf(extra), Money.SCALE, Money.ROUND);
     }
 
     private static CartLine aceptada(SellableItem item, LineSource source, String motivo,

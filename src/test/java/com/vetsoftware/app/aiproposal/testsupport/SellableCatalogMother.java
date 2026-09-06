@@ -1,6 +1,8 @@
 package com.vetsoftware.app.aiproposal.testsupport;
 
 import com.vetsoftware.app.aiproposal.domain.PackOffer;
+import com.vetsoftware.app.aiproposal.domain.PriceLadder;
+import com.vetsoftware.app.aiproposal.domain.PriceTier;
 import com.vetsoftware.app.aiproposal.domain.SellableCatalog;
 import com.vetsoftware.app.aiproposal.domain.SellableItem;
 import com.vetsoftware.app.aiproposal.domain.SellableItemKind;
@@ -50,6 +52,8 @@ public final class SellableCatalogMother {
         anadir(items, capacidadContratable());
         anadir(items, capacidadNoAutoservicio());
         anadir(items, moduloEnBorrador());
+        anadir(items, capacidadDeUsuarioExtra());
+        anadir(items, capacidadDeSedeExtra());
 
         Map<String, List<String>> requiere = new LinkedHashMap<>();
         requiere.put("LAB_IMAGING", List.of("CLINICAL_HISTORY"));
@@ -123,12 +127,44 @@ public final class SellableCatalogMother {
     }
 
     /**
-     * La DC-1 en forma de dato: los {@code EXTRA_*} no cuelgan de ningun paquete,
-     * asi que {@code JpaCatalogQueryPorts} no los da por contratables.
+     * Una capacidad que existe pero no cuelga de ningun paquete ni tiene
+     * {@code self_service}: la DC-1 en forma de dato.
      */
     public static SellableItem capacidadNoAutoservicio() {
-        return new SellableItem("EXTRA_USER", "Usuario adicional", "Una persona mas",
+        return new SellableItem("EXTRA_LOCKER", "Casillero adicional", "Un casillero mas",
                 SellableItemKind.CAPACITY, true, false, 0, new BigDecimal("15000.00"), IVA, COP);
+    }
+
+    /**
+     * {@code EXTRA_USER}, ya con eje y con lo que el nucleo regala: dos usuarios
+     * incluidos y la misma escalera por tramos de la tarifa 2026 (310:152-153) -1-8
+     * a 12.000, 9 en adelante a 9.000-, para que las lineas dimensionadas de
+     * {@link com.vetsoftware.app.aiproposal.domain.ProposalCart} puedan cruzar un
+     * tramo de verdad.
+     */
+    public static SellableItem capacidadDeUsuarioExtra() {
+        PriceLadder escalera = new PriceLadder("EXTRA_USER",
+                List.of(new PriceTier(1, 8, 0, new BigDecimal("12000.00"), IVA),
+                        new PriceTier(9, null, 0, new BigDecimal("9000.00"), IVA)),
+                COP);
+        return new SellableItem("EXTRA_USER", "Usuario adicional", "Una persona mas",
+                SellableItemKind.CAPACITY, true, true, 0, escalera.unitAmountForOne(),
+                escalera.taxRate(), COP, "USER", 2, escalera);
+    }
+
+    /**
+     * {@code EXTRA_BRANCH}, con eje {@code BRANCH} y la sede que regala el nucleo.
+     * Escalera real de 310:154-156.
+     */
+    public static SellableItem capacidadDeSedeExtra() {
+        PriceLadder escalera = new PriceLadder("EXTRA_BRANCH",
+                List.of(new PriceTier(1, 2, 0, new BigDecimal("35000.00"), IVA),
+                        new PriceTier(3, 9, 0, new BigDecimal("28000.00"), IVA),
+                        new PriceTier(10, null, 0, new BigDecimal("22000.00"), IVA)),
+                COP);
+        return new SellableItem("EXTRA_BRANCH", "Sede adicional", "Una sede mas",
+                SellableItemKind.CAPACITY, true, true, 0, escalera.unitAmountForOne(),
+                escalera.taxRate(), COP, "BRANCH", 1, escalera);
     }
 
     public static SellableItem moduloEnBorrador() {

@@ -274,6 +274,132 @@ class SellableCatalogQueryPortIT extends AbstractDataJpaTest {
                             + " una linea que se cae despues del registro")
                     .isFalse();
         }
+
+        /**
+         * El simetrico del caso de arriba: aqui la via es la columna y no el
+         * {@code EXISTS}. {@code ESCALERA} no cuelga de ningun pack, asi que sirve de
+         * probe exacto -lo unico que cambia es {@code self_service}-.
+         * {@code chk_catalog_items_self_service} (229) solo admite la marca en
+         * {@code MODULE} y {@code CAPACITY}.
+         */
+        @Test
+        @DisplayName("una capacidad marcada self_service, aunque no cuelgue de ningun pack, SI se vende")
+        void una_capacidad_marcada_self_service_sin_pack_se_vende() {
+            assertThat(articuloDePrueba(COD_ESCALERA).selfServiceEligible())
+                    .as("precondicion: sin la marca y sin colgar de ningun pack no es contratable")
+                    .isFalse();
+
+            entityManager
+                    .createNativeQuery(
+                            "UPDATE catalog_items SET self_service = TRUE WHERE id = :id")
+                    .setParameter("id", ESCALERA).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(articuloDePrueba(COD_ESCALERA).selfServiceEligible()).isTrue();
+            assertThat(articuloDePrueba(COD_ESCALERA).esCotizable()).isTrue();
+        }
+
+        @Test
+        @DisplayName("un modulo retirado marcado self_service sigue sin ser cotizable")
+        void un_modulo_retirado_marcado_self_service_no_es_cotizable() {
+            entityManager
+                    .createNativeQuery(
+                            "UPDATE catalog_items SET self_service = TRUE WHERE id = :id")
+                    .setParameter("id", MOD_RETIRADO).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(articuloDePrueba(COD_RETIRADO).esCotizable())
+                    .as("DEPRECATED apaga active(): la marca no reabre lo que el estado cierra")
+                    .isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("Lo que el nucleo ya concede en el eje de una capacidad")
+    class CapacidadesDelNucleo {
+
+        @Test
+        @DisplayName("una capacidad vendible con estructural en su eje conoce el eje y lo que ya trae")
+        void una_capacidad_vendible_con_estructural_en_su_eje() {
+            articulo(2900L, "TESTAI_ESTRUCTURAL_UNO", "Estructural del eje owner", "CAPACITY",
+                    "OWNER", true, 20, "ACTIVE", "NEVER_FREE", null);
+            articulo(2901L, "TESTAI_CAP_OWNER_UNO", "Capacidad vendible del eje owner", "CAPACITY",
+                    "OWNER", false, 21, "ACTIVE", "NEVER_FREE", null);
+            precio(2902L, LISTA, 2900L, 1, null, 1, "0.00");
+            precio(2903L, LISTA, 2901L, 1, null, 0, "5000.00");
+            entityManager
+                    .createNativeQuery(
+                            "UPDATE catalog_items SET self_service = TRUE WHERE id = :id")
+                    .setParameter("id", 2901L).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+
+            SellableItem capacidad = articuloDePrueba("TESTAI_CAP_OWNER_UNO");
+
+            assertThat(capacidad.capacityUnit()).isEqualTo("OWNER");
+            assertThat(capacidad.includedQuantity()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("con min_quantity en cero el estructural concede el suelo de una unidad")
+        void el_minimo_estructural_en_cero_concede_el_suelo() {
+            articulo(2920L, "TESTAI_ESTRUCTURAL_DOS", "Estructural en minimo cero", "CAPACITY",
+                    "OWNER", true, 22, "ACTIVE", "NEVER_FREE", null);
+            articulo(2921L, "TESTAI_CAP_OWNER_DOS", "Capacidad vendible del eje owner", "CAPACITY",
+                    "OWNER", false, 23, "ACTIVE", "NEVER_FREE", null);
+            precio(2922L, LISTA, 2920L, 1, null, 0, "0.00");
+            precio(2923L, LISTA, 2921L, 1, null, 0, "5000.00");
+            entityManager
+                    .createNativeQuery(
+                            "UPDATE catalog_items SET self_service = TRUE WHERE id = :id")
+                    .setParameter("id", 2921L).executeUpdate();
+            entityManager
+                    .createNativeQuery("UPDATE catalog_items SET min_quantity = 0 WHERE id = :id")
+                    .setParameter("id", 2920L).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(articuloDePrueba("TESTAI_CAP_OWNER_DOS").includedQuantity()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("una capacidad vendible sin estructural en su eje no hereda nada, pero conserva el eje")
+        void una_capacidad_vendible_sin_estructural_en_su_eje() {
+            articulo(2930L, "TESTAI_CAP_ANIMAL", "Capacidad vendible sin estructural", "CAPACITY",
+                    "ANIMAL", false, 24, "ACTIVE", "NEVER_FREE", null);
+            precio(2931L, LISTA, 2930L, 1, null, 0, "5000.00");
+            entityManager
+                    .createNativeQuery(
+                            "UPDATE catalog_items SET self_service = TRUE WHERE id = :id")
+                    .setParameter("id", 2930L).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+
+            SellableItem capacidad = articuloDePrueba("TESTAI_CAP_ANIMAL");
+
+            assertThat(capacidad.capacityUnit()).isEqualTo("ANIMAL");
+            assertThat(capacidad.includedQuantity()).isZero();
+        }
+
+        @Test
+        @DisplayName("un MODULE no tiene eje de capacidad ni nada incluido por el nucleo")
+        void un_modulo_no_tiene_eje_de_capacidad() {
+            SellableItem modulo = articuloDePrueba(COD_EN_PACK);
+
+            assertThat(modulo.capacityUnit()).isNull();
+            assertThat(modulo.includedQuantity()).isZero();
+        }
+
+        @Test
+        @DisplayName("amountFor cobra cada tramo por separado, y amountFor(1) coincide con unitAmount")
+        void amount_for_cobra_por_tramos() {
+            SellableItem escalera = articuloDePrueba(COD_ESCALERA);
+
+            assertThat(escalera.amountFor(13)).isEqualByComparingTo("141000.00");
+            assertThat(escalera.amountFor(1)).isEqualByComparingTo(escalera.unitAmount());
+        }
     }
 
     @Nested

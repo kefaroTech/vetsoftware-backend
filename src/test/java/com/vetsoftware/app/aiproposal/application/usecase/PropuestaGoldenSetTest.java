@@ -1,6 +1,7 @@
 package com.vetsoftware.app.aiproposal.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import com.vetsoftware.app.aiproposal.domain.CartLine;
 import com.vetsoftware.app.aiproposal.domain.CartResult;
@@ -12,6 +13,7 @@ import com.vetsoftware.app.aiproposal.domain.ProposalDraft;
 import com.vetsoftware.app.aiproposal.domain.ProposalOutputValidator;
 import com.vetsoftware.app.aiproposal.domain.ProposalPresentation;
 import com.vetsoftware.app.aiproposal.domain.SellableCatalog;
+import com.vetsoftware.app.aiproposal.domain.SellableItem;
 import com.vetsoftware.app.aiproposal.infrastructure.ai.BedrockDisabledInvoker;
 import com.vetsoftware.app.aiproposal.testsupport.CasoDorado;
 import com.vetsoftware.app.aiproposal.testsupport.CatalogoComercial2026;
@@ -28,7 +30,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * El <b>golden set</b> del embudo publico: doce clinicas veterinarias
+ * El <b>golden set</b> del embudo publico: trece clinicas veterinarias
  * colombianas y la propuesta que cada una tiene que recibir.
  *
  * <p>
@@ -56,7 +58,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * en el real solo lo recomienda, asi que media docena de estas propuestas
  * saldrian con una linea de mas que ningun prospecto va a ver.
  */
-@DisplayName("Golden set — doce clinicas colombianas y la propuesta que reciben")
+@DisplayName("Golden set — trece clinicas colombianas y la propuesta que reciben")
 class PropuestaGoldenSetTest {
 
     private static final SellableCatalog CATALOGO = CatalogoComercial2026.catalogo();
@@ -76,7 +78,7 @@ class PropuestaGoldenSetTest {
         return draft.outOfDomain()
                 ? ProposalAssembler.vacio(CATALOGO)
                 : ProposalCart.build(draft.necessaryCodes(), draft.recommendedCodes(),
-                        draft.textosDeMotivo(), CATALOGO);
+                        draft.textosDeMotivo(), CATALOGO, draft.capacities());
     }
 
     private static ProposalPresentation pantalla(CasoDorado caso) {
@@ -147,9 +149,9 @@ class PropuestaGoldenSetTest {
     class Invariantes {
 
         @Test
-        @DisplayName("son doce casos y ninguno repite nombre")
-        void son_doce_casos_sin_nombres_repetidos() {
-            assertThat(casos()).hasSize(12).extracting(CasoDorado::nombre).doesNotHaveDuplicates();
+        @DisplayName("son trece casos y ninguno repite nombre")
+        void son_trece_casos_sin_nombres_repetidos() {
+            assertThat(casos()).hasSize(13).extracting(CasoDorado::nombre).doesNotHaveDuplicates();
         }
 
         /**
@@ -170,15 +172,32 @@ class PropuestaGoldenSetTest {
             });
         }
 
+        /**
+         * <b>El importe se compara por la escalera, no por {@code unitAmount}.</b> Para
+         * una linea de cantidad 1 son la misma cifra; para una capacidad dimensionada
+         * -{@code EXTRA_USER}/{@code EXTRA_BRANCH} por mas de una unidad- comparar
+         * contra {@code unitAmount} compararia contra el precio del tramo de entrada, y
+         * es exactamente el error de D-66. {@link SellableItem#amountFor(int)} es el
+         * total correcto en los dos casos.
+         *
+         * <p>
+         * La comparacion admite un margen de {@code 0,005 x quantity}: el motor congela
+         * el precio por unidad en {@code ai_proposal_lines.unit_amount
+         * DECIMAL(19,2)}, y esa cifra a dos decimales no reproduce el total exacto de
+         * la escalera cuando la cantidad cruza un tramo.
+         */
         @ParameterizedTest(name = "{0}")
         @MethodSource("com.vetsoftware.app.aiproposal.application.usecase."
                 + "PropuestaGoldenSetTest#casos")
         @DisplayName("el importe de cada linea es el del catalogo publicado, nunca otro")
         void el_importe_es_el_del_catalogo(CasoDorado caso) {
-            assertThat(propuesta(caso).aceptadas())
-                    .allSatisfy(linea -> assertThat(linea.unitAmount())
-                            .as("importe de %s", linea.code()).isEqualByComparingTo(
-                                    CATALOGO.find(linea.code()).orElseThrow().unitAmount()));
+            assertThat(propuesta(caso).aceptadas()).allSatisfy(linea -> {
+                SellableItem item = CATALOGO.find(linea.code()).orElseThrow();
+                BigDecimal margen = BigDecimal.valueOf(linea.quantity())
+                        .multiply(new BigDecimal("0.005"));
+                assertThat(linea.base()).as("importe de %s", linea.code())
+                        .isCloseTo(item.amountFor(linea.quantity()), within(margen));
+            });
         }
 
         /**
@@ -287,8 +306,9 @@ class PropuestaGoldenSetTest {
                     .isEqualTo(LineVerdict.UNKNOWN_CODE);
             assertThat(linea(carrito, "TELEMEDICINE").unitAmount()).isNull();
             assertThat(linea(carrito, "EXTRA_USER").verdict())
-                    .as("existe en el catalogo pero no se contrata por autoservicio")
-                    .isEqualTo(LineVerdict.NOT_SELF_SERVICE);
+                    .as("es self_service pero el modelo nunca lo ve en su catalogo: proponerlo"
+                            + " por codigo no lo cotiza con cantidad 1")
+                    .isEqualTo(LineVerdict.CAPACITY_DERIVED);
         }
 
         /**
@@ -394,8 +414,8 @@ class PropuestaGoldenSetTest {
     }
 
     @Test
-    @DisplayName("entre las doce propuestas se cotiza todo el catalogo vendible a mano")
-    void entre_las_doce_se_cotiza_todo_el_catalogo() {
+    @DisplayName("entre las trece propuestas se cotiza todo el catalogo vendible a mano")
+    void entre_las_trece_se_cotiza_todo_el_catalogo() {
         List<String> cotizados = casos().stream().map(PropuestaGoldenSetTest::propuesta)
                 .flatMap(carrito -> carrito.aceptadas().stream()).map(CartLine::code).distinct()
                 .toList();
@@ -403,6 +423,6 @@ class PropuestaGoldenSetTest {
         assertThat(cotizados).contains("CORE", "SCHEDULING", "CLINICAL_HISTORY",
                 "VACCINATION_DEWORMING", "HOSPITALIZATION", "SURGERY", "LAB_IMAGING", "GROOMING",
                 "SERVICES", "CASH_REGISTER", "INVENTORY", "PURCHASES", "OPEN_ACCOUNTS",
-                "ELECTRONIC_INVOICING", "CAPACITY_TERMINAL");
+                "ELECTRONIC_INVOICING", "CAPACITY_TERMINAL", "EXTRA_USER", "EXTRA_BRANCH");
     }
 }

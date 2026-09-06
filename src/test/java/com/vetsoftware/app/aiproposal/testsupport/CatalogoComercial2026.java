@@ -1,6 +1,8 @@
 package com.vetsoftware.app.aiproposal.testsupport;
 
 import com.vetsoftware.app.aiproposal.domain.PackOffer;
+import com.vetsoftware.app.aiproposal.domain.PriceLadder;
+import com.vetsoftware.app.aiproposal.domain.PriceTier;
 import com.vetsoftware.app.aiproposal.domain.SellableCatalog;
 import com.vetsoftware.app.aiproposal.domain.SellableItem;
 import com.vetsoftware.app.aiproposal.domain.SellableItemKind;
@@ -50,10 +52,14 @@ import java.util.Set;
  * </ul>
  *
  * <p>
- * <b>Los importes de los {@code EXTRA_*} salen de una escalera por tramos</b>
- * ({@code EXTRA_USER} vale 12.000 hasta el octavo y 9.000 a partir del noveno):
- * aqui se toma el primer tramo, y nada lo afirma —esos articulos entran al
- * golden set solo por su veredicto {@code NOT_SELF_SERVICE}—.
+ * <b>{@code EXTRA_USER} y {@code EXTRA_BRANCH} llevan su escalera completa</b>
+ * ({@code EXTRA_USER} 12.000 hasta el octavo y 9.000 desde el noveno;
+ * {@code EXTRA_BRANCH} 35.000/28.000/22.000 en 1-2/3-9/10-&infin;, 310:152-156)
+ * y el eje e incluido de su axis ({@code USER}: 2, {@code BRANCH}: 1, la misma
+ * cuenta que firma el alta inicial): son los dos que {@code ProposalCart}
+ * dimensiona solo desde {@code CapacityHint}, nunca desde un codigo literal.
+ * {@code EXTRA_TERMINAL} y {@code EXTRA_STORAGE} se quedan con el primer tramo
+ * -no se dimensionan- pero los cuatro son {@code self_service} (405).
  *
  * <p>
  * &#9940; <b>SON TRES LOS ARTICULOS {@code structural_minimum}, NO UNO</b>:
@@ -143,11 +149,11 @@ public final class CatalogoComercial2026 {
         anadir(items, capacidadDeUsuario());
         anadir(items, capacidadDeSede());
         anadir(items, capacidadDelTerminal());
-        anadir(items,
-                extra("EXTRA_USER", "Usuario adicional", "Una persona mas en la cuenta", 12_000));
-        anadir(items,
-                extra("EXTRA_TERMINAL", "Terminal adicional", "Un punto de venta mas", 18_000));
-        anadir(items, extra("EXTRA_STORAGE", "Almacenamiento adicional",
+        anadir(items, extraUsuario());
+        anadir(items, extraSede());
+        anadir(items, extraSimple("EXTRA_TERMINAL", "Terminal adicional", "Un punto de venta mas",
+                18_000));
+        anadir(items, extraSimple("EXTRA_STORAGE", "Almacenamiento adicional",
                 "Un gigabyte mas de archivos clinicos", 1_200));
 
         return new SellableCatalog(items, requiere(), List.of(packSpa(), packClinic(), packFull()),
@@ -222,13 +228,44 @@ public final class CatalogoComercial2026 {
     }
 
     /**
-     * Los {@code EXTRA_*} no cuelgan de ningun paquete, asi que el catalogo
-     * publicado no los da por contratables a mano: el motor los rechaza con
-     * {@code NOT_SELF_SERVICE}.
+     * Un {@code EXTRA_*} de tramo unico, de los dos ejes que el catalogo publica
+     * pero que {@code ProposalCart} no dimensiona ({@code TERMINAL},
+     * {@code STORAGE_GB}): {@code self_service = TRUE} (405) los hace cotizables, y
+     * al no tener eje dimensionado el motor los trata como un articulo normal.
      */
-    private static SellableItem extra(String code, String nombre, String descripcion, int precio) {
-        return new SellableItem(code, nombre, descripcion, SellableItemKind.CAPACITY, true, false,
+    private static SellableItem extraSimple(String code, String nombre, String descripcion,
+            int precio) {
+        return new SellableItem(code, nombre, descripcion, SellableItemKind.CAPACITY, true, true,
                 SIN_PRUEBA, new BigDecimal(precio + ".00"), IVA, COP);
+    }
+
+    /**
+     * {@code EXTRA_USER}: eje {@code USER}, dos usuarios ya incluidos por el nucleo
+     * y la escalera real de 310:152-153.
+     */
+    public static SellableItem extraUsuario() {
+        PriceLadder escalera = new PriceLadder("EXTRA_USER",
+                List.of(new PriceTier(1, 8, 0, new BigDecimal("12000.00"), IVA),
+                        new PriceTier(9, null, 0, new BigDecimal("9000.00"), IVA)),
+                COP);
+        return new SellableItem("EXTRA_USER", "Usuario adicional", "Una persona mas en la cuenta",
+                SellableItemKind.CAPACITY, true, true, SIN_PRUEBA, escalera.unitAmountForOne(),
+                escalera.taxRate(), COP, "USER", 2, escalera);
+    }
+
+    /**
+     * {@code EXTRA_BRANCH}: eje {@code BRANCH}, una sede ya incluida por el nucleo
+     * y la escalera real de 310:154-156.
+     */
+    public static SellableItem extraSede() {
+        PriceLadder escalera = new PriceLadder("EXTRA_BRANCH",
+                List.of(new PriceTier(1, 2, 0, new BigDecimal("35000.00"), IVA),
+                        new PriceTier(3, 9, 0, new BigDecimal("28000.00"), IVA),
+                        new PriceTier(10, null, 0, new BigDecimal("22000.00"), IVA)),
+                COP);
+        return new SellableItem("EXTRA_BRANCH", "Sede adicional", "Una sede mas en la cuenta",
+                SellableItemKind.CAPACITY, true, true, SIN_PRUEBA, escalera.unitAmountForOne(),
+                escalera.taxRate(), COP, "BRANCH", 1, escalera);
     }
 
     private static SellableItem modulo(String code, String nombre, String descripcion, int precio,

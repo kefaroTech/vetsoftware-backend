@@ -1,6 +1,7 @@
 package com.vetsoftware.app.aiproposal.domain;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Un articulo del catalogo comercial, con lo que esta rodaja necesita saber de
@@ -46,10 +47,24 @@ import java.math.BigDecimal;
  * @param trialDays
  *            dias de prueba que concede el articulo; {@code 0} es "sin prueba"
  *            ({@code NEVER_FREE}), nunca negativo: el lado seguro es no regalar
+ * @param capacityUnit
+ *            el eje de {@code catalog_items.capacity_unit} ({@code USER},
+ *            {@code BRANCH}...); {@code null} si {@code kind} no es
+ *            {@code CAPACITY}
+ * @param includedQuantity
+ *            lo que el minimo estructural ya concede en este eje -tramo 1 del
+ *            articulo {@code structural_minimum} del mismo {@code capacityUnit}
+ *            mas su {@code min_quantity}, resuelto por el adaptador-; {@code 0}
+ *            si el eje no tiene minimo estructural o {@code kind} no es
+ *            {@code CAPACITY}
+ * @param ladder
+ *            la escalera de precios del articulo, para cobrar por unidades con
+ *            {@link #amountFor(int)} cuando la cantidad no es 1
  */
 public record SellableItem(String code, String name, String shortDescription, SellableItemKind kind,
         boolean active, boolean selfServiceEligible, int trialDays, BigDecimal unitAmount,
-        BigDecimal taxRate, String currency) {
+        BigDecimal taxRate, String currency, String capacityUnit, int includedQuantity,
+        PriceLadder ladder) {
 
     public SellableItem {
         if (code == null || code.isBlank())
@@ -68,6 +83,24 @@ public record SellableItem(String code, String name, String shortDescription, Se
             throw new IllegalArgumentException("taxRate must be zero or positive: " + code);
         if (currency == null || currency.length() != 3)
             throw new IllegalArgumentException("currency must be a 3-letter code: " + code);
+        if (includedQuantity < 0)
+            throw new IllegalArgumentException("includedQuantity cannot be negative: " + code);
+        if (ladder == null)
+            throw new IllegalArgumentException("ladder is required: " + code);
+    }
+
+    /**
+     * Compatibilidad para el articulo de cantidad fija -todo {@code MODULE},
+     * {@code BUNDLE} y {@code ONE_TIME}, y las capacidades que no se dimensionan-:
+     * sin eje y con una escalera de un solo tramo que reproduce {@code unitAmount}.
+     * {@link ProposalCart} nunca pide {@link #amountFor(int)} para estos.
+     */
+    public SellableItem(String code, String name, String shortDescription, SellableItemKind kind,
+            boolean active, boolean selfServiceEligible, int trialDays, BigDecimal unitAmount,
+            BigDecimal taxRate, String currency) {
+        this(code, name, shortDescription, kind, active, selfServiceEligible, trialDays, unitAmount,
+                taxRate, currency, null, 0, new PriceLadder(code,
+                        List.of(new PriceTier(1, null, 0, unitAmount, taxRate)), currency));
     }
 
     /**
@@ -82,5 +115,13 @@ public record SellableItem(String code, String name, String shortDescription, Se
 
     public boolean concedePrueba() {
         return trialDays > 0;
+    }
+
+    /**
+     * El total D-66 de {@code quantity} unidades. Ver
+     * {@link PriceLadder#amountFor(int)}.
+     */
+    public BigDecimal amountFor(int quantity) {
+        return ladder.amountFor(quantity);
     }
 }

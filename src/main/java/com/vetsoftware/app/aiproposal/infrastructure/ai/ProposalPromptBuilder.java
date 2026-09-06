@@ -4,6 +4,7 @@ import com.vetsoftware.app.aiproposal.application.dto.ProposalGenerationRequest;
 import com.vetsoftware.app.aiproposal.domain.ProspectText;
 import com.vetsoftware.app.aiproposal.domain.SellableCatalog;
 import com.vetsoftware.app.aiproposal.domain.SellableItem;
+import com.vetsoftware.app.aiproposal.domain.SellableItemKind;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -180,12 +181,21 @@ public class ProposalPromptBuilder {
      * no se le ensena al modelo: ensenarselo es pagarle tokens para que fabrique
      * lineas que el motor va a rechazar despues. Los que no tienen hint se omiten
      * en vez de rellenarse (S5.2).
+     *
+     * <p>
+     * <strong>Y tampoco una {@code CAPACITY} vendible</strong>, aunque sea
+     * cotizable y tenga hint: {@code ProposalCart} dimensiona {@code EXTRA_USER}/
+     * {@code EXTRA_BRANCH} solo desde {@code usuarios}/{@code sedes}, no desde un
+     * codigo que el modelo elija. Listarla invitaria a proponerla con
+     * {@code quantity = 1}, que el motor rechaza con {@code CAPACITY_DERIVED} en
+     * vez de cotizar.
      */
     private static String bloqueDeCatalogo(SellableCatalog catalog, Map<String, String> hints) {
         StringBuilder bloque = new StringBuilder();
         for (SellableItem item : catalog.items().values()) {
             String hint = hints.get(item.code());
-            if (hint == null || hint.isBlank() || !item.esCotizable())
+            if (hint == null || hint.isBlank() || !item.esCotizable()
+                    || item.kind() == SellableItemKind.CAPACITY)
                 continue;
             bloque.append("  ").append(item.code()).append("  ").append(item.name()).append(" - ")
                     .append(hint.trim()).append('\n');

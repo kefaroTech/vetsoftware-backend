@@ -43,6 +43,12 @@ import java.util.Map;
  * la propuesta correcta y el precio del catalogo.
  *
  * <p>
+ * <b>Un caso mas dimensiona capacidad extra</b> ({@code EXTRA_USER} y
+ * {@code EXTRA_BRANCH}, #713): el modelo nunca los propone por codigo -no estan
+ * en su bloque de catalogo-, asi que la unica forma de que aparezcan es la
+ * cuenta de {@code CapacityHint} contra lo que ya regala el nucleo.
+ *
+ * <p>
  * <b>Los motivos van sin cifras y sin dinero a proposito.</b> El saneador
  * sustituye cualquier motivo con un digito o un simbolo de moneda por la
  * descripcion del catalogo, asi que un motivo con numeros probaria el saneador
@@ -58,7 +64,8 @@ public final class GoldenSetDeClinicasColombianas {
         return List.of(unSoloVeterinario(), clinicaConPeluqueria(), peluqueriaSinVeterinario(),
                 mandaLasMuestrasFuera(), tresSedes(), soloAgendaYFichaClinica(),
                 losRecomendadosNoEntran(), cirugiaYHospitalizacion(), petShopQueFia(),
-                fueraDeDominio(), pideModulosQueNoExisten(), pideDescuento());
+                fueraDeDominio(), pideModulosQueNoExisten(), pideDescuento(),
+                cuatroSedesConNuevePersonas());
     }
 
     /**
@@ -145,9 +152,12 @@ public final class GoldenSetDeClinicasColombianas {
 
     /**
      * Varias sedes. Las tres capacidades que el modelo estima —personal, sedes,
-     * terminales— <b>no</b> se convierten en lineas cotizadas: son una pista para
-     * dimensionar, y confundirlas con articulos seria cobrarle al prospecto por un
-     * numero que dijo un modelo.
+     * terminales— <b>no</b> se piden por codigo: son una pista, y confundirlas con
+     * un codigo elegido por el modelo seria cobrarle al prospecto por un numero que
+     * el mismo dijo sin verificar. Lo que si pasa: {@code ProposalCart} las traduce
+     * en {@code EXTRA_USER} y {@code EXTRA_BRANCH} -seis personas y dos usuarios ya
+     * incluidos por el nucleo, tres sedes y una ya incluida- sin que ninguno de los
+     * dos aparezca en {@code necesarios} ni en {@code recomendados} (#713).
      */
     public static CasoDorado tresSedes() {
         return new CasoDorado("tres sedes en medellin, cada una con su caja",
@@ -163,7 +173,7 @@ public final class GoldenSetDeClinicasColombianas {
                                 "CASH_REGISTER", "Cada sede cobra en mostrador y cierra su turno."),
                         6, 3, 3),
                 List.of("CORE", "SCHEDULING", "CLINICAL_HISTORY", "CASH_REGISTER",
-                        "CAPACITY_TERMINAL"),
+                        "CAPACITY_TERMINAL", "EXTRA_USER", "EXTRA_BRANCH"),
                 List.of(), Map.of(), ProposalPresentation.PROPOSAL);
     }
 
@@ -266,8 +276,10 @@ public final class GoldenSetDeClinicasColombianas {
      * <b>Adversario 1: pide modulos que no estan en el catalogo.</b> Los dos
      * codigos alucinados se conservan <b>verbatim</b> como linea rechazada —la
      * alucinacion es precisamente el dato que mide la calidad del modelo— y no se
-     * cotizan. {@code EXTRA_USER} existe pero no se contrata por autoservicio, que
-     * es un veredicto distinto y por eso esta aqui.
+     * cotizan. {@code EXTRA_USER} existe y hoy es {@code self_service}, pero el
+     * modelo nunca lo ve en su catalogo: proponerlo por codigo es entrada no
+     * confiable y se rechaza con {@code CAPACITY_DERIVED} en vez de cotizarse con
+     * cantidad 1 (#713).
      */
     public static CasoDorado pideModulosQueNoExisten() {
         return new CasoDorado("adversario: pide modulos que no estan en el catalogo",
@@ -280,8 +292,32 @@ public final class GoldenSetDeClinicasColombianas {
                                 "EXTRA_USER", "El prospecto dice que van a ser varias personas.")),
                 List.of("CORE"), List.of(),
                 Map.of("TELEMEDICINE", LineVerdict.UNKNOWN_CODE, "WHATSAPP_MARKETING",
-                        LineVerdict.UNKNOWN_CODE, "EXTRA_USER", LineVerdict.NOT_SELF_SERVICE),
+                        LineVerdict.UNKNOWN_CODE, "EXTRA_USER", LineVerdict.CAPACITY_DERIVED),
                 ProposalPresentation.PROPOSAL);
+    }
+
+    /**
+     * &#9940; <b>Dimensiona capacidad extra sin que el modelo la pida por
+     * codigo.</b> Cuatro sedes con nueve personas en total: el nucleo ya regala 2
+     * usuarios y 1 sede, asi que el carrito tiene que traer {@code EXTRA_USER} por
+     * 7 y {@code EXTRA_BRANCH} por 3, a los precios reales de la escalera 310. Es
+     * el caso que #713 dejaba sin vender: la landing ya cotizaba estas unidades por
+     * autoservicio y el asistente las descartaba en silencio.
+     */
+    public static CasoDorado cuatroSedesConNuevePersonas() {
+        return new CasoDorado("cuatro sedes, nueve personas en total",
+                "tenemos cuatro sedes y entre todas somos nueve personas trabajando. cada"
+                        + " sede maneja su propia agenda, su historia clinica y su caja",
+                new ModelProposalPayload(true, false,
+                        List.of("SCHEDULING", "CLINICAL_HISTORY", "CASH_REGISTER"), List.of(),
+                        Map.of("SCHEDULING", "Cada sede maneja su propia agenda.",
+                                "CLINICAL_HISTORY",
+                                "Cada sede necesita el expediente del paciente.", "CASH_REGISTER",
+                                "Cada sede cobra en su propio mostrador."),
+                        9, 4, null),
+                List.of("CORE", "SCHEDULING", "CLINICAL_HISTORY", "CASH_REGISTER",
+                        "CAPACITY_TERMINAL", "EXTRA_USER", "EXTRA_BRANCH"),
+                List.of(), Map.of(), ProposalPresentation.PROPOSAL);
     }
 
     /**

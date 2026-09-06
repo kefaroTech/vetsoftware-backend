@@ -15,6 +15,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -97,11 +98,13 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
      * no esta consulta.
      *
      * <p>
-     * <strong>El penultimo {@code CASE} es el gate del autoservicio</strong>, y su
-     * conjunto de aceptacion tiene que ser un <em>subconjunto</em> del de
-     * {@code JpaCatalogQueryPorts.SQL_PUBLISHED_ID_BY_CODE}, que es el paso
-     * vinculante: o el articulo es un {@code BUNDLE}, o es un {@code MODULE} o una
-     * {@code CAPACITY} que cuelga de algun {@code BUNDLE} {@code ACTIVE} publicado.
+     * <strong>El penultimo {@code CASE} es el gate del autoservicio</strong>, y hoy
+     * acepta exactamente el mismo conjunto que las otras dos copias del mismo
+     * predicado -{@code JpaCatalogQueryPorts.SQL_PUBLISHED_ID_BY_CODE}, el paso
+     * vinculante, y {@code JpaPublicCatalogQueryPort.SQL_ITEMS}, la bandera de
+     * {@code GET /catalog}-: o el articulo es un {@code BUNDLE}, o es un
+     * {@code MODULE} o una {@code CAPACITY} con {@code self_service = TRUE} o
+     * colgada de algun {@code BUNDLE} {@code ACTIVE} publicado (#713).
      *
      * <p>
      * <strong>La restriccion por {@code item_type} no es adorno.</strong> Sin ella,
@@ -115,19 +118,23 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
      *
      * <p>
      * <strong>Lo que este {@code CASE} NO replica es el
-     * {@code p.tier_min = 1}</strong> que aquel exige en su {@code JOIN}, y no es
-     * un olvido: {@code SQL_ITEM_TIERS} trae la escalera entera a proposito, asi
+     * {@code p.tier_min = 1}</strong> que aquellas exigen en su {@code JOIN}, y no
+     * es un olvido: {@code SQL_ITEM_TIERS} trae la escalera entera a proposito, asi
      * que aqui no hay un tramo unico al que atarse. La cobertura la da el dominio y
      * es mas fuerte que ese predicado. {@code PriceLadder} exige que el primer
      * tramo arranque en uno, y ademas que la escalera sea contigua y cierre;
      * {@code construir(...)} descarta del catalogo el articulo cuya escalera no
      * cumple. Un articulo sin tramo de entrada nunca llega a tener
-     * {@code selfServiceEligible}: no llega al catalogo. El subconjunto se conserva
-     * por esa via, no por esta columna.
+     * {@code selfServiceEligible}: no llega al catalogo. El mismo conjunto se
+     * conserva por esa via, no por esta columna.
      *
      * <p>
-     * Hoy los cuatro {@code EXTRA_*} dan {@code false} por este {@code EXISTS}: la
-     * semilla 309 no mete ninguno en los tres packs.
+     * <strong>{@code ci.capacity_unit} y {@code ci.min_quantity} viajan
+     * aparte</strong> de la proyeccion de precio: son el eje y el minimo con el que
+     * {@link #leerArticulos} resuelve cuanto concede ya el minimo estructural en
+     * ese eje, para que {@code ProposalCart} pueda dimensionar
+     * {@code EXTRA_USER}/{@code EXTRA_BRANCH} con la cantidad neta y no con la
+     * cifra bruta que dedujo el modelo.
      */
     private static final String SQL_ITEM_TIERS = """
             SELECT ci.code,
@@ -135,17 +142,20 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
                    ci.short_description,
                    ci.item_type,
                    ci.structural_minimum,
+                   ci.capacity_unit,
+                   ci.min_quantity,
                    CASE WHEN ci.status = 'ACTIVE' THEN 1 ELSE 0 END,
                    CASE WHEN ci.item_type = 'BUNDLE'
                              OR (ci.item_type IN ('MODULE', 'CAPACITY')
-                                 AND EXISTS (SELECT 1
-                                               FROM bundle_components bc
-                                               JOIN catalog_items b ON b.id = bc.bundle_item_id
-                                              WHERE bc.component_item_id = ci.id
-                                                AND bc.enabled = TRUE
-                                                AND b.enabled = TRUE
-                                                AND b.item_type = 'BUNDLE'
-                                                AND b.status = 'ACTIVE'))
+                                 AND (ci.self_service = TRUE
+                                      OR EXISTS (SELECT 1
+                                                   FROM bundle_components bc
+                                                   JOIN catalog_items b ON b.id = bc.bundle_item_id
+                                                  WHERE bc.component_item_id = ci.id
+                                                    AND bc.enabled = TRUE
+                                                    AND b.enabled = TRUE
+                                                    AND b.item_type = 'BUNDLE'
+                                                    AND b.status = 'ACTIVE')))
                         THEN 1 ELSE 0 END,
                    CASE WHEN ci.trial_eligibility = 'ELIGIBLE'
                         THEN ci.default_trial_days END,
@@ -580,21 +590,52 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
             String code = asString(columnas[0]);
             cabeceras.putIfAbsent(code, columnas);
             escaleras.computeIfAbsent(code, ignorado -> new ArrayList<>())
-                    .add(new PriceTier(asInt(columnas[9]), asInteger(columnas[10]),
-                            asInt(columnas[11]), asAmount(columnas[12]), asAmount(columnas[13])));
+                    .add(new PriceTier(asInt(columnas[11]), asInteger(columnas[12]),
+                            asInt(columnas[13]), asAmount(columnas[14]), asAmount(columnas[15])));
         }
 
+        Map<String, Integer> incluidoPorEje = incluidoPorEje(cabeceras, escaleras);
         Map<String, SellableItem> items = new LinkedHashMap<>();
         Set<String> nucleosDeclarados = new LinkedHashSet<>();
-        cabeceras.forEach((code, columnas) -> construir(code, columnas, escaleras.get(code))
-                .ifPresent(item -> {
-                    items.put(code, item);
-                    // La columna structural_minimum llega como Byte desde MySQL y se queda aqui:
-                    // el dominio no la ve. Ver resolverNucleo(...).
-                    if (asBoolean(columnas[4]))
-                        nucleosDeclarados.add(code);
-                }));
+        cabeceras.forEach(
+                (code, columnas) -> construir(code, columnas, escaleras.get(code), incluidoPorEje)
+                        .ifPresent(item -> {
+                            items.put(code, item);
+                            // structural_minimum llega como Byte desde MySQL y se queda aqui:
+                            // el dominio no la ve. Ver resolverNucleo(...).
+                            if (asBoolean(columnas[4]))
+                                nucleosDeclarados.add(code);
+                        }));
         return new CatalogoLeido(items, nucleosDeclarados);
+    }
+
+    /**
+     * Lo que el minimo estructural ya concede en cada eje: el
+     * {@code included_quantity} del primer tramo del articulo
+     * {@code structural_minimum} de ese {@code capacity_unit}, mas su
+     * {@code min_quantity} con suelo 1 -la misma cuenta que
+     * {@code CreateInitialSubscriptionService.capacityLine} firma en el alta y que
+     * {@code GetPublicPlansService.toEstructural} publica en el configurador-. Con
+     * la tarifa 2026 da {@code USER = 2} y {@code BRANCH = 1}.
+     *
+     * <p>
+     * Solo hay un articulo {@code structural_minimum} por eje -{@code CORE},
+     * {@code CAPACITY_USER} y {@code CAPACITY_BRANCH}, semilla 308:239-243, y
+     * {@code CORE} no lleva eje-, asi que no hace falta desempate.
+     */
+    private static Map<String, Integer> incluidoPorEje(Map<String, Object[]> cabeceras,
+            Map<String, List<PriceTier>> escaleras) {
+        Map<String, Integer> incluido = new LinkedHashMap<>();
+        cabeceras.forEach((code, columnas) -> {
+            String eje = asString(columnas[5]);
+            List<PriceTier> tramos = escaleras.get(code);
+            if (!asBoolean(columnas[4]) || eje == null || tramos == null || tramos.isEmpty())
+                return;
+            int tramoUno = tramos.stream().min(Comparator.comparingInt(PriceTier::tierMin))
+                    .map(PriceTier::includedQuantity).orElse(0);
+            incluido.put(eje, tramoUno + Math.max(asInt(columnas[6]), 1));
+        });
+        return incluido;
     }
 
     /**
@@ -604,17 +645,22 @@ public class JpaSellableCatalogQueryPort implements SellableCatalogQueryPort {
      * una escalera rota es cobrar mal— y ademas es un dato del que hay que
      * enterarse, por eso queda en el log de la plataforma y no en silencio.
      */
-    private Optional<SellableItem> construir(String code, Object[] columnas,
-            List<PriceTier> tramos) {
-        String currency = asString(columnas[8]);
+    private Optional<SellableItem> construir(String code, Object[] columnas, List<PriceTier> tramos,
+            Map<String, Integer> incluidoPorEje) {
+        String currency = asString(columnas[10]);
         try {
             PriceLadder escalera = new PriceLadder(code, tramos, currency);
+            SellableItemKind kind = asKind(columnas[3]);
+            String capacityUnit = kind == SellableItemKind.CAPACITY ? asString(columnas[5]) : null;
+            int includedQuantity = capacityUnit == null
+                    ? 0
+                    : incluidoPorEje.getOrDefault(capacityUnit, 0);
             // columnas[4] es structural_minimum y NO se pasa: lo recoge leerArticulos
             // aparte.
             return Optional.of(new SellableItem(code, asString(columnas[1]), asString(columnas[2]),
-                    asKind(columnas[3]), asBoolean(columnas[5]), asBoolean(columnas[6]),
-                    asTrialDays(columnas[7]), escalera.unitAmountForOne(), escalera.taxRate(),
-                    currency));
+                    kind, asBoolean(columnas[7]), asBoolean(columnas[8]), asTrialDays(columnas[9]),
+                    escalera.unitAmountForOne(), escalera.taxRate(), currency, capacityUnit,
+                    includedQuantity, escalera));
         } catch (IllegalArgumentException rota) {
             log.warn("Articulo {} excluido del catalogo de propuestas: {}", code,
                     rota.getMessage());
