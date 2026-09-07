@@ -17,4 +17,6 @@ public interface AnimalRepository {
     PageResult<Animal> findAllByCompanyId(Long companyId, int page, int pageSize);
 
     List<Animal> findByOwnerIdAndCompanyId(Long ownerId, Long companyId);
+
+    void delete(Long id, Long companyId);
 }

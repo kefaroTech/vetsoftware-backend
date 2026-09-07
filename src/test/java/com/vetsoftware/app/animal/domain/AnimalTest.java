@@ -276,6 +276,51 @@ class AnimalTest {
     }
 
     @Nested
+    @DisplayName("actualizacion")
+    class Actualizacion {
+
+        private static final SpecieRef GATO = new SpecieRef(20L, "Gato");
+        private static final BreedRef SIAMES = new BreedRef(21L, "Siames");
+        private static final OwnerRef OTRO_DUENO = new OwnerRef(22L, "Carlos Pena", "CC-2040");
+        private static final AnimalColorRef BLANCO = new AnimalColorRef(23L, "Blanco");
+
+        @Test
+        @DisplayName("reemplaza los campos editables y conserva id, empresa y fecha de alta")
+        void reemplaza_los_campos_editables_y_conserva_lo_no_editable() {
+            Animal animal = valido().build();
+
+            animal.update("Michi", "B-002", GATO, SIAMES, OTRO_DUENO, Gender.FEMALE,
+                    WeightType.POUNDS, AnimalType.NONE, ReproductiveState.NO_STERILIZED, BLANCO,
+                    LocalDate.of(2021, 3, 1), 12, false, null);
+
+            assertThat(animal.getName()).isEqualTo("Michi");
+            assertThat(animal.getCode()).isEqualTo("B-002");
+            assertThat(animal.getSpecie()).isEqualTo(GATO);
+            assertThat(animal.getBreed()).isEqualTo(SIAMES);
+            assertThat(animal.getOwner()).isEqualTo(OTRO_DUENO);
+            assertThat(animal.getGender()).isEqualTo(Gender.FEMALE);
+            assertThat(animal.getColor()).isEqualTo(BLANCO);
+            assertThat(animal.getSize()).isEqualTo(12);
+            assertThat(animal.getId()).isEqualTo(1L);
+            assertThat(animal.getCompany()).isEqualTo(AnimalMother.CLINICA);
+            assertThat(animal.getCreatedDate()).isEqualTo(AnimalMother.CREADO);
+        }
+
+        @Test
+        @DisplayName("comparte las invariantes del constructor: un nombre en blanco se rechaza")
+        void comparte_las_invariantes_del_constructor() {
+            Animal animal = valido().build();
+
+            assertThatThrownBy(() -> animal.update("   ", "A-001", AnimalMother.PERRO,
+                    AnimalMother.LABRADOR, AnimalMother.DUENO, Gender.MALE, WeightType.KILOGRAMS,
+                    AnimalType.NONE, ReproductiveState.STERILIZED, AnimalMother.NEGRO,
+                    AnimalMother.NACIMIENTO, 30, false, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("name is required");
+        }
+    }
+
+    @Nested
     @DisplayName("peso actual derivado")
     class PesoDerivado {
 

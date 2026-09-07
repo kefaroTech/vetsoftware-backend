@@ -6,8 +6,12 @@ import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaEntity;
 import com.vetsoftware.app.company.infrastructure.persistence.CompanyJpaRepository;
 import com.vetsoftware.app.daycare.application.port.out.DayCareRepository;
 import com.vetsoftware.app.daycare.domain.DayCare;
+import com.vetsoftware.app.shared.pagination.PageResult;
+import com.vetsoftware.app.shared.pagination.Pages;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -40,7 +44,30 @@ public class JpaDayCareRepository implements DayCareRepository {
     }
 
     @Override
+    public Optional<DayCare> findByIdAndCompanyId(Long id, Long companyId) {
+        return jpaRepository.findByIdAndCompany_Id(id, companyId).map(mapper::toDomain);
+    }
+
+    @Override
     public List<DayCare> findAll() {
         return jpaRepository.findAll().stream().map(mapper::toDomain).toList();
+    }
+
+    /**
+     * El orden por id descendente es estable y devuelve primero lo mas reciente,
+     * que es lo que la ficha clinica muestra arriba.
+     */
+    @Override
+    public PageResult<DayCare> findAllByAnimalIdAndCompanyId(Long animalId, Long companyId,
+            String query, int page, int pageSize) {
+        Page<DayCareJpaEntity> result = jpaRepository.findAllByAnimalIdAndCompanyId(animalId,
+                companyId, query,
+                Pages.request(page, pageSize, Sort.by(Sort.Direction.DESC, "id")));
+        return Pages.result(result, mapper::toDomain);
+    }
+
+    @Override
+    public void delete(Long id) {
+        jpaRepository.deleteById(id);
     }
 }

@@ -71,6 +71,7 @@ import com.vetsoftware.app.employee.domain.AdminEmployeeCannotBeDisabledExceptio
 import com.vetsoftware.app.employee.domain.EmployeeHasActiveChildrenException;
 import com.vetsoftware.app.employee.domain.EmployeeNotFoundException;
 import com.vetsoftware.app.employeerole.domain.EmployeeRoleNotFoundException;
+import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import com.vetsoftware.app.entitlement.domain.CompanyCapacityNotFoundException;
 import com.vetsoftware.app.entitlement.domain.CompanyEntitlementNotFoundException;
 import com.vetsoftware.app.entitlement.domain.CompanyWithoutContractException;
@@ -314,6 +315,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      * texto genérico.
      */
     private static final int MAX_ENUM_VALUES_IN_MESSAGE = 12;
+
+    private static final Map<String, String> CAPACITY_DIMENSION_NOUNS = Map.of("BRANCH", "sede",
+            "USER", "usuario");
 
     private final AuditLogger auditLogger;
     private final Tracer tracer;
@@ -1031,6 +1035,41 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleCompanyWithoutContract(CompanyWithoutContractException ex) {
         log.info("Company has no contract: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "COMPANY_WITHOUT_CONTRACT", ex.getMessage());
+    }
+
+    /**
+     * Extiende {@code IllegalStateException} pero necesita su propio handler y no
+     * el genérico {@code handleConflictState}: ahí el detail es una constante a
+     * propósito (#118), y aquí el cliente sí necesita saber qué eje se agotó y que
+     * la salida es ampliar el cupo. El {@code companyId} y el mensaje crudo del
+     * dominio se quedan en el log (ASVS V7.4.1); la respuesta solo lleva la
+     * dimensión y las cifras del cupo.
+     */
+    @ExceptionHandler(CompanyCapacityLimitExceededException.class)
+    public ProblemDetail handleCompanyCapacityLimitExceeded(
+            CompanyCapacityLimitExceededException ex) {
+        log.info(
+                "Company capacity limit exceeded: companyId={} dimension={} limit={} used={}"
+                        + " requestedDelta={}",
+                ex.getCompanyId(), ex.getDimensionCode(), ex.getLimit(), ex.getUsed(),
+                ex.getRequestedDelta());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "CAPACITY_LIMIT_EXCEEDED",
+                capacityLimitExceededDetail(ex.getDimensionCode(), ex.getLimit()));
+        pd.setProperty("dimension", ex.getDimensionCode());
+        pd.setProperty("limit", ex.getLimit());
+        pd.setProperty("used", ex.getUsed());
+        return pd;
+    }
+
+    private static String capacityLimitExceededDetail(String dimensionCode, int limit) {
+        String noun = CAPACITY_DIMENSION_NOUNS.get(dimensionCode);
+        if (noun == null) {
+            return "Tu plan agotó el cupo de la dimensión " + dimensionCode
+                    + ". Amplía el cupo desde Mi suscripción.";
+        }
+        boolean plural = limit != 1;
+        return "Tu plan incluye " + limit + " " + (plural ? noun + "s" : noun) + " y ya "
+                + (plural ? "están" : "está") + " en uso. Amplía el cupo desde Mi suscripción.";
     }
 
     @ExceptionHandler(CompanyAlreadyHasActiveSubscriptionException.class)

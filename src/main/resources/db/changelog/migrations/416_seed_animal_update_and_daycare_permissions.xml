@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issues #800 y #296. 273_seed_owner_animal_permissions dejo fuera 'animal.update'
+         a proposito porque no existia ningun UpdateAnimalUseCase; hoy si existe (#800), asi
+         que se siembra bajo el mismo submodulo OWNERS_ANIMALS que 273. 'daycare.*' cierra
+         el CRUD de guarderia (#296) bajo el submodulo tecnico DAYCARE que 258 ya creo.
+
+         Sin bloques de backfill a permissions/role_permissions de empresas existentes: la
+         base de datos se asume vacia (decision del 2026-09-06, sin retrocompatibilidad).
+         Al registrarse una empresa, JpaRolePermissionInitializationPort.initializeForRole
+         copia base_permissions filtrando por entitlements. -->
+
+    <changeSet id="416_animal_update_daycare_base_permissions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO base_permissions (name, code, sub_module_id, enabled)
+            SELECT seed.name, seed.code, sm.id, TRUE
+            FROM (
+                SELECT 'Editar mascotas' AS name, 'animal.update' AS code, 'OWNERS_ANIMALS' AS sub_module_code
+                UNION ALL SELECT 'Crear guarderias', 'daycare.create', 'DAYCARE'
+                UNION ALL SELECT 'Ver guarderias', 'daycare.read', 'DAYCARE'
+                UNION ALL SELECT 'Editar guarderias', 'daycare.update', 'DAYCARE'
+                UNION ALL SELECT 'Eliminar guarderias', 'daycare.delete', 'DAYCARE'
+            ) seed
+            JOIN sub_modules sm ON sm.code = seed.sub_module_code
+            LEFT JOIN base_permissions existing ON existing.code = seed.code
+            WHERE existing.id IS NULL;
+        ]]></sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_permissions
+                WHERE code IN ('animal.update', 'daycare.create', 'daycare.read',
+                                'daycare.update', 'daycare.delete');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="416_animal_update_daycare_base_role_permissions_admin" author="orlando">
+        <sql>
+            INSERT INTO base_role_permissions (base_role_id, base_permission_id, enabled)
+            SELECT br.id, bp.id, 1
+            FROM base_roles br
+            JOIN base_permissions bp ON bp.code IN ('animal.update', 'daycare.create',
+                'daycare.read', 'daycare.update', 'daycare.delete')
+            WHERE br.code = 'ADMIN'
+              AND NOT EXISTS (
+                  SELECT 1 FROM base_role_permissions x
+                  WHERE x.base_role_id = br.id AND x.base_permission_id = bp.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM base_role_permissions
+                WHERE base_permission_id IN (
+                    SELECT id FROM base_permissions
+                    WHERE code IN ('animal.update', 'daycare.create', 'daycare.read',
+                                    'daycare.update', 'daycare.delete'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

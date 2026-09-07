@@ -178,6 +178,12 @@ class AnimalPersistenceIT extends AbstractDataJpaTest {
         entityManager.clear();
     }
 
+    /** Soft delete + flush: el UPDATE tiene que llegar a la BD antes de releer. */
+    private void borrar(Long id, Long companyId) {
+        repository.delete(id, companyId);
+        releerDesdeLaBase();
+    }
+
     @Nested
     @DisplayName("save y findById")
     class Guardado {
@@ -322,6 +328,35 @@ class AnimalPersistenceIT extends AbstractDataJpaTest {
                     .filter(a -> a.getId().equals(segundo.getId())).findFirst().orElseThrow();
             assertThat(conPeso.getCurrentWeight()).isEqualByComparingTo("5.500");
             assertThat(sinPeso.getCurrentWeight()).isNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("borrado logico")
+    class Borrado {
+
+        @Test
+        @DisplayName("el listado y findById dejan de ver al animal borrado")
+        void el_listado_deja_de_ver_al_animal_borrado() {
+            Animal guardado = repository.save(animalNuevo("Firulais", "A-001", ownerRef(owner)));
+            releerDesdeLaBase();
+
+            borrar(guardado.getId(), COMPANY);
+
+            assertThat(repository.findById(guardado.getId())).isEmpty();
+            assertThat(repository.findAllByCompanyId(COMPANY, 0, 20).content())
+                    .extracting(Animal::getId).doesNotContain(guardado.getId());
+        }
+
+        @Test
+        @DisplayName("borrar un animal de otra empresa no lo borra")
+        void borrar_un_animal_de_otra_empresa_no_lo_borra() {
+            Animal guardado = repository.save(animalNuevo("Firulais", "A-001", ownerRef(owner)));
+            releerDesdeLaBase();
+
+            borrar(guardado.getId(), SchemaSeed.OTRA_COMPANY_ID);
+
+            assertThat(repository.findById(guardado.getId())).isPresent();
         }
     }
 }

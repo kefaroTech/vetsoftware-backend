@@ -3552,10 +3552,90 @@
         }
       }
     },
+    "/daycares/{id}" : {
+      "get" : {
+        "tags" : [ "day-care-controller" ],
+        "operationId" : "findById_38",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DayCareResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "day-care-controller" ],
+        "operationId" : "update_44",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateDayCareRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DayCareResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "day-care-controller" ],
+        "operationId" : "delete_39",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/countries/{id}" : {
       "get" : {
         "tags" : [ "country-controller" ],
-        "operationId" : "findById_38",
+        "operationId" : "findById_39",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3580,7 +3660,7 @@
       },
       "put" : {
         "tags" : [ "country-controller" ],
-        "operationId" : "update_44",
+        "operationId" : "update_45",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3615,7 +3695,7 @@
       },
       "delete" : {
         "tags" : [ "country-controller" ],
-        "operationId" : "delete_39",
+        "operationId" : "delete_40",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3635,7 +3715,7 @@
     "/consultation-types/{id}" : {
       "get" : {
         "tags" : [ "consultation-type-controller" ],
-        "operationId" : "findById_39",
+        "operationId" : "findById_40",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3660,7 +3740,7 @@
       },
       "put" : {
         "tags" : [ "consultation-type-controller" ],
-        "operationId" : "update_45",
+        "operationId" : "update_46",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3695,7 +3775,7 @@
       },
       "delete" : {
         "tags" : [ "consultation-type-controller" ],
-        "operationId" : "delete_40",
+        "operationId" : "delete_41",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3731,7 +3811,7 @@
       },
       "put" : {
         "tags" : [ "company-tax-profile-controller" ],
-        "operationId" : "update_46",
+        "operationId" : "update_47",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -3832,7 +3912,7 @@
     "/companies/{id}" : {
       "get" : {
         "tags" : [ "company-controller" ],
-        "operationId" : "findById_40",
+        "operationId" : "findById_41",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3857,7 +3937,7 @@
       },
       "put" : {
         "tags" : [ "company-controller" ],
-        "operationId" : "update_47",
+        "operationId" : "update_48",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3892,7 +3972,7 @@
       },
       "delete" : {
         "tags" : [ "company-controller" ],
-        "operationId" : "delete_41",
+        "operationId" : "delete_42",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3912,7 +3992,7 @@
     "/cities/{id}" : {
       "get" : {
         "tags" : [ "city-controller" ],
-        "operationId" : "findById_41",
+        "operationId" : "findById_42",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3937,7 +4017,7 @@
       },
       "put" : {
         "tags" : [ "city-controller" ],
-        "operationId" : "update_48",
+        "operationId" : "update_49",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3972,7 +4052,7 @@
       },
       "delete" : {
         "tags" : [ "city-controller" ],
-        "operationId" : "delete_42",
+        "operationId" : "delete_43",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3992,7 +4072,7 @@
     "/catalog-prices/{id}" : {
       "get" : {
         "tags" : [ "catalog-price-controller" ],
-        "operationId" : "findById_42",
+        "operationId" : "findById_43",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4017,7 +4097,7 @@
       },
       "put" : {
         "tags" : [ "catalog-price-controller" ],
-        "operationId" : "update_49",
+        "operationId" : "update_50",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4052,7 +4132,7 @@
       },
       "delete" : {
         "tags" : [ "catalog-price-controller" ],
-        "operationId" : "delete_43",
+        "operationId" : "delete_44",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4072,7 +4152,7 @@
     "/catalog-items/{id}" : {
       "get" : {
         "tags" : [ "catalog-item-controller" ],
-        "operationId" : "findById_43",
+        "operationId" : "findById_44",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4097,7 +4177,7 @@
       },
       "put" : {
         "tags" : [ "catalog-item-controller" ],
-        "operationId" : "update_50",
+        "operationId" : "update_51",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4132,7 +4212,7 @@
       },
       "delete" : {
         "tags" : [ "catalog-item-controller" ],
-        "operationId" : "delete_44",
+        "operationId" : "delete_45",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4152,7 +4232,7 @@
     "/catalog-items/{catalogItemId}/limits/{id}" : {
       "put" : {
         "tags" : [ "catalog-item-limit-controller" ],
-        "operationId" : "update_51",
+        "operationId" : "update_52",
         "parameters" : [ {
           "name" : "catalogItemId",
           "in" : "path",
@@ -4197,7 +4277,7 @@
     "/catalog-items/{catalogItemId}/dependencies/{id}" : {
       "put" : {
         "tags" : [ "catalog-item-dependency-controller" ],
-        "operationId" : "update_52",
+        "operationId" : "update_53",
         "parameters" : [ {
           "name" : "catalogItemId",
           "in" : "path",
@@ -4240,7 +4320,7 @@
       },
       "delete" : {
         "tags" : [ "catalog-item-dependency-controller" ],
-        "operationId" : "delete_45",
+        "operationId" : "delete_46",
         "parameters" : [ {
           "name" : "catalogItemId",
           "in" : "path",
@@ -4268,7 +4348,7 @@
     "/catalog-items/{bundleItemId}/components/{id}" : {
       "put" : {
         "tags" : [ "bundle-component-controller" ],
-        "operationId" : "update_53",
+        "operationId" : "update_54",
         "parameters" : [ {
           "name" : "bundleItemId",
           "in" : "path",
@@ -4311,7 +4391,7 @@
       },
       "delete" : {
         "tags" : [ "bundle-component-controller" ],
-        "operationId" : "delete_46",
+        "operationId" : "delete_47",
         "parameters" : [ {
           "name" : "bundleItemId",
           "in" : "path",
@@ -4419,7 +4499,7 @@
     "/cash-terminals/{id}" : {
       "put" : {
         "tags" : [ "cash-terminal-controller" ],
-        "operationId" : "update_54",
+        "operationId" : "update_55",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4481,7 +4561,7 @@
     "/breeds/{id}" : {
       "get" : {
         "tags" : [ "breed-controller" ],
-        "operationId" : "findById_44",
+        "operationId" : "findById_45",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4506,7 +4586,7 @@
       },
       "put" : {
         "tags" : [ "breed-controller" ],
-        "operationId" : "update_55",
+        "operationId" : "update_56",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4541,7 +4621,7 @@
       },
       "delete" : {
         "tags" : [ "breed-controller" ],
-        "operationId" : "delete_47",
+        "operationId" : "delete_48",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4561,7 +4641,7 @@
     "/branches/{id}" : {
       "put" : {
         "tags" : [ "branch-controller" ],
-        "operationId" : "update_56",
+        "operationId" : "update_57",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4598,7 +4678,7 @@
     "/base-roles/{id}" : {
       "get" : {
         "tags" : [ "base-role-controller" ],
-        "operationId" : "findById_45",
+        "operationId" : "findById_46",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4623,7 +4703,7 @@
       },
       "put" : {
         "tags" : [ "base-role-controller" ],
-        "operationId" : "update_57",
+        "operationId" : "update_58",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4658,7 +4738,7 @@
       },
       "delete" : {
         "tags" : [ "base-role-controller" ],
-        "operationId" : "delete_48",
+        "operationId" : "delete_49",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4678,7 +4758,7 @@
     "/base-role-permissions/{id}" : {
       "get" : {
         "tags" : [ "base-role-permission-controller" ],
-        "operationId" : "findById_46",
+        "operationId" : "findById_47",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4703,7 +4783,7 @@
       },
       "put" : {
         "tags" : [ "base-role-permission-controller" ],
-        "operationId" : "update_58",
+        "operationId" : "update_59",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4738,7 +4818,7 @@
       },
       "delete" : {
         "tags" : [ "base-role-permission-controller" ],
-        "operationId" : "delete_49",
+        "operationId" : "delete_50",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4758,7 +4838,7 @@
     "/base-permissions/{id}" : {
       "get" : {
         "tags" : [ "base-permission-controller" ],
-        "operationId" : "findById_47",
+        "operationId" : "findById_48",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4783,7 +4863,7 @@
       },
       "put" : {
         "tags" : [ "base-permission-controller" ],
-        "operationId" : "update_59",
+        "operationId" : "update_60",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4818,7 +4898,7 @@
       },
       "delete" : {
         "tags" : [ "base-permission-controller" ],
-        "operationId" : "delete_50",
+        "operationId" : "delete_51",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4866,7 +4946,7 @@
     "/appointments/{id}" : {
       "get" : {
         "tags" : [ "appointment-controller" ],
-        "operationId" : "findById_48",
+        "operationId" : "findById_49",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4891,7 +4971,7 @@
       },
       "put" : {
         "tags" : [ "appointment-controller" ],
-        "operationId" : "update_60",
+        "operationId" : "update_61",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4926,7 +5006,87 @@
       },
       "delete" : {
         "tags" : [ "appointment-controller" ],
-        "operationId" : "delete_51",
+        "operationId" : "delete_52",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/animals/{id}" : {
+      "get" : {
+        "tags" : [ "animal-controller" ],
+        "operationId" : "findById_50",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AnimalResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "animal-controller" ],
+        "operationId" : "update_62",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateAnimalRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AnimalResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "animal-controller" ],
+        "operationId" : "delete_53",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4946,7 +5106,7 @@
     "/animal-colors/{id}" : {
       "get" : {
         "tags" : [ "animal-color-controller" ],
-        "operationId" : "findById_49",
+        "operationId" : "findById_51",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4971,7 +5131,7 @@
       },
       "put" : {
         "tags" : [ "animal-color-controller" ],
-        "operationId" : "update_61",
+        "operationId" : "update_63",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -5006,7 +5166,7 @@
       },
       "delete" : {
         "tags" : [ "animal-color-controller" ],
-        "operationId" : "delete_52",
+        "operationId" : "delete_54",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -5026,7 +5186,7 @@
     "/admin/medicaments/{id}" : {
       "put" : {
         "tags" : [ "global-medicament-controller" ],
-        "operationId" : "update_62",
+        "operationId" : "update_64",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -5061,7 +5221,7 @@
       },
       "delete" : {
         "tags" : [ "global-medicament-controller" ],
-        "operationId" : "delete_53",
+        "operationId" : "delete_55",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -11952,10 +12112,57 @@
         }
       }
     },
+    "/daycares" : {
+      "get" : {
+        "tags" : [ "day-care-controller" ],
+        "operationId" : "listAll_63",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/DayCareResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "day-care-controller" ],
+        "operationId" : "create_64",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateDayCareRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DayCareResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/countries" : {
       "get" : {
         "tags" : [ "country-controller" ],
-        "operationId" : "listAll_63",
+        "operationId" : "listAll_64",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -11974,7 +12181,7 @@
       },
       "post" : {
         "tags" : [ "country-controller" ],
-        "operationId" : "create_64",
+        "operationId" : "create_65",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -12002,7 +12209,7 @@
     "/consultations" : {
       "get" : {
         "tags" : [ "consultation-controller" ],
-        "operationId" : "listAll_64",
+        "operationId" : "listAll_65",
         "parameters" : [ {
           "name" : "page",
           "in" : "query",
@@ -12037,7 +12244,7 @@
       },
       "post" : {
         "tags" : [ "consultation-controller" ],
-        "operationId" : "create_65",
+        "operationId" : "create_66",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -12065,7 +12272,7 @@
     "/consultation-types" : {
       "get" : {
         "tags" : [ "consultation-type-controller" ],
-        "operationId" : "listAll_65",
+        "operationId" : "listAll_66",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -12084,7 +12291,7 @@
       },
       "post" : {
         "tags" : [ "consultation-type-controller" ],
-        "operationId" : "create_66",
+        "operationId" : "create_67",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -12247,7 +12454,7 @@
     "/companies" : {
       "get" : {
         "tags" : [ "company-controller" ],
-        "operationId" : "listAll_66",
+        "operationId" : "listAll_67",
         "parameters" : [ {
           "name" : "page",
           "in" : "query",
@@ -12282,7 +12489,7 @@
       },
       "post" : {
         "tags" : [ "company-controller" ],
-        "operationId" : "create_67",
+        "operationId" : "create_68",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -12310,7 +12517,7 @@
     "/cities" : {
       "get" : {
         "tags" : [ "city-controller" ],
-        "operationId" : "listAll_67",
+        "operationId" : "listAll_68",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -12329,7 +12536,7 @@
       },
       "post" : {
         "tags" : [ "city-controller" ],
-        "operationId" : "create_68",
+        "operationId" : "create_69",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -12400,7 +12607,7 @@
       },
       "post" : {
         "tags" : [ "catalog-price-controller" ],
-        "operationId" : "create_69",
+        "operationId" : "create_70",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -12428,7 +12635,7 @@
     "/catalog-items" : {
       "get" : {
         "tags" : [ "catalog-item-controller" ],
-        "operationId" : "listAll_68",
+        "operationId" : "listAll_69",
         "parameters" : [ {
           "name" : "page",
           "in" : "query",
@@ -12463,7 +12670,7 @@
       },
       "post" : {
         "tags" : [ "catalog-item-controller" ],
-        "operationId" : "create_70",
+        "operationId" : "create_71",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -12519,7 +12726,7 @@
       },
       "post" : {
         "tags" : [ "catalog-item-sub-module-controller" ],
-        "operationId" : "create_71",
+        "operationId" : "create_72",
         "parameters" : [ {
           "name" : "catalogItemId",
           "in" : "path",
@@ -12584,7 +12791,7 @@
       },
       "post" : {
         "tags" : [ "catalog-item-limit-controller" ],
-        "operationId" : "create_72",
+        "operationId" : "create_73",
         "parameters" : [ {
           "name" : "catalogItemId",
           "in" : "path",
@@ -12649,7 +12856,7 @@
       },
       "post" : {
         "tags" : [ "catalog-item-dependency-controller" ],
-        "operationId" : "create_73",
+        "operationId" : "create_74",
         "parameters" : [ {
           "name" : "catalogItemId",
           "in" : "path",
@@ -12714,7 +12921,7 @@
       },
       "post" : {
         "tags" : [ "bundle-component-controller" ],
-        "operationId" : "create_74",
+        "operationId" : "create_75",
         "parameters" : [ {
           "name" : "bundleItemId",
           "in" : "path",
@@ -12850,7 +13057,7 @@
       },
       "post" : {
         "tags" : [ "cash-terminal-controller" ],
-        "operationId" : "create_75",
+        "operationId" : "create_76",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -12999,7 +13206,7 @@
     "/breeds" : {
       "get" : {
         "tags" : [ "breed-controller" ],
-        "operationId" : "listAll_69",
+        "operationId" : "listAll_70",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -13018,7 +13225,7 @@
       },
       "post" : {
         "tags" : [ "breed-controller" ],
-        "operationId" : "create_76",
+        "operationId" : "create_77",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -13046,7 +13253,7 @@
     "/branches" : {
       "get" : {
         "tags" : [ "branch-controller" ],
-        "operationId" : "listAll_70",
+        "operationId" : "listAll_71",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -13065,7 +13272,7 @@
       },
       "post" : {
         "tags" : [ "branch-controller" ],
-        "operationId" : "create_77",
+        "operationId" : "create_78",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -13201,7 +13408,7 @@
     "/base-roles" : {
       "get" : {
         "tags" : [ "base-role-controller" ],
-        "operationId" : "listAll_71",
+        "operationId" : "listAll_72",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -13220,7 +13427,7 @@
       },
       "post" : {
         "tags" : [ "base-role-controller" ],
-        "operationId" : "create_78",
+        "operationId" : "create_79",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -13248,7 +13455,7 @@
     "/base-role-permissions" : {
       "get" : {
         "tags" : [ "base-role-permission-controller" ],
-        "operationId" : "listAll_72",
+        "operationId" : "listAll_73",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -13267,7 +13474,7 @@
       },
       "post" : {
         "tags" : [ "base-role-permission-controller" ],
-        "operationId" : "create_79",
+        "operationId" : "create_80",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -13295,7 +13502,7 @@
     "/base-permissions" : {
       "get" : {
         "tags" : [ "base-permission-controller" ],
-        "operationId" : "listAll_73",
+        "operationId" : "listAll_74",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -13314,7 +13521,7 @@
       },
       "post" : {
         "tags" : [ "base-permission-controller" ],
-        "operationId" : "create_80",
+        "operationId" : "create_81",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -13683,7 +13890,7 @@
       },
       "post" : {
         "tags" : [ "appointment-controller" ],
-        "operationId" : "create_81",
+        "operationId" : "create_82",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -13711,7 +13918,7 @@
     "/animals" : {
       "get" : {
         "tags" : [ "animal-controller" ],
-        "operationId" : "listAll_74",
+        "operationId" : "listAll_75",
         "parameters" : [ {
           "name" : "page",
           "in" : "query",
@@ -13746,7 +13953,7 @@
       },
       "post" : {
         "tags" : [ "animal-controller" ],
-        "operationId" : "create_82",
+        "operationId" : "create_83",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -13802,7 +14009,7 @@
       },
       "post" : {
         "tags" : [ "weight-record-controller" ],
-        "operationId" : "create_83",
+        "operationId" : "create_84",
         "parameters" : [ {
           "name" : "animalId",
           "in" : "path",
@@ -13839,7 +14046,7 @@
     "/animal-colors" : {
       "get" : {
         "tags" : [ "animal-color-controller" ],
-        "operationId" : "listAll_75",
+        "operationId" : "listAll_76",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -13858,7 +14065,7 @@
       },
       "post" : {
         "tags" : [ "animal-color-controller" ],
-        "operationId" : "create_84",
+        "operationId" : "create_85",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -13886,7 +14093,7 @@
     "/admin/medicaments" : {
       "get" : {
         "tags" : [ "global-medicament-controller" ],
-        "operationId" : "listAll_76",
+        "operationId" : "listAll_77",
         "parameters" : [ {
           "name" : "q",
           "in" : "query",
@@ -13928,7 +14135,7 @@
       },
       "post" : {
         "tags" : [ "global-medicament-controller" ],
-        "operationId" : "create_85",
+        "operationId" : "create_86",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -14732,7 +14939,7 @@
     "/system/company-activity-months/{id}" : {
       "get" : {
         "tags" : [ "system-company-activity-month-controller" ],
-        "operationId" : "findById_50",
+        "operationId" : "findById_52",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -14757,7 +14964,7 @@
       },
       "patch" : {
         "tags" : [ "system-company-activity-month-controller" ],
-        "operationId" : "update_63",
+        "operationId" : "update_65",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -16955,7 +17162,7 @@
     "/withholding-rate-rules/{id}" : {
       "get" : {
         "tags" : [ "withholding-rate-rule-controller" ],
-        "operationId" : "findById_51",
+        "operationId" : "findById_53",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -17069,7 +17276,7 @@
     "/withholding-certificates/{id}" : {
       "get" : {
         "tags" : [ "withholding-certificate-controller" ],
-        "operationId" : "findById_52",
+        "operationId" : "findById_54",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -17423,7 +17630,7 @@
     "/system/supplier-withholdings/{id}" : {
       "get" : {
         "tags" : [ "system-supplier-withholding-controller" ],
-        "operationId" : "findById_53",
+        "operationId" : "findById_55",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -17546,7 +17753,7 @@
     "/system/subscription-payments" : {
       "get" : {
         "tags" : [ "system-subscription-payment-controller" ],
-        "operationId" : "listAll_77",
+        "operationId" : "listAll_78",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "query",
@@ -17683,7 +17890,7 @@
     "/system/subscription-payment-methods" : {
       "get" : {
         "tags" : [ "system-subscription-payment-method-controller" ],
-        "operationId" : "listAll_78",
+        "operationId" : "listAll_79",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "query",
@@ -17847,7 +18054,7 @@
     "/system/security-incidents/{id}" : {
       "get" : {
         "tags" : [ "system-security-incident-controller" ],
-        "operationId" : "findById_54",
+        "operationId" : "findById_56",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -17964,7 +18171,7 @@
     "/system/revenue-recognition-lines/{id}" : {
       "get" : {
         "tags" : [ "system-revenue-recognition-line-controller" ],
-        "operationId" : "findById_55",
+        "operationId" : "findById_57",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -18035,7 +18242,7 @@
     "/system/platform-tax-profiles/{id}" : {
       "get" : {
         "tags" : [ "system-platform-tax-profile-controller" ],
-        "operationId" : "findById_56",
+        "operationId" : "findById_58",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -18238,7 +18445,7 @@
     "/system/gateway-settlements/{id}" : {
       "get" : {
         "tags" : [ "system-gateway-settlement-controller" ],
-        "operationId" : "findById_57",
+        "operationId" : "findById_59",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -18385,7 +18592,7 @@
     "/system/external-invoice-reconciliations/{id}" : {
       "get" : {
         "tags" : [ "system-external-invoice-reconciliation-controller" ],
-        "operationId" : "findById_58",
+        "operationId" : "findById_60",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -18449,7 +18656,7 @@
     "/system/dunning-events" : {
       "get" : {
         "tags" : [ "system-dunning-event-controller" ],
-        "operationId" : "listAll_79",
+        "operationId" : "listAll_80",
         "parameters" : [ {
           "name" : "companyId",
           "in" : "query",
@@ -18666,7 +18873,7 @@
     "/system/company-usage-events/{id}" : {
       "get" : {
         "tags" : [ "system-company-usage-event-controller" ],
-        "operationId" : "findById_59",
+        "operationId" : "findById_61",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -19139,7 +19346,7 @@
     "/system/bank-receipts/{id}" : {
       "get" : {
         "tags" : [ "system-bank-receipt-controller" ],
-        "operationId" : "findById_60",
+        "operationId" : "findById_62",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -19203,7 +19410,7 @@
     "/system/accounting-periods/{id}" : {
       "get" : {
         "tags" : [ "system-accounting-period-controller" ],
-        "operationId" : "findById_61",
+        "operationId" : "findById_63",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -19257,7 +19464,7 @@
     "/system/accounting-exports/{id}" : {
       "get" : {
         "tags" : [ "system-accounting-export-controller" ],
-        "operationId" : "findById_62",
+        "operationId" : "findById_64",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -19354,7 +19561,7 @@
     "/system/account-mappings/{id}" : {
       "get" : {
         "tags" : [ "system-account-mapping-controller" ],
-        "operationId" : "findById_63",
+        "operationId" : "findById_65",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -19681,7 +19888,7 @@
     "/subscriptions/{id}" : {
       "get" : {
         "tags" : [ "subscription-controller" ],
-        "operationId" : "findById_64",
+        "operationId" : "findById_66",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -19816,7 +20023,7 @@
     "/subscription-payments/{id}" : {
       "get" : {
         "tags" : [ "subscription-payment-controller" ],
-        "operationId" : "findById_65",
+        "operationId" : "findById_67",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -19843,7 +20050,7 @@
     "/subscription-payment-methods/{id}" : {
       "get" : {
         "tags" : [ "subscription-payment-method-controller" ],
-        "operationId" : "findById_66",
+        "operationId" : "findById_68",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -20422,7 +20629,7 @@
     "/role-permissions/{id}" : {
       "get" : {
         "tags" : [ "role-permission-controller" ],
-        "operationId" : "findById_67",
+        "operationId" : "findById_69",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -20447,7 +20654,7 @@
       },
       "delete" : {
         "tags" : [ "role-permission-controller" ],
-        "operationId" : "delete_54",
+        "operationId" : "delete_56",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -20467,7 +20674,7 @@
     "/quotes/{id}" : {
       "get" : {
         "tags" : [ "quote-controller" ],
-        "operationId" : "findById_68",
+        "operationId" : "findById_70",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -20492,7 +20699,7 @@
       },
       "delete" : {
         "tags" : [ "quote-controller" ],
-        "operationId" : "delete_55",
+        "operationId" : "delete_57",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -20533,7 +20740,7 @@
     "/quotes/platform" : {
       "get" : {
         "tags" : [ "quote-controller" ],
-        "operationId" : "listAll_80",
+        "operationId" : "listAll_81",
         "parameters" : [ {
           "name" : "page",
           "in" : "query",
@@ -20742,7 +20949,7 @@
     "/public-holidays/{id}" : {
       "get" : {
         "tags" : [ "public-holiday-controller" ],
-        "operationId" : "findById_69",
+        "operationId" : "findById_71",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -20982,7 +21189,7 @@
     "/prescriptions/{id}" : {
       "get" : {
         "tags" : [ "prescription-controller" ],
-        "operationId" : "findById_70",
+        "operationId" : "findById_72",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -21089,7 +21296,7 @@
     "/platform-subscriptions" : {
       "get" : {
         "tags" : [ "subscription-admin-controller" ],
-        "operationId" : "listAll_81",
+        "operationId" : "listAll_82",
         "parameters" : [ {
           "name" : "page",
           "in" : "query",
@@ -21223,7 +21430,7 @@
     "/payment-reversal-requests/{id}" : {
       "get" : {
         "tags" : [ "payment-reversal-request-controller" ],
-        "operationId" : "findById_71",
+        "operationId" : "findById_73",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -21287,7 +21494,7 @@
     "/payment-refunds/{id}" : {
       "get" : {
         "tags" : [ "payment-refund-controller" ],
-        "operationId" : "findById_72",
+        "operationId" : "findById_74",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -21432,7 +21639,7 @@
     "/payment-attempts/{id}" : {
       "get" : {
         "tags" : [ "payment-attempt-controller" ],
-        "operationId" : "findById_73",
+        "operationId" : "findById_75",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -21548,7 +21755,7 @@
     "/open-accounts/{id}" : {
       "get" : {
         "tags" : [ "open-account-controller" ],
-        "operationId" : "findById_74",
+        "operationId" : "findById_76",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -21573,7 +21780,7 @@
       },
       "delete" : {
         "tags" : [ "open-account-controller" ],
-        "operationId" : "delete_56",
+        "operationId" : "delete_58",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -22792,7 +22999,7 @@
     "/goods-receipts/{id}" : {
       "get" : {
         "tags" : [ "goods-receipt-controller" ],
-        "operationId" : "findById_75",
+        "operationId" : "findById_77",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -22817,7 +23024,7 @@
       },
       "delete" : {
         "tags" : [ "goods-receipt-controller" ],
-        "operationId" : "delete_57",
+        "operationId" : "delete_59",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -23117,7 +23324,7 @@
     "/electronic-documents" : {
       "get" : {
         "tags" : [ "electronic-document-controller" ],
-        "operationId" : "listAll_82",
+        "operationId" : "listAll_83",
         "parameters" : [ {
           "name" : "branchId",
           "in" : "query",
@@ -23178,7 +23385,7 @@
     "/electronic-documents/{id}" : {
       "get" : {
         "tags" : [ "electronic-document-controller" ],
-        "operationId" : "findById_76",
+        "operationId" : "findById_78",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -23232,7 +23439,7 @@
     "/dunning-events/{id}" : {
       "get" : {
         "tags" : [ "dunning-event-controller" ],
-        "operationId" : "findById_77",
+        "operationId" : "findById_79",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -23296,7 +23503,7 @@
     "/document-withholdings/{id}" : {
       "get" : {
         "tags" : [ "document-withholding-controller" ],
-        "operationId" : "findById_78",
+        "operationId" : "findById_80",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -23520,20 +23727,51 @@
         }
       }
     },
-    "/daycares" : {
+    "/daycares/by-animal/{animalId}" : {
       "get" : {
         "tags" : [ "day-care-controller" ],
-        "operationId" : "listAll_83",
+        "operationId" : "listByAnimal_8",
+        "parameters" : [ {
+          "name" : "animalId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "q",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/DayCareResponse"
-                  }
+                  "$ref" : "#/components/schemas/PageResponseDayCareResponse"
                 }
               }
             }
@@ -23656,7 +23894,7 @@
     "/consultations/{id}" : {
       "get" : {
         "tags" : [ "consultation-controller" ],
-        "operationId" : "findById_79",
+        "operationId" : "findById_81",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -23835,7 +24073,7 @@
     "/company-contact-channels/{id}" : {
       "get" : {
         "tags" : [ "company-contact-channel-controller" ],
-        "operationId" : "findById_80",
+        "operationId" : "findById_82",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -23907,7 +24145,7 @@
     "/company-billing-profile/{id}" : {
       "get" : {
         "tags" : [ "company-billing-profile-controller" ],
-        "operationId" : "findById_81",
+        "operationId" : "findById_83",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -24314,7 +24552,7 @@
     "/billing-document-status-history/{id}" : {
       "get" : {
         "tags" : [ "billing-document-status-history-controller" ],
-        "operationId" : "findById_82",
+        "operationId" : "findById_84",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -24465,33 +24703,6 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/MeResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/animals/{id}" : {
-      "get" : {
-        "tags" : [ "animal-controller" ],
-        "operationId" : "findById_83",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AnimalResponse"
                 }
               }
             }
@@ -24759,7 +24970,7 @@
     "/laboratory-test-files/{id}" : {
       "delete" : {
         "tags" : [ "laboratory-test-file-controller" ],
-        "operationId" : "delete_58",
+        "operationId" : "delete_60",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -24779,7 +24990,7 @@
     "/hospitalization-progress-notes/{id}" : {
       "delete" : {
         "tags" : [ "hospitalization-progress-note-controller" ],
-        "operationId" : "delete_59",
+        "operationId" : "delete_61",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -24799,7 +25010,7 @@
     "/hospitalization-observations/{id}" : {
       "delete" : {
         "tags" : [ "hospitalization-observation-controller" ],
-        "operationId" : "delete_60",
+        "operationId" : "delete_62",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -24819,7 +25030,7 @@
     "/catalog-items/{catalogItemId}/sub-modules/{id}" : {
       "delete" : {
         "tags" : [ "catalog-item-sub-module-controller" ],
-        "operationId" : "delete_61",
+        "operationId" : "delete_63",
         "parameters" : [ {
           "name" : "catalogItemId",
           "in" : "path",
@@ -24847,7 +25058,7 @@
     "/animals/{animalId}/weight-records/{id}" : {
       "delete" : {
         "tags" : [ "weight-record-controller" ],
-        "operationId" : "delete_62",
+        "operationId" : "delete_64",
         "parameters" : [ {
           "name" : "animalId",
           "in" : "path",
@@ -28714,6 +28925,87 @@
         },
         "required" : [ "animal", "company", "createdDate", "date", "dosage", "enabled", "id", "observations", "product", "type" ]
       },
+      "UpdateDayCareRequest" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "endDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "DAYCARE", "HOTEL" ]
+          },
+          "objects" : {
+            "type" : "string",
+            "maxLength" : 1000,
+            "minLength" : 0
+          },
+          "observations" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "animalId" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "animalId", "date", "startDate", "type" ]
+      },
+      "DayCareResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "date" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "endDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "DAYCARE", "HOTEL" ]
+          },
+          "objects" : {
+            "type" : "string"
+          },
+          "observations" : {
+            "type" : "string"
+          },
+          "animal" : {
+            "$ref" : "#/components/schemas/AnimalSummary"
+          },
+          "company" : {
+            "$ref" : "#/components/schemas/CompanySummary"
+          },
+          "createdDate" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "animal", "company", "createdDate", "date", "enabled", "id", "startDate", "type" ]
+      },
       "UpdateCountryRequest" : {
         "type" : "object",
         "properties" : {
@@ -30199,6 +30491,187 @@
           }
         },
         "required" : [ "branch", "createdDate", "employee", "enabled", "id", "overlappingAppointmentIds", "startAt", "status", "type", "version" ]
+      },
+      "UpdateAnimalRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "code" : {
+            "type" : "string",
+            "maxLength" : 50,
+            "minLength" : 0
+          },
+          "specieId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "breedId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "ownerId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "gender" : {
+            "type" : "string",
+            "enum" : [ "MALE", "FEMALE" ]
+          },
+          "weightType" : {
+            "type" : "string",
+            "enum" : [ "GRAMS", "POUNDS", "KILOGRAMS" ]
+          },
+          "animalType" : {
+            "type" : "string",
+            "enum" : [ "SERVICE", "SUPPORT", "NONE" ]
+          },
+          "reproductiveState" : {
+            "type" : "string",
+            "enum" : [ "STERILIZED", "NO_STERILIZED", "UNKNOWN" ]
+          },
+          "colorId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bod" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "deceased" : {
+            "type" : "boolean"
+          },
+          "deceasedDate" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "animalType", "breedId", "colorId", "gender", "name", "ownerId", "reproductiveState", "specieId", "weightType" ]
+      },
+      "AnimalColorSummary" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
+      "AnimalResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "specie" : {
+            "$ref" : "#/components/schemas/SpecieSummary"
+          },
+          "breed" : {
+            "$ref" : "#/components/schemas/BreedSummary"
+          },
+          "owner" : {
+            "$ref" : "#/components/schemas/OwnerSummary"
+          },
+          "gender" : {
+            "type" : "string",
+            "enum" : [ "MALE", "FEMALE" ]
+          },
+          "weightType" : {
+            "type" : "string",
+            "enum" : [ "GRAMS", "POUNDS", "KILOGRAMS" ]
+          },
+          "animalType" : {
+            "type" : "string",
+            "enum" : [ "SERVICE", "SUPPORT", "NONE" ]
+          },
+          "reproductiveState" : {
+            "type" : "string",
+            "enum" : [ "STERILIZED", "NO_STERILIZED", "UNKNOWN" ]
+          },
+          "color" : {
+            "$ref" : "#/components/schemas/AnimalColorSummary"
+          },
+          "bod" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "weight" : {
+            "type" : "number"
+          },
+          "weightMeasuredAt" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "deceased" : {
+            "type" : "boolean"
+          },
+          "deceasedDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "company" : {
+            "$ref" : "#/components/schemas/CompanySummary"
+          },
+          "createdDate" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "animalType", "bod", "breed", "color", "company", "createdDate", "deceased", "enabled", "gender", "id", "name", "owner", "reproductiveState", "specie", "weightType" ]
+      },
+      "BreedSummary" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
+      "OwnerSummary" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "document" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "document", "id", "name" ]
       },
       "UpdateAnimalColorRequest" : {
         "type" : "object",
@@ -36038,22 +36511,6 @@
         },
         "required" : [ "branch", "company", "createdBy", "createdDate", "enabled", "id", "outstandingAmount", "owner", "paidAmount", "reversed", "status", "totalAmount", "version" ]
       },
-      "OwnerSummary" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "document" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "document", "id", "name" ]
-      },
       "CreateNumberingResolutionRequest" : {
         "type" : "object",
         "properties" : {
@@ -38087,6 +38544,42 @@
         },
         "required" : [ "amount", "createdBy", "createdDate", "enabled", "id", "openAccount", "paymentMethod", "voided" ]
       },
+      "CreateDayCareRequest" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "endDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "DAYCARE", "HOTEL" ]
+          },
+          "objects" : {
+            "type" : "string",
+            "maxLength" : 1000,
+            "minLength" : 0
+          },
+          "observations" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "animalId" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "animalId", "date", "startDate", "type" ]
+      },
       "CreateCountryRequest" : {
         "type" : "object",
         "properties" : {
@@ -39727,108 +40220,6 @@
           }
         },
         "required" : [ "animalType", "breedId", "colorId", "gender", "name", "ownerId", "reproductiveState", "specieId", "weightType" ]
-      },
-      "AnimalColorSummary" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "name" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "name" ]
-      },
-      "AnimalResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "specie" : {
-            "$ref" : "#/components/schemas/SpecieSummary"
-          },
-          "breed" : {
-            "$ref" : "#/components/schemas/BreedSummary"
-          },
-          "owner" : {
-            "$ref" : "#/components/schemas/OwnerSummary"
-          },
-          "gender" : {
-            "type" : "string",
-            "enum" : [ "MALE", "FEMALE" ]
-          },
-          "weightType" : {
-            "type" : "string",
-            "enum" : [ "GRAMS", "POUNDS", "KILOGRAMS" ]
-          },
-          "animalType" : {
-            "type" : "string",
-            "enum" : [ "SERVICE", "SUPPORT", "NONE" ]
-          },
-          "reproductiveState" : {
-            "type" : "string",
-            "enum" : [ "STERILIZED", "NO_STERILIZED", "UNKNOWN" ]
-          },
-          "color" : {
-            "$ref" : "#/components/schemas/AnimalColorSummary"
-          },
-          "bod" : {
-            "type" : "string",
-            "format" : "date"
-          },
-          "weight" : {
-            "type" : "number"
-          },
-          "weightMeasuredAt" : {
-            "type" : "string",
-            "format" : "date"
-          },
-          "size" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "deceased" : {
-            "type" : "boolean"
-          },
-          "deceasedDate" : {
-            "type" : "string",
-            "format" : "date"
-          },
-          "company" : {
-            "$ref" : "#/components/schemas/CompanySummary"
-          },
-          "createdDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "enabled" : {
-            "type" : "boolean"
-          }
-        },
-        "required" : [ "animalType", "bod", "breed", "color", "company", "createdDate", "deceased", "enabled", "gender", "id", "name", "owner", "reproductiveState", "specie", "weightType" ]
-      },
-      "BreedSummary" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "name" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "name" ]
       },
       "CreateWeightRecordRequest" : {
         "type" : "object",
@@ -44294,50 +44685,32 @@
           }
         }
       },
-      "DayCareResponse" : {
+      "PageResponseDayCareResponse" : {
         "type" : "object",
         "properties" : {
-          "id" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DayCareResponse"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalElements" : {
             "type" : "integer",
             "format" : "int64"
           },
-          "date" : {
-            "type" : "string",
-            "format" : "date"
-          },
-          "startDate" : {
-            "type" : "string",
-            "format" : "date"
-          },
-          "endDate" : {
-            "type" : "string",
-            "format" : "date"
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "DAYCARE", "HOTEL" ]
-          },
-          "objects" : {
-            "type" : "string"
-          },
-          "observations" : {
-            "type" : "string"
-          },
-          "animal" : {
-            "$ref" : "#/components/schemas/AnimalSummary"
-          },
-          "company" : {
-            "$ref" : "#/components/schemas/CompanySummary"
-          },
-          "createdDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "enabled" : {
-            "type" : "boolean"
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
           }
-        },
-        "required" : [ "animal", "company", "createdDate", "date", "enabled", "id", "startDate", "type" ]
+        }
       },
       "PageResponseConsultationResponse" : {
         "type" : "object",
