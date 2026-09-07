@@ -1160,4 +1160,10 @@
          vivir solo en PaymentAttempt.reschedule. -->
     <include file="db/changelog/migrations/415_drop_payment_attempts_hard_has_no_retry_check.xml"/>
 
+    <!-- 416: issues #800 y #296. 'animal.update' bajo OWNERS_ANIMALS (273 lo dejo fuera a
+         proposito por falta de UpdateAnimalUseCase, hoy ya existe) y el CRUD 'daycare.*'
+         bajo DAYCARE (submodulo tecnico que 258 ya creo). Sin backfill a permissions/
+         role_permissions de empresas existentes: BD asumida vacia. -->
+    <include file="db/changelog/migrations/416_seed_animal_update_and_daycare_permissions.xml"/>
+
 </databaseChangeLog>

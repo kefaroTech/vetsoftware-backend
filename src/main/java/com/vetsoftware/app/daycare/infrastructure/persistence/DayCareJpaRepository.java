@@ -2,8 +2,12 @@ package com.vetsoftware.app.daycare.infrastructure.persistence;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface DayCareJpaRepository extends JpaRepository<DayCareJpaEntity, Long> {
 
@@ -14,6 +18,20 @@ public interface DayCareJpaRepository extends JpaRepository<DayCareJpaEntity, Lo
     @Override
     @EntityGraph(attributePaths = {"animal", "company"})
     Optional<DayCareJpaEntity> findById(Long id);
+
+    @EntityGraph(attributePaths = {"animal", "company"})
+    Optional<DayCareJpaEntity> findByIdAndCompany_Id(Long id, Long companyId);
+
+    @EntityGraph(attributePaths = {"animal", "company"})
+    @Query("""
+            SELECT x
+            FROM DayCareJpaEntity x
+            WHERE x.animal.id = :animalId
+              AND x.company.id = :companyId
+              AND (:q IS NULL OR :q = '' OR LOWER(x.objects) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(x.observations) LIKE LOWER(CONCAT('%', :q, '%')))
+            """)
+    Page<DayCareJpaEntity> findAllByAnimalIdAndCompanyId(@Param("animalId") Long animalId,
+            @Param("companyId") Long companyId, @Param("q") String q, Pageable pageable);
 
     boolean existsByAnimal_Id(Long animalId);
 

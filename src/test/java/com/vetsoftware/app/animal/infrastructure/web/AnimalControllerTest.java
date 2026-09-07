@@ -1,20 +1,26 @@
 package com.vetsoftware.app.animal.infrastructure.web;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.animal.application.command.CreateAnimalCommand;
+import com.vetsoftware.app.animal.application.command.UpdateAnimalCommand;
 import com.vetsoftware.app.animal.application.dto.AnimalDto;
 import com.vetsoftware.app.animal.application.port.in.CreateAnimalUseCase;
+import com.vetsoftware.app.animal.application.port.in.DeleteAnimalUseCase;
 import com.vetsoftware.app.animal.application.port.in.FindAnimalUseCase;
 import com.vetsoftware.app.animal.application.port.in.ListAnimalsByOwnerUseCase;
 import com.vetsoftware.app.animal.application.port.in.ListAnimalsUseCase;
+import com.vetsoftware.app.animal.application.port.in.UpdateAnimalUseCase;
 import com.vetsoftware.app.animal.domain.AnimalNotFoundException;
 import com.vetsoftware.app.animal.domain.Gender;
 import com.vetsoftware.app.animal.domain.ReproductiveState;
@@ -65,11 +71,15 @@ class AnimalControllerTest {
     @MockitoBean
     private CreateAnimalUseCase createUseCase;
     @MockitoBean
+    private UpdateAnimalUseCase updateUseCase;
+    @MockitoBean
     private FindAnimalUseCase findUseCase;
     @MockitoBean
     private ListAnimalsUseCase listUseCase;
     @MockitoBean
     private ListAnimalsByOwnerUseCase listByOwnerUseCase;
+    @MockitoBean
+    private DeleteAnimalUseCase deleteUseCase;
 
     private static AnimalDto perroSano() {
         return AnimalDto.from(AnimalMother.perroSano());
@@ -132,6 +142,68 @@ class AnimalControllerTest {
                     """)).andExpect(status().isBadRequest());
 
             verify(createUseCase, never()).execute(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("PUT /animals/{id}")
+    class Actualizacion {
+
+        private static final String ACTUALIZACION_VALIDA = """
+                {"name":"Firulais","code":"A-001","specieId":1,"breedId":2,"ownerId":3,
+                 "gender":"MALE","weightType":"KILOGRAMS","animalType":"NONE",
+                 "reproductiveState":"STERILIZED","colorId":4,"bod":"2020-05-10",
+                 "size":30,"deceased":false}
+                """;
+
+        @Test
+        @DisplayName("responde 200 con el animal actualizado")
+        void responde_200() throws Exception {
+            when(updateUseCase.execute(any())).thenReturn(perroSano());
+
+            mockMvc.perform(put("/animals/" + AnimalMother.ANIMAL_ID)
+                    .contentType(MediaType.APPLICATION_JSON).content(ACTUALIZACION_VALIDA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(AnimalMother.ANIMAL_ID))
+                    .andExpect(jsonPath("$.name").value("Firulais"));
+        }
+
+        @Test
+        @DisplayName("la empresa la pone el backend, nunca el request")
+        void la_empresa_la_pone_el_backend() throws Exception {
+            when(updateUseCase.execute(any())).thenReturn(perroSano());
+
+            mockMvc.perform(put("/animals/" + AnimalMother.ANIMAL_ID)
+                    .contentType(MediaType.APPLICATION_JSON).content(ACTUALIZACION_VALIDA));
+
+            verify(updateUseCase).execute(new UpdateAnimalCommand(AnimalMother.ANIMAL_ID,
+                    "Firulais", "A-001", 1L, 2L, 3L, Gender.MALE, WeightType.KILOGRAMS,
+                    com.vetsoftware.app.animal.domain.AnimalType.NONE, ReproductiveState.STERILIZED,
+                    4L, java.time.LocalDate.of(2020, 5, 10), 30, false, null, COMPANY_ID));
+        }
+
+        @Test
+        @DisplayName("un animal inexistente responde 404, no 500")
+        void un_animal_inexistente_responde_404() throws Exception {
+            when(updateUseCase.execute(any()))
+                    .thenThrow(new AnimalNotFoundException(AnimalMother.ANIMAL_ID));
+
+            mockMvc.perform(put("/animals/" + AnimalMother.ANIMAL_ID)
+                    .contentType(MediaType.APPLICATION_JSON).content(ACTUALIZACION_VALIDA))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("sin nombre responde 400 y no actualiza nada")
+        void sin_nombre_responde_400() throws Exception {
+            mockMvc.perform(put("/animals/" + AnimalMother.ANIMAL_ID)
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {"specieId":1,"breedId":2,"ownerId":3,"gender":"MALE",
+                             "weightType":"KILOGRAMS","animalType":"NONE",
+                             "reproductiveState":"STERILIZED","colorId":4,"deceased":false}
+                            """)).andExpect(status().isBadRequest());
+
+            verify(updateUseCase, never()).execute(any());
         }
     }
 
@@ -199,6 +271,29 @@ class AnimalControllerTest {
                     .thenThrow(new AnimalNotFoundException(999L));
 
             mockMvc.perform(get("/animals/999")).andExpect(status().isNotFound());
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /animals/{id}")
+    class Borrado {
+
+        @Test
+        @DisplayName("responde 204 y borra en la empresa del token")
+        void responde_204() throws Exception {
+            mockMvc.perform(delete("/animals/" + AnimalMother.ANIMAL_ID))
+                    .andExpect(status().isNoContent());
+
+            verify(deleteUseCase).execute(AnimalMother.ANIMAL_ID, COMPANY_ID);
+        }
+
+        @Test
+        @DisplayName("un animal inexistente responde 404, no 500")
+        void un_animal_inexistente_responde_404() throws Exception {
+            doThrow(new AnimalNotFoundException(999L)).when(deleteUseCase).execute(999L,
+                    COMPANY_ID);
+
+            mockMvc.perform(delete("/animals/999")).andExpect(status().isNotFound());
         }
     }
 }

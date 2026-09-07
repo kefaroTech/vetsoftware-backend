@@ -1,6 +1,7 @@
 package com.vetsoftware.app.animal.testsupport;
 
 import com.vetsoftware.app.animal.application.command.CreateAnimalCommand;
+import com.vetsoftware.app.animal.application.command.UpdateAnimalCommand;
 import com.vetsoftware.app.animal.domain.Animal;
 import com.vetsoftware.app.animal.domain.AnimalColorRef;
 import com.vetsoftware.app.animal.domain.AnimalType;
@@ -79,5 +80,14 @@ public final class AnimalMother {
         return new CreateAnimalCommand("Firulais", "A-001", PERRO.id(), LABRADOR.id(), DUENO.id(),
                 Gender.MALE, WeightType.KILOGRAMS, AnimalType.NONE, ReproductiveState.STERILIZED,
                 NEGRO.id(), NACIMIENTO, pesoInicial, 30, false, null, COMPANY_ID);
+    }
+
+    /**
+     * Comando de actualizacion coherente con las refs de arriba, sobre ANIMAL_ID.
+     */
+    public static UpdateAnimalCommand comandoActualizar() {
+        return new UpdateAnimalCommand(ANIMAL_ID, "Firulais", "A-001", PERRO.id(), LABRADOR.id(),
+                DUENO.id(), Gender.MALE, WeightType.KILOGRAMS, AnimalType.NONE,
+                ReproductiveState.STERILIZED, NEGRO.id(), NACIMIENTO, 30, false, null, COMPANY_ID);
     }
 }
