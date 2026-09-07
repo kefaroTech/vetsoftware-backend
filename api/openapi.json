@@ -13174,6 +13174,16 @@
             "format" : "int64"
           }
         } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReverseBillingDocumentApplicationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
         "responses" : {
           "201" : {
             "description" : "Created",
@@ -17546,6 +17556,38 @@
             "format" : "int64"
           }
         }, {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "PENDING", "CONFIRMED", "FAILED", "REFUNDED" ]
+          }
+        }, {
+          "name" : "receivedFrom",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "name" : "receivedTo",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "name" : "pendingOlderThanMinutes",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
           "name" : "page",
           "in" : "query",
           "required" : false,
@@ -17571,6 +17613,66 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PageResponseSubscriptionPaymentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/subscription-payments/export" : {
+      "get" : {
+        "tags" : [ "system-subscription-payment-controller" ],
+        "operationId" : "export",
+        "parameters" : [ {
+          "name" : "companyId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "PENDING", "CONFIRMED", "FAILED", "REFUNDED" ]
+          }
+        }, {
+          "name" : "receivedFrom",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "name" : "receivedTo",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "name" : "pendingOlderThanMinutes",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
                 }
               }
             }
@@ -18013,6 +18115,74 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PageResponsePaymentReversalRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/payment-gateway/wompi/events" : {
+      "get" : {
+        "tags" : [ "wompi-webhook-event-controller" ],
+        "operationId" : "search",
+        "parameters" : [ {
+          "name" : "reference",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "companyId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "from",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageResponseWompiWebhookEventResponse"
                 }
               }
             }
@@ -19348,7 +19518,7 @@
     "/suppliers/search" : {
       "get" : {
         "tags" : [ "supplier-controller" ],
-        "operationId" : "search",
+        "operationId" : "search_1",
         "parameters" : [ {
           "name" : "name",
           "in" : "query",
@@ -19399,7 +19569,7 @@
     "/supplier-invoices/search" : {
       "get" : {
         "tags" : [ "supplier-invoice-controller" ],
-        "operationId" : "search_1",
+        "operationId" : "search_2",
         "parameters" : [ {
           "name" : "supplierId",
           "in" : "query",
@@ -20034,7 +20204,7 @@
     "/services/search" : {
       "get" : {
         "tags" : [ "service-controller" ],
-        "operationId" : "search_2",
+        "operationId" : "search_3",
         "parameters" : [ {
           "name" : "name",
           "in" : "query",
@@ -20495,7 +20665,7 @@
     "/purchase-orders/search" : {
       "get" : {
         "tags" : [ "purchase-order-controller" ],
-        "operationId" : "search_3",
+        "operationId" : "search_4",
         "parameters" : [ {
           "name" : "supplierId",
           "in" : "query",
@@ -20664,7 +20834,7 @@
     "/products/search" : {
       "get" : {
         "tags" : [ "product-controller" ],
-        "operationId" : "search_4",
+        "operationId" : "search_5",
         "parameters" : [ {
           "name" : "name",
           "in" : "query",
@@ -20839,7 +21009,7 @@
     "/prescriptions/{id}/export.pdf" : {
       "get" : {
         "tags" : [ "prescription-controller" ],
-        "operationId" : "export",
+        "operationId" : "export_1",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -21334,7 +21504,7 @@
     "/owners/search" : {
       "get" : {
         "tags" : [ "owner-controller" ],
-        "operationId" : "search_5",
+        "operationId" : "search_6",
         "parameters" : [ {
           "name" : "q",
           "in" : "query",
@@ -21450,7 +21620,7 @@
     "/open-accounts/search" : {
       "get" : {
         "tags" : [ "open-account-controller" ],
-        "operationId" : "search_6",
+        "operationId" : "search_7",
         "parameters" : [ {
           "name" : "ownerId",
           "in" : "query",
@@ -21703,7 +21873,7 @@
     "/laboratory-tests/search" : {
       "get" : {
         "tags" : [ "laboratory-test-controller" ],
-        "operationId" : "search_7",
+        "operationId" : "search_8",
         "parameters" : [ {
           "name" : "statuses",
           "in" : "query",
@@ -22667,7 +22837,7 @@
     "/goods-receipts/search" : {
       "get" : {
         "tags" : [ "goods-receipt-controller" ],
-        "operationId" : "search_8",
+        "operationId" : "search_9",
         "parameters" : [ {
           "name" : "supplierId",
           "in" : "query",
@@ -22856,7 +23026,7 @@
     "/employees/search" : {
       "get" : {
         "tags" : [ "employee-controller" ],
-        "operationId" : "search_9",
+        "operationId" : "search_10",
         "parameters" : [ {
           "name" : "q",
           "in" : "query",
@@ -23801,7 +23971,7 @@
     "/companies/search" : {
       "get" : {
         "tags" : [ "company-controller" ],
-        "operationId" : "search_10",
+        "operationId" : "search_11",
         "parameters" : [ {
           "name" : "q",
           "in" : "query",
@@ -24476,7 +24646,7 @@
     "/animals/{animalId}/clinical-history/export.pdf" : {
       "get" : {
         "tags" : [ "clinical-history-controller" ],
-        "operationId" : "export_1",
+        "operationId" : "export_2",
         "parameters" : [ {
           "name" : "animalId",
           "in" : "path",
@@ -34023,6 +34193,28 @@
             "type" : "string",
             "format" : "date-time"
           },
+          "feeAmount" : {
+            "type" : "number"
+          },
+          "netAmount" : {
+            "type" : "number"
+          },
+          "settlementReference" : {
+            "type" : "string"
+          },
+          "settledOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "refundedAmount" : {
+            "type" : "number"
+          },
+          "clientRequestId" : {
+            "type" : "string"
+          },
+          "reservation" : {
+            "type" : "boolean"
+          },
           "createdDate" : {
             "type" : "string",
             "format" : "date-time"
@@ -34032,7 +34224,7 @@
             "format" : "int64"
           }
         },
-        "required" : [ "amount", "companyId", "createdDate", "currency", "id", "paymentMethod", "receivedAt", "status" ]
+        "required" : [ "amount", "companyId", "createdDate", "currency", "id", "paymentMethod", "receivedAt", "reservation", "status" ]
       },
       "RegisterSubscriptionPaymentMethodRequest" : {
         "type" : "object",
@@ -39149,6 +39341,17 @@
         },
         "required" : [ "companyId", "documentKind", "id", "totalAmount" ]
       },
+      "ReverseBillingDocumentApplicationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 255,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "reason" ]
+      },
       "CreateBaseRoleRequest" : {
         "type" : "object",
         "properties" : {
@@ -40822,6 +41025,73 @@
             "format" : "int32"
           }
         }
+      },
+      "PageResponseWompiWebhookEventResponse" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/WompiWebhookEventResponse"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "WompiWebhookEventResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "gateway" : {
+            "type" : "string"
+          },
+          "eventType" : {
+            "type" : "string"
+          },
+          "gatewayReference" : {
+            "type" : "string"
+          },
+          "eventChecksum" : {
+            "type" : "string"
+          },
+          "processingOutcome" : {
+            "type" : "string"
+          },
+          "receivedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "processedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdDate" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "rawBody" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "createdDate", "eventChecksum", "eventType", "gateway", "id", "receivedAt" ]
       },
       "PageResponseSystemPaymentAttemptResponse" : {
         "type" : "object",

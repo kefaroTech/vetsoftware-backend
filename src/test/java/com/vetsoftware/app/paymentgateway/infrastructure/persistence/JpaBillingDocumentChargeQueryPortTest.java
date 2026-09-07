@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.paymentgateway.domain.BillingDocumentChargeSnapshot;
+import com.vetsoftware.app.subscriptionbilling.domain.IssueStatus;
 import com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.SubscriptionBillingDocumentJpaEntity;
 import com.vetsoftware.app.subscriptionbilling.infrastructure.persistence.SubscriptionBillingDocumentJpaRepository;
 import java.math.BigDecimal;
@@ -42,13 +43,15 @@ class JpaBillingDocumentChargeQueryPortTest {
         when(entity.getTotalAmount()).thenReturn(new BigDecimal("45000"));
         when(entity.getBalanceAmount()).thenReturn(new BigDecimal("30000"));
         when(entity.getSubscriptionId()).thenReturn(7L);
+        when(entity.getIssueStatus()).thenReturn(IssueStatus.EXTERNAL_REGISTERED);
         when(repository.findByIdAndCompanyId(DOCUMENTO, EMPRESA)).thenReturn(Optional.of(entity));
 
         Optional<BillingDocumentChargeSnapshot> snapshot = port.findByIdAndCompanyId(DOCUMENTO,
                 EMPRESA);
 
-        assertThat(snapshot).contains(new BillingDocumentChargeSnapshot(DOCUMENTO, "FV-1",
-                new BigDecimal("45000"), new BigDecimal("30000"), "COP", 7L));
+        assertThat(snapshot).contains(
+                new BillingDocumentChargeSnapshot(DOCUMENTO, "FV-1", new BigDecimal("45000"),
+                        new BigDecimal("30000"), "COP", 7L, "EXTERNAL_REGISTERED"));
     }
 
     @Test

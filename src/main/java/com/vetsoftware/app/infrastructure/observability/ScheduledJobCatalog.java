@@ -42,16 +42,16 @@ import java.util.Optional;
  * adornos.</b> Nada estructural: con {@code fixedDelay} dos réplicas ya
  * procesaban los mismos lotes, solo que a horas distintas y por accidente. Cron
  * sube la probabilidad de solape de «tarde o temprano» a «siempre», y por eso
- * el hueco deja de ser latente. La solución correcta es un candado distribuido
- * con su tabla; no se implementa aquí a propósito, por dos motivos que conviene
- * tener escritos: el candado consultivo de MySQL ({@code GET_LOCK}) obliga a
- * retener una conexión del pool durante todo el barrido y
- * {@code leak-detection-threshold: 20000} emitiría una falsa alarma de fuga
- * cada noche, y una tabla de candados exige un changeset de Liquibase.
+ * el hueco deja de ser latente.
  *
  * <p>
- * Mientras tanto la precondición es explícita y <b>vigilada</b>: el servicio
- * corre con una sola tarea, y la alerta
+ * <b>Candado distribuido, pero solo en los cuatro que cobran o cierran
+ * dinero</b>: {@code payment.collection}, {@code subscription.billing},
+ * {@code quote.expiration} y {@code payment.reconciliation} llevan
+ * {@code @SchedulerLock} sobre la tabla {@code shedlock}. Los otros cinco con
+ * {@link #requiresSingleWriter()} siguen sin candado propio: la precondición
+ * que los protege es explícita y <b>vigilada</b>, no implementada aquí. El
+ * servicio corre con una sola tarea, y la alerta
  * {@code VetSoftwareScheduledJobMultipleReplicas} —que cuenta cuántos procesos
  * publican el heartbeat de un mismo {@code job.name}— dispara en cuanto alguien
  * escale a dos, antes de que el primer cierre de mes duplique los cargos. Una
@@ -119,6 +119,14 @@ public enum ScheduledJobCatalog {
     QUOTE_EXPIRATION("quote.expiration", "quote.expiration.cron", "0 25 3 * * *", true),
 
     /**
+     * Conciliación de pagos {@code PENDING} de pasarela envejecidos: al minuto en
+     * punto de cada hora, con candado propio ({@code @SchedulerLock}) porque dos
+     * réplicas resolverían el mismo pago dos veces contra Wompi.
+     */
+    PAYMENT_RECONCILIATION("payment.reconciliation", "payment.reconciliation.cron", "0 0 * * * *",
+            true),
+
+    /**
      * Recuento del consumo contra las filas reales (R-LIMIT-30). 04:10, después de
      * que el lifecycle y la cobranza hayan dejado los contratos en su estado final:
      * recontar antes daría desvíos sobre contadores que el recálculo de las 03:10
@@ -171,7 +179,15 @@ public enum ScheduledJobCatalog {
      * vive la cadencia. Ver {@code AiProposalRetentionProperties}.
      */
     AI_PROPOSAL_RETENTION("aiproposal.retention", "vetsoftware.ai.proposal.retention.cron",
-            "0 55 3 * * *", true);
+            "0 55 3 * * *", true),
+
+    /**
+     * Vacía {@code raw_body} de los webhooks de Wompi más allá del plazo de
+     * retención configurado. 04:05, entre la retención de propuestas (03:55) y el
+     * recuento de consumo (04:10).
+     */
+    WEBHOOK_EVENT_RETENTION("webhook.event.retention",
+            "vetsoftware.payments.wompi.webhook-retention.cron", "0 5 4 * * *", true);
 
     /**
      * Zona horaria de todas las expresiones. Explícita y no la del contenedor: ECS
@@ -225,10 +241,7 @@ public enum ScheduledJobCatalog {
      * y todas las réplicas avanzan.
      *
      * <p>
-     * Los cinco que devuelven {@code true} son la razón de ser de
-     * {@code VetSoftwareScheduledJobMultipleReplicas}: hoy la única cosa que impide
-     * que dupliquen trabajo es que el servicio corre con una sola tarea, y eso es
-     * una propiedad del despliegue, no del código.
+     * Cuatro de ellos llevan {@code @SchedulerLock}; ver el javadoc de la clase.
      */
     public boolean requiresSingleWriter() {
         return singleWriter;

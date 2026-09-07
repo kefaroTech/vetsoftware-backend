@@ -223,7 +223,25 @@ public final class BusinessMetricCardinalityFilter implements MeterFilter, Meter
                             "duplicate", "capacity_derived")),
             Map.entry("retention.step",
                     Set.of("anonymize_proposals", "redact_turns", "redact_line_reasons",
-                            "purge_lines", "purge_turns", "purge_acceptances", "purge_proposals")));
+                            "purge_lines", "purge_turns", "purge_acceptances", "purge_proposals")),
+            // ── Cadena de cobro Wompi (#767) ─────────────────────────────────────
+            //
+            // "outcome" es el mismo vocabulario cerrado que persiste
+            // gateway_webhook_events.processing_outcome (GatewayWebhookOutcome), en
+            // minusculas. DUPLICATE no esta: nunca se escribe (la unicidad
+            // (gateway, event_checksum) descarta el duplicado antes de insertar).
+            Map.entry("outcome", Set.of("applied", "ignored_unknown_event", "ignored_already_final",
+                    "payment_not_found", "rejected_checksum", "rejected_stale", "rejected_amount")),
+            // El desenlace de un intento REAL contra Wompi (FirstPeriodChargeOutcome
+            // sin las omisiones: SKIPPED_* y NOT_CONFIGURED no llegan aqui, nunca
+            // tocan la pasarela) y la causa cuando se rechaza (GatewayDeclineKind).
+            // "none" cuando no hubo rechazo, mismo patron que ai.failure.kind.
+            Map.entry("payment.outcome", Set.of("approved", "pending", "declined")),
+            Map.entry("decline.kind", Set.of("soft", "hard", "configuration", "none")),
+            // La causa del fallo de un candidato del barrido de cobranza o de
+            // conciliacion, en el mismo vocabulario que ya usan sus mensajes de log
+            // (PaymentGatewayMetrics.FailureKind).
+            Map.entry("failure.kind", Set.of("transient", "deterministic", "budget_exhausted")));
 
     /**
      * Acumuladores de descarte por nombre de medidor. El conjunto de claves es fijo

@@ -167,19 +167,41 @@ Columnas: `id BIGINT AUTO_INCREMENT PK`; `gateway VARCHAR(40) ascii_bin NOT NULL
 `event_checksum VARCHAR(64) ascii_bin NOT NULL` (el SHA-256 hex del webhook — es el checksum lo que
 hace de llave de idempotencia, Wompi no expone un id de evento propio); `gateway_reference
 VARCHAR(120) ascii_bin NULL` (`transaction.id`, nulable por si el cuerpo llega malformado antes de
-poder extraerlo); `received_at DATETIME(6) NOT NULL`; `raw_body TEXT NOT NULL` (utf8mb4, cuerpo
-crudo del POST); `processed_at DATETIME(6) NULL`; `processing_outcome VARCHAR(30) NULL` con CHECK
-`IN ('APPLIED','IGNORED_UNKNOWN_EVENT','IGNORED_ALREADY_FINAL','PAYMENT_NOT_FOUND',
-'REJECTED_CHECKSUM')`; `created_date`; `version BIGINT` (con `@Version`: la fila se escribe dos
-veces — alta sin procesar, luego relleno de `processed_at`/`processing_outcome` — es una segunda
-escritura declarada, no una exención).
+poder extraerlo); `received_at DATETIME(6) NOT NULL`; `raw_body TEXT NULL` (utf8mb4, cuerpo crudo
+del POST — nulable a propósito: la retención del cuerpo crudo la resuelve un job que lo vacía
+pasados N días, ver más abajo); `processed_at DATETIME(6) NULL`; `processing_outcome VARCHAR(30)
+NULL` con CHECK `IN ('APPLIED','IGNORED_UNKNOWN_EVENT','IGNORED_ALREADY_FINAL','PAYMENT_NOT_FOUND',
+'REJECTED_CHECKSUM','REJECTED_STALE','REJECTED_AMOUNT')`; `created_date`; `version BIGINT` (con
+`@Version`: la fila se escribe dos veces — alta sin procesar, luego relleno de
+`processed_at`/`processing_outcome` — es una segunda escritura declarada, no una exención).
+`REJECTED_AMOUNT`: el evento trae un `amount_in_cents` distinto del pago registrado; el pago se
+deja en `PENDING`. `REJECTED_STALE` (#789): el evento llega fuera de la ventana de frescura que
+valida `ProcessWompiEventUseCase` antes de aplicarlo — evita reprocesar un webhook demorado contra
+un pago que ya avanzó por otro camino.
+
+**Retención de `raw_body` (#791).** La fila completa (`gateway`, `event_type`, `event_checksum`,
+`processing_outcome`) es evidencia contable y se conserva indefinidamente; solo `raw_body` —el
+cuerpo crudo, con datos potencialmente sensibles del payload de Wompi— se purga pasados N días.
+Un job vacía la columna (`UPDATE gateway_webhook_events SET raw_body = NULL WHERE received_at <
+:umbral AND raw_body IS NOT NULL`) sin tocar el resto de la fila. Ese barrido filtra por
+antigüedad de llegada, no por si el evento ya se procesó, así que
+`ix_gateway_webhook_events_pending (processed_at)` no le sirve:
+`ix_gateway_webhook_events_purge (received_at)` es el índice nuevo que necesita.
+
+**`DUPLICATE` no entra en el catálogo del CHECK**, aunque sea un desenlace real (mismo checksum ya
+recibido; se responde 200 sin reprocesar): `uq_gateway_webhook_events_checksum` impide insertar una
+segunda fila con el mismo `(gateway, event_checksum)`, así que no hay fila nueva donde grabar ese
+valor, y sobrescribir el `processing_outcome` de la fila original borraría el desenlace real del
+primer intento. El servicio trata el reintento como una lectura de la fila existente —comprueba el
+checksum, ve que ya tiene un desenlace, y responde 200— y no como una escritura con outcome propio.
 
 Constraints: `uq_gateway_webhook_events_checksum UNIQUE (gateway, event_checksum)` (la barandilla
 de idempotencia); `chk_gwe_processed CHECK ((processed_at IS NULL AND processing_outcome IS NULL)
 OR (processed_at IS NOT NULL AND processing_outcome IS NOT NULL))`. Índices:
 `ix_gateway_webhook_events_reference (gateway, gateway_reference)` para correlacionar con
 `subscription_payments`; `ix_gateway_webhook_events_pending (processed_at)` para el barrido de
-reconciliación. **Sin `company_id`** (el evento llega sin empresa, tabla de plataforma pura, mismo
+reconciliación; `ix_gateway_webhook_events_purge (received_at)` para el barrido de retención que
+vacía `raw_body` (#791). **Sin `company_id`** (el evento llega sin empresa, tabla de plataforma pura, mismo
 criterio que `gateway_settlements`, `326`) y **sin FK** a `subscription_payments`: debe poder
 persistirse incluso cuando NO se encuentra el pago correspondiente — para eso existe.
 

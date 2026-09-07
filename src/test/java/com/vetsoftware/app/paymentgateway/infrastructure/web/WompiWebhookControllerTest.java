@@ -4,10 +4,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.paymentgateway.application.command.ProcessWompiEventCommand;
 import com.vetsoftware.app.paymentgateway.application.port.in.ProcessWompiEventUseCase;
+import com.vetsoftware.app.paymentgateway.domain.PaymentGatewayNotConfiguredException;
 import com.vetsoftware.app.paymentgateway.domain.WompiChecksumMismatchException;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import org.junit.jupiter.api.DisplayName;
@@ -66,6 +68,21 @@ class WompiWebhookControllerTest {
                 post("/payment-gateway/wompi/events").contentType(MediaType.APPLICATION_JSON)
                         .header("X-Event-Checksum", "forjado").content(CUERPO))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Wompi deshabilitado o sin secreto responde 503, no 200 ni 409, sin revelar la propiedad interna")
+    void gateway_no_configurado_responde_503() throws Exception {
+        doThrow(new PaymentGatewayNotConfiguredException(
+                "Wompi no esta habilitado (vetsoftware.payments.wompi.enabled=false)"))
+                .when(processEventUseCase).execute(any());
+
+        mockMvc.perform(
+                post("/payment-gateway/wompi/events").contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Event-Checksum", "abc123").content(CUERPO))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.detail", org.hamcrest.Matchers
+                        .not(org.hamcrest.Matchers.containsString("vetsoftware.payments.wompi"))));
     }
 
     @Test

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #777. PaymentReconciliationJob (barrido horario) consulta
+         WHERE status = 'PENDING' AND gateway IS NOT NULL AND received_at < :umbral,
+         hoy sin company_id porque el candado es el propio job, no una empresa -mismo
+         SubscriptionPaymentJpaRepository.countByStatusAndGatewayIsNotNullAndReceivedAtBefore
+         que ya usa PaymentGatewayGaugeMetrics para el gauge de pendientes envejecidos-.
+         Ninguno de los dos indices de 252 sirve: ix_subscription_payments_company_status
+         empieza por company_id (esta consulta no lo tiene) e
+         ix_subscription_payments_settlement es (gateway, settlement_reference), ajeno al
+         predicado. Orden de columnas status, gateway, received_at: las dos primeras son
+         igualdad y acotan a las filas de pasarela pendientes; received_at cierra el
+         indice para servir el rango y el ORDER BY ASC sin ordenacion adicional. -->
+    <changeSet id="413_create_index_subscription_payments_pending_gateway" author="orlando">
+        <createIndex tableName="subscription_payments"
+                     indexName="ix_subscription_payments_pending_gateway">
+            <column name="status"/>
+            <column name="gateway"/>
+            <column name="received_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="subscription_payments"
+                       indexName="ix_subscription_payments_pending_gateway"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

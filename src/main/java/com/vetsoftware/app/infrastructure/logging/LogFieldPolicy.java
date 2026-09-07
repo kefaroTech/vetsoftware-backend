@@ -113,12 +113,30 @@ public final class LogFieldPolicy {
             // Los tres son texto que elige un humano o un tercero, y esta lista
             // no es el sitio para decidir que se puede leer de ellos: el sitio es
             // no emitirlos.
-            "subscription.id", "subscription.item.id", "catalog.item.id", "amendment.id",
-            "charge.id", "charge.compensation.id", "charge.type", "billing.document.id",
-            "billing.document.number", "billing.document.charges", "payment.id", "payment.method",
-            "application.id", "source.kind", "issue.status", "amount", "monthly.delta.amount",
-            "quantity", "previous.quantity", "from.status", "to.status", "effective.on",
-            "trigger.reason", "entitlement.rows",
+            "quote.id", "quote.number", "subscription.id", "subscription.item.id",
+            "catalog.item.id", "amendment.id", "charge.id", "charge.compensation.id", "charge.type",
+            "billing.document.id", "billing.document.number", "billing.document.charges",
+            "payment.id", "payment.method", "application.id", "source.kind", "issue.status",
+            "amount", "monthly.delta.amount", "quantity", "previous.quantity", "from.status",
+            "to.status", "effective.on", "trigger.reason", "entitlement.rows",
+            // Pasarela de pago (#761, #767): moneda ISO-4217, nombre de pasarela
+            // (PaymentGatewayNames, vocabulario cerrado en mayusculas) y la
+            // referencia que ESTE sistema genera y Wompi devuelve intacta en el
+            // webhook (GatewayCharger/ChargeContractFirstPeriodService construyen
+            // "VS-..."). Los tres los produce el sistema, nunca un humano, asi que
+            // su forma esta tan garantizada como la de billing.document.number. Y
+            // tienen que ir VERBATIM por el mismo motivo que amount: gatewayReference
+            // admite corridas largas de digitos y SCANNED las suprimiria con ***.
+            "currency", "gateway", "gateway.reference",
+            // La IP de la aceptacion de una cotizacion (#760): no viaja por el MDC
+            // como client.ip porque es la del prospecto que acepta y no la de la
+            // sesion autenticada. La produce jakarta.servlet, nunca la teclea nadie,
+            // igual que MdcKeys.CLIENT_IP.
+            "accepted.ip",
+            // Saldo a favor (#795): el id del asiento y la rama cerrada de
+            // CreditOriginKind. Mismo criterio que el resto del bloque de dinero de
+            // suscripciones: los produce el sistema, nunca un humano.
+            "credit.entry.id", "credit.origin.kind",
             // ── Asistente comercial con IA (aiproposal) ─────────────────────────
             //
             // Dos claves, y solo dos. `ai.error.type` es el value() de un enum
@@ -189,7 +207,12 @@ public final class LogFieldPolicy {
             // MODEL_TIMEOUT no casa con ningun patron y sale entero- y cierra el
             // hueco para todo emisor presente y futuro, que es el mismo argumento
             // con el que actor.identifier bajo aqui en la incidencia #216.
-            "ai.failure.code");
+            "ai.failure.code",
+            // Quien acepto una cotizacion (#760). Lo tecla el prospecto en el
+            // formulario de aceptacion, igual que actor.identifier: puede traer un
+            // documento o un CRLF, y escaneado un correo normal sale entero mientras
+            // que un dato personal queda enmascarado.
+            "accepted.by.email");
 
     /**
      * {@code true} si el valor de {@code key} se emite sin transformación alguna.

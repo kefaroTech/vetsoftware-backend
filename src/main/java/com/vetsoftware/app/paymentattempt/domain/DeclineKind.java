@@ -15,9 +15,9 @@ package com.vetsoftware.app.paymentattempt.domain;
  * reintenta</strong>, hasta {@link PaymentAttempt#MAX_SOFT_ATTEMPTS} veces
  * dentro de {@link PaymentAttempt#RETRY_WINDOW}.</li>
  * <li>{@link #HARD} — tarjeta perdida, robada, autorización revocada, operación
- * no permitida. <strong>No se reintenta jamás</strong>: se pide medio de pago
- * nuevo. Por eso {@code chk_payment_attempts_hard_has_no_retry} obliga a que su
- * {@code next_attempt_at} vaya vacío — no lejano, no nulo por descuido.</li>
+ * no permitida. <strong>La escalera automática no lo reintenta jamás</strong>:
+ * se pide medio de pago nuevo. Fijar una tarjeta nueva como predeterminada sí
+ * lo reprograma; ver {@link PaymentAttempt}.</li>
  * <li>{@link #CONFIGURATION} — moneda no soportada, credencial mal puesta,
  * pasarela caída. Son errores <strong>propios</strong>, no del cliente. Sin
  * distinguirlos se queman contra un fallo que no es suyo los intentos que la

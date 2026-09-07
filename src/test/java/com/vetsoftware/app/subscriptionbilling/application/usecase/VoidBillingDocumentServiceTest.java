@@ -10,12 +10,15 @@ import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.subscriptionbilling.application.command.VoidBillingDocumentCommand;
 import com.vetsoftware.app.subscriptionbilling.application.dto.BillingDocumentDto;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentApplicationReversalPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.BillingDocumentRepository;
+import com.vetsoftware.app.subscriptionbilling.application.port.out.PendingPaymentApplicationQueryPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingAuditPort;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionBillingMetrics;
 import com.vetsoftware.app.subscriptionbilling.application.port.out.SubscriptionChargeRepository;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentAlreadyIssuedException;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentAlreadyVoidedException;
+import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentHasPendingPaymentException;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingReason;
 import com.vetsoftware.app.subscriptionbilling.domain.ChargeStatus;
 import com.vetsoftware.app.subscriptionbilling.domain.ChargeType;
@@ -82,12 +85,24 @@ class VoidBillingDocumentServiceTest {
     private SubscriptionBillingMetrics metrics;
     @Mock
     private SubscriptionBillingAuditPort audit;
+    @Mock
+    private PendingPaymentApplicationQueryPort pendingPaymentApplicationQueryPort;
+    @Mock
+    private BillingDocumentApplicationReversalPort reversalPort;
 
     private VoidBillingDocumentService service;
 
     @BeforeEach
     void montar() {
-        service = new VoidBillingDocumentService(repository, chargeRepository, metrics, audit);
+        service = new VoidBillingDocumentService(repository, chargeRepository, metrics, audit,
+                pendingPaymentApplicationQueryPort, reversalPort);
+    }
+
+    private void sinPagosEnVuelo() {
+        when(pendingPaymentApplicationQueryPort.existsPendingApplication(EMPRESA, DOCUMENTO))
+                .thenReturn(false);
+        when(pendingPaymentApplicationQueryPort.findConfirmedApplicationIds(EMPRESA, DOCUMENTO))
+                .thenReturn(List.of());
     }
 
     private static SubscriptionCharge cuota() {
@@ -124,6 +139,7 @@ class VoidBillingDocumentServiceTest {
                 + " quedan INVOICED contra un documento VOIDED y no se cobran nunca")
         void anular_devuelve_los_cargos_al_ciclo_siguiente() {
             seEncuentra(borrador());
+            sinPagosEnVuelo();
             when(repository.save(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
             when(chargeRepository.releaseFromVoidedDocument(DOCUMENTO, EMPRESA)).thenReturn(3);
 
@@ -139,6 +155,7 @@ class VoidBillingDocumentServiceTest {
                 + " lista de cargos que el llamador no conoce")
         void libera_por_documento_y_empresa() {
             seEncuentra(borrador());
+            sinPagosEnVuelo();
             when(repository.save(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
             when(chargeRepository.releaseFromVoidedDocument(DOCUMENTO, EMPRESA)).thenReturn(0);
 
@@ -193,6 +210,53 @@ class VoidBillingDocumentServiceTest {
 
             verifyNoInteractions(chargeRepository);
         }
+
+        @Test
+        @DisplayName("un documento con un pago PENDING aplicado no se anula")
+        void un_documento_con_pago_pendiente_no_se_anula() {
+            seEncuentra(borrador());
+            when(pendingPaymentApplicationQueryPort.existsPendingApplication(EMPRESA, DOCUMENTO))
+                    .thenReturn(true);
+
+            assertThatThrownBy(
+                    () -> service.execute(new VoidBillingDocumentCommand(DOCUMENTO, EMPRESA)))
+                    .isInstanceOf(BillingDocumentHasPendingPaymentException.class);
+
+            verifyNoInteractions(chargeRepository);
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("un pago CONFIRMED ya aplicado no bloquea la anulacion: se revierte antes")
+        void un_pago_confirmado_no_bloquea_la_anulacion() {
+            seEncuentra(borrador());
+            when(pendingPaymentApplicationQueryPort.existsPendingApplication(EMPRESA, DOCUMENTO))
+                    .thenReturn(false);
+            when(pendingPaymentApplicationQueryPort.findConfirmedApplicationIds(EMPRESA, DOCUMENTO))
+                    .thenReturn(List.of(700L, 701L));
+            when(repository.save(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
+            when(chargeRepository.releaseFromVoidedDocument(DOCUMENTO, EMPRESA)).thenReturn(0);
+
+            BillingDocumentDto dto = service
+                    .execute(new VoidBillingDocumentCommand(DOCUMENTO, EMPRESA));
+
+            assertThat(dto.issueStatus()).isEqualTo(IssueStatus.VOIDED);
+            verify(reversalPort).reverse(700L, EMPRESA, "documento anulado");
+            verify(reversalPort).reverse(701L, EMPRESA, "documento anulado");
+        }
+
+        @Test
+        @DisplayName("sin pagos CONFIRMED aplicados no revierte nada")
+        void sin_pagos_confirmados_no_revierte_nada() {
+            seEncuentra(borrador());
+            sinPagosEnVuelo();
+            when(repository.save(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
+            when(chargeRepository.releaseFromVoidedDocument(DOCUMENTO, EMPRESA)).thenReturn(0);
+
+            service.execute(new VoidBillingDocumentCommand(DOCUMENTO, EMPRESA));
+
+            verifyNoInteractions(reversalPort);
+        }
     }
 
     @Nested
@@ -203,6 +267,7 @@ class VoidBillingDocumentServiceTest {
         @DisplayName("la anulacion se cuenta y se audita con el estado ya anulado")
         void la_anulacion_se_cuenta_y_se_audita() {
             seEncuentra(borrador());
+            sinPagosEnVuelo();
             when(repository.save(any())).thenAnswer(invocacion -> invocacion.getArgument(0));
             when(chargeRepository.releaseFromVoidedDocument(DOCUMENTO, EMPRESA)).thenReturn(1);
 

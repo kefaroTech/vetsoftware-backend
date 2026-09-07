@@ -17,9 +17,11 @@ import com.vetsoftware.app.paymentgateway.application.port.out.FirstPeriodPaymen
 import com.vetsoftware.app.paymentgateway.application.port.out.PaymentAttemptRecorderPort;
 import com.vetsoftware.app.paymentgateway.domain.FirstPeriodChargeOutcome;
 import com.vetsoftware.app.paymentgateway.domain.FirstPeriodPaymentSnapshot;
+import com.vetsoftware.app.paymentgateway.domain.FiscalProfileNotConfiguredException;
 import com.vetsoftware.app.paymentgateway.domain.GatewayDeclineKind;
 import com.vetsoftware.app.paymentgateway.domain.IssuedPeriodDocument;
 import com.vetsoftware.app.paymentgateway.domain.PaymentMethodRef;
+import io.micrometer.observation.ObservationRegistry;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -65,7 +67,7 @@ class ChargeContractFirstPeriodServiceTest {
     void setUp() {
         service = new ChargeContractFirstPeriodService(firstPeriodPaymentQueryPort,
                 billingDocumentIssuerPort, defaultCardPaymentMethodQueryPort,
-                paymentAttemptRecorderPort, gatewayCharger, RELOJ);
+                paymentAttemptRecorderPort, gatewayCharger, ObservationRegistry.NOOP, RELOJ);
     }
 
     private ChargeContractFirstPeriodCommand comando() {
@@ -87,12 +89,25 @@ class ChargeContractFirstPeriodServiceTest {
     }
 
     @Test
+    @DisplayName("idempotencia: un pago REFUNDED no se muestra como aprobado (RES-60)")
+    void idempotencia_pago_refunded_no_es_aprobado() {
+        when(firstPeriodPaymentQueryPort.findByCompanyIdAndReference(EMPRESA, REFERENCIA))
+                .thenReturn(Optional.of(new FirstPeriodPaymentSnapshot(501L, EMPRESA, "REFUNDED",
+                        new BigDecimal("45000"), "COP", "tx-1", null)));
+
+        FirstPeriodChargeDto result = service.execute(comando());
+
+        assertThat(result.outcome()).isEqualTo(FirstPeriodChargeOutcome.DECLINED);
+        verifyNoInteractions(billingDocumentIssuerPort, gatewayCharger);
+    }
+
+    @Test
     @DisplayName("sin nada que facturar: NOT_CONFIGURED sin tocar la pasarela")
     void sin_nada_que_facturar() {
         when(firstPeriodPaymentQueryPort.findByCompanyIdAndReference(EMPRESA, REFERENCIA))
                 .thenReturn(Optional.empty());
         when(billingDocumentIssuerPort.issue(EMPRESA, CONTRATO, INICIO, FIN))
-                .thenReturn(new IssuedPeriodDocument(null, null, null, null, false));
+                .thenReturn(new IssuedPeriodDocument(null, null, null, null, null, false));
 
         FirstPeriodChargeDto result = service.execute(comando());
 
@@ -101,21 +116,43 @@ class ChargeContractFirstPeriodServiceTest {
     }
 
     @Test
-    @DisplayName("sin medio de pago: NO_PAYMENT_METHOD y anota un intento CONFIGURATION")
+    @DisplayName("saldo cero (cubierto por abono): APPROVED sin llamar a la pasarela (RES2-09)")
+    void saldo_cero_no_llama_a_la_pasarela() {
+        when(firstPeriodPaymentQueryPort.findByCompanyIdAndReference(EMPRESA, REFERENCIA))
+                .thenReturn(Optional.empty());
+        when(billingDocumentIssuerPort.issue(EMPRESA, CONTRATO, INICIO, FIN))
+                .thenReturn(new IssuedPeriodDocument(900L, "FV-1", new BigDecimal("45000"),
+                        BigDecimal.ZERO, "COP", true));
+
+        FirstPeriodChargeDto result = service.execute(comando());
+
+        assertThat(result.outcome()).isEqualTo(FirstPeriodChargeOutcome.APPROVED);
+        assertThat(result.gatewayReference()).isNull();
+        verifyNoInteractions(gatewayCharger, defaultCardPaymentMethodQueryPort,
+                paymentAttemptRecorderPort);
+    }
+
+    @Test
+    @DisplayName("sin medio de pago: NO_PAYMENT_METHOD y anota un intento CONFIGURATION reprogramado a +1 dia")
     void sin_medio_de_pago() {
         when(firstPeriodPaymentQueryPort.findByCompanyIdAndReference(EMPRESA, REFERENCIA))
                 .thenReturn(Optional.empty());
-        when(billingDocumentIssuerPort.issue(EMPRESA, CONTRATO, INICIO, FIN)).thenReturn(
-                new IssuedPeriodDocument(900L, "FV-1", new BigDecimal("45000"), "COP", true));
+        when(billingDocumentIssuerPort.issue(EMPRESA, CONTRATO, INICIO, FIN))
+                .thenReturn(new IssuedPeriodDocument(900L, "FV-1", new BigDecimal("45000"),
+                        new BigDecimal("45000"), "COP", true));
         when(defaultCardPaymentMethodQueryPort.findDefaultActiveCard(eq(EMPRESA), eq("WOMPI")))
                 .thenReturn(Optional.empty());
 
         FirstPeriodChargeDto result = service.execute(comando());
 
         assertThat(result.outcome()).isEqualTo(FirstPeriodChargeOutcome.NO_PAYMENT_METHOD);
+        ArgumentCaptor<java.time.LocalDateTime> nextAttemptCaptor = ArgumentCaptor
+                .forClass(java.time.LocalDateTime.class);
         verify(paymentAttemptRecorderPort).record(eq(EMPRESA), eq(900L), isNull(), eq("WOMPI"),
                 eq(new BigDecimal("45000")), isNull(), eq(GatewayDeclineKind.CONFIGURATION), any(),
-                isNull());
+                nextAttemptCaptor.capture());
+        assertThat(nextAttemptCaptor.getValue())
+                .isEqualTo(java.time.LocalDateTime.now(RELOJ).plusDays(1));
         verifyNoInteractions(gatewayCharger);
     }
 
@@ -127,8 +164,9 @@ class ChargeContractFirstPeriodServiceTest {
         void conCobroPosible() {
             when(firstPeriodPaymentQueryPort.findByCompanyIdAndReference(EMPRESA, REFERENCIA))
                     .thenReturn(Optional.empty());
-            when(billingDocumentIssuerPort.issue(EMPRESA, CONTRATO, INICIO, FIN)).thenReturn(
-                    new IssuedPeriodDocument(900L, "FV-1", new BigDecimal("45000"), "COP", true));
+            when(billingDocumentIssuerPort.issue(EMPRESA, CONTRATO, INICIO, FIN))
+                    .thenReturn(new IssuedPeriodDocument(900L, "FV-1", new BigDecimal("45000"),
+                            new BigDecimal("45000"), "COP", true));
             when(defaultCardPaymentMethodQueryPort.findDefaultActiveCard(eq(EMPRESA), eq("WOMPI")))
                     .thenReturn(Optional.of(new PaymentMethodRef(15L, "9911")));
         }
@@ -153,6 +191,23 @@ class ChargeContractFirstPeriodServiceTest {
         }
 
         @Test
+        @DisplayName("con un abono parcial ya aplicado: cobra el balanceAmount, no el totalAmount (RES2-09)")
+        void cobra_el_saldo_no_el_total() {
+            when(billingDocumentIssuerPort.issue(EMPRESA, CONTRATO, INICIO, FIN))
+                    .thenReturn(new IssuedPeriodDocument(900L, "FV-1", new BigDecimal("45000"),
+                            new BigDecimal("10000"), "COP", true));
+            when(gatewayCharger.charge(eq(EMPRESA), eq(900L), any(PaymentMethodRef.class),
+                    eq(new BigDecimal("10000")), eq("COP"), eq(REFERENCIA)))
+                    .thenReturn(new GatewayChargeResult(FirstPeriodChargeOutcome.APPROVED, "tx-1",
+                            null));
+
+            service.execute(comando());
+
+            verify(gatewayCharger).charge(eq(EMPRESA), eq(900L), any(PaymentMethodRef.class),
+                    eq(new BigDecimal("10000")), eq("COP"), eq(REFERENCIA));
+        }
+
+        @Test
         @DisplayName("pendiente: traslada el desenlace de GatewayCharger tal cual")
         void pendiente() {
             when(gatewayCharger.charge(any(), any(), any(), any(), any(), any())).thenReturn(
@@ -174,6 +229,37 @@ class ChargeContractFirstPeriodServiceTest {
 
             assertThat(result.outcome()).isEqualTo(FirstPeriodChargeOutcome.DECLINED);
             assertThat(result.declineReason()).isEqualTo("Fondos insuficientes");
+        }
+
+        @Test
+        @DisplayName("rechazado: el documento del periodo, no el contrato, es el que entra a la cola de reintentos")
+        void rechazado_pasa_el_documento_del_periodo_al_charger() {
+            when(gatewayCharger.charge(any(), any(), any(), any(), any(), any()))
+                    .thenReturn(new GatewayChargeResult(FirstPeriodChargeOutcome.DECLINED, "tx-1",
+                            "Fondos insuficientes"));
+
+            service.execute(comando());
+
+            verify(gatewayCharger).charge(eq(EMPRESA), eq(900L), any(PaymentMethodRef.class), any(),
+                    eq("COP"), eq(REFERENCIA));
+        }
+
+        @Test
+        @DisplayName("perfil fiscal ausente: NOT_CONFIGURED y anota un intento CONFIGURATION reprogramado a +1 dia (UX-05)")
+        void perfil_fiscal_ausente() {
+            when(gatewayCharger.charge(any(), any(), any(), any(), any(), any()))
+                    .thenThrow(new FiscalProfileNotConfiguredException(EMPRESA));
+
+            FirstPeriodChargeDto result = service.execute(comando());
+
+            assertThat(result.outcome()).isEqualTo(FirstPeriodChargeOutcome.NOT_CONFIGURED);
+            ArgumentCaptor<java.time.LocalDateTime> nextAttemptCaptor = ArgumentCaptor
+                    .forClass(java.time.LocalDateTime.class);
+            verify(paymentAttemptRecorderPort).record(eq(EMPRESA), eq(900L), isNull(), eq("WOMPI"),
+                    eq(new BigDecimal("45000")), isNull(), eq(GatewayDeclineKind.CONFIGURATION),
+                    any(), nextAttemptCaptor.capture());
+            assertThat(nextAttemptCaptor.getValue())
+                    .isEqualTo(java.time.LocalDateTime.now(RELOJ).plusDays(1));
         }
     }
 }

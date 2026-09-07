@@ -68,11 +68,12 @@ class SubscriptionPaymentTest {
         }
 
         @Test
-        @DisplayName("rechaza una pasarela sin referencia: no deduplicaria nada")
-        void rechaza_pasarela_sin_referencia() {
-            assertThatThrownBy(() -> nuevoPago(pesos("100.00"), "COP", "wompi", null))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("both present or both absent");
+        @DisplayName("acepta una pasarela sin referencia: es la reserva antes del POST (#776)")
+        void acepta_pasarela_sin_referencia() {
+            SubscriptionPayment reserva = nuevoPago(pesos("100.00"), "COP", "wompi", null);
+
+            assertThat(reserva.getGateway()).isEqualTo("wompi");
+            assertThat(reserva.getGatewayReference()).isNull();
         }
 
         @Test
@@ -80,7 +81,7 @@ class SubscriptionPaymentTest {
         void rechaza_referencia_sin_pasarela() {
             assertThatThrownBy(() -> nuevoPago(pesos("100.00"), "COP", null, "TX-1"))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("both present or both absent");
+                    .hasMessageContaining("gatewayReference requires a gateway");
         }
 
         @Test
@@ -88,7 +89,8 @@ class SubscriptionPaymentTest {
         void rechaza_conciliado_sin_confirmar() {
             assertThatThrownBy(() -> new SubscriptionPayment(1L, EMPRESA, pesos("100.00"), "COP",
                     PaymentMethod.CASH, null, null, AHORA, SubscriptionPaymentStatus.PENDING, AHORA,
-                    null, AHORA, 0L)).isInstanceOf(IllegalArgumentException.class)
+                    null, null, null, null, BigDecimal.ZERO, null, AHORA, 0L))
+                    .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("only a CONFIRMED payment");
         }
 
@@ -155,6 +157,39 @@ class SubscriptionPaymentTest {
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("target status is required");
         }
+
+        @Test
+        @DisplayName("un pago de pasarela sin gatewayReference no se puede confirmar (#781)")
+        void pago_de_pasarela_sin_referencia_no_se_confirma() {
+            SubscriptionPayment reserva = SubscriptionPayment.register(EMPRESA, pesos("500000.00"),
+                    "COP", PaymentMethod.CARD, "wompi", null, AHORA, "req-1", AHORA);
+
+            assertThatThrownBy(() -> reserva.changeStatus(SubscriptionPaymentStatus.CONFIRMED))
+                    .isInstanceOf(SubscriptionPaymentMissingGatewayReferenceException.class);
+        }
+
+        @Test
+        @DisplayName("un pago de pasarela con gatewayReference si se confirma")
+        void pago_de_pasarela_con_referencia_se_confirma() {
+            SubscriptionPayment reserva = SubscriptionPayment.register(EMPRESA, pesos("500000.00"),
+                    "COP", PaymentMethod.CARD, "wompi", null, AHORA, "req-1", AHORA);
+            reserva.assignGatewayReference("TX-2026-0001", null);
+
+            reserva.changeStatus(SubscriptionPaymentStatus.CONFIRMED);
+
+            assertThat(reserva.getStatus()).isEqualTo(SubscriptionPaymentStatus.CONFIRMED);
+        }
+
+        @Test
+        @DisplayName("un pago sin pasarela se confirma igual sin referencia")
+        void pago_sin_pasarela_se_confirma_sin_referencia() {
+            SubscriptionPayment manual = SubscriptionPayment.register(EMPRESA, pesos("500000.00"),
+                    "COP", PaymentMethod.TRANSFER, null, null, AHORA, "req-1", AHORA);
+
+            manual.changeStatus(SubscriptionPaymentStatus.CONFIRMED);
+
+            assertThat(manual.getStatus()).isEqualTo(SubscriptionPaymentStatus.CONFIRMED);
+        }
     }
 
     @Nested
@@ -198,6 +233,80 @@ class SubscriptionPaymentTest {
             assertThatThrownBy(() -> payment.reconcile((LocalDateTime) null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("reconciledAt is required");
+        }
+    }
+
+    @Nested
+    @DisplayName("Asignacion de referencia de pasarela")
+    class AsignacionDeReferencia {
+
+        @Test
+        @DisplayName("asigna la referencia a una reserva PENDING que nacio sin ella")
+        void asigna_la_referencia_a_una_reserva() {
+            SubscriptionPayment reserva = SubscriptionPayment.register(EMPRESA, pesos("500000.00"),
+                    "COP", PaymentMethod.CARD, "wompi", null, AHORA, "req-1", AHORA);
+
+            reserva.assignGatewayReference("TX-2026-0001", null);
+
+            assertThat(reserva.getGatewayReference()).isEqualTo("TX-2026-0001");
+        }
+
+        @Test
+        @DisplayName("con la fecha de la pasarela, sustituye receivedAt por la de la transaccion"
+                + " real (#783)")
+        void sustituye_received_at_por_la_fecha_de_la_pasarela() {
+            SubscriptionPayment reserva = SubscriptionPayment.register(EMPRESA, pesos("500000.00"),
+                    "COP", PaymentMethod.CARD, "wompi", null, AHORA, "req-1", AHORA);
+            LocalDateTime fechaTransaccion = AHORA.plusMinutes(3);
+
+            reserva.assignGatewayReference("TX-2026-0001", fechaTransaccion);
+
+            assertThat(reserva.getReceivedAt()).isEqualTo(fechaTransaccion);
+        }
+
+        @Test
+        @DisplayName("sin fecha de la pasarela, conserva la fecha de la reserva")
+        void sin_fecha_de_pasarela_conserva_la_de_la_reserva() {
+            SubscriptionPayment reserva = SubscriptionPayment.register(EMPRESA, pesos("500000.00"),
+                    "COP", PaymentMethod.CARD, "wompi", null, AHORA, "req-1", AHORA);
+
+            reserva.assignGatewayReference("TX-2026-0001", null);
+
+            assertThat(reserva.getReceivedAt()).isEqualTo(AHORA);
+        }
+
+        @Test
+        @DisplayName("rechaza asignar una referencia dos veces")
+        void rechaza_asignar_dos_veces() {
+            SubscriptionPayment reserva = SubscriptionPayment.register(EMPRESA, pesos("500000.00"),
+                    "COP", PaymentMethod.CARD, "wompi", null, AHORA, "req-1", AHORA);
+            reserva.assignGatewayReference("TX-2026-0001", null);
+
+            assertThatThrownBy(() -> reserva.assignGatewayReference("TX-2026-0002", null))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("already assigned");
+        }
+
+        @Test
+        @DisplayName("rechaza asignar una referencia a un pago que ya no esta PENDING")
+        void rechaza_asignar_si_no_esta_pendiente() {
+            SubscriptionPayment reserva = SubscriptionPayment.register(EMPRESA, pesos("500000.00"),
+                    "COP", PaymentMethod.CARD, "wompi", null, AHORA, "req-1", AHORA);
+            reserva.changeStatus(SubscriptionPaymentStatus.FAILED);
+
+            assertThatThrownBy(() -> reserva.assignGatewayReference("TX-2026-0001", null))
+                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("PENDING");
+        }
+
+        @Test
+        @DisplayName("rechaza una referencia nula o en blanco")
+        void rechaza_referencia_nula() {
+            SubscriptionPayment reserva = SubscriptionPayment.register(EMPRESA, pesos("500000.00"),
+                    "COP", PaymentMethod.CARD, "wompi", null, AHORA, "req-1", AHORA);
+
+            assertThatThrownBy(() -> reserva.assignGatewayReference(" ", null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("gatewayReference is required");
         }
     }
 

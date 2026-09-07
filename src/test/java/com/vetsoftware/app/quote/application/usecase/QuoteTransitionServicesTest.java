@@ -1,6 +1,7 @@
 package com.vetsoftware.app.quote.application.usecase;
 
 import static com.vetsoftware.app.quote.testsupport.QuoteMother.AHORA;
+import static com.vetsoftware.app.quote.testsupport.QuoteMother.NUMERO;
 import static com.vetsoftware.app.quote.testsupport.QuoteMother.VIGENTE_HASTA;
 import static com.vetsoftware.app.quote.testsupport.QuoteMother.empresa;
 import static com.vetsoftware.app.quote.testsupport.QuoteMother.lineaModulo;
@@ -17,6 +18,7 @@ import com.vetsoftware.app.quote.application.command.AcceptQuoteCommand;
 import com.vetsoftware.app.quote.application.command.RejectQuoteCommand;
 import com.vetsoftware.app.quote.application.command.SendQuoteCommand;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
+import com.vetsoftware.app.quote.application.port.out.QuoteAuditPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteRepository;
 import com.vetsoftware.app.quote.application.port.out.SubscriptionProvisioningPort;
 import com.vetsoftware.app.quote.domain.InvalidQuoteStatusTransitionException;
@@ -24,6 +26,7 @@ import com.vetsoftware.app.quote.domain.Quote;
 import com.vetsoftware.app.quote.domain.QuoteExpiredException;
 import com.vetsoftware.app.quote.domain.QuoteNotFoundException;
 import com.vetsoftware.app.quote.domain.QuoteStatus;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.util.List;
@@ -62,6 +65,9 @@ class QuoteTransitionServicesTest {
      */
     @Mock
     private SubscriptionProvisioningPort provisioning;
+
+    @Mock
+    private QuoteAuditPort audit;
 
     private void devuelveGuardado() {
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -135,7 +141,7 @@ class QuoteTransitionServicesTest {
                     .thenReturn(Optional.of(persistida(ID, QuoteStatus.SENT)));
             devuelveGuardado();
 
-            new AcceptQuoteService(repository, provisioning, RELOJ)
+            new AcceptQuoteService(repository, provisioning, audit, RELOJ)
                     .execute(new AcceptQuoteCommand(ID, EMPRESA, "ana@ejemplo.com", "190.85.1.7"));
 
             ArgumentCaptor<Quote> guardada = ArgumentCaptor.forClass(Quote.class);
@@ -147,12 +153,27 @@ class QuoteTransitionServicesTest {
         }
 
         @Test
+        @DisplayName("emite el evento de auditoria de la aceptacion, con el contrato que nacio (#760)")
+        void emite_el_evento_de_auditoria_de_la_aceptacion() {
+            when(repository.findByIdAndCompanyId(ID, EMPRESA))
+                    .thenReturn(Optional.of(persistida(ID, QuoteStatus.SENT)));
+            devuelveGuardado();
+            when(provisioning.provisionFromAcceptedQuote(ID, empresa().id())).thenReturn(900L);
+
+            new AcceptQuoteService(repository, provisioning, audit, RELOJ)
+                    .execute(new AcceptQuoteCommand(ID, EMPRESA, "ana@ejemplo.com", "190.85.1.7"));
+
+            verify(audit).quoteAccepted(ID, NUMERO, empresa().id(), 900L,
+                    new BigDecimal("119000.00"), "COP", "ana@ejemplo.com", "190.85.1.7");
+        }
+
+        @Test
         @DisplayName("aceptar un borrador que nunca se envio no es una transicion valida")
         void un_borrador_no_se_acepta() {
             when(repository.findByIdAndCompanyId(ID, EMPRESA))
                     .thenReturn(Optional.of(persistida(ID, QuoteStatus.DRAFT)));
 
-            assertThatThrownBy(() -> new AcceptQuoteService(repository, provisioning, RELOJ)
+            assertThatThrownBy(() -> new AcceptQuoteService(repository, provisioning, audit, RELOJ)
                     .execute(new AcceptQuoteCommand(ID, EMPRESA, "ana@ejemplo.com", "1.1.1.1")))
                     .isInstanceOf(InvalidQuoteStatusTransitionException.class);
 
@@ -165,7 +186,7 @@ class QuoteTransitionServicesTest {
             when(repository.findById(ID)).thenReturn(Optional.of(persistida(ID, QuoteStatus.SENT)));
             devuelveGuardado();
 
-            new AcceptQuoteService(repository, provisioning, RELOJ)
+            new AcceptQuoteService(repository, provisioning, audit, RELOJ)
                     .execute(new AcceptQuoteCommand(ID, null, "ana@ejemplo.com", "1.1.1.1"));
 
             verify(repository, never()).findByIdAndCompanyId(any(), any());
@@ -178,13 +199,13 @@ class QuoteTransitionServicesTest {
             yaAceptada.accept("ana@ejemplo.com", "190.85.1.7", AHORA, AHORA.toLocalDate());
             when(repository.findByIdAndCompanyId(ID, EMPRESA)).thenReturn(Optional.of(yaAceptada));
 
-            QuoteDto dto = new AcceptQuoteService(repository, provisioning, RELOJ)
+            QuoteDto dto = new AcceptQuoteService(repository, provisioning, audit, RELOJ)
                     .execute(new AcceptQuoteCommand(ID, EMPRESA, "ana@ejemplo.com", "190.85.1.7"));
 
             assertThat(dto.status()).isEqualTo("ACCEPTED");
             assertThat(dto.acceptedByEmail()).isEqualTo("ana@ejemplo.com");
             verify(repository, never()).save(any());
-            verifyNoInteractions(provisioning);
+            verifyNoInteractions(provisioning, audit);
         }
 
         @Test
@@ -194,7 +215,7 @@ class QuoteTransitionServicesTest {
             yaAceptada.accept("ana@ejemplo.com", "190.85.1.7", AHORA, AHORA.toLocalDate());
             when(repository.findByIdAndCompanyId(ID, EMPRESA)).thenReturn(Optional.of(yaAceptada));
 
-            assertThatThrownBy(() -> new AcceptQuoteService(repository, provisioning, RELOJ)
+            assertThatThrownBy(() -> new AcceptQuoteService(repository, provisioning, audit, RELOJ)
                     .execute(new AcceptQuoteCommand(ID, EMPRESA, "otro@ejemplo.com", "1.1.1.1")))
                     .isInstanceOf(InvalidQuoteStatusTransitionException.class);
 
@@ -297,7 +318,7 @@ class QuoteTransitionServicesTest {
                     .thenReturn(Optional.of(persistida(ID, QuoteStatus.SENT)));
             devuelveGuardado();
 
-            QuoteDto dto = new AcceptQuoteService(repository, provisioning, enElUltimoDia)
+            QuoteDto dto = new AcceptQuoteService(repository, provisioning, audit, enElUltimoDia)
                     .execute(new AcceptQuoteCommand(ID, EMPRESA, "ana@ejemplo.com", "1.1.1.1"));
 
             assertThat(dto.status()).isEqualTo("ACCEPTED");

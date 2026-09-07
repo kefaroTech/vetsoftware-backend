@@ -65,6 +65,8 @@ public class ReverseBillingDocumentApplicationService
     @Override
     @Transactional
     public BillingDocumentApplicationDto execute(ReverseBillingDocumentApplicationCommand command) {
+        if (command.reason() == null || command.reason().isBlank())
+            throw new IllegalArgumentException("reason is required");
         BillingDocumentApplication original = repository
                 .findByIdAndCompanyId(command.applicationId(), command.companyId())
                 .orElseThrow(() -> new BillingDocumentApplicationNotFoundException(
@@ -90,7 +92,7 @@ public class ReverseBillingDocumentApplicationService
         // Con solo http_mutation no decia de cuanto, que es la unica cifra que importa.
         metrics.applicationReversed(persisted.getSourceKind());
         audit.applicationReversed(persisted.getId(), persisted.getTargetDocument().id(),
-                persisted.getAppliedAmount());
+                persisted.getAppliedAmount(), command.reason());
         settlementPort.recalculateSettledAmount(original.getTargetDocument().id(),
                 command.companyId());
         dunningReevaluationPort.reevaluate(original.getTargetDocument().id(), command.companyId());

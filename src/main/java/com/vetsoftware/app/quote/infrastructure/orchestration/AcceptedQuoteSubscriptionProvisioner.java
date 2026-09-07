@@ -70,10 +70,11 @@ public class AcceptedQuoteSubscriptionProvisioner implements SubscriptionProvisi
     }
 
     @Override
-    public void provisionFromAcceptedQuote(Long quoteId, Long companyId) {
+    public Long provisionFromAcceptedQuote(Long quoteId, Long companyId) {
         SubscriptionDto contract = systemAuthRunner.call(() -> replaceUseCase
                 .execute(new ReplaceSubscriptionFromQuoteCommand(quoteId, companyId)));
         settleAfterCommit(new SettleNewContractCommand(contract.id(), companyId));
+        return contract.id();
     }
 
     /**

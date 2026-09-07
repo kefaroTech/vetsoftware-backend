@@ -33,6 +33,14 @@ import java.time.LocalDateTime;
  */
 public class PaymentRefund {
 
+    /**
+     * Ley 1480/2011 art. 47: cinco dias habiles de plazo para el retracto en ventas
+     * a distancia, contados desde el cobro. Publica porque quien resuelve el plazo
+     * real -contra el calendario de festivos colombianos- es la aplicacion, no este
+     * dominio; ver {@link #register}.
+     */
+    public static final int WITHDRAWAL_PERIOD_BUSINESS_DAYS = 5;
+
     private static final int MAX_DESTINATION_REFERENCE_LENGTH = 120;
     private static final int MAX_REASON_LENGTH = 255;
     private static final int MAX_CLIENT_REQUEST_ID_LENGTH = 64;
@@ -102,12 +110,18 @@ public class PaymentRefund {
      *            suma de lo ya devuelto sobre ese pago. El service la lee
      *            <em>despues</em> de bloquear la fila del pago, porque leerla sin
      *            bloqueo deja pasar dos devoluciones concurrentes
+     * @param withdrawalDeadline
+     *            el instante en que vence el plazo de retracto de este pago,
+     *            resuelto por la aplicacion contra el calendario real de festivos
+     *            colombianos -el dominio no conoce ese calendario, solo la
+     *            comparacion-. Obligatorio cuando {@code reasonCode} es
+     *            {@code WITHDRAWAL}; ignorado en cualquier otro motivo
      */
     public static PaymentRefund register(SubscriptionPaymentRef payment, BigDecimal alreadyRefunded,
             Long sourceDocumentId, BigDecimal amount, RefundMethod method,
             String destinationReference, LocalDateTime refundedAt, LocalDate valueDate,
             RefundReasonCode reasonCode, String reason, Long authorizedBySystemUserId,
-            String clientRequestId, LocalDateTime createdDate) {
+            String clientRequestId, LocalDateTime createdDate, LocalDateTime withdrawalDeadline) {
         if (payment == null)
             throw new IllegalArgumentException("payment is required");
         if (amount == null)
@@ -116,9 +130,26 @@ public class PaymentRefund {
         if (refunded.add(amount).compareTo(payment.amount()) > 0)
             throw new RefundExceedsPaymentAmountException(payment.id(), payment.amount(), refunded,
                     amount);
+        if (reasonCode == RefundReasonCode.WITHDRAWAL) {
+            requireWithinWithdrawalPeriod(payment, refundedAt, withdrawalDeadline);
+        }
         return new PaymentRefund(null, payment.companyId(), payment.id(), sourceDocumentId, amount,
                 method, destinationReference, refundedAt, valueDate, reasonCode, reason,
                 authorizedBySystemUserId, clientRequestId, createdDate);
+    }
+
+    /**
+     * un retracto fuera del plazo legal no es un retracto, es otro motivo mal
+     * clasificado. Se comprueba aqui y no en el service porque es una invariante
+     * del negocio, no un paso del caso de uso.
+     */
+    private static void requireWithinWithdrawalPeriod(SubscriptionPaymentRef payment,
+            LocalDateTime refundedAt, LocalDateTime deadline) {
+        if (deadline == null)
+            throw new IllegalArgumentException(
+                    "withdrawalDeadline is required to register a WITHDRAWAL refund");
+        if (refundedAt != null && refundedAt.isAfter(deadline))
+            throw new WithdrawalRefundPeriodExpiredException(payment.id(), deadline);
     }
 
     /** Lo devuelto con cargo al saldo a favor no sale de la caja. */

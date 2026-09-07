@@ -16,6 +16,10 @@ import com.vetsoftware.app.electronicdocument.domain.DianStatus;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.inventory.application.port.out.InventoryMetrics;
 import com.vetsoftware.app.inventory.domain.StockMovementType;
+import com.vetsoftware.app.paymentgateway.application.port.out.PaymentGatewayMetrics;
+import com.vetsoftware.app.paymentgateway.domain.FirstPeriodChargeOutcome;
+import com.vetsoftware.app.paymentgateway.domain.GatewayDeclineKind;
+import com.vetsoftware.app.paymentgateway.domain.GatewayWebhookOutcome;
 import com.vetsoftware.app.platformaccess.application.port.out.PlatformAccessMetrics;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionEntitlementMetrics;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
@@ -145,6 +149,82 @@ class BusinessMetricEnumAllowlistParityTest {
             assertThat(replyFor(BusinessMetricNames.SALES_OPERATIONS, "document.type", "unknown"))
                     .withFailMessage(mensajeHuerfano("document.type", "unknown",
                             "MicrometerBusinessMetrics.documentType(null)"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+    }
+
+    @Nested
+    @DisplayName("cadena de cobro Wompi (#767): GatewayWebhookOutcome, FirstPeriodChargeOutcome y GatewayDeclineKind")
+    class CadenaDeCobroWompi {
+
+        @ParameterizedTest(name = "GatewayWebhookOutcome.{0}")
+        @EnumSource(GatewayWebhookOutcome.class)
+        @DisplayName("todo desenlace de webhook esta permitido como valor del tag outcome")
+        void todo_desenlace_de_webhook_esta_en_la_lista_blanca(GatewayWebhookOutcome outcome) {
+            String valor = lower(outcome);
+
+            assertThat(
+                    replyFor(BusinessMetricNames.PAYMENT_GATEWAY_WEBHOOK_EVENTS, "outcome", valor))
+                    .withFailMessage(mensajeHuerfano("outcome", valor,
+                            "MicrometerPaymentGatewayMetrics.recordWebhookOutcome con lower(GatewayWebhookOutcome."
+                                    + outcome.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        // NOT_CONFIGURED y NO_PAYMENT_METHOD quedan fuera a proposito: son omisiones
+        // que nunca tocan la pasarela (ver el javadoc de FirstPeriodChargeOutcome) y
+        // GatewayOutcomeSettler/GatewayCharger nunca las pasan a
+        // recordChargeOutcome, asi que no tienen por que estar en la lista blanca.
+        @ParameterizedTest(name = "FirstPeriodChargeOutcome.{0}")
+        @EnumSource(value = FirstPeriodChargeOutcome.class, names = {"APPROVED", "PENDING",
+                "DECLINED"})
+        @DisplayName("todo desenlace real de cobro esta permitido como valor del tag payment.outcome")
+        void todo_desenlace_de_cobro_esta_en_la_lista_blanca(FirstPeriodChargeOutcome outcome) {
+            String valor = lower(outcome);
+
+            assertThat(replyFor(BusinessMetricNames.PAYMENT_GATEWAY_CHARGE_OUTCOMES,
+                    "payment.outcome", valor))
+                    .withFailMessage(mensajeHuerfano("payment.outcome", valor,
+                            "MicrometerPaymentGatewayMetrics.recordChargeOutcome con lower(FirstPeriodChargeOutcome."
+                                    + outcome.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "GatewayDeclineKind.{0}")
+        @EnumSource(GatewayDeclineKind.class)
+        @DisplayName("toda causa de rechazo esta permitida como valor del tag decline.kind")
+        void toda_causa_de_rechazo_esta_en_la_lista_blanca(GatewayDeclineKind declineKind) {
+            String valor = lower(declineKind);
+
+            assertThat(replyFor(BusinessMetricNames.PAYMENT_GATEWAY_CHARGE_OUTCOMES, "decline.kind",
+                    valor))
+                    .withFailMessage(mensajeHuerfano("decline.kind", valor,
+                            "MicrometerPaymentGatewayMetrics.recordChargeOutcome con lower(GatewayDeclineKind."
+                                    + declineKind.name() + ")"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @Test
+        @DisplayName("el sustituto «none» de un cobro aprobado sin causa de rechazo tambien esta permitido")
+        void el_sustituto_none_de_un_cobro_aprobado_esta_en_la_lista_blanca() {
+            assertThat(replyFor(BusinessMetricNames.PAYMENT_GATEWAY_CHARGE_OUTCOMES, "decline.kind",
+                    "none"))
+                    .withFailMessage(mensajeHuerfano("decline.kind", "none",
+                            "MicrometerPaymentGatewayMetrics.recordChargeOutcome(outcome, null)"))
+                    .isEqualTo(MeterFilterReply.NEUTRAL);
+        }
+
+        @ParameterizedTest(name = "FailureKind.{0}")
+        @EnumSource(PaymentGatewayMetrics.FailureKind.class)
+        @DisplayName("toda causa de fallo del barrido de cobranza o conciliacion esta permitida")
+        void toda_causa_de_fallo_de_cobranza_esta_en_la_lista_blanca(
+                PaymentGatewayMetrics.FailureKind kind) {
+            assertThat(replyFor(BusinessMetricNames.PAYMENT_GATEWAY_COLLECTION_FAILURES,
+                    "failure.kind", kind.value()))
+                    .withFailMessage(mensajeHuerfano("failure.kind", kind.value(),
+                            "MicrometerPaymentGatewayMetrics.recordCollectionFailure con"
+                                    + " PaymentGatewayMetrics.FailureKind." + kind.name()
+                                    + ".value()"))
                     .isEqualTo(MeterFilterReply.NEUTRAL);
         }
     }

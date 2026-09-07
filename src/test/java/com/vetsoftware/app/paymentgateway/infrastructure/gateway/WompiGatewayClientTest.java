@@ -2,6 +2,7 @@ package com.vetsoftware.app.paymentgateway.infrastructure.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import com.vetsoftware.app.paymentgateway.domain.ChargeRequest;
 import com.vetsoftware.app.paymentgateway.domain.CreatePaymentSourceRequest;
@@ -10,6 +11,7 @@ import com.vetsoftware.app.paymentgateway.domain.GatewayTransaction;
 import com.vetsoftware.app.paymentgateway.domain.GatewayTransactionStatus;
 import com.vetsoftware.app.paymentgateway.domain.MerchantAcceptance;
 import com.vetsoftware.app.paymentgateway.domain.WompiGatewayException;
+import com.vetsoftware.app.paymentgateway.domain.WompiRateLimitedException;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
@@ -149,11 +151,79 @@ class WompiGatewayClientTest {
             assertThat(sent.getFirst().uri()).isEqualTo(BASE_URL + "/transactions/1234-tx");
             assertThat(sent.getFirst().authorization()).isEqualTo("Bearer " + PRIVATE_KEY);
         }
+
+        @Test
+        @DisplayName("un estado que Wompi todavia no documenta se trata como PENDING en vez de reventar")
+        void un_estado_no_modelado_se_trata_como_pending() {
+            WompiGatewayClient client = clientRespondingWith(
+                    okJson("{\"data\":{\"id\":\"1234-tx\",\"status\":\"IN_REVIEW\","
+                            + "\"status_message\":null,\"reference\":\"VS-REF-P1\","
+                            + "\"amount_in_cents\":4490000,\"payment_method_type\":\"CARD\"}}"));
+
+            GatewayTransaction transaction = client.findTransaction("1234-tx");
+
+            assertThat(transaction.status()).isEqualTo(GatewayTransactionStatus.PENDING);
+        }
+
+        @Test
+        @DisplayName("created_at se parsea como el instante de creacion de la transaccion")
+        void parsea_created_at() {
+            WompiGatewayClient client = clientRespondingWith(
+                    okJson("{\"data\":{\"id\":\"1234-tx\",\"status\":\"APPROVED\","
+                            + "\"status_message\":null,\"reference\":\"VS-REF-P1\","
+                            + "\"amount_in_cents\":4490000,\"payment_method_type\":\"CARD\","
+                            + "\"created_at\":\"2026-01-01T07:58:00.000Z\"}}"));
+
+            GatewayTransaction transaction = client.findTransaction("1234-tx");
+
+            assertThat(transaction.createdAt())
+                    .isEqualTo(java.time.Instant.parse("2026-01-01T07:58:00.000Z"));
+        }
+    }
+
+    @Nested
+    @DisplayName("findByReference")
+    class FindByReference {
+
+        @Test
+        @DisplayName("encuentra la transaccion por client_request_id")
+        void encuentra_la_transaccion_por_referencia() {
+            WompiGatewayClient client = clientRespondingWith(
+                    okJson("{\"data\":[{\"id\":\"1234-tx\",\"status\":\"APPROVED\","
+                            + "\"status_message\":null,\"reference\":\"VS-DOC-900-A1\","
+                            + "\"amount_in_cents\":4490000,\"payment_method_type\":\"CARD\"}]}"));
+
+            java.util.Optional<GatewayTransaction> transaction = client
+                    .findByReference("VS-DOC-900-A1");
+
+            assertThat(transaction).isPresent();
+            assertThat(transaction.get().id()).isEqualTo("1234-tx");
+            assertThat(sent.getFirst().uri())
+                    .isEqualTo(BASE_URL + "/transactions?reference=VS-DOC-900-A1");
+            assertThat(sent.getFirst().authorization()).isEqualTo("Bearer " + PRIVATE_KEY);
+        }
+
+        @Test
+        @DisplayName("vacio cuando Wompi no tiene ninguna transaccion con esa referencia")
+        void vacio_cuando_no_hay_transaccion() {
+            WompiGatewayClient client = clientRespondingWith(okJson("{\"data\":[]}"));
+
+            assertThat(client.findByReference("VS-DOC-900-A1")).isEmpty();
+        }
     }
 
     @Nested
     @DisplayName("fallos de Wompi")
     class Fallos {
+
+        @Test
+        @DisplayName("Wompi responde 200 con data nulo: WompiGatewayException, sin NPE (RES2-05)")
+        void data_nulo_se_traduce_a_wompi_gateway_exception() {
+            WompiGatewayClient client = clientRespondingWith(okJson("{\"data\":null}"));
+
+            assertThatThrownBy(() -> client.findTransaction("1234-tx"))
+                    .isInstanceOf(WompiGatewayException.class);
+        }
 
         @Test
         @DisplayName("un 401 de Wompi se traduce a WompiGatewayException")
@@ -191,6 +261,33 @@ class WompiGatewayClientTest {
         }
 
         @Test
+        @DisplayName("un 429 con Retry-After se traduce a WompiRateLimitedException con ese retraso (RES2-28)")
+        void un_429_con_retry_after_se_traduce_a_rate_limited() {
+            WompiGatewayClient client = clientRespondingWith(
+                    errorStatusWithRetryAfter(HttpStatus.TOO_MANY_REQUESTS,
+                            "{\"error\":{\"type\":\"RATE_LIMITED\"}}", "7200"));
+            ChargeRequest request = new ChargeRequest(987654L, 4490000L, "COP", "VS-REF-P1",
+                    "cliente@correo.co");
+
+            WompiRateLimitedException thrown = catchThrowableOfType(() -> client.charge(request),
+                    WompiRateLimitedException.class);
+
+            assertThat(thrown.retryAfter()).isEqualTo(Duration.ofHours(2));
+        }
+
+        @Test
+        @DisplayName("un 429 sin Retry-After aplica el minimo de una hora (RES2-28)")
+        void un_429_sin_retry_after_aplica_el_minimo() {
+            WompiGatewayClient client = clientRespondingWith(errorStatus(
+                    HttpStatus.TOO_MANY_REQUESTS, "{\"error\":{\"type\":\"RATE_LIMITED\"}}"));
+
+            WompiRateLimitedException thrown = catchThrowableOfType(
+                    () -> client.findTransaction("1234-tx"), WompiRateLimitedException.class);
+
+            assertThat(thrown.retryAfter()).isEqualTo(Duration.ofHours(1));
+        }
+
+        @Test
         @DisplayName("el mensaje de la excepcion nunca lleva la llave privada, el secreto ni el testigo de tarjeta")
         void el_mensaje_nunca_lleva_secretos() {
             WompiGatewayClient client = clientRespondingWith(errorStatus(HttpStatus.UNAUTHORIZED,
@@ -220,7 +317,8 @@ class WompiGatewayClientTest {
 
     private static WompiProperties defaultProperties() {
         return new WompiProperties(true, BASE_URL, PUBLIC_KEY, PRIVATE_KEY, INTEGRITY_SECRET,
-                EVENTS_SECRET, 6, Duration.ofSeconds(2));
+                EVENTS_SECRET, 6, Duration.ofSeconds(2), Duration.ofHours(24), 65536L,
+                Duration.ofHours(24));
     }
 
     private static Responder okJson(String json) {
@@ -229,6 +327,15 @@ class WompiGatewayClientTest {
 
     private static Responder errorStatus(HttpStatus status, String json) {
         return () -> jsonResponse(json, status);
+    }
+
+    private static Responder errorStatusWithRetryAfter(HttpStatus status, String json,
+            String retryAfterSeconds) {
+        return () -> {
+            MockClientHttpResponse response = jsonResponse(json, status);
+            response.getHeaders().set(HttpHeaders.RETRY_AFTER, retryAfterSeconds);
+            return response;
+        };
     }
 
     // Content-Type explicito: sin el, MockClientHttpResponse cae en

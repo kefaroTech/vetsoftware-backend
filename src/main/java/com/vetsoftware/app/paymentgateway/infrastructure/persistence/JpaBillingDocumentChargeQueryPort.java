@@ -33,6 +33,6 @@ public class JpaBillingDocumentChargeQueryPort implements BillingDocumentChargeQ
     private BillingDocumentChargeSnapshot toSnapshot(SubscriptionBillingDocumentJpaEntity entity) {
         return new BillingDocumentChargeSnapshot(entity.getId(), entity.getDocumentNumber(),
                 entity.getTotalAmount(), entity.getBalanceAmount(), CURRENCY,
-                entity.getSubscriptionId());
+                entity.getSubscriptionId(), entity.getIssueStatus().name());
     }
 }

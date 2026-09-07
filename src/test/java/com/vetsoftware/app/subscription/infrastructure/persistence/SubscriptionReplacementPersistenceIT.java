@@ -102,7 +102,9 @@ class SubscriptionReplacementPersistenceIT extends AbstractDataJpaTest {
             assertThatThrownBy(() -> repository.save(contrato(SubscriptionStatus.CANCELLED,
                     SchemaSeed.COMPANY_ID, SchemaSeed.QUOTE_ID, "SUS-TEST-000911")))
                     .isInstanceOf(QuoteAlreadyConvertedException.class)
-                    .hasMessageContaining(SchemaSeed.QUOTE_ID.toString());
+                    .extracting(
+                            exception -> ((QuoteAlreadyConvertedException) exception).getQuoteId())
+                    .isEqualTo(SchemaSeed.QUOTE_ID);
         }
 
         @Test

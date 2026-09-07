@@ -1120,4 +1120,38 @@
          consola de plataforma) para que el documento no venza el mismo día que se emite. -->
     <include file="db/changelog/migrations/410_widen_overdue_marker_and_seed_payment_term.xml"/>
 
+    <!-- 411: hallazgo 3 de docs/db/pasarela-wompi-modelo.md (opcional, adelantado a peticion
+         del orquestador). gateway_webhook_events deja rastro auditable de todo webhook de
+         Wompi recibido -incluido el que no encuentra pago con el que emparejarse-, que hoy
+         solo deja "log WARN y 200" y se pierde para siempre porque Wompi no reintenta un
+         200. Sin company_id y sin FK a subscription_payments: tiene que poder persistirse
+         incluso cuando no se localiza el pago, mismo criterio de plataforma pura que
+         gateway_settlements (326). Numero 411 y no 408: el 408 esta reservado por otra rama
+         viva (feature/verificacion-proporcional-agentes). Editado en sitio (BD vacia, aun sin
+         aplicar): #789 anade REJECTED_STALE al CHECK de processing_outcome; #791 vuelve
+         raw_body nulable para el futuro job de purga y anade
+         ix_gateway_webhook_events_purge (received_at). -->
+    <include file="db/changelog/migrations/411_create_gateway_webhook_events.xml"/>
+
+    <!-- 412: issue #772, bloqueo distribuido de jobs con ShedLock (proveedor jdbc-template).
+         Tabla de infraestructura sin company_id y sin @Entity: ShedLock la usa por JDBC puro,
+         nunca por Hibernate. PK VARCHAR(64) y no BIGINT porque la libreria bloquea por `name`
+         y no conoce un id sustituto -esquema oficial de la libreria, no convencion propia-. -->
+    <include file="db/changelog/migrations/412_create_shedlock.xml"/>
+
+    <!-- 413: issue #777, indice para el barrido horario de PaymentReconciliationJob
+         (WHERE status = 'PENDING' AND gateway IS NOT NULL AND received_at < :umbral,
+         ORDER BY received_at ASC). 252 ya cubre (company_id, status, received_at) y
+         (gateway, settlement_reference); ninguno de los dos sirve a esta consulta, que no
+         filtra por empresa. 252 esta aplicado en dev -no se edita-, de ahi el changeset
+         nuevo en vez de tocarlo. -->
+    <include file="db/changelog/migrations/413_create_index_subscription_payments_pending_gateway.xml"/>
+
+    <!-- 414: issue #776. chk_subscription_payments_gateway_pair (252, aplicado, no se toca)
+         exigia gateway/gateway_reference ambos nulos o ambos no nulos; el cierre de
+         contratacion idempotente reserva el pago con gateway='WOMPI' y gateway_reference=NULL
+         antes de llamar a Wompi, estado que la regla vieja rechazaba. Se sustituye por
+         gateway_reference IS NULL OR gateway IS NOT NULL. -->
+    <include file="db/changelog/migrations/414_relax_subscription_payments_gateway_pair_check.xml"/>
+
 </databaseChangeLog>

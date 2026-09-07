@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -76,6 +77,21 @@ public class SubscriptionPaymentJpaEntity {
 
     @Column(name = "reconciled_at")
     private LocalDateTime reconciledAt;
+
+    @Column(name = "fee_amount", precision = 19, scale = 2)
+    private BigDecimal feeAmount;
+
+    @Column(name = "net_amount", precision = 19, scale = 2)
+    private BigDecimal netAmount;
+
+    @Column(name = "settlement_reference", length = 120)
+    private String settlementReference;
+
+    @Column(name = "settled_on")
+    private LocalDate settledOn;
+
+    @Column(name = "refunded_amount", nullable = false, precision = 19, scale = 2)
+    private BigDecimal refundedAmount;
 
     @Column(name = "client_request_id", length = 64)
     private String clientRequestId;
@@ -168,6 +184,46 @@ public class SubscriptionPaymentJpaEntity {
 
     public void setReconciledAt(LocalDateTime reconciledAt) {
         this.reconciledAt = reconciledAt;
+    }
+
+    public BigDecimal getFeeAmount() {
+        return feeAmount;
+    }
+
+    public void setFeeAmount(BigDecimal feeAmount) {
+        this.feeAmount = feeAmount;
+    }
+
+    public BigDecimal getNetAmount() {
+        return netAmount;
+    }
+
+    public void setNetAmount(BigDecimal netAmount) {
+        this.netAmount = netAmount;
+    }
+
+    public String getSettlementReference() {
+        return settlementReference;
+    }
+
+    public void setSettlementReference(String settlementReference) {
+        this.settlementReference = settlementReference;
+    }
+
+    public LocalDate getSettledOn() {
+        return settledOn;
+    }
+
+    public void setSettledOn(LocalDate settledOn) {
+        this.settledOn = settledOn;
+    }
+
+    public BigDecimal getRefundedAmount() {
+        return refundedAmount;
+    }
+
+    public void setRefundedAmount(BigDecimal refundedAmount) {
+        this.refundedAmount = refundedAmount;
     }
 
     public String getClientRequestId() {

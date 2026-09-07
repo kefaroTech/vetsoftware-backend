@@ -11,6 +11,7 @@ import com.vetsoftware.app.subscriptionpayment.application.port.in.ListBillingDo
 import com.vetsoftware.app.subscriptionpayment.application.port.in.ReverseBillingDocumentApplicationUseCase;
 import com.vetsoftware.app.subscriptionpayment.domain.ApplicationSourceKind;
 import com.vetsoftware.app.subscriptionpayment.infrastructure.web.request.ApplyBillingDocumentRequest;
+import com.vetsoftware.app.subscriptionpayment.infrastructure.web.request.ReverseBillingDocumentApplicationRequest;
 import com.vetsoftware.app.subscriptionpayment.infrastructure.web.response.BillingDocumentApplicationResponse;
 import com.vetsoftware.app.subscriptionpayment.infrastructure.web.response.BillingDocumentSummary;
 import jakarta.validation.Valid;
@@ -93,9 +94,10 @@ public class BillingDocumentApplicationController {
 
     @PostMapping("/{id}/reversal")
     @ResponseStatus(HttpStatus.CREATED)
-    public BillingDocumentApplicationResponse reverse(@PathVariable Long id) {
-        return toResponse(reverseUseCase.execute(
-                new ReverseBillingDocumentApplicationCommand(id, authz.currentCompanyId())));
+    public BillingDocumentApplicationResponse reverse(@PathVariable Long id,
+            @Valid @RequestBody ReverseBillingDocumentApplicationRequest request) {
+        return toResponse(reverseUseCase.execute(new ReverseBillingDocumentApplicationCommand(id,
+                authz.currentCompanyId(), request.reason())));
     }
 
     @GetMapping

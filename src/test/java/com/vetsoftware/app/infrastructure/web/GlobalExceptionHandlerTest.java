@@ -14,6 +14,7 @@ import com.vetsoftware.app.auth.infrastructure.security.BranchAccessDeniedExcept
 import com.vetsoftware.app.breed.domain.BreedNotFoundException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.inventory.domain.InsufficientStockException;
+import com.vetsoftware.app.paymentgateway.domain.PaymentSourceRateLimitExceededException;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
@@ -118,6 +119,11 @@ class GlobalExceptionHandlerTest {
                     com.vetsoftware.app.appointment.domain.AppointmentStatus.CANCELLED,
                     com.vetsoftware.app.appointment.domain.AppointmentStatus.COMPLETED);
         }
+
+        @GetMapping("/boom/payment-source-rate-limit-exceeded")
+        String paymentSourceRateLimitExceeded() {
+            throw new PaymentSourceRateLimitExceededException(42L);
+        }
     }
 
     @Autowired
@@ -131,7 +137,8 @@ class GlobalExceptionHandlerTest {
                 arguments("/boom/invalid-credentials", 401),
                 arguments("/boom/session-replaced", 401),
                 arguments("/boom/branch-access-denied", 403),
-                arguments("/boom/invalid-appointment-transition", 409));
+                arguments("/boom/invalid-appointment-transition", 409),
+                arguments("/boom/payment-source-rate-limit-exceeded", 429));
     }
 
     @ParameterizedTest(name = "{0} -> {1}")

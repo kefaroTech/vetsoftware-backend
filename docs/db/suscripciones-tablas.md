@@ -1632,7 +1632,7 @@ puede pagar tres facturas de un giro, o abonar la mitad de una.
 | `chk_subscription_payments_status` | CHECK | `status IN ('PENDING','CONFIRMED','FAILED','REFUNDED')` |
 | `chk_subscription_payments_amount` | CHECK | `amount > 0` |
 | `chk_subscription_payments_currency` | CHECK | `CHAR_LENGTH(currency) = 3 AND currency = UPPER(currency)` |
-| `chk_subscription_payments_gateway_pair` | CHECK | `(gateway IS NULL AND gateway_reference IS NULL) OR (gateway IS NOT NULL AND gateway_reference IS NOT NULL)` |
+| `chk_subscription_payments_gateway_pair` | CHECK | `gateway_reference IS NULL OR gateway IS NOT NULL` (414) |
 | `chk_subscription_payments_reconciled` | CHECK | `reconciled_at IS NULL OR status = 'CONFIRMED'` |
 
 **`uq_subscription_payments_gateway` es la barandilla del webhook**: el mismo aviso de la pasarela
@@ -1652,6 +1652,12 @@ recibido dos veces **no crea dos pagos**. Los `NULL` múltiples de MySQL hacen q
 
 **`chk_subscription_payments_reconciled`** impide marcar como conciliado un pago que la pasarela nunca
 confirmó, que es como aparece plata en la cartera sin haber entrado en el banco.
+
+> **Corrección post-implementación (issue #776, changeset 414): `chk_subscription_payments_gateway_pair`
+> ya no exige el par completo.** El cierre de contratación idempotente reserva el pago con
+> `gateway='WOMPI'` y `gateway_reference=NULL` antes de llamar a Wompi, y asigna la referencia
+> cuando la pasarela responde. La regla original (252, ambos nulos o ambos no nulos) rechazaba
+> ese estado intermedio; se sustituye por `gateway_reference IS NULL OR gateway IS NOT NULL`.
 
 ### Índices
 

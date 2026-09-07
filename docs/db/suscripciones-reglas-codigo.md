@@ -196,10 +196,12 @@ Java, porque eso pierde la reconciliación si un paso falla a medias.
 SELECT d.id, d.document_number, d.company_id,
        d.total_amount,
        d.settled_amount               AS saldado_guardado,
-       COALESCE(SUM(CASE WHEN a.source_kind = 'PAYMENT'
-                          AND p.status = 'CONFIRMED'  THEN a.applied_amount
-                         WHEN a.source_kind = 'CREDIT_NOTE' THEN a.applied_amount
-                         ELSE 0 END), 0) AS saldado_real
+       LEAST(COALESCE(SUM(CASE WHEN a.source_kind = 'PAYMENT'
+                                AND p.status = 'CONFIRMED' THEN a.applied_amount
+                               WHEN a.source_kind IN ('CREDIT_NOTE', 'WITHHOLDING',
+                                                       'CUSTOMER_CREDIT', 'ROUNDING', 'WRITE_OFF')
+                                    THEN a.applied_amount
+                               ELSE 0 END), 0), d.total_amount) AS saldado_real
   FROM subscription_billing_documents d
   LEFT JOIN billing_document_applications a
          ON a.target_document_id = d.id AND a.company_id = d.company_id
@@ -207,15 +209,29 @@ SELECT d.id, d.document_number, d.company_id,
          ON p.id = a.payment_id AND p.company_id = a.company_id
  WHERE d.document_kind = 'INVOICE'
  GROUP BY d.id, d.document_number, d.company_id, d.total_amount, d.settled_amount
-HAVING d.settled_amount <> COALESCE(SUM(CASE WHEN a.source_kind = 'PAYMENT'
-                                              AND p.status = 'CONFIRMED' THEN a.applied_amount
-                                             WHEN a.source_kind = 'CREDIT_NOTE' THEN a.applied_amount
-                                             ELSE 0 END), 0);
+HAVING d.settled_amount <> LEAST(COALESCE(SUM(CASE WHEN a.source_kind = 'PAYMENT'
+                                                    AND p.status = 'CONFIRMED' THEN a.applied_amount
+                                                   WHEN a.source_kind IN ('CREDIT_NOTE', 'WITHHOLDING',
+                                                                          'CUSTOMER_CREDIT', 'ROUNDING',
+                                                                          'WRITE_OFF')
+                                                        THEN a.applied_amount
+                                                   ELSE 0 END), 0), d.total_amount);
 ```
 
-**Solo los pagos `CONFIRMED` cuentan como cobro.** Un pago `PENDING` aplicado no debe reducir el saldo,
-y esta consulta lo comprueba. Es exactamente el caso que hace que una clínica que "ya pagó" aparezca
-en mora: la pasarela avisó pero no confirmó.
+**Solo los pagos `CONFIRMED` cuentan como cobro; los otros cinco orígenes cuentan siempre** —no llevan
+`payment_id` (`chk_bda_source_exclusive`), así que saldan en el momento en que se registran, sin
+pasarela que confirmar—. Un pago `PENDING` aplicado no debe reducir el saldo, y esta consulta lo
+comprueba. Es exactamente el caso que hace que una clínica que "ya pagó" aparezca en mora: la
+pasarela avisó pero no confirmó. Hasta el `786` esta consulta —y el `UPDATE` que escribe
+`settled_amount`— solo reconocían `PAYMENT` y `CREDIT_NOTE`: una retención, un saldo a favor
+consumido, un redondeo o un castigo quedaban aplicados y auditados sin bajar el saldo un peso.
+
+**El `LEAST(..., d.total_amount)` es la mitad que impide `chk_sbd_settled_cap` (#785).** Dos
+aplicaciones `PAYMENT` `PENDING` se pueden aceptar cada una por el total del documento — ninguna
+cuenta todavía —, y si las dos llegan a confirmarse, la suma sin tope superaría el total y la
+restricción de la base rechazaría el `UPDATE`. El código detecta ese exceso **antes** de escribir
+(`computeUncappedSettledAmount`, sin el `LEAST`) y lo convierte en saldo a favor por pago en exceso
+(`CreditOriginKind.OVERPAYMENT`) en vez de dejar que reviente.
 
 **Recomendación de operación:** esta consulta va en el mismo trabajo programado que R3 y **su
 resultado no vacío es una alerta, no un informe**. Va a la telemetría, no a un correo que nadie lee.

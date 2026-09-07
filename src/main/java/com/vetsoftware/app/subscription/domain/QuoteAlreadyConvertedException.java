@@ -35,7 +35,14 @@ package com.vetsoftware.app.subscription.domain;
  */
 public class QuoteAlreadyConvertedException extends RuntimeException {
 
+    private final Long quoteId;
+
     public QuoteAlreadyConvertedException(Long quoteId) {
-        super("Quote already has a subscription: " + quoteId);
+        super("Esta cotizacion ya fue aceptada y tiene un contrato asociado.");
+        this.quoteId = quoteId;
+    }
+
+    public Long getQuoteId() {
+        return quoteId;
     }
 }

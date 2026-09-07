@@ -74,19 +74,22 @@ class RecordPaymentAttemptServiceTest {
     class PresupuestoDelCliente {
 
         @Test
-        @DisplayName("con el techo alcanzado rechaza el intento y no escribe nada")
-        void con_el_techo_alcanzado_rechaza_y_no_escribe() {
+        @DisplayName("con el techo alcanzado persiste el intento y despues rechaza la operacion (OBS #762)")
+        void con_el_techo_alcanzado_persiste_y_despues_rechaza() {
             elDocumentoExiste();
             elMedioExiste();
             elConsecutivoVaPor(4);
             when(repository.countRetryableSince(anyLong(), anyLong(), any()))
                     .thenReturn(PaymentAttempt.MAX_SOFT_ATTEMPTS);
+            when(repository.save(any())).thenAnswer(llamada -> llamada.getArgument(0));
 
             assertThatThrownBy(() -> service.execute(comando(DeclineKind.SOFT, MEDIO_DE_PAGO)))
                     .isInstanceOf(RetryBudgetExhaustedException.class).hasMessageContaining(
                             "Retry budget exhausted for billing document " + DOCUMENTO);
 
-            verify(repository, never()).save(any());
+            ArgumentCaptor<PaymentAttempt> guardado = ArgumentCaptor.forClass(PaymentAttempt.class);
+            verify(repository).save(guardado.capture());
+            assertThat(guardado.getValue().getAttemptNumber()).isEqualTo(5);
         }
 
         @Test
@@ -193,13 +196,14 @@ class RecordPaymentAttemptServiceTest {
             elConsecutivoVaPor(4);
             when(repository.countRetryableSince(anyLong(), anyLong(), any()))
                     .thenReturn(PaymentAttempt.MAX_SOFT_ATTEMPTS);
+            when(repository.save(any())).thenAnswer(llamada -> llamada.getArgument(0));
 
             // Solo CONFIGURATION esta exento. Un HARD es del cliente y cuenta, aunque
             // no se vuelva a reintentar.
             assertThatThrownBy(() -> service.execute(comando(DeclineKind.HARD, MEDIO_DE_PAGO)))
                     .isInstanceOf(RetryBudgetExhaustedException.class);
 
-            verify(repository, never()).save(any());
+            verify(repository).save(any());
         }
     }
 

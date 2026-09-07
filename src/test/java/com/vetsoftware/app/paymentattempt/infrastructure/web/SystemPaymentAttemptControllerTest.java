@@ -21,7 +21,6 @@ import com.vetsoftware.app.paymentattempt.application.port.in.ListDuePaymentAtte
 import com.vetsoftware.app.paymentattempt.application.port.in.RecordPaymentAttemptUseCase;
 import com.vetsoftware.app.paymentattempt.application.port.in.ReschedulePaymentAttemptUseCase;
 import com.vetsoftware.app.paymentattempt.domain.DeclineKind;
-import com.vetsoftware.app.paymentattempt.domain.HardDeclineCannotBeRetriedException;
 import com.vetsoftware.app.paymentattempt.domain.RetryBudgetExhaustedException;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
@@ -258,21 +257,6 @@ class SystemPaymentAttemptControllerTest {
                     .andExpect(jsonPath("$.errors[0].field").value("nextAttemptAt"));
 
             verifyNoInteractions(rescheduleUseCase);
-        }
-
-        @Test
-        @DisplayName("reprogramar un rechazo duro sale 409: se pide medio de pago nuevo")
-        void reprogramar_un_rechazo_duro_sale_409() throws Exception {
-            when(rescheduleUseCase.execute(any()))
-                    .thenThrow(new HardDeclineCannotBeRetriedException(31L));
-
-            mockMvc.perform(patch("/system/payment-attempts/{id}/schedule", 31L)
-                    .param("companyId", "900").contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"nextAttemptAt\": \"2026-03-08T06:00:00\"}"))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value("HARD_DECLINE_CANNOT_BE_RETRIED"))
-                    .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers
-                            .containsString("a new payment method is required")));
         }
     }
 

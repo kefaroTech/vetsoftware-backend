@@ -43,5 +43,5 @@ public interface SubscriptionProvisioningPort {
      *            la cotizacion tenga empresa, porque una oferta a un prospecto que
      *            todavia no es cliente no tiene donde poner un contrato
      */
-    void provisionFromAcceptedQuote(Long quoteId, Long companyId);
+    Long provisionFromAcceptedQuote(Long quoteId, Long companyId);
 }

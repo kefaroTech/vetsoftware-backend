@@ -11,4 +11,9 @@ public class WompiGatewayException extends RuntimeException {
     public WompiGatewayException(String message, Throwable cause) {
         super(message, cause);
     }
+
+    /** Sin causa: Wompi respondió 200 con un cuerpo que no trae lo esperado. */
+    public WompiGatewayException(String message) {
+        super(message);
+    }
 }

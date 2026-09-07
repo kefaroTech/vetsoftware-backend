@@ -14,6 +14,7 @@ import com.vetsoftware.app.subscriptionpayment.application.port.out.Subscription
 import com.vetsoftware.app.subscriptionpayment.application.port.out.WithholdingQueryPort;
 import com.vetsoftware.app.subscriptionpayment.domain.ApplicationSourceKind;
 import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentApplication;
+import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentOverpaymentException;
 import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentRef;
 import com.vetsoftware.app.subscriptionpayment.domain.CustomerCreditLotRef;
 import com.vetsoftware.app.subscriptionpayment.domain.OverAppliedSourceException;
@@ -26,7 +27,9 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -102,6 +105,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Observed(name = "subscription.payment.apply")
 @Service
 public class ApplyBillingDocumentService implements ApplyBillingDocumentUseCase {
+
+    /**
+     * Los cinco orígenes que saldan de inmediato, sin pasarela que confirmar
+     * después (mismo criterio que {@code BillingDocumentSettlementJpaRepository}).
+     * {@code PAYMENT} queda fuera: mientras esté {@code PENDING} no cuenta para el
+     * saldo todavía, y si ya está {@code CONFIRMED} al aplicarse es un caso tan
+     * raro como para no complicar aquí una regla pensada para los otros cinco.
+     */
+    private static final Set<ApplicationSourceKind> SETTLES_IMMEDIATELY = EnumSet.of(
+            ApplicationSourceKind.CREDIT_NOTE, ApplicationSourceKind.WITHHOLDING,
+            ApplicationSourceKind.CUSTOMER_CREDIT, ApplicationSourceKind.ROUNDING,
+            ApplicationSourceKind.WRITE_OFF);
 
     private final BillingDocumentApplicationRepository applicationRepository;
     private final SubscriptionPaymentRepository paymentRepository;
@@ -190,6 +205,9 @@ public class ApplyBillingDocumentService implements ApplyBillingDocumentUseCase 
         }
 
         requireWithinSource(source, command.appliedAmount());
+        if (SETTLES_IMMEDIATELY.contains(command.sourceKind())) {
+            requireWithinDocumentTotal(target, command);
+        }
         LocalDateTime appliedAt = LocalDateTime.now(clock);
         BillingDocumentApplication application = build(command, target, source, appliedAt);
 
@@ -255,7 +273,7 @@ public class ApplyBillingDocumentService implements ApplyBillingDocumentUseCase 
                         .lockByIdAndCompanyId(command.paymentId(), command.companyId())
                         .orElseThrow(() -> new SubscriptionPaymentNotFoundException(
                                 command.paymentId()));
-                if (!payment.countsAsSettlement())
+                if (!payment.canBeApplied())
                     throw new SubscriptionPaymentNotConfirmedException(payment.getId());
                 yield ResolvedSource.pointingTo(ApplicationSourceKind.PAYMENT, payment.getId(),
                         payment.getAmount(), applicationRepository
@@ -429,5 +447,24 @@ public class ApplyBillingDocumentService implements ApplyBillingDocumentUseCase 
         if (requested.compareTo(available) > 0)
             throw new OverAppliedSourceException(source.kind(), source.sourceId(), available,
                     requested);
+    }
+
+    /**
+     * R3 acota cada origen por sí mismo, no la suma de varios orígenes contra el
+     * mismo documento. Dos aplicaciones válidas por separado -una nota crédito por
+     * el total y luego una retención sobre el mismo saldo ya cerrado, por ejemplo-
+     * pasarían las dos R3 y {@code recalculateSettledAmount} capearía el exceso en
+     * silencio contra {@code chk_sbd_settled_cap}. Se rechaza antes de persistir en
+     * vez de aceptar y perder el rastro del exceso.
+     */
+    private void requireWithinDocumentTotal(BillingDocumentRef target,
+            ApplyBillingDocumentCommand command) {
+        BigDecimal alreadySettled = settlementPort.computeUncappedSettledAmount(target.id(),
+                command.companyId());
+        BigDecimal wouldBeSettled = alreadySettled.add(command.appliedAmount());
+        if (wouldBeSettled.compareTo(target.totalAmount()) > 0) {
+            throw new BillingDocumentOverpaymentException(target.id(),
+                    wouldBeSettled.subtract(target.totalAmount()));
+        }
     }
 }

@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.paymentgateway.application.command.CreateWompiPaymentSourceCommand;
@@ -12,9 +14,11 @@ import com.vetsoftware.app.paymentgateway.application.dto.WompiPaymentMethodDto;
 import com.vetsoftware.app.paymentgateway.application.port.out.CompanyBillingEmailQueryPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.PaymentGatewayPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.PaymentMethodRegistrarPort;
+import com.vetsoftware.app.paymentgateway.application.port.out.PaymentSourceRateLimitPort;
 import com.vetsoftware.app.paymentgateway.domain.CreatePaymentSourceRequest;
 import com.vetsoftware.app.paymentgateway.domain.GatewayPaymentSource;
 import com.vetsoftware.app.paymentgateway.domain.MerchantAcceptance;
+import com.vetsoftware.app.paymentgateway.domain.PaymentSourceRateLimitExceededException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -43,13 +47,16 @@ class CreateWompiPaymentSourceServiceTest {
     private CompanyBillingEmailQueryPort companyBillingEmailQueryPort;
     @Mock
     private PaymentMethodRegistrarPort paymentMethodRegistrarPort;
+    @Mock
+    private PaymentSourceRateLimitPort paymentSourceRateLimitPort;
 
     private CreateWompiPaymentSourceService service;
 
     @BeforeEach
     void setUp() {
         service = new CreateWompiPaymentSourceService(paymentGatewayPort,
-                companyBillingEmailQueryPort, paymentMethodRegistrarPort, RELOJ);
+                companyBillingEmailQueryPort, paymentMethodRegistrarPort,
+                paymentSourceRateLimitPort, RELOJ);
     }
 
     private CreateWompiPaymentSourceCommand comando() {
@@ -64,6 +71,19 @@ class CreateWompiPaymentSourceServiceTest {
 
         assertThatThrownBy(() -> service.execute(comando()))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("con el limite de tasa agotado no llama a la pasarela")
+    void limite_de_tasa_agotado_no_llama_a_la_pasarela() {
+        doThrow(new PaymentSourceRateLimitExceededException(EMPRESA))
+                .when(paymentSourceRateLimitPort).checkAndConsume(EMPRESA);
+
+        assertThatThrownBy(() -> service.execute(comando()))
+                .isInstanceOf(PaymentSourceRateLimitExceededException.class);
+
+        verifyNoInteractions(companyBillingEmailQueryPort, paymentGatewayPort,
+                paymentMethodRegistrarPort);
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.vetsoftware.app.infrastructure.observability.ScheduledJobCatalog;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry.Outcome;
 import com.vetsoftware.app.quote.application.port.in.ExpireOverdueQuotesUseCase;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,14 +31,10 @@ import org.springframework.stereotype.Component;
  * quien lo cumple a diario es esto.
  *
  * <p>
- * <strong>Sin cerrojo distribuido, y es seguro.</strong> Cada tarea de Fargate
- * ejecuta su copia, como el resto de los {@code @Scheduled} del arbol
- * ({@code DianJobLeasePort} lo deja escrito). Aqui no hace falta arbitrar: el
- * caso de uso carga y guarda entidad a entidad, {@code quotes} va versionada,
- * asi que dos copias que topen con la misma fila producen un
- * {@code ObjectOptimisticLockingFailureException} en la segunda en vez de una
- * escritura perdida — y marcar EXPIRED dos veces lo rechaza igual la propia
- * transicion de estado del dominio. Lo peor que pasa es que un lote se repita.
+ * <strong>Con cerrojo distribuido</strong>: {@code @SchedulerLock} sobre la
+ * tabla {@code shedlock} impide que dos tareas de Fargate reclamen el mismo
+ * lote a la vez. {@code quotes} va versionada, asi que un solape no pierde
+ * escrituras; el candado evita ademas el trabajo repetido.
  *
  * <p>
  * El {@code initialDelay} escalona el arranque frente a los otros barridos del
@@ -67,6 +64,7 @@ public class QuoteExpirationJob {
     }
 
     @Scheduled(cron = "${quote.expiration.cron:0 25 3 * * *}", zone = ScheduledJobCatalog.ZONE)
+    @SchedulerLock(name = "quote.expiration", lockAtMostFor = "PT10M", lockAtLeastFor = "PT30S")
     public void runExpiration() {
         telemetry.observe(JOB, this::expireOverdue);
     }

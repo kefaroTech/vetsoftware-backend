@@ -3,6 +3,7 @@ package com.vetsoftware.app.quote.application.usecase;
 import com.vetsoftware.app.quote.application.command.AcceptQuoteCommand;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
 import com.vetsoftware.app.quote.application.port.in.AcceptQuoteUseCase;
+import com.vetsoftware.app.quote.application.port.out.QuoteAuditPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteRepository;
 import com.vetsoftware.app.quote.application.port.out.SubscriptionProvisioningPort;
 import com.vetsoftware.app.quote.domain.Quote;
@@ -35,14 +36,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AcceptQuoteService implements AcceptQuoteUseCase {
 
+    /** El documento de cobro no modela todavia la divisa: siempre "COP". */
+    private static final String CURRENCY = "COP";
+
     private final QuoteRepository repository;
     private final SubscriptionProvisioningPort subscriptionProvisioningPort;
+    private final QuoteAuditPort audit;
     private final Clock clock;
 
     public AcceptQuoteService(QuoteRepository repository,
-            SubscriptionProvisioningPort subscriptionProvisioningPort, Clock clock) {
+            SubscriptionProvisioningPort subscriptionProvisioningPort, QuoteAuditPort audit,
+            Clock clock) {
         this.repository = repository;
         this.subscriptionProvisioningPort = subscriptionProvisioningPort;
+        this.audit = audit;
         this.clock = clock;
     }
 
@@ -76,10 +83,13 @@ public class AcceptQuoteService implements AcceptQuoteUseCase {
         // contrato: se acepta igual —la aceptacion es la prueba de que el prospecto
         // dijo que si, y el embudo la necesita— y el contrato se firmara cuando esa
         // empresa exista. No es un caso degradado, es el orden real del embudo.
-        if (accepted.getCompany() != null) {
-            subscriptionProvisioningPort.provisionFromAcceptedQuote(accepted.getId(),
-                    accepted.getCompany().id());
-        }
+        Long subscriptionId = accepted.getCompany() == null
+                ? null
+                : subscriptionProvisioningPort.provisionFromAcceptedQuote(accepted.getId(),
+                        accepted.getCompany().id());
+        audit.quoteAccepted(accepted.getId(), accepted.getQuoteNumber(), accepted.getCompanyId(),
+                subscriptionId, accepted.getTotalAmount(), CURRENCY, accepted.getAcceptedByEmail(),
+                accepted.getAcceptedIp());
         return QuoteDto.from(accepted);
     }
 }

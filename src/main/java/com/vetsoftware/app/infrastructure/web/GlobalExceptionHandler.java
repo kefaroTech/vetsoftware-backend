@@ -110,7 +110,12 @@ import com.vetsoftware.app.owner.domain.OwnerHasActiveChildrenException;
 import com.vetsoftware.app.owner.domain.OwnerNotFoundException;
 import com.vetsoftware.app.passwordreset.domain.InvalidPasswordResetTokenException;
 import com.vetsoftware.app.paymentgateway.domain.PaymentGatewayNotConfiguredException;
+import com.vetsoftware.app.paymentgateway.domain.PaymentSourceRateLimitExceededException;
 import com.vetsoftware.app.paymentgateway.domain.WompiChecksumMismatchException;
+import com.vetsoftware.app.paymentgateway.domain.WompiMalformedEventException;
+import com.vetsoftware.app.paymentgateway.domain.WompiStaleEventException;
+import com.vetsoftware.app.paymentgateway.domain.WompiWebhookBodyTooLargeException;
+import com.vetsoftware.app.paymentrefund.domain.WithdrawalRefundPeriodExpiredException;
 import com.vetsoftware.app.permission.domain.PermissionHasActiveChildrenException;
 import com.vetsoftware.app.permission.domain.PermissionNotFoundException;
 import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
@@ -182,12 +187,14 @@ import com.vetsoftware.app.subscription.domain.InvalidSubscriptionStatusTransiti
 import com.vetsoftware.app.subscription.domain.PlatformCatalogNotConfiguredForSubscriptionException;
 import com.vetsoftware.app.subscription.domain.QuoteAlreadyConvertedException;
 import com.vetsoftware.app.subscription.domain.StructuralMinimumNotCarriedException;
+import com.vetsoftware.app.subscription.domain.SubscriptionHasPendingGatewayPaymentException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemAlreadyEndedException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemNotFoundException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemOverlapException;
 import com.vetsoftware.app.subscription.domain.SubscriptionNotFoundException;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentAlreadyIssuedException;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentAlreadyVoidedException;
+import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentHasPendingPaymentException;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentSequenceAlreadyExistsException;
 import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentSequenceNotFoundException;
 import com.vetsoftware.app.subscriptionbilling.domain.DuplicateBillingCycleException;
@@ -199,8 +206,10 @@ import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionChargeAlreadyI
 import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionChargeNotFoundException;
 import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentApplicationNotFoundException;
 import com.vetsoftware.app.subscriptionpayment.domain.InvalidSubscriptionPaymentStatusTransitionException;
+import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentOverpaymentException;
 import com.vetsoftware.app.subscriptionpayment.domain.OverAppliedSourceException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentHasActiveApplicationsException;
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentMissingGatewayReferenceException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotConfirmedException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotFoundException;
 import com.vetsoftware.app.supplier.domain.SupplierNameAlreadyExistsException;
@@ -494,7 +503,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      */
     @ExceptionHandler({
             com.vetsoftware.app.paymentrefund.domain.RefundExceedsPaymentAmountException.class,
-            com.vetsoftware.app.paymentattempt.domain.HardDeclineCannotBeRetriedException.class,
             com.vetsoftware.app.paymentattempt.domain.RetryBudgetExhaustedException.class,
             com.vetsoftware.app.paymentreversal.domain.ReversalRequestAlreadyResolvedException.class,
             com.vetsoftware.app.paymentreversal.domain.ReversalRequestAlreadyExistsException.class,
@@ -622,11 +630,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.CONFLICT, "ADMIN_EMPLOYEE_CANNOT_BE_DISABLED", ex.getMessage());
     }
 
+    // El mensaje nombra la propiedad de configuracion: solo al log.
     @ExceptionHandler(PaymentGatewayNotConfiguredException.class)
     public ProblemDetail handlePaymentGatewayNotConfigured(
             PaymentGatewayNotConfiguredException ex) {
         log.info("Payment gateway not configured: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "PAYMENT_GATEWAY_NOT_CONFIGURED", ex.getMessage());
+        return problem(HttpStatus.CONFLICT, "PAYMENT_GATEWAY_NOT_CONFIGURED",
+                "La pasarela de pagos no está disponible.");
     }
 
     @ExceptionHandler(InvalidAppointmentTransitionException.class)
@@ -1044,6 +1054,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.CONFLICT, "STRUCTURAL_MINIMUM_NOT_CARRIED", ex.getMessage());
     }
 
+    @ExceptionHandler(SubscriptionHasPendingGatewayPaymentException.class)
+    public ProblemDetail handleSubscriptionHasPendingGatewayPayment(
+            SubscriptionHasPendingGatewayPaymentException ex) {
+        log.info("Subscription has a pending gateway payment: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "SUBSCRIPTION_HAS_PENDING_GATEWAY_PAYMENT",
+                ex.getMessage());
+        pd.setProperty("subscriptionId", ex.getSubscriptionId());
+        return pd;
+    }
+
     /**
      * Dos aceptaciones simultaneas de la misma cotizacion. Es 409 y no 500: la
      * operacion que el cliente pidio YA esta hecha —su contrato existe— y quien
@@ -1052,7 +1072,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(QuoteAlreadyConvertedException.class)
     public ProblemDetail handleQuoteAlreadyConverted(QuoteAlreadyConvertedException ex) {
         log.info("Quote already converted into a subscription: {}", ex.getMessage());
-        return problem(HttpStatus.CONFLICT, "QUOTE_ALREADY_CONVERTED", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "QUOTE_ALREADY_CONVERTED", ex.getMessage());
+        pd.setProperty("quoteId", ex.getQuoteId());
+        return pd;
     }
 
     @ExceptionHandler(SubscriptionItemOverlapException.class)
@@ -1101,6 +1123,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return pd;
     }
 
+    @ExceptionHandler(BillingDocumentOverpaymentException.class)
+    public ProblemDetail handleBillingDocumentOverpayment(BillingDocumentOverpaymentException ex) {
+        log.info("Billing document overpaid: documentId={} excess={}", ex.getDocumentId(),
+                ex.getExcess());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "BILLING_DOCUMENT_OVERPAID",
+                ex.getMessage());
+        pd.setProperty("documentId", ex.getDocumentId());
+        pd.setProperty("excess", ex.getExcess());
+        return pd;
+    }
+
     @ExceptionHandler(InvalidSubscriptionPaymentStatusTransitionException.class)
     public ProblemDetail handleInvalidSubscriptionPaymentStatusTransition(
             InvalidSubscriptionPaymentStatusTransitionException ex) {
@@ -1122,6 +1155,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.CONFLICT, "PAYMENT_HAS_ACTIVE_APPLICATIONS", ex.getMessage());
     }
 
+    @ExceptionHandler(SubscriptionPaymentMissingGatewayReferenceException.class)
+    public ProblemDetail handleSubscriptionPaymentMissingGatewayReference(
+            SubscriptionPaymentMissingGatewayReferenceException ex) {
+        log.info("Subscription payment is missing its gateway reference: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "PAYMENT_MISSING_GATEWAY_REFERENCE",
+                ex.getMessage());
+        pd.setProperty("paymentId", ex.getPaymentId());
+        return pd;
+    }
+
+    @ExceptionHandler(WithdrawalRefundPeriodExpiredException.class)
+    public ProblemDetail handleWithdrawalRefundPeriodExpired(
+            WithdrawalRefundPeriodExpiredException ex) {
+        log.info("Withdrawal refund period expired: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "WITHDRAWAL_REFUND_PERIOD_EXPIRED",
+                ex.getMessage());
+        pd.setProperty("paymentId", ex.getPaymentId());
+        return pd;
+    }
+
     // DOCUMENT_ALREADY_ISSUED, no BILLING_DOCUMENT_ALREADY_ISSUED: el código lo
     // fija
     // la especificación y NO se deriva del nombre de la clase. Quien lo cambie a
@@ -1138,6 +1191,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             BillingDocumentAlreadyVoidedException ex) {
         log.info("Billing document already voided: {}", ex.getMessage());
         return problem(HttpStatus.CONFLICT, "DOCUMENT_ALREADY_VOIDED", ex.getMessage());
+    }
+
+    @ExceptionHandler(BillingDocumentHasPendingPaymentException.class)
+    public ProblemDetail handleBillingDocumentHasPendingPayment(
+            BillingDocumentHasPendingPaymentException ex) {
+        log.info("Billing document has a pending payment application: {}", ex.getMessage());
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "BILLING_DOCUMENT_HAS_PENDING_PAYMENT",
+                ex.getMessage());
+        pd.setProperty("billingDocumentId", ex.getBillingDocumentId());
+        return pd;
     }
 
     @ExceptionHandler(SubscriptionChargeAlreadyInvoicedException.class)
@@ -1295,6 +1358,25 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleWompiChecksumMismatch(WompiChecksumMismatchException ex) {
         log.warn("Wompi webhook checksum mismatch: {}", ex.getMessage());
         return problem(HttpStatus.UNAUTHORIZED, "WOMPI_CHECKSUM_MISMATCH", ex.getMessage());
+    }
+
+    @ExceptionHandler(WompiMalformedEventException.class)
+    public ProblemDetail handleWompiMalformedEvent(WompiMalformedEventException ex) {
+        log.info("Wompi webhook malformed event");
+        return problem(HttpStatus.BAD_REQUEST, "WOMPI_MALFORMED_EVENT",
+                "El webhook de Wompi no se pudo interpretar.");
+    }
+
+    @ExceptionHandler(WompiStaleEventException.class)
+    public ProblemDetail handleWompiStaleEvent(WompiStaleEventException ex) {
+        log.warn("Wompi webhook stale event: {}", ex.getMessage());
+        return problem(HttpStatus.UNAUTHORIZED, "WOMPI_STALE_EVENT", ex.getMessage());
+    }
+
+    @ExceptionHandler(WompiWebhookBodyTooLargeException.class)
+    public ProblemDetail handleWompiWebhookBodyTooLarge(WompiWebhookBodyTooLargeException ex) {
+        log.info("Wompi webhook body too large: {}", ex.getMessage());
+        return problem(HttpStatus.PAYLOAD_TOO_LARGE, "WOMPI_EVENT_BODY_TOO_LARGE", ex.getMessage());
     }
 
     @ExceptionHandler(SessionReplacedException.class)
@@ -1491,6 +1573,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.info("Platform access request is blocked: {}", ex.getMessage());
         return problem(HttpStatus.TOO_MANY_REQUESTS, "PLATFORM_ACCESS_BLOCKED",
                 "Se agotaron los intentos para este enlace.");
+    }
+
+    /** Tope horario de altas de fuente de pago por empresa. */
+    @ExceptionHandler(PaymentSourceRateLimitExceededException.class)
+    public ProblemDetail handlePaymentSourceRateLimitExceeded(
+            PaymentSourceRateLimitExceededException ex) {
+        log.info("Payment source rate limit exceeded: {}", ex.getMessage());
+        return problem(HttpStatus.TOO_MANY_REQUESTS, "PAYMENT_SOURCE_RATE_LIMIT_EXCEEDED",
+                "Se alcanzo el limite de altas de medio de pago para esta empresa. Intente mas tarde.");
     }
 
     // Token de restablecimiento de contraseña inválido, expirado o ya usado.

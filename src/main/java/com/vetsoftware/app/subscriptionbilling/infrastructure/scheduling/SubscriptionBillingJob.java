@@ -6,6 +6,7 @@ import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry;
 import com.vetsoftware.app.infrastructure.observability.ScheduledJobTelemetry.Outcome;
 import com.vetsoftware.app.subscriptionbilling.application.dto.SubscriptionBillingBatchResult;
 import com.vetsoftware.app.subscriptionbilling.application.port.in.RunSubscriptionBillingCycleUseCase;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,6 +63,7 @@ public class SubscriptionBillingJob {
     }
 
     @Scheduled(cron = "${subscription.billing.cron:0 40 4 * * *}", zone = ScheduledJobCatalog.ZONE)
+    @SchedulerLock(name = "subscription.billing", lockAtMostFor = "PT25M", lockAtLeastFor = "PT1M")
     public void runBilling() {
         telemetry.observe(JOB, this::executeBilling);
     }

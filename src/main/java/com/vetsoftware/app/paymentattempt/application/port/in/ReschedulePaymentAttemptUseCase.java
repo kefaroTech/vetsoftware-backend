@@ -15,8 +15,7 @@ public interface ReschedulePaymentAttemptUseCase {
      * <p>
      * Solo plataforma, por el mismo reparto que {@link RecordPaymentAttemptUseCase}
      * — decidir cuando se vuelve a pasar una tarjeta es cobranza, no algo que el
-     * deudor programe—. Sobre un rechazo duro lanza
-     * {@code HardDeclineCannotBeRetriedException} (409).
+     * deudor programe—.
      */
     @PreAuthorize("hasRole('SYSTEM')")
     PaymentAttemptDto execute(ReschedulePaymentAttemptCommand command);

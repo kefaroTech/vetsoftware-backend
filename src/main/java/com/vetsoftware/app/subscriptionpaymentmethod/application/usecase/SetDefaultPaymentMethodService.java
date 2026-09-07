@@ -3,6 +3,8 @@ package com.vetsoftware.app.subscriptionpaymentmethod.application.usecase;
 import com.vetsoftware.app.subscriptionpaymentmethod.application.command.SetDefaultPaymentMethodCommand;
 import com.vetsoftware.app.subscriptionpaymentmethod.application.dto.SubscriptionPaymentMethodDto;
 import com.vetsoftware.app.subscriptionpaymentmethod.application.port.in.SetDefaultPaymentMethodUseCase;
+import com.vetsoftware.app.subscriptionpaymentmethod.application.port.out.PaymentRetryTriggerPort;
+import com.vetsoftware.app.subscriptionpaymentmethod.application.port.out.StalledPaymentRetryQueryPort;
 import com.vetsoftware.app.subscriptionpaymentmethod.application.port.out.SubscriptionPaymentMethodRepository;
 import com.vetsoftware.app.subscriptionpaymentmethod.domain.SubscriptionPaymentMethod;
 import com.vetsoftware.app.subscriptionpaymentmethod.domain.SubscriptionPaymentMethodNotFoundException;
@@ -43,9 +45,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class SetDefaultPaymentMethodService implements SetDefaultPaymentMethodUseCase {
 
     private final SubscriptionPaymentMethodRepository repository;
+    private final StalledPaymentRetryQueryPort stalledPaymentRetryQueryPort;
+    private final PaymentRetryTriggerPort paymentRetryTriggerPort;
 
-    public SetDefaultPaymentMethodService(SubscriptionPaymentMethodRepository repository) {
+    public SetDefaultPaymentMethodService(SubscriptionPaymentMethodRepository repository,
+            StalledPaymentRetryQueryPort stalledPaymentRetryQueryPort,
+            PaymentRetryTriggerPort paymentRetryTriggerPort) {
         this.repository = repository;
+        this.stalledPaymentRetryQueryPort = stalledPaymentRetryQueryPort;
+        this.paymentRetryTriggerPort = paymentRetryTriggerPort;
     }
 
     @Override
@@ -59,6 +67,15 @@ public class SetDefaultPaymentMethodService implements SetDefaultPaymentMethodUs
         // idempotente y no debe dejar a la empresa sin predeterminado por el camino.
         repository.clearDefaultForCompany(command.companyId(), command.id());
         target.makeDefault();
-        return SubscriptionPaymentMethodDto.from(repository.save(target));
+        SubscriptionPaymentMethodDto dto = SubscriptionPaymentMethodDto
+                .from(repository.save(target));
+
+        reactivateStalledRetries(command.companyId());
+        return dto;
+    }
+
+    private void reactivateStalledRetries(Long companyId) {
+        stalledPaymentRetryQueryPort.findStalledLastAttemptIds(companyId)
+                .forEach(attemptId -> paymentRetryTriggerPort.rescheduleNow(companyId, attemptId));
     }
 }

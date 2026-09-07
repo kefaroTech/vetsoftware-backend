@@ -5,7 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vetsoftware.app.paymentgateway.domain.GatewayTransactionStatus;
 import com.vetsoftware.app.paymentgateway.domain.ParsedWompiEvent;
-import com.vetsoftware.app.paymentgateway.domain.WompiGatewayException;
+import com.vetsoftware.app.paymentgateway.domain.PaymentGatewayNotConfiguredException;
+import com.vetsoftware.app.paymentgateway.domain.WompiMalformedEventException;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -25,8 +26,13 @@ class WompiEventJsonAdapterTest {
     private static final String CHECKSUM_ESPERADO = "5a18ec5e8fdb7df463e9f94774cba8f583ba21bd04a09ceff2ea68a4bc0aefbe";
 
     private final WompiEventJsonAdapter adapter = new WompiEventJsonAdapter(new ObjectMapper(),
-            new WompiProperties(true, "https://sandbox.wompi.test/v1", "pub_test", "prv_test",
-                    "test_integrity", EVENTS_SECRET, 6, Duration.ofSeconds(2)));
+            propiedades(true, EVENTS_SECRET));
+
+    private static WompiProperties propiedades(boolean enabled, String eventsSecret) {
+        return new WompiProperties(enabled, "https://sandbox.wompi.test/v1", "pub_test", "prv_test",
+                "test_integrity", eventsSecret, 6, Duration.ofSeconds(2), Duration.ofHours(24),
+                65536L, Duration.ofHours(24));
+    }
 
     private static String eventoOficial(String propertiesJson) {
         return """
@@ -54,6 +60,7 @@ class WompiEventJsonAdapterTest {
             assertThat(event.status()).isEqualTo(GatewayTransactionStatus.APPROVED);
             assertThat(event.statusMessage()).isNull();
             assertThat(event.timestamp()).isEqualTo(1530291411L);
+            assertThat(event.amountInCents()).isEqualTo(4490000L);
         }
 
         @Test
@@ -107,10 +114,75 @@ class WompiEventJsonAdapterTest {
         }
 
         @Test
-        @DisplayName("un JSON malformado se traduce a WompiGatewayException")
-        void un_json_malformado_se_traduce_a_wompi_gateway_exception() {
+        @DisplayName("un JSON malformado se traduce a WompiMalformedEventException")
+        void un_json_malformado_se_traduce_a_wompi_malformed_event_exception() {
             assertThatThrownBy(() -> adapter.parse("{esto no es json"))
-                    .isInstanceOf(WompiGatewayException.class).hasMessageContaining("webhook");
+                    .isInstanceOf(WompiMalformedEventException.class)
+                    .hasMessageContaining("webhook");
+        }
+
+        @Test
+        @DisplayName("un JSON valido sin la clave event se rechaza en vez de devolver eventType nulo")
+        void json_valido_sin_event_se_rechaza() {
+            String raw = """
+                    {"data":{"transaction":{
+                      "id":"tx-1","status":"APPROVED","amount_in_cents":1000,"reference":"REF-1"
+                    }},"timestamp":1,"signature":{"properties":[],"checksum":"x"}}
+                    """;
+
+            assertThatThrownBy(() -> adapter.parse(raw))
+                    .isInstanceOf(WompiMalformedEventException.class);
+        }
+
+        @Test
+        @DisplayName("un JSON valido sin data.transaction se rechaza")
+        void json_valido_sin_transaction_se_rechaza() {
+            String raw = """
+                    {"event":"transaction.updated","data":{},"timestamp":1,
+                     "signature":{"properties":[],"checksum":"x"}}
+                    """;
+
+            assertThatThrownBy(() -> adapter.parse(raw))
+                    .isInstanceOf(WompiMalformedEventException.class);
+        }
+
+        @Test
+        @DisplayName("un JSON valido sin transaction.id se rechaza")
+        void json_valido_sin_transaction_id_se_rechaza() {
+            String raw = """
+                    {"event":"transaction.updated","data":{"transaction":{
+                      "status":"APPROVED","amount_in_cents":1000,"reference":"REF-1"
+                    }},"timestamp":1,"signature":{"properties":[],"checksum":"x"}}
+                    """;
+
+            assertThatThrownBy(() -> adapter.parse(raw))
+                    .isInstanceOf(WompiMalformedEventException.class);
+        }
+
+        @Test
+        @DisplayName("un JSON valido sin status se rechaza")
+        void json_valido_sin_status_se_rechaza() {
+            String raw = """
+                    {"event":"transaction.updated","data":{"transaction":{
+                      "id":"tx-1","amount_in_cents":1000,"reference":"REF-1"
+                    }},"timestamp":1,"signature":{"properties":[],"checksum":"x"}}
+                    """;
+
+            assertThatThrownBy(() -> adapter.parse(raw))
+                    .isInstanceOf(WompiMalformedEventException.class);
+        }
+
+        @Test
+        @DisplayName("un JSON valido sin timestamp se rechaza")
+        void json_valido_sin_timestamp_se_rechaza() {
+            String raw = """
+                    {"event":"transaction.updated","data":{"transaction":{
+                      "id":"tx-1","status":"APPROVED","amount_in_cents":1000,"reference":"REF-1"
+                    }},"signature":{"properties":[],"checksum":"x"}}
+                    """;
+
+            assertThatThrownBy(() -> adapter.parse(raw))
+                    .isInstanceOf(WompiMalformedEventException.class);
         }
     }
 
@@ -144,9 +216,66 @@ class WompiEventJsonAdapterTest {
                     "APPROVED");
             ParsedWompiEvent event = new ParsedWompiEvent("transaction.updated",
                     "1234-1610641025-49201", GatewayTransactionStatus.APPROVED, null, 1530291411L,
-                    valoresReordenados);
+                    4490000L, valoresReordenados);
 
             assertThat(adapter.matchesChecksum(event, CHECKSUM_ESPERADO)).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("computeChecksum")
+    class ComputeChecksum {
+
+        @Test
+        @DisplayName("devuelve el mismo checksum que trae el ejemplo oficial")
+        void devuelve_el_checksum_del_ejemplo_oficial() {
+            ParsedWompiEvent event = adapter.parse(eventoOficial(
+                    "[\"transaction.id\",\"transaction.status\",\"transaction.amount_in_cents\"]"));
+
+            assertThat(adapter.computeChecksum(event)).isEqualTo(CHECKSUM_ESPERADO);
+        }
+    }
+
+    @Nested
+    @DisplayName("requireConfigured")
+    class RequireConfigured {
+
+        @Test
+        @DisplayName("con Wompi deshabilitado lanza PaymentGatewayNotConfiguredException")
+        void deshabilitado_lanza() {
+            WompiEventJsonAdapter deshabilitado = new WompiEventJsonAdapter(new ObjectMapper(),
+                    propiedades(false, EVENTS_SECRET));
+
+            assertThatThrownBy(deshabilitado::requireConfigured)
+                    .isInstanceOf(PaymentGatewayNotConfiguredException.class);
+        }
+
+        @Test
+        @DisplayName("con el secreto de eventos en blanco lanza PaymentGatewayNotConfiguredException")
+        void secreto_en_blanco_lanza() {
+            WompiEventJsonAdapter sinSecreto = new WompiEventJsonAdapter(new ObjectMapper(),
+                    propiedades(true, ""));
+
+            assertThatThrownBy(sinSecreto::requireConfigured)
+                    .isInstanceOf(PaymentGatewayNotConfiguredException.class);
+        }
+
+        @Test
+        @DisplayName("habilitado y con secreto no lanza")
+        void habilitado_con_secreto_no_lanza() {
+            org.assertj.core.api.Assertions.assertThatCode(adapter::requireConfigured)
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @Nested
+    @DisplayName("freshnessTolerance")
+    class FreshnessTolerance {
+
+        @Test
+        @DisplayName("expone la tolerancia configurada en WompiProperties")
+        void expone_la_tolerancia_configurada() {
+            assertThat(adapter.freshnessTolerance()).isEqualTo(Duration.ofHours(24));
         }
     }
 }

@@ -405,6 +405,7 @@ import org.springframework.context.annotation.Import;
         com.vetsoftware.app.bankreceipt.infrastructure.persistence.BankReceiptJpaMapper.class,
         com.vetsoftware.app.gatewaysettlement.infrastructure.persistence.JpaGatewaySettlementRepository.class,
         com.vetsoftware.app.gatewaysettlement.infrastructure.persistence.GatewaySettlementJpaMapper.class,
+        com.vetsoftware.app.paymentgateway.infrastructure.persistence.JpaGatewayWebhookEventRecorderPort.class,
         com.vetsoftware.app.billingdocumentstatushistory.infrastructure.persistence.JpaBillingDocumentStatusHistoryRepository.class,
         com.vetsoftware.app.billingdocumentstatushistory.infrastructure.persistence.BillingDocumentStatusHistoryJpaMapper.class,
         com.vetsoftware.app.companycontactchannel.infrastructure.persistence.JpaCompanyContactChannelRepository.class,

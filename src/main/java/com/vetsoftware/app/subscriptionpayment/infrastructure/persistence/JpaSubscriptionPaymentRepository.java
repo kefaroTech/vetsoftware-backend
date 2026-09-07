@@ -4,6 +4,9 @@ import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.shared.pagination.Pages;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentRepository;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPayment;
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentStatus;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
@@ -70,5 +73,35 @@ public class JpaSubscriptionPaymentRepository implements SubscriptionPaymentRepo
                 .and(Sort.by(Sort.Direction.DESC, "id"));
         return Pages.result(jpaRepository.findAll(Pages.request(page, pageSize, order)),
                 mapper::toDomain);
+    }
+
+    @Override
+    public List<SubscriptionPayment> findStalePendingGatewayPayments(LocalDateTime threshold,
+            int limit) {
+        Sort order = Sort.by(Sort.Direction.ASC, "receivedAt");
+        return jpaRepository.findByStatusAndGatewayIsNotNullAndReceivedAtBeforeOrderByReceivedAtAsc(
+                SubscriptionPaymentStatus.PENDING, threshold, Pages.request(0, limit, order))
+                .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    public PageResult<SubscriptionPayment> findAllFiltered(Long companyId,
+            SubscriptionPaymentStatus status, LocalDateTime receivedFrom, LocalDateTime receivedTo,
+            LocalDateTime pendingThreshold, int page, int pageSize) {
+        Sort order = pendingThreshold != null
+                ? Sort.by(Sort.Direction.ASC, "receivedAt").and(Sort.by(Sort.Direction.ASC, "id"))
+                : Sort.by(Sort.Direction.DESC, "receivedAt")
+                        .and(Sort.by(Sort.Direction.DESC, "id"));
+        return Pages.result(jpaRepository.findAllFiltered(companyId, status, receivedFrom,
+                receivedTo, pendingThreshold, Pages.request(page, pageSize, order)),
+                mapper::toDomain);
+    }
+
+    @Override
+    public List<SubscriptionPayment> findAllFilteredForExport(Long companyId,
+            SubscriptionPaymentStatus status, LocalDateTime receivedFrom, LocalDateTime receivedTo,
+            LocalDateTime pendingThreshold) {
+        return jpaRepository.findAllFilteredForExport(companyId, status, receivedFrom, receivedTo,
+                pendingThreshold).stream().map(mapper::toDomain).toList();
     }
 }

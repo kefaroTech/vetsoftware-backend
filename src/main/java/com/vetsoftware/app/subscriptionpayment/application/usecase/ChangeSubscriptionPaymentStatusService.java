@@ -7,14 +7,17 @@ import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocum
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentQueryPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentSettlementPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.DunningReevaluationPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.OverpaymentCreditGrantPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentAuditPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentMetrics;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentRepository;
+import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentRef;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPayment;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentHasActiveApplicationsException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotFoundException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentStatus;
 import io.micrometer.observation.annotation.Observed;
+import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,13 +48,16 @@ public class ChangeSubscriptionPaymentStatusService
     private final DunningReevaluationPort dunningReevaluationPort;
     private final SubscriptionPaymentMetrics metrics;
     private final SubscriptionPaymentAuditPort audit;
+    private final OverpaymentCreditGrantPort overpaymentCreditGrantPort;
 
+    @SuppressWarnings("java:S107")
     public ChangeSubscriptionPaymentStatusService(SubscriptionPaymentRepository repository,
             BillingDocumentApplicationRepository applicationRepository,
             BillingDocumentQueryPort billingDocumentQueryPort,
             BillingDocumentSettlementPort settlementPort,
             DunningReevaluationPort dunningReevaluationPort, SubscriptionPaymentMetrics metrics,
-            SubscriptionPaymentAuditPort audit) {
+            SubscriptionPaymentAuditPort audit,
+            OverpaymentCreditGrantPort overpaymentCreditGrantPort) {
         this.repository = repository;
         this.applicationRepository = applicationRepository;
         this.billingDocumentQueryPort = billingDocumentQueryPort;
@@ -59,6 +65,7 @@ public class ChangeSubscriptionPaymentStatusService
         this.dunningReevaluationPort = dunningReevaluationPort;
         this.metrics = metrics;
         this.audit = audit;
+        this.overpaymentCreditGrantPort = overpaymentCreditGrantPort;
     }
 
     @Override
@@ -67,6 +74,14 @@ public class ChangeSubscriptionPaymentStatusService
         SubscriptionPayment payment = repository
                 .lockByIdAndCompanyId(command.id(), command.companyId())
                 .orElseThrow(() -> new SubscriptionPaymentNotFoundException(command.id()));
+        if (payment.getGateway() != null && payment.getStatus() == command.status()) {
+            // El webhook y el sondeo de la pasarela pueden llegar los dos al mismo
+            // desenlace del mismo pago. GatewayOutcomeSettler ya hace un check-then-act
+            // fuera del candado; esto lo cierra de verdad, bajo el lock que acaba de
+            // tomarse arriba. Un pago manual en el mismo estado sigue rechazandose: ahi
+            // repetir la peticion es una senal a mirar, no una carrera esperada.
+            return SubscriptionPaymentDto.from(payment);
+        }
         if (command.status() == SubscriptionPaymentStatus.REFUNDED) {
             var netAppliedAmount = applicationRepository.sumAppliedFromPayment(command.id(),
                     command.companyId());
@@ -83,7 +98,9 @@ public class ChangeSubscriptionPaymentStatusService
         // entro y que alguien pudo dar por cobrada. Los dos eran hechos contables sin
         // contador y sin mas rastro que un http_mutation que no decia de cuanto.
         metrics.paymentStatusChanged(payment.getPaymentMethod(), payment.getStatus());
-        audit.paymentStatusChanged(payment.getId(), previousStatus, payment.getStatus());
+        audit.paymentStatusChanged(payment.getId(), previousStatus, payment.getStatus(),
+                payment.getAmount(), payment.getCurrency(), payment.getGateway(),
+                payment.getGatewayReference());
         recalculateAffectedDocuments(command);
         return dto;
     }
@@ -99,8 +116,35 @@ public class ChangeSubscriptionPaymentStatusService
                 .sorted().toList();
         for (Long documentId : documentIds) {
             billingDocumentQueryPort.lockByIdAndCompanyId(documentId, command.companyId());
+            if (command.status() == SubscriptionPaymentStatus.CONFIRMED) {
+                capOverpayment(command, documentId);
+            }
             settlementPort.recalculateSettledAmount(documentId, command.companyId());
             dunningReevaluationPort.reevaluate(documentId, command.companyId());
         }
+    }
+
+    /**
+     * R3: dos pagos confirmados sobre el mismo documento pueden sumar mas de lo que
+     * el documento vale -nada lo impedia al aplicarlos, porque ninguno contaba
+     * todavia-. {@code computeUncappedSettledAmount} ve esa suma sin el tope que
+     * {@code recalculateSettledAmount} va a aplicar a continuacion; lo que exceda
+     * el total se convierte en saldo a favor por pago en exceso en vez de perderse
+     * contra el tope o reventar {@code chk_sbd_settled_cap}.
+     */
+    private void capOverpayment(ChangeSubscriptionPaymentStatusCommand command, Long documentId) {
+        BigDecimal uncappedSettled = settlementPort.computeUncappedSettledAmount(documentId,
+                command.companyId());
+        BigDecimal totalAmount = billingDocumentQueryPort
+                .findByIdAndCompanyId(documentId, command.companyId())
+                .map(BillingDocumentRef::totalAmount).orElse(null);
+        if (totalAmount == null)
+            return;
+        BigDecimal excess = uncappedSettled.subtract(totalAmount);
+        if (excess.signum() <= 0)
+            return;
+        overpaymentCreditGrantPort.grantForOverpayment(command.companyId(), command.id(),
+                documentId, excess);
+        audit.overpaymentCredited(command.id(), documentId, excess);
     }
 }

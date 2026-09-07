@@ -29,7 +29,7 @@ public final class SubscriptionPaymentMother {
     public static SubscriptionPayment pagoPendiente() {
         return new SubscriptionPayment(7L, EMPRESA, pesos("500000.00"), "COP",
                 PaymentMethod.TRANSFER, null, null, AHORA, SubscriptionPaymentStatus.PENDING, null,
-                null, AHORA, 0L);
+                null, null, null, null, BigDecimal.ZERO, null, AHORA, 0L);
     }
 
     public static SubscriptionPayment pagoConfirmado(String amount) {
@@ -39,21 +39,32 @@ public final class SubscriptionPaymentMother {
     public static SubscriptionPayment pagoEnEstado(String amount,
             SubscriptionPaymentStatus status) {
         return new SubscriptionPayment(7L, EMPRESA, pesos(amount), "COP", PaymentMethod.TRANSFER,
-                null, null, AHORA, status, null, null, AHORA, 0L);
+                null, null, AHORA, status, null, null, null, null, null, BigDecimal.ZERO, null,
+                AHORA, 0L);
     }
 
     /** Pago que llego por pasarela: el par (gateway, referencia) deduplica. */
     public static SubscriptionPayment pagoDePasarela() {
         return new SubscriptionPayment(8L, EMPRESA, pesos("500000.00"), "COP", PaymentMethod.PSE,
-                "wompi", "TX-2026-0001", AHORA, SubscriptionPaymentStatus.PENDING, null, null,
-                AHORA, 0L);
+                "wompi", "TX-2026-0001", AHORA, SubscriptionPaymentStatus.PENDING, null, null, null,
+                null, null, BigDecimal.ZERO, null, AHORA, 0L);
+    }
+
+    /**
+     * Reserva PENDING antes de que la pasarela responda: sin referencia todavia.
+     */
+    public static SubscriptionPayment reservaSinReferencia() {
+        return new SubscriptionPayment(10L, EMPRESA, pesos("500000.00"), "COP", PaymentMethod.CARD,
+                "wompi", null, AHORA, SubscriptionPaymentStatus.PENDING, null, null, null, null,
+                null, BigDecimal.ZERO, "req-reserva-1", AHORA, 0L);
     }
 
     /** Mismo aviso de pasarela, pero registrado por OTRA clinica. */
     public static SubscriptionPayment pagoDePasarelaDeOtraEmpresa() {
         return new SubscriptionPayment(9L, OTRA_EMPRESA, pesos("500000.00"), "COP",
                 PaymentMethod.PSE, "wompi", "TX-2026-0001", AHORA,
-                SubscriptionPaymentStatus.PENDING, null, null, AHORA, 0L);
+                SubscriptionPaymentStatus.PENDING, null, null, null, null, null, BigDecimal.ZERO,
+                null, AHORA, 0L);
     }
 
     /** Factura de 1.000.000 con saldo completo pendiente. */

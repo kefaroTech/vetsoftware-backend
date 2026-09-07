@@ -23,15 +23,24 @@ public interface NewRecurringChargeJpaRepository
 
     /**
      * Cursor por id: documentos {@code RECURRING_CYCLE} con saldo, sin pago
-     * {@code PENDING} aplicado y sin ningún intento todavía.
+     * {@code PENDING} ni {@code REFUNDED} aplicado, sin ningún intento todavía y de
+     * una suscripción vigente.
+     *
+     * <p>
+     * <strong>Un pago {@code REFUNDED} no reabre la cola</strong>: una devolución
+     * de cortesía revierte la aplicación en su propia transacción, pero el
+     * documento no debe volver a cobrarse solo porque quedó sin aplicación
+     * {@code PENDING}.
      */
     @Query(value = """
             SELECT sbd.*
             FROM subscription_billing_documents sbd
+            JOIN subscriptions s ON s.id = sbd.subscription_id
             WHERE sbd.billing_reason = 'RECURRING_CYCLE'
               AND sbd.issue_status <> 'VOIDED'
               AND sbd.balance_amount > 0
               AND sbd.id > :afterId
+              AND s.status IN ('TRIALING','ACTIVE','PAST_DUE','READ_ONLY')
               AND NOT EXISTS (
                   SELECT 1 FROM payment_attempts pa
                   WHERE pa.billing_document_id = sbd.id
@@ -41,7 +50,7 @@ public interface NewRecurringChargeJpaRepository
                   JOIN subscription_payments sp ON sp.id = bda.payment_id
                   WHERE bda.target_document_id = sbd.id
                     AND bda.source_kind = 'PAYMENT'
-                    AND sp.status = 'PENDING'
+                    AND sp.status IN ('PENDING', 'REFUNDED')
               )
             ORDER BY sbd.id
             LIMIT :batchSize

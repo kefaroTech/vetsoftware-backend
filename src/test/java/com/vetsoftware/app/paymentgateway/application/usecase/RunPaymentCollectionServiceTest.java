@@ -13,10 +13,17 @@ import com.vetsoftware.app.paymentgateway.application.port.in.ChargeBillingDocum
 import com.vetsoftware.app.paymentgateway.application.port.out.DueRetryQueryPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.NewRecurringChargeQueryPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.PaymentAttemptReschedulerPort;
+import com.vetsoftware.app.paymentgateway.application.port.out.PaymentGatewayMetrics;
+import com.vetsoftware.app.paymentgateway.application.port.out.PaymentGatewayMetrics.FailureKind;
 import com.vetsoftware.app.paymentgateway.domain.DocumentChargeOutcome;
 import com.vetsoftware.app.paymentgateway.domain.DueRetryTarget;
 import com.vetsoftware.app.paymentgateway.domain.RecurringChargeTarget;
+import com.vetsoftware.app.paymentgateway.domain.WompiGatewayException;
+import com.vetsoftware.app.paymentgateway.domain.WompiRateLimitedException;
+import com.vetsoftware.app.paymentattempt.domain.RetryBudgetExhaustedException;
 import com.vetsoftware.app.shared.pagination.PageResult;
+import io.micrometer.observation.ObservationRegistry;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,13 +49,15 @@ class RunPaymentCollectionServiceTest {
     private PaymentAttemptReschedulerPort reschedulerPort;
     @Mock
     private ChargeBillingDocumentUseCase chargeUseCase;
+    @Mock
+    private PaymentGatewayMetrics metrics;
 
     private RunPaymentCollectionService service;
 
     @BeforeEach
     void setUp() {
         service = new RunPaymentCollectionService(newChargeQueryPort, dueRetryQueryPort,
-                reschedulerPort, chargeUseCase);
+                reschedulerPort, chargeUseCase, ObservationRegistry.NOOP, metrics);
     }
 
     @Nested
@@ -91,6 +100,33 @@ class RunPaymentCollectionServiceTest {
             assertThat(result.processed()).isEqualTo(2);
             assertThat(result.failures()).isEqualTo(1);
             assertThat(result.lastId()).isEqualTo(905L);
+            verify(metrics).recordCollectionFailure(FailureKind.DETERMINISTIC);
+        }
+
+        @Test
+        @DisplayName("un fallo transitorio de la pasarela cuenta como tal")
+        void un_fallo_transitorio_cuenta_como_tal() {
+            when(newChargeQueryPort.findAfter(0L, 100))
+                    .thenReturn(List.of(new RecurringChargeTarget(EMPRESA, 900L)));
+            when(chargeUseCase.execute(new ChargeBillingDocumentCommand(EMPRESA, 900L))).thenThrow(
+                    new WompiGatewayException("timeout", new RuntimeException("timeout")));
+
+            service.collectNewChargesAfter(0L, 100);
+
+            verify(metrics).recordCollectionFailure(FailureKind.TRANSIENT);
+        }
+
+        @Test
+        @DisplayName("un presupuesto de reintentos agotado cuenta como tal")
+        void un_presupuesto_agotado_cuenta_como_tal() {
+            when(newChargeQueryPort.findAfter(0L, 100))
+                    .thenReturn(List.of(new RecurringChargeTarget(EMPRESA, 900L)));
+            when(chargeUseCase.execute(new ChargeBillingDocumentCommand(EMPRESA, 900L)))
+                    .thenThrow(new RetryBudgetExhaustedException(900L, 4));
+
+            service.collectNewChargesAfter(0L, 100);
+
+            verify(metrics).recordCollectionFailure(FailureKind.BUDGET_EXHAUSTED);
         }
 
         @Test
@@ -102,6 +138,22 @@ class RunPaymentCollectionServiceTest {
 
             assertThat(result.processed()).isEqualTo(0);
             assertThat(result.lastId()).isEqualTo(13L);
+        }
+
+        @Test
+        @DisplayName("Wompi limita la tasa (RES2-28): se detiene el lote sin tocar el resto")
+        void wompi_limita_la_tasa_detiene_el_lote() {
+            when(newChargeQueryPort.findAfter(0L, 100))
+                    .thenReturn(List.of(new RecurringChargeTarget(EMPRESA, 900L),
+                            new RecurringChargeTarget(EMPRESA, 905L)));
+            when(chargeUseCase.execute(new ChargeBillingDocumentCommand(EMPRESA, 900L)))
+                    .thenThrow(new WompiRateLimitedException("429", Duration.ofMinutes(30)));
+
+            PaymentCollectionBatchResult result = service.collectNewChargesAfter(0L, 100);
+
+            assertThat(result.processed()).isZero();
+            verify(chargeUseCase, never()).execute(new ChargeBillingDocumentCommand(EMPRESA, 905L));
+            verify(metrics).recordCollectionFailure(FailureKind.TRANSIENT);
         }
     }
 
@@ -138,6 +190,19 @@ class RunPaymentCollectionServiceTest {
         }
 
         @Test
+        @DisplayName("presupuesto agotado no reprograma: sin siguiente al cuarto intento (RES-44)")
+        void presupuesto_agotado_no_reprograma() {
+            when(dueRetryQueryPort.listDue(AHORA, 0, 100)).thenReturn(
+                    PageResult.of(List.of(new DueRetryTarget(11L, EMPRESA, 900L)), 0, 100, 1));
+            when(chargeUseCase.execute(new ChargeBillingDocumentCommand(EMPRESA, 900L))).thenReturn(
+                    new DocumentChargeDto(DocumentChargeOutcome.SKIPPED_BUDGET, null, null));
+
+            service.collectDueRetries(AHORA, 0, 100);
+
+            verify(reschedulerPort, never()).reschedule(any(), any(), any());
+        }
+
+        @Test
         @DisplayName("un cobro APPROVED no reprograma: el documento saldado deja de salir en la cola")
         void un_cobro_approved_no_reprograma() {
             when(dueRetryQueryPort.listDue(AHORA, 0, 100)).thenReturn(
@@ -162,6 +227,24 @@ class RunPaymentCollectionServiceTest {
 
             assertThat(result.failures()).isEqualTo(1);
             verify(reschedulerPort, never()).reschedule(any(), any(), any());
+            verify(metrics).recordCollectionFailure(FailureKind.DETERMINISTIC);
+        }
+
+        @Test
+        @DisplayName("Wompi limita la tasa (RES2-28): reprograma el intento con el retryAfter y detiene el lote")
+        void wompi_limita_la_tasa_reprograma_y_detiene_el_lote() {
+            when(dueRetryQueryPort.listDue(AHORA, 0, 100))
+                    .thenReturn(PageResult.of(List.of(new DueRetryTarget(11L, EMPRESA, 900L),
+                            new DueRetryTarget(12L, EMPRESA, 901L)), 0, 100, 2));
+            when(chargeUseCase.execute(new ChargeBillingDocumentCommand(EMPRESA, 900L)))
+                    .thenThrow(new WompiRateLimitedException("429", Duration.ofMinutes(30)));
+
+            PaymentCollectionBatchResult result = service.collectDueRetries(AHORA, 0, 100);
+
+            assertThat(result.processed()).isZero();
+            verify(reschedulerPort).reschedule(11L, EMPRESA, AHORA.plusHours(1));
+            verify(chargeUseCase, never()).execute(new ChargeBillingDocumentCommand(EMPRESA, 901L));
+            verify(metrics).recordCollectionFailure(FailureKind.TRANSIENT);
         }
     }
 }

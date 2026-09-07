@@ -14,6 +14,13 @@ server:
   # en vuelo se cortan a media respuesta, perdiendo ademas sus lineas de log finales — que son
   # precisamente las que explican que paso durante un despliegue.
   shutdown: ${SERVER_SHUTDOWN:graceful}
+  tomcat:
+    # Defensa en profundidad del webhook de Wompi (#757): acota cuanto intenta
+    # descartar Tomcat del resto de un cuerpo tras cortar la conexion con un error,
+    # para que un envio malicioso sin Content-Length no deje la conexion ocupada
+    # tragando bytes sin limite. No sustituye a WompiWebhookBodySizeFilter, que
+    # corta antes: es la ultima red a nivel de contenedor.
+    max-swallow-size: ${SERVER_TOMCAT_MAX_SWALLOW_SIZE:2MB}
 
 spring:
   application:
@@ -515,6 +522,9 @@ vetsoftware:
       events-secret: ${WOMPI_EVENTS_SECRET:}
       status-poll-attempts: ${WOMPI_STATUS_POLL_ATTEMPTS:6}
       status-poll-interval: ${WOMPI_STATUS_POLL_INTERVAL:2s}
+      max-event-body-bytes: ${WOMPI_MAX_EVENT_BODY_BYTES:65536}
+      webhook-retention-days: ${WOMPI_WEBHOOK_RETENTION_DAYS:90}
+      pending-transaction-max-age: ${WOMPI_PENDING_TRANSACTION_MAX_AGE:24h}
   dian:
     qr-base-url: ${DIAN_QR_BASE_URL:https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=}
     # B6 - Datos operativos del documento equivalente POS (Res. 000165/2023). Parametrizar por despliegue con

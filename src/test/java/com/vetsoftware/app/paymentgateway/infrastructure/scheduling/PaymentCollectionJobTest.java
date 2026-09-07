@@ -26,6 +26,11 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import net.javacrumbs.shedlock.core.DefaultLockingTaskExecutor;
+import net.javacrumbs.shedlock.core.LockConfiguration;
+import net.javacrumbs.shedlock.core.LockProvider;
+import net.javacrumbs.shedlock.core.LockingTaskExecutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -63,7 +68,7 @@ class PaymentCollectionJobTest {
     private PaymentCollectionJob job(boolean wompiEnabled) {
         WompiProperties properties = new WompiProperties(wompiEnabled,
                 "https://sandbox.wompi.co/v1", "pub_test_x", "prv_test_x", "secret", "secret", 6,
-                Duration.ofSeconds(2));
+                Duration.ofSeconds(2), Duration.ofHours(24), 65536L, Duration.ofHours(24));
         return new PaymentCollectionJob(worker, new SystemAuthRunner(), captura.telemetria(),
                 properties, RELOJ, TAMANO_LOTE);
     }
@@ -192,13 +197,33 @@ class PaymentCollectionJobTest {
         @DisplayName("un tamano de lote no positivo revienta al construir el bean")
         void un_tamano_de_lote_no_positivo_revienta_al_construir(int batchSize) {
             WompiProperties properties = new WompiProperties(true, "https://sandbox.wompi.co/v1",
-                    "pub_test_x", "prv_test_x", "secret", "secret", 6, Duration.ofSeconds(2));
+                    "pub_test_x", "prv_test_x", "secret", "secret", 6, Duration.ofSeconds(2),
+                    Duration.ofHours(24), 65536L, Duration.ofHours(24));
 
             org.assertj.core.api.Assertions
                     .assertThatThrownBy(
                             () -> new PaymentCollectionJob(worker, new SystemAuthRunner(),
                                     captura.telemetria(), properties, RELOJ, batchSize))
                     .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("batchSize");
+
+            verifyNoInteractions(worker);
+        }
+    }
+
+    @Nested
+    @DisplayName("candado distribuido (#772)")
+    class CandadoDistribuido {
+
+        @Test
+        @DisplayName("con el candado en manos de otra instancia, no cobra")
+        void con_lock_ajeno_no_cobra() throws Throwable {
+            LockProvider lockProvider = lockConfig -> Optional.empty();
+            LockingTaskExecutor executor = new DefaultLockingTaskExecutor(lockProvider);
+            LockConfiguration lockConfiguration = new LockConfiguration(Instant.now(),
+                    "payment.collection", Duration.ofMinutes(25), Duration.ofMinutes(1));
+
+            executor.executeWithLock((LockingTaskExecutor.Task) () -> job(true).runCollection(),
+                    lockConfiguration);
 
             verifyNoInteractions(worker);
         }

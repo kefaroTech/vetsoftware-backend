@@ -39,7 +39,7 @@ import org.springframework.context.annotation.Import;
  * caso se pone rojo y hay que reescribir el comentario del changeset—, y
  * {@link TopeDeDevoluciones#el_dominio_si_lo_impide_con_la_suma_leida_de_la_base()}
  * demuestra que la unica barandilla real es
- * {@link PaymentRefund#register(SubscriptionPaymentRef, BigDecimal, Long, BigDecimal, RefundMethod, String, LocalDateTime, LocalDate, RefundReasonCode, String, Long, String, LocalDateTime)}
+ * {@link PaymentRefund#register(SubscriptionPaymentRef, BigDecimal, Long, BigDecimal, RefundMethod, String, LocalDateTime, LocalDate, RefundReasonCode, String, Long, String, LocalDateTime, LocalDateTime)}
  * alimentada por la consulta de este adaptador.
  *
  * <p>
@@ -68,6 +68,13 @@ class PaymentRefundPersistenceIT extends AbstractDataJpaTest {
     private static final LocalDateTime DEVUELTO_EL = LocalDateTime.of(2026, 3, 5, 14, 30, 15);
     private static final LocalDate FECHA_VALOR = LocalDate.of(2026, 3, 9);
     private static final LocalDateTime CREADO_EL = LocalDateTime.of(2026, 3, 7, 8, 45, 0);
+
+    /**
+     * Esta rodaja prueba el tope de las devoluciones, no el plazo de retracto (lo
+     * cubre {@code PaymentRefundTest}): el plazo aqui llega ya abierto, igual a
+     * {@code DEVUELTO_EL}, para que {@code register} no lo rechace.
+     */
+    private static final LocalDateTime PLAZO_DE_RETRACTO_ABIERTO = DEVUELTO_EL;
 
     @Autowired
     private JpaPaymentRefundRepository repository;
@@ -189,7 +196,7 @@ class PaymentRefundPersistenceIT extends AbstractDataJpaTest {
             BigDecimal yaDevuelto = repository.sumRefundedByPaymentAndCompanyId(PAGO_PROPIO,
                     SchemaSeed.COMPANY_ID);
             SubscriptionPaymentRef pago = new SubscriptionPaymentRef(PAGO_PROPIO,
-                    SchemaSeed.COMPANY_ID, IMPORTE_DEL_PAGO);
+                    SchemaSeed.COMPANY_ID, IMPORTE_DEL_PAGO, LocalDateTime.of(2026, 3, 1, 9, 0));
 
             // 400000 ya devueltos + 100001 pedidos = 500001 sobre un pago de 500000.
             // Un solo centavo de mas: si alguien cambiara el > por un >=, o comparara
@@ -197,7 +204,7 @@ class PaymentRefundPersistenceIT extends AbstractDataJpaTest {
             assertThatThrownBy(() -> PaymentRefund.register(pago, yaDevuelto, null,
                     new BigDecimal("100001.00"), RefundMethod.CARD, "TARJ-D", DEVUELTO_EL,
                     FECHA_VALOR, RefundReasonCode.WITHDRAWAL, "Se pasa por un centavo",
-                    SchemaSeed.SYSTEM_USER_ID, "excedida", CREADO_EL))
+                    SchemaSeed.SYSTEM_USER_ID, "excedida", CREADO_EL, PLAZO_DE_RETRACTO_ABIERTO))
                     .isInstanceOf(RefundExceedsPaymentAmountException.class).hasMessageContaining(
                             "Refund exceeds payment amount for payment " + PAGO_PROPIO);
 
@@ -205,7 +212,8 @@ class PaymentRefundPersistenceIT extends AbstractDataJpaTest {
             assertThat(PaymentRefund.register(pago, yaDevuelto, null, new BigDecimal("100000.00"),
                     RefundMethod.CARD, "TARJ-E", DEVUELTO_EL, FECHA_VALOR,
                     RefundReasonCode.WITHDRAWAL, "Cierra el pago exacto", SchemaSeed.SYSTEM_USER_ID,
-                    "exacta", CREADO_EL).getAmount()).isEqualByComparingTo("100000.00");
+                    "exacta", CREADO_EL, PLAZO_DE_RETRACTO_ABIERTO).getAmount())
+                    .isEqualByComparingTo("100000.00");
         }
     }
 
