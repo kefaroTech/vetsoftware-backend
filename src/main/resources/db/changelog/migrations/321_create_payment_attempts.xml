@@ -23,9 +23,10 @@
 
          Y EL VACIO ES LA REGLA POR DEFECTO, YA NO FISICA DEL MOTOR. En un rechazo duro,
          next_attempt_at nace VACIO -no lejano, no nulo por descuido-: la escalera automatica de
-         cobranza sigue sin reintentar un HARD por si sola. Pero fijar una tarjeta nueva como
-         predeterminada necesita poder reprogramarlo a "ahora" (issue #771), asi que el CHECK que
-         lo impedia se retiro de aqui: la regla vive solo en PaymentAttempt.reschedule.
+         cobranza sigue sin reintentar un HARD por si sola. chk_payment_attempts_hard_has_no_retry
+         (creado aqui abajo) lo protegia en la base de datos, pero fijar una tarjeta nueva como
+         predeterminada necesita poder reprogramarlo a "ahora" (issue #771), asi que el 415 retira
+         ese CHECK: la regla vive solo en PaymentAttempt.reschedule.
 
          gateway_decline_code se guarda CRUDO, tal cual lo devolvio la pasarela y con comparacion
          exacta: las pasarelas cambian su catalogo y una traduccion hecha hoy envejece. La clase la
@@ -83,6 +84,8 @@
                 ADD CONSTRAINT chk_payment_attempts_amount CHECK (requested_amount > 0),
                 ADD CONSTRAINT chk_payment_attempts_decline_kind
                     CHECK (decline_kind IN ('SOFT','HARD','CONFIGURATION')),
+                ADD CONSTRAINT chk_payment_attempts_hard_has_no_retry
+                    CHECK (decline_kind <> 'HARD' OR next_attempt_at IS NULL),
                 ADD CONSTRAINT chk_payment_attempts_retry_is_later
                     CHECK (next_attempt_at IS NULL OR next_attempt_at > attempted_at),
                 ADD CONSTRAINT chk_payment_attempts_declined_by_gateway
