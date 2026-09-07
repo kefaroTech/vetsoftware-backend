@@ -309,6 +309,17 @@
             <artifactId>bucket4j_jdk17-lettuce</artifactId>
             <version>${bucket4j.version}</version>
         </dependency>
+        <!-- Rate limiting en memoria cuando vetsoftware.redis.enabled=false; misma versión que
+             las dos anteriores para que las tres compartan bucket4j_jdk17-core -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j_jdk17-caffeine</artifactId>
+            <version>${bucket4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
 
         <!-- Spring Security: method security (@PreAuthorize) + BCrypt -->
         <dependency>

@@ -15,8 +15,8 @@ import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.shared.ai.ModelPricing;
 import com.vetsoftware.app.shared.ai.PaidInvocationMark;
 import io.github.bucket4j.distributed.BucketProxy;
+import io.github.bucket4j.distributed.proxy.ProxyManager;
 import io.github.bucket4j.distributed.proxy.RemoteBucketBuilder;
-import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
@@ -100,7 +100,7 @@ class LoginRateLimitFilterTest {
             "GET /platform/invitation/validate");
 
     @Mock
-    private LettuceBasedProxyManager<String> proxyManager;
+    private ProxyManager<String> proxyManager;
     @Mock
     private AuditLogger auditLogger;
 

@@ -28,7 +28,7 @@ final class RemoteConnectionValidator
             Ordered {
 
     private static final List<String> REQUIRED_REMOTE_URLS = List.of("spring.datasource.url",
-            "spring.data.redis.url", "management.otlp.metrics.export.url",
+            "management.otlp.metrics.export.url",
             "management.opentelemetry.tracing.export.otlp.endpoint",
             "management.opentelemetry.logging.export.otlp.endpoint",
             "vetsoftware.registration.verification-base-url",
@@ -95,6 +95,12 @@ final class RemoteConnectionValidator
             throws BeansException {
         for (String property : REQUIRED_REMOTE_URLS) {
             validateRemoteUrl(property, required(property));
+        }
+        if (environment.getProperty("vetsoftware.redis.enabled", Boolean.class, true)) {
+            validateRemoteUrl("spring.data.redis.url", required("spring.data.redis.url"));
+        } else {
+            validateOptionalRemoteUrl("spring.data.redis.url",
+                    environment.getProperty("spring.data.redis.url"));
         }
         for (String origin : required("cors.allowed-origins").split(",")) {
             validateRemoteUrl("cors.allowed-origins", origin.trim());

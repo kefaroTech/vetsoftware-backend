@@ -7,6 +7,7 @@ import io.micrometer.observation.ObservationRegistry;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.cache.autoconfigure.RedisCacheManagerBuilderCustomizer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -63,9 +64,24 @@ import tools.jackson.databind.type.TypeFactory;
  * el mismo array compacto, no hay polimorfismo que validar y Jackson
  * reconstruye un {@code Set} porque se lo hemos dicho. El precio es que un
  * {@code @Cacheable} nuevo cuyo nombre no este en {@link #TIPOS_POR_CACHE} cae
- * en el {@link #defaultCacheConfig()} generico y repite el defecto — por eso
- * {@code CacheConfigTest} recorre {@code src/main} y rompe el build si aparece
- * un nombre sin tipo declarado.
+ * en el {@link RedisCacheBeans#defaultCacheConfig()} generico y repite el
+ * defecto — por eso {@code CacheConfigTest} recorre {@code src/main} y rompe el
+ * build si aparece un nombre sin tipo declarado.
+ *
+ * <p>
+ * <b>{@code @EnableCaching} no lleva el interruptor de Redis.</b>
+ * {@code EmployeeBranchCacheAdapter}, {@code EmployeeRoleCacheAdapter} y
+ * {@code RolePermissionCacheAdapter} inyectan {@code CacheManager} por
+ * constructor, y ese bean solo existe si la autoconfiguracion de cache de Boot
+ * llega a activarse — cosa que exige, a su vez, que {@code @EnableCaching} ya
+ * haya registrado el {@code CacheAspectSupport} del que depende
+ * ({@code @ConditionalOnBean(CacheAspectSupport.class)} en
+ * {@code CacheAutoConfiguration}). Apagar {@code @EnableCaching} junto con
+ * Redis dejaria a esos tres adaptadores sin bean que inyectar. Lo que SI se
+ * apaga con Redis son los beans especificos de Redis, en
+ * {@link RedisCacheBeans}: con {@code spring.cache.type=none}
+ * (RedisDisabledEnvironmentPostProcessor) Boot resuelve un
+ * {@code NoOpCacheManager} en su lugar.
  */
 @Configuration
 @EnableCaching
@@ -87,35 +103,45 @@ public class CacheConfig {
         return TypeFactory.createDefaultInstance().constructCollectionType(Set.class, elemento);
     }
 
-    @Bean(destroyMethod = "shutdown")
-    public ClientResources clientResources(ObservationRegistry observationRegistry) {
-        return DefaultClientResources.builder()
-                .tracing(new MicrometerTracing(observationRegistry, "Redis")).build();
-    }
-
     /**
-     * Configuracion por defecto: solo la usan los caches que NO estan en
-     * {@link #TIPOS_POR_CACHE}. Hoy no hay ninguno.
+     * Los beans que solo tienen sentido con Redis vivo. Ver el porqué de la
+     * partición en el Javadoc de {@link CacheConfig}.
      */
-    @Bean
-    public RedisCacheConfiguration defaultCacheConfig() {
-        return base().serializeValuesWith(RedisSerializationContext.SerializationPair
-                .fromSerializer(GenericJacksonJsonRedisSerializer.builder().build()));
-    }
+    @Configuration
+    @ConditionalOnProperty(name = "vetsoftware.redis.enabled", havingValue = "true", matchIfMissing = true)
+    static class RedisCacheBeans {
 
-    /**
-     * Registra un serializador tipado por cada cache de {@link #TIPOS_POR_CACHE}.
-     */
-    @Bean
-    public RedisCacheManagerBuilderCustomizer typedCacheConfigurations() {
-        return builder -> TIPOS_POR_CACHE
-                .forEach((nombre, tipo) -> builder.withCacheConfiguration(nombre,
-                        base().serializeValuesWith(RedisSerializationContext.SerializationPair
-                                .fromSerializer(new JacksonJsonRedisSerializer<>(tipo)))));
-    }
+        @Bean(destroyMethod = "shutdown")
+        ClientResources clientResources(ObservationRegistry observationRegistry) {
+            return DefaultClientResources.builder()
+                    .tracing(new MicrometerTracing(observationRegistry, "Redis")).build();
+        }
 
-    private static RedisCacheConfiguration base() {
-        return RedisCacheConfiguration.defaultCacheConfig().entryTtl(TTL)
-                .disableCachingNullValues();
+        /**
+         * Configuracion por defecto: solo la usan los caches que NO estan en
+         * {@link CacheConfig#TIPOS_POR_CACHE}. Hoy no hay ninguno.
+         */
+        @Bean
+        RedisCacheConfiguration defaultCacheConfig() {
+            return base().serializeValuesWith(RedisSerializationContext.SerializationPair
+                    .fromSerializer(GenericJacksonJsonRedisSerializer.builder().build()));
+        }
+
+        /**
+         * Registra un serializador tipado por cada cache de
+         * {@link CacheConfig#TIPOS_POR_CACHE}.
+         */
+        @Bean
+        RedisCacheManagerBuilderCustomizer typedCacheConfigurations() {
+            return builder -> TIPOS_POR_CACHE
+                    .forEach((nombre, tipo) -> builder.withCacheConfiguration(nombre,
+                            base().serializeValuesWith(RedisSerializationContext.SerializationPair
+                                    .fromSerializer(new JacksonJsonRedisSerializer<>(tipo)))));
+        }
+
+        private static RedisCacheConfiguration base() {
+            return RedisCacheConfiguration.defaultCacheConfig().entryTtl(TTL)
+                    .disableCachingNullValues();
+        }
     }
 }

@@ -3,7 +3,7 @@ package com.vetsoftware.app.aiproposal.infrastructure.email;
 import com.vetsoftware.app.aiproposal.application.port.out.ProposalEmailThrottlePort;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.BucketProxy;
-import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
+import io.github.bucket4j.distributed.proxy.ProxyManager;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
  * Un correo por destinatario y por hora, contado en Valkey.
  *
  * <p>
- * Reusa el {@code LettuceBasedProxyManager} que ya sostiene los limites de
+ * Reusa el {@code ProxyManager} que ya sostiene los limites de
  * {@code LoginRateLimitFilter}: es un bean de infraestructura de Bucket4j, no
  * un tipo de la rodaja {@code auth}, asi que inyectarlo desde aqui no cruza
  * ninguna frontera de dominio. Levantar un segundo cliente contra el mismo
@@ -73,10 +73,9 @@ public class ValkeyProposalEmailThrottle implements ProposalEmailThrottlePort {
     private static final Set<String> DOMINIOS_QUE_IGNORAN_LOS_PUNTOS = Set.of("gmail.com",
             "googlemail.com");
 
-    private final LettuceBasedProxyManager<String> proxyManager;
+    private final ProxyManager<String> proxyManager;
 
-    public ValkeyProposalEmailThrottle(
-            LettuceBasedProxyManager<String> loginRateLimitProxyManager) {
+    public ValkeyProposalEmailThrottle(ProxyManager<String> loginRateLimitProxyManager) {
         this.proxyManager = loginRateLimitProxyManager;
     }
 

@@ -8,8 +8,8 @@ import static org.mockito.Mockito.when;
 
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.BucketProxy;
+import io.github.bucket4j.distributed.proxy.ProxyManager;
 import io.github.bucket4j.distributed.proxy.RemoteBucketBuilder;
-import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,7 +42,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ValkeyProposalEmailThrottleTest {
 
     @Mock
-    private LettuceBasedProxyManager<String> proxyManager;
+    private ProxyManager<String> proxyManager;
 
     @Mock
     private RemoteBucketBuilder<String> builder;

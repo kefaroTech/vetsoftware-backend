@@ -13,7 +13,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 /**
@@ -64,9 +64,17 @@ import org.springframework.stereotype.Component;
  * siguiente trae el total. El medidor responde «cuanto queda del cupo de hoy» y
  * se reinicia solo al rotar el dia, que es justo lo que el contador no puede
  * hacer. Son dos preguntas distintas y ninguna de las dos sustituye a la otra.
+ *
+ * <p>
+ * <strong>También se activa sola con
+ * {@code vetsoftware.redis.enabled=false}</strong>, aunque nadie haya tocado
+ * {@code spend-guard}: sin Valkey, {@link ValkeyDailySpendGuard} no puede
+ * arrancar, y el asistente necesita <em>algún</em> guardián. Un techo por
+ * proceso sigue siendo mejor que ninguno.
  */
 @Component
-@ConditionalOnProperty(name = "vetsoftware.ai.proposal.spend-guard", havingValue = "in-process")
+@ConditionalOnExpression("'${vetsoftware.ai.proposal.spend-guard:valkey}' == 'in-process' or "
+        + "!${vetsoftware.redis.enabled:true}")
 public class InProcessDailySpendGuard implements SpendGuardPort {
 
     private static final Logger log = LoggerFactory.getLogger(InProcessDailySpendGuard.class);
