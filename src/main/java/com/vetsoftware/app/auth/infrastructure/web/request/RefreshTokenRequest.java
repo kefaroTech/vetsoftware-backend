@@ -1,14 +1,13 @@
 package com.vetsoftware.app.auth.infrastructure.web.request;
 
+import com.vetsoftware.app.auth.application.dto.AuthSubjectType;
+import jakarta.validation.constraints.NotNull;
+
 /**
- * Cuerpo de {@code POST /auth/refresh}.
- *
- * <p>
- * El campo dejó de ser obligatorio: el refresh token viaja ahora en la cookie
- * {@code HttpOnly} {@code vet_refresh}. Se conserva sin {@code @NotBlank} —y el
- * cuerpo entero es opcional— para que un frontend todavía no desplegado siga
- * autenticándose mientras dura el despliegue coordinado. Cuando los dos fronts
- * estén arriba, este record y su rama en el controller se pueden borrar.
+ * Cuerpo de {@code POST /auth/refresh}. El refresh token en sí viaja en la
+ * cookie {@code HttpOnly} correspondiente; este {@code type} es lo que le dice
+ * al controller cuál de las dos cookies leer, porque su nombre depende del tipo
+ * de sujeto.
  */
-public record RefreshTokenRequest(String refreshToken) {
+public record RefreshTokenRequest(@NotNull AuthSubjectType type) {
 }

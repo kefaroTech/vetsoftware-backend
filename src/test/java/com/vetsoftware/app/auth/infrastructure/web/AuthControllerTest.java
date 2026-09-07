@@ -1,7 +1,5 @@
 package com.vetsoftware.app.auth.infrastructure.web;
 
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -16,6 +14,7 @@ import com.vetsoftware.app.auth.application.command.LoginSystemUserCommand;
 import com.vetsoftware.app.auth.application.dto.AuthSubjectType;
 import com.vetsoftware.app.auth.application.dto.MeDto;
 import com.vetsoftware.app.auth.application.dto.TokenDto;
+import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.auth.application.port.in.GetCurrentUserUseCase;
 import com.vetsoftware.app.auth.application.port.in.LoginEmployeeUseCase;
 import com.vetsoftware.app.auth.application.port.in.LoginSystemUserUseCase;
@@ -66,23 +65,29 @@ class AuthControllerTest {
     @MockitoBean
     private RefreshTokenCookie refreshTokenCookie;
 
-    private static final ResponseCookie COOKIE_EMITIDA = ResponseCookie
-            .from(RefreshTokenCookie.NAME, "cookie-emitida").httpOnly(true).secure(true)
-            .path("/auth").build();
-    private static final ResponseCookie COOKIE_BORRADA = ResponseCookie
-            .from(RefreshTokenCookie.NAME, "").httpOnly(true).secure(true).path("/auth").maxAge(0)
+    private static final String EMPLOYEE_COOKIE = "vet_refresh_employee";
+    private static final String SYSTEM_COOKIE = "vet_refresh_system";
+
+    private static final ResponseCookie COOKIE_EMPLOYEE_EMITIDA = ResponseCookie
+            .from(EMPLOYEE_COOKIE, "cookie-emitida").httpOnly(true).secure(true).path("/auth")
             .build();
+    private static final ResponseCookie COOKIE_SYSTEM_EMITIDA = ResponseCookie
+            .from(SYSTEM_COOKIE, "cookie-emitida").httpOnly(true).secure(true).path("/auth")
+            .build();
+    private static final ResponseCookie COOKIE_EMPLOYEE_BORRADA = ResponseCookie
+            .from(EMPLOYEE_COOKIE, "").httpOnly(true).secure(true).path("/auth").maxAge(0).build();
 
     @Nested
     @DisplayName("login")
     class Login {
 
         @Test
-        @DisplayName("login de empleado exitoso: 200, cookie de refresh y el token nunca en el cuerpo")
+        @DisplayName("login de empleado exitoso: 200, cookie vet_refresh_employee y el token nunca en el cuerpo")
         void login_empleado_exitoso() throws Exception {
             when(loginEmployeeUseCase.execute(new LoginEmployeeCommand("EMP-1", "secret")))
                     .thenReturn(new TokenDto("access", AuthSubjectType.EMPLOYEE, "raw-refresh"));
-            when(refreshTokenCookie.issue("raw-refresh")).thenReturn(COOKIE_EMITIDA);
+            when(refreshTokenCookie.issue(AuthSubjectType.EMPLOYEE, "raw-refresh"))
+                    .thenReturn(COOKIE_EMPLOYEE_EMITIDA);
 
             mockMvc.perform(
                     post("/auth/login/employee").contentType(MediaType.APPLICATION_JSON).content("""
@@ -91,7 +96,7 @@ class AuthControllerTest {
                     .andExpect(jsonPath("$.token").value("access"))
                     .andExpect(jsonPath("$.type").value("EMPLOYEE"))
                     .andExpect(jsonPath("$.refreshToken").doesNotExist())
-                    .andExpect(cookie().value(RefreshTokenCookie.NAME, "cookie-emitida"));
+                    .andExpect(cookie().value(EMPLOYEE_COOKIE, "cookie-emitida"));
         }
 
         @Test
@@ -106,19 +111,20 @@ class AuthControllerTest {
         }
 
         @Test
-        @DisplayName("login de usuario de sistema exitoso: 200 y cookie de refresh")
+        @DisplayName("login de usuario de sistema exitoso: 200 y cookie vet_refresh_system")
         void login_sistema_exitoso() throws Exception {
             when(loginSystemUserUseCase.execute(new LoginSystemUserCommand("ADMIN", "secret")))
                     .thenReturn(
                             new TokenDto("access-sys", AuthSubjectType.SYSTEM_USER, "raw-refresh"));
-            when(refreshTokenCookie.issue("raw-refresh")).thenReturn(COOKIE_EMITIDA);
+            when(refreshTokenCookie.issue(AuthSubjectType.SYSTEM_USER, "raw-refresh"))
+                    .thenReturn(COOKIE_SYSTEM_EMITIDA);
 
             mockMvc.perform(
                     post("/auth/login/system").contentType(MediaType.APPLICATION_JSON).content("""
                             {"code":"ADMIN","password":"secret"}
                             """)).andExpect(status().isOk())
                     .andExpect(jsonPath("$.type").value("SYSTEM_USER"))
-                    .andExpect(cookie().exists(RefreshTokenCookie.NAME));
+                    .andExpect(cookie().exists(SYSTEM_COOKIE));
         }
 
         @Test
@@ -138,45 +144,58 @@ class AuthControllerTest {
     class Refresh {
 
         @Test
-        @DisplayName("con la cookie presente, el token se toma de la cookie y no del cuerpo")
+        @DisplayName("con la cookie del tipo pedido presente, se rota su token")
         void con_cookie_presente_usa_la_cookie() throws Exception {
-            when(refreshTokenUseCase.execute("de-la-cookie")).thenReturn(
+            when(refreshTokenCookie.nameFor(AuthSubjectType.EMPLOYEE)).thenReturn(EMPLOYEE_COOKIE);
+            when(refreshTokenUseCase.execute("de-la-cookie", AuthSubjectType.EMPLOYEE)).thenReturn(
                     new TokenDto("nuevo-access", AuthSubjectType.EMPLOYEE, "nuevo-refresh"));
-            when(refreshTokenCookie.issue("nuevo-refresh")).thenReturn(COOKIE_EMITIDA);
+            when(refreshTokenCookie.issue(AuthSubjectType.EMPLOYEE, "nuevo-refresh"))
+                    .thenReturn(COOKIE_EMPLOYEE_EMITIDA);
 
-            mockMvc.perform(post("/auth/refresh")
-                    .cookie(new Cookie(RefreshTokenCookie.NAME, "de-la-cookie"))
-                    .contentType(MediaType.APPLICATION_JSON).content("""
-                            {"refreshToken":"del-cuerpo"}
-                            """)).andExpect(status().isOk())
+            mockMvc.perform(
+                    post("/auth/refresh").cookie(new Cookie(EMPLOYEE_COOKIE, "de-la-cookie"))
+                            .contentType(MediaType.APPLICATION_JSON).content("""
+                                    {"type":"EMPLOYEE"}
+                                    """))
+                    .andExpect(status().isOk())
                     .andExpect(jsonPath("$.token").value("nuevo-access"));
 
-            verify(refreshTokenUseCase).execute("de-la-cookie");
-            verify(refreshTokenUseCase, never()).execute("del-cuerpo");
+            verify(refreshTokenUseCase).execute("de-la-cookie", AuthSubjectType.EMPLOYEE);
         }
 
         @Test
-        @DisplayName("sin cookie, respalda con el token del cuerpo durante el despliegue coordinado")
-        void sin_cookie_usa_el_cuerpo() throws Exception {
-            when(refreshTokenUseCase.execute("del-cuerpo")).thenReturn(
-                    new TokenDto("nuevo-access", AuthSubjectType.EMPLOYEE, "nuevo-refresh"));
-            when(refreshTokenCookie.issue(anyString())).thenReturn(COOKIE_EMITIDA);
+        @DisplayName("sin la cookie del tipo pedido responde 401 y no llama al caso de uso")
+        void sin_cookie_del_tipo_pedido_responde_401() throws Exception {
+            when(refreshTokenCookie.nameFor(AuthSubjectType.SYSTEM_USER)).thenReturn(SYSTEM_COOKIE);
 
             mockMvc.perform(
                     post("/auth/refresh").contentType(MediaType.APPLICATION_JSON).content("""
-                            {"refreshToken":"del-cuerpo"}
-                            """)).andExpect(status().isOk());
-
-            verify(refreshTokenUseCase).execute("del-cuerpo");
-        }
-
-        @Test
-        @DisplayName("sin cookie y sin cuerpo responde 401 y no llama al caso de uso")
-        void sin_cookie_ni_cuerpo_responde_401() throws Exception {
-            mockMvc.perform(post("/auth/refresh")).andExpect(status().isUnauthorized())
+                            {"type":"SYSTEM_USER"}
+                            """)).andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
 
             verifyNoInteractions(refreshTokenUseCase);
+        }
+
+        @Test
+        @DisplayName("sin cuerpo responde 400 y no llama al caso de uso")
+        void sin_cuerpo_responde_400() throws Exception {
+            mockMvc.perform(post("/auth/refresh")).andExpect(status().isBadRequest());
+
+            verifyNoInteractions(refreshTokenUseCase);
+        }
+
+        @Test
+        @DisplayName("el caso de uso rechaza un token que no es de la audiencia pedida: 401")
+        void refresh_con_tipo_que_no_casa_responde_401() throws Exception {
+            when(refreshTokenCookie.nameFor(AuthSubjectType.SYSTEM_USER)).thenReturn(SYSTEM_COOKIE);
+            when(refreshTokenUseCase.execute("de-otro-tipo", AuthSubjectType.SYSTEM_USER))
+                    .thenThrow(new InvalidCredentialsException());
+
+            mockMvc.perform(post("/auth/refresh").cookie(new Cookie(SYSTEM_COOKIE, "de-otro-tipo"))
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {"type":"SYSTEM_USER"}
+                            """)).andExpect(status().isUnauthorized());
         }
     }
 
@@ -185,12 +204,14 @@ class AuthControllerTest {
     class Logout {
 
         @Test
-        @DisplayName("responde 204, revoca en servidor y borra la cookie con los mismos atributos")
+        @DisplayName("responde 204, revoca en servidor y borra solo la cookie del tipo revocado")
         void logout_responde_204_y_borra_la_cookie() throws Exception {
-            when(refreshTokenCookie.clear()).thenReturn(COOKIE_BORRADA);
+            when(logoutUseCase.execute()).thenReturn(AuthSubjectType.EMPLOYEE);
+            when(refreshTokenCookie.clear(AuthSubjectType.EMPLOYEE))
+                    .thenReturn(COOKIE_EMPLOYEE_BORRADA);
 
             mockMvc.perform(post("/auth/logout")).andExpect(status().isNoContent())
-                    .andExpect(cookie().maxAge(RefreshTokenCookie.NAME, 0));
+                    .andExpect(cookie().maxAge(EMPLOYEE_COOKIE, 0));
 
             verify(logoutUseCase).execute();
         }

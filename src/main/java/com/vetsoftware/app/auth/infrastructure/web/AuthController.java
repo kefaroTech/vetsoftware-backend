@@ -2,6 +2,7 @@ package com.vetsoftware.app.auth.infrastructure.web;
 
 import com.vetsoftware.app.auth.application.command.LoginEmployeeCommand;
 import com.vetsoftware.app.auth.application.command.LoginSystemUserCommand;
+import com.vetsoftware.app.auth.application.dto.AuthSubjectType;
 import com.vetsoftware.app.auth.application.dto.MeDto;
 import com.vetsoftware.app.auth.application.dto.TokenDto;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
@@ -16,12 +17,15 @@ import com.vetsoftware.app.auth.infrastructure.web.request.RefreshTokenRequest;
 import com.vetsoftware.app.auth.infrastructure.web.response.MeResponse;
 import com.vetsoftware.app.auth.infrastructure.web.response.TokenResponse;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.WebUtils;
 
 @RestController
 @RequestMapping("/auth")
@@ -77,35 +81,33 @@ public class AuthController {
     }
 
     /**
-     * El refresh token llega en la cookie {@code HttpOnly}, no en el cuerpo. El
-     * cuerpo se sigue aceptando como respaldo durante el despliegue coordinado:
-     * backend y los dos frontends no se publican en el mismo instante, y sin esta
-     * tolerancia el front antiguo pierde la sesión en cuanto sube el backend nuevo.
-     * Es transitorio y debe retirarse cuando los dos fronts estén arriba.
+     * El nombre de la cookie depende del tipo de sujeto declarado en el cuerpo
+     * ({@code @CookieValue} no admite un nombre dinámico), así que se lee
+     * directamente de la petición con {@link WebUtils#getCookie}.
      */
     @PostMapping("/refresh")
-    public ResponseEntity<TokenResponse> refresh(
-            @CookieValue(name = RefreshTokenCookie.NAME, required = false) String cookieToken,
-            @RequestBody(required = false) RefreshTokenRequest request) {
-        String raw = StringUtils.hasText(cookieToken)
-                ? cookieToken
-                : request != null ? request.refreshToken() : null;
+    public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request,
+            HttpServletRequest httpRequest) {
+        Cookie cookie = WebUtils.getCookie(httpRequest, refreshTokenCookie.nameFor(request.type()));
+        String raw = cookie == null ? null : cookie.getValue();
         if (!StringUtils.hasText(raw)) {
             throw new InvalidCredentialsException();
         }
-        return withRefreshCookie(refreshTokenUseCase.execute(raw));
+        return withRefreshCookie(refreshTokenUseCase.execute(raw, request.type()));
     }
 
     /**
-     * Borra la cookie además de revocar en servidor. Si solo se revocara, el
-     * navegador seguiría enviando un token muerto en cada {@code /auth/refresh} y
-     * el usuario vería un 401 en vez de la pantalla de login.
+     * Borra solo la cookie del tipo de sujeto que cerró sesión: borrar las dos
+     * cerraría también la sesión de la otra app en el mismo navegador. Si no se
+     * borrara ninguna, el navegador seguiría enviando un token muerto en cada
+     * {@code /auth/refresh} y el usuario vería un 401 en vez de la pantalla de
+     * login.
      */
     @PostMapping("/logout")
     public ResponseEntity<Void> logout() {
-        logoutUseCase.execute();
+        AuthSubjectType type = logoutUseCase.execute();
         return ResponseEntity.noContent()
-                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.clear().toString()).build();
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.clear(type).toString()).build();
     }
 
     /**
@@ -117,7 +119,7 @@ public class AuthController {
     private ResponseEntity<TokenResponse> withRefreshCookie(TokenDto dto) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE,
-                        refreshTokenCookie.issue(dto.refreshToken()).toString())
+                        refreshTokenCookie.issue(dto.type(), dto.refreshToken()).toString())
                 .body(new TokenResponse(dto.token(), dto.type(), null));
     }
 

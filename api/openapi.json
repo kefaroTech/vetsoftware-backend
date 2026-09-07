@@ -13571,14 +13571,6 @@
       "post" : {
         "tags" : [ "auth-controller" ],
         "operationId" : "refresh",
-        "parameters" : [ {
-          "name" : "vet_refresh",
-          "in" : "cookie",
-          "required" : false,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -13586,7 +13578,8 @@
                 "$ref" : "#/components/schemas/RefreshTokenRequest"
               }
             }
-          }
+          },
+          "required" : true
         },
         "responses" : {
           "200" : {
@@ -39916,10 +39909,12 @@
       "RefreshTokenRequest" : {
         "type" : "object",
         "properties" : {
-          "refreshToken" : {
-            "type" : "string"
+          "type" : {
+            "type" : "string",
+            "enum" : [ "EMPLOYEE", "SYSTEM_USER" ]
           }
-        }
+        },
+        "required" : [ "type" ]
       },
       "TokenResponse" : {
         "type" : "object",

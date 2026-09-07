@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
@@ -67,7 +68,7 @@ class RefreshAccessTokenServiceTest {
         when(authEmployeeRepository.findActiveById(7L))
                 .thenReturn(Optional.of(new AuthEmployeeRepository.AuthEmployee(7L, 2L, 4L)));
 
-        assertThatThrownBy(() -> service.execute("old-refresh"))
+        assertThatThrownBy(() -> service.execute("old-refresh", AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(SessionReplacedException.class);
 
         verify(refreshTokenRepository, never()).revokeById(11L);
@@ -85,7 +86,7 @@ class RefreshAccessTokenServiceTest {
         when(tokenGenerator.generate(2L, "SYSTEM_USER", null, 9L)).thenReturn("access-2");
         when(refreshTokenIssuer.issue(2L, "SYSTEM_USER", 9L)).thenReturn("refresh-2");
 
-        var result = service.execute("refresh");
+        var result = service.execute("refresh", AuthSubjectType.SYSTEM_USER);
 
         assertThat(result.token()).isEqualTo("access-2");
         assertThat(result.refreshToken()).isEqualTo("refresh-2");
@@ -103,7 +104,7 @@ class RefreshAccessTokenServiceTest {
         when(tokenGenerator.generate(7L, "EMPLOYEE", 2L, 3L)).thenReturn("access-1");
         when(refreshTokenIssuer.issue(7L, "EMPLOYEE", 3L)).thenReturn("refresh-1");
 
-        var result = service.execute("refresh");
+        var result = service.execute("refresh", AuthSubjectType.EMPLOYEE);
 
         assertThat(result.token()).isEqualTo("access-1");
         assertThat(result.type()).isEqualTo(AuthSubjectType.EMPLOYEE);
@@ -112,9 +113,9 @@ class RefreshAccessTokenServiceTest {
 
     @Test
     void un_refresh_vacio_o_nulo_se_rechaza_sin_tocar_la_base() {
-        assertThatThrownBy(() -> service.execute(null))
+        assertThatThrownBy(() -> service.execute(null, AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(InvalidCredentialsException.class);
-        assertThatThrownBy(() -> service.execute("   "))
+        assertThatThrownBy(() -> service.execute("   ", AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(InvalidCredentialsException.class);
 
         verify(refreshTokenRepository, never())
@@ -126,7 +127,7 @@ class RefreshAccessTokenServiceTest {
         when(refreshTokenSecret.hash("desconocido")).thenReturn("hash");
         when(refreshTokenRepository.findByHash("hash")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.execute("desconocido"))
+        assertThatThrownBy(() -> service.execute("desconocido", AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(InvalidCredentialsException.class);
     }
 
@@ -137,7 +138,7 @@ class RefreshAccessTokenServiceTest {
         when(refreshTokenSecret.hash("reusado")).thenReturn("hash");
         when(refreshTokenRepository.findByHash("hash")).thenReturn(Optional.of(revoked));
 
-        assertThatThrownBy(() -> service.execute("reusado"))
+        assertThatThrownBy(() -> service.execute("reusado", AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(InvalidCredentialsException.class);
 
         verify(refreshTokenIssuer, never()).issue(org.mockito.ArgumentMatchers.anyLong(),
@@ -151,7 +152,7 @@ class RefreshAccessTokenServiceTest {
         when(refreshTokenSecret.hash("vencido")).thenReturn("hash");
         when(refreshTokenRepository.findByHash("hash")).thenReturn(Optional.of(expired));
 
-        assertThatThrownBy(() -> service.execute("vencido"))
+        assertThatThrownBy(() -> service.execute("vencido", AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(InvalidCredentialsException.class);
     }
 
@@ -163,7 +164,7 @@ class RefreshAccessTokenServiceTest {
         when(refreshTokenRepository.findByHash("hash")).thenReturn(Optional.of(stored));
         when(authEmployeeRepository.findActiveById(7L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.execute("refresh"))
+        assertThatThrownBy(() -> service.execute("refresh", AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(InvalidCredentialsException.class);
 
         verify(refreshTokenRepository, never()).revokeById(11L);
@@ -178,7 +179,7 @@ class RefreshAccessTokenServiceTest {
         when(authEmployeeRepository.findActiveById(7L))
                 .thenReturn(Optional.of(new AuthEmployeeRepository.AuthEmployee(7L, 2L, 3L)));
 
-        service.execute("secreto-en-claro");
+        service.execute("secreto-en-claro", AuthSubjectType.EMPLOYEE);
 
         verify(refreshTokenSecret).hash("secreto-en-claro");
         verify(refreshTokenRepository).findByHash("hash-derivado");
@@ -192,8 +193,24 @@ class RefreshAccessTokenServiceTest {
         when(refreshTokenSecret.hash("refresh")).thenReturn("hash");
         when(refreshTokenRepository.findByHash("hash")).thenReturn(Optional.of(stored));
 
-        assertThatThrownBy(() -> service.execute("refresh"))
+        assertThatThrownBy(() -> service.execute("refresh", AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(InvalidCredentialsException.class);
+    }
+
+    @Test
+    void un_token_de_empleado_no_sirve_para_pedir_un_token_de_sistema() {
+        var stored = new RefreshTokenRepository.StoredRefreshToken(11L, 7L, "EMPLOYEE", 3L,
+                LocalDateTime.now().plusHours(1), false, null);
+        when(refreshTokenSecret.hash("de-empleado")).thenReturn("hash");
+        when(refreshTokenRepository.findByHash("hash")).thenReturn(Optional.of(stored));
+
+        assertThatThrownBy(() -> service.execute("de-empleado", AuthSubjectType.SYSTEM_USER))
+                .isInstanceOf(InvalidCredentialsException.class);
+
+        verify(refreshTokenRepository, never()).revokeById(org.mockito.ArgumentMatchers.anyLong());
+        verify(refreshTokenIssuer, never()).issue(org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
+        verifyNoInteractions(authEmployeeRepository, authSystemUserRepository);
     }
 
     // ---------------------------------------------------------------------
@@ -223,7 +240,7 @@ class RefreshAccessTokenServiceTest {
         when(refreshTokenSecret.hash("robado")).thenReturn("hash");
         when(refreshTokenRepository.findByHash("hash")).thenReturn(Optional.of(revoked));
 
-        assertThatThrownBy(() -> service.execute("robado"))
+        assertThatThrownBy(() -> service.execute("robado", AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(InvalidCredentialsException.class);
 
         verify(refreshTokenRepository).revokeAllForSubject(7L, "EMPLOYEE");
@@ -243,7 +260,7 @@ class RefreshAccessTokenServiceTest {
         when(refreshTokenSecret.hash("robado")).thenReturn("hash");
         when(refreshTokenRepository.findByHash("hash")).thenReturn(Optional.of(revoked));
 
-        assertThatThrownBy(() -> service.execute("robado"))
+        assertThatThrownBy(() -> service.execute("robado", AuthSubjectType.SYSTEM_USER))
                 .isInstanceOf(InvalidCredentialsException.class);
 
         verify(refreshTokenRepository).revokeAllForSubject(7L, "SYSTEM_USER");
@@ -259,7 +276,7 @@ class RefreshAccessTokenServiceTest {
         when(refreshTokenSecret.hash("carrera")).thenReturn("hash");
         when(refreshTokenRepository.findByHash("hash")).thenReturn(Optional.of(justRevoked));
 
-        assertThatThrownBy(() -> service.execute("carrera"))
+        assertThatThrownBy(() -> service.execute("carrera", AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(InvalidCredentialsException.class);
 
         verify(refreshTokenRepository, never()).revokeAllForSubject(anyLong(), anyString());
@@ -277,7 +294,7 @@ class RefreshAccessTokenServiceTest {
         when(refreshTokenSecret.hash("vencido")).thenReturn("hash");
         when(refreshTokenRepository.findByHash("hash")).thenReturn(Optional.of(expired));
 
-        assertThatThrownBy(() -> service.execute("vencido"))
+        assertThatThrownBy(() -> service.execute("vencido", AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(InvalidCredentialsException.class);
 
         verify(refreshTokenRepository, never()).revokeAllForSubject(anyLong(), anyString());
@@ -295,7 +312,7 @@ class RefreshAccessTokenServiceTest {
         when(refreshTokenSecret.hash("antiguo")).thenReturn("hash");
         when(refreshTokenRepository.findByHash("hash")).thenReturn(Optional.of(revoked));
 
-        assertThatThrownBy(() -> service.execute("antiguo"))
+        assertThatThrownBy(() -> service.execute("antiguo", AuthSubjectType.EMPLOYEE))
                 .isInstanceOf(InvalidCredentialsException.class);
 
         verify(refreshTokenRepository).revokeAllForSubject(7L, "EMPLOYEE");

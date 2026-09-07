@@ -1,9 +1,11 @@
 package com.vetsoftware.app.auth.application.usecase;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.vetsoftware.app.auth.application.dto.AuthSubjectType;
 import com.vetsoftware.app.auth.application.dto.SystemContext;
 import com.vetsoftware.app.auth.testsupport.AuthMother;
 import java.util.List;
@@ -55,12 +57,13 @@ class LogoutServiceTest {
     class Empleado {
 
         @Test
-        @DisplayName("revoca todos sus refresh tokens y sube su authVersion")
+        @DisplayName("revoca todos sus refresh tokens, sube su authVersion y declara el tipo EMPLOYEE")
         void revoca_refresh_tokens_y_sube_authVersion() {
             autenticar(AuthMother.empleado());
 
-            service.execute();
+            AuthSubjectType type = service.execute();
 
+            assertThat(type).isEqualTo(AuthSubjectType.EMPLOYEE);
             verify(refreshTokenRepository).revokeAllForSubject(AuthMother.EMPLOYEE_ID, "EMPLOYEE");
             verify(authEmployeeRepository).bumpAuthVersion(AuthMother.EMPLOYEE_ID,
                     AuthMother.COMPANY_ID);
@@ -73,12 +76,13 @@ class LogoutServiceTest {
     class UsuarioDeSistema {
 
         @Test
-        @DisplayName("revoca sus refresh tokens y sube su authVersion, sin tocar al empleado")
+        @DisplayName("revoca sus refresh tokens, sube su authVersion y declara el tipo SYSTEM_USER")
         void revoca_refresh_tokens_y_sube_authVersion() {
             autenticar(AuthMother.usuarioDeSistema());
 
-            service.execute();
+            AuthSubjectType type = service.execute();
 
+            assertThat(type).isEqualTo(AuthSubjectType.SYSTEM_USER);
             verify(refreshTokenRepository).revokeAllForSubject(AuthMother.SYSTEM_USER_ID,
                     "SYSTEM_USER");
             verify(authSystemUserRepository).bumpAuthVersion(AuthMother.SYSTEM_USER_ID);

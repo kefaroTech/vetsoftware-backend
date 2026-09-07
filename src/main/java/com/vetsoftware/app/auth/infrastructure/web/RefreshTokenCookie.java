@@ -1,5 +1,6 @@
 package com.vetsoftware.app.auth.infrastructure.web;
 
+import com.vetsoftware.app.auth.application.dto.AuthSubjectType;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
@@ -24,6 +25,15 @@ import org.springframework.stereotype.Component;
  * pide detección de reuso de refresh token, que es un hallazgo aparte (BE-13).
  *
  * <p>
+ * <strong>Una cookie por {@link AuthSubjectType}.</strong> El navegador
+ * identifica una cookie por (nombre, dominio, path), sin distinguir el origen
+ * del front que la puso. La consola (SYSTEM_USER) y la app del tenant
+ * (EMPLOYEE) hablan con la misma API: con un solo nombre, el login en la
+ * segunda pisaba la cookie de la primera y su siguiente refresh rotaba el token
+ * de la audiencia equivocada. Nombrar la cookie por tipo de sujeto le da a cada
+ * app su propio slot.
+ *
+ * <p>
  * <strong>{@code Path=/auth}</strong> y no {@code /}: la cookie solo se
  * necesita en {@code /auth/refresh} y {@code /auth/logout}. Limitar el path
  * significa que no viaja en las cientos de peticiones de negocio que hace la
@@ -40,12 +50,6 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class RefreshTokenCookie {
-
-    /**
-     * Mismo nombre que la clave que ocupaba en localStorage, para no confundir al
-     * depurar.
-     */
-    public static final String NAME = "vet_refresh";
 
     private static final String PATH = "/auth";
 
@@ -70,8 +74,8 @@ public class RefreshTokenCookie {
      * expiración real del token en base de datos; si divergen, manda la de base de
      * datos y el usuario ve un 401 en vez de un token que el navegador ya borró.
      */
-    public ResponseCookie issue(String rawRefreshToken) {
-        return base(rawRefreshToken).maxAge(maxAge).build();
+    public ResponseCookie issue(AuthSubjectType type, String rawRefreshToken) {
+        return base(type, rawRefreshToken).maxAge(maxAge).build();
     }
 
     /**
@@ -79,12 +83,16 @@ public class RefreshTokenCookie {
      * {@code sameSite} exactos de la original: el navegador identifica la cookie
      * por (nombre, dominio, path), y una discrepancia deja la vieja viva.
      */
-    public ResponseCookie clear() {
-        return base("").maxAge(0).build();
+    public ResponseCookie clear(AuthSubjectType type) {
+        return base(type, "").maxAge(0).build();
     }
 
-    private ResponseCookie.ResponseCookieBuilder base(String value) {
-        return ResponseCookie.from(NAME, value).httpOnly(true).secure(secure).path(PATH)
+    public String nameFor(AuthSubjectType type) {
+        return type == AuthSubjectType.EMPLOYEE ? "vet_refresh_employee" : "vet_refresh_system";
+    }
+
+    private ResponseCookie.ResponseCookieBuilder base(AuthSubjectType type, String value) {
+        return ResponseCookie.from(nameFor(type), value).httpOnly(true).secure(secure).path(PATH)
                 .sameSite(sameSite);
     }
 }

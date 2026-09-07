@@ -1,6 +1,7 @@
 package com.vetsoftware.app.auth.application.usecase;
 
 import com.vetsoftware.app.auth.application.dto.AuthContext;
+import com.vetsoftware.app.auth.application.dto.AuthSubjectType;
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
 import com.vetsoftware.app.auth.application.dto.SystemContext;
 import com.vetsoftware.app.auth.application.dto.SystemUserContext;
@@ -35,23 +36,25 @@ public class LogoutService implements LogoutUseCase {
 
     @Override
     @Transactional
-    public void execute() {
+    public AuthSubjectType execute() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         AuthContext principal = AuthContext.ofPrincipal(auth == null ? null : auth.getPrincipal());
 
-        switch (principal) {
+        return switch (principal) {
             case EmployeeContext me -> {
                 refreshTokenRepository.revokeAllForSubject(me.employeeId(), "EMPLOYEE");
                 // Invalida de inmediato los access tokens vivos (todas las sesiones del
                 // empleado).
                 authEmployeeRepository.bumpAuthVersion(me.employeeId(), me.companyId());
+                yield AuthSubjectType.EMPLOYEE;
             }
             case SystemUserContext me -> {
                 refreshTokenRepository.revokeAllForSubject(me.systemUserId(), "SYSTEM_USER");
                 authSystemUserRepository.bumpAuthVersion(me.systemUserId());
+                yield AuthSubjectType.SYSTEM_USER;
             }
             case SystemContext _ -> throw new AccessDeniedException(NOT_A_USER_CONTEXT);
             case null -> throw new AccessDeniedException(NOT_A_USER_CONTEXT);
-        }
+        };
     }
 }
