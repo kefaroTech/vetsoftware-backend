@@ -61,7 +61,7 @@ public class RefreshAccessTokenService implements RefreshTokenUseCase {
 
     @Override
     @Transactional
-    public TokenDto execute(String rawRefreshToken) {
+    public TokenDto execute(String rawRefreshToken, AuthSubjectType expectedType) {
         if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
             throw new InvalidCredentialsException();
         }
@@ -69,6 +69,12 @@ public class RefreshAccessTokenService implements RefreshTokenUseCase {
         String hash = refreshTokenSecret.hash(rawRefreshToken);
         StoredRefreshToken stored = refreshTokenRepository.findByHash(hash)
                 .orElseThrow(InvalidCredentialsException::new);
+
+        // Nada impide a un cliente presentar el valor de vet_refresh_employee bajo
+        // el nombre de vet_refresh_system: la audiencia la fija el token almacenado.
+        if (!stored.subjectType().equals(expectedType.name())) {
+            throw new InvalidCredentialsException();
+        }
 
         if (stored.revoked()) {
             reactToReuse(stored);
