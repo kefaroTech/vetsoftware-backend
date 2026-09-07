@@ -312,6 +312,8 @@ cambiar el contrato del que cuelga esta alerta):
 | `subscription.dunning` | `0 40 3 * * *` | 03:40 | sí |
 | `usage.reconciliation` | `0 10 4 * * *` | 04:10 | sí |
 | `payment.collection` | `0 10 5 * * *` | 05:10 | sí |
+| `payment.reconciliation` | `0 0 * * * *` | cada hora, :00 | sí |
+| `webhook.event.retention` | `0 5 4 * * *` | 04:05 | sí |
 | `security.tokens.cleanup` | `0 20 * * * *` | cada hora, :20 | sí |
 | `dian.contingency.retry` | `0 15 2,14 * * *` | 02:15 y 14:15 | no (lease por lote) |
 | `dian.pending.reconciliation` | `0 30 2,14 * * *` | 02:30 y 14:30 | no (lease por lote) |
@@ -338,19 +340,111 @@ barrido que nunca corre**. Si esta alerta va y viene, mirar primero la estabilid
 Más de un proceso está publicando el heartbeat del mismo barrido, y ese barrido **exige una sola
 réplica**.
 
-**Por qué importa hoy y no importaba ayer.** Los cinco barridos con `single_writer="true"`
-recorren su tabla con un cursor y no arbitran nada entre réplicas. Mientras usaban `fixedDelay`, dos
-tareas se escalonaban por accidente y el solape era intermitente; con `cron` arrancan **a la vez**,
-así que el solape pasa a ser seguro. Lo único que lo impide hoy es que el servicio corre con una
-sola tarea de ECS — una propiedad del despliegue, no del código.
+**Por qué importa hoy y no importaba ayer.** Los barridos con `single_writer="true"` recorren su
+tabla con un cursor y no arbitran nada entre réplicas. Mientras usaban `fixedDelay`, dos tareas se
+escalonaban por accidente y el solape era intermitente; con `cron` arrancan **a la vez**, así que
+el solape pasa a ser seguro.
 
-**Qué se rompe si se ignora**: el barrido de facturación emite los cargos del cierre de mes dos
-veces (`subscription_charges` es la única tabla del bloque sin llave antiduplicados), y el de
-cobranza degrada dos veces al mismo moroso. El cliente lo descubre en su factura del mes siguiente.
+**Cuatro ya llevan candado distribuido (#772)**: `payment.collection`, `subscription.billing`,
+`quote.expiration` y `payment.reconciliation` usan `@SchedulerLock` sobre la tabla `shedlock`,
+así que un escalado a dos tareas no les duplica el trabajo. Los otros cinco
+(`subscription.lifecycle`, `subscription.dunning`, `usage.reconciliation`,
+`security.tokens.cleanup`, `aiproposal.retention`) siguen dependiendo de que el servicio corra
+con una sola tarea de ECS — una propiedad del despliegue, no del código — y esta alerta sigue
+siendo su única red.
 
-**Las dos salidas, y solo hay dos**: volver a una sola tarea, o implementar el candado distribuido
-antes del siguiente cierre de mes. Los tres barridos DIAN **no** aparecen aquí porque reclaman su
-lote en exclusiva con `DianJobLeasePort` y toleran N réplicas; ese es el patrón a copiar.
+**Qué se rompe si se ignora en uno de los cinco sin candado**: el barrido de facturación emite los
+cargos del cierre de mes dos veces (`subscription_charges` es la única tabla del bloque sin llave
+antiduplicados), y el de cobranza degrada dos veces al mismo moroso. El cliente lo descubre en su
+factura del mes siguiente.
+
+**La salida para esos cinco**: implementar `@SchedulerLock` igual que en los cuatro ya migrados.
+Los tres barridos DIAN **no** aparecen aquí porque reclaman su lote en exclusiva con
+`DianJobLeasePort` y toleran N réplicas; ese es el otro patrón válido.
+
+## Cadena de cobro Wompi (#768)
+
+Las tres alertas siguientes viven en el grupo `vetsoftware-payments` de
+`docker/prometheus-platform-alerts.yml`. Mismo criterio de conteo/tasa que el resto del bloque de
+dinero de suscripciones (`docs/SLO_VETSOFTWARE.md` §1): volumen bajo, guarda de volumen mínimo
+antes de hablar de porcentaje. `PaymentCollectionJob` sin ejecutar tras las 05:30 **no** tiene
+alerta propia: ya lo cubre `VetSoftwareScheduledJobOverdue` por `job_name="payment.collection"`
+(cron 05:10). Un 5xx de Wompi tampoco: `http_client_requests` existe y ya está en vivo en Grafana
+Cloud, pero `client_name` no tiene todavía ningún valor de Wompi en dev — escribir la regla con un
+valor sin confirmar dejaría una alerta que nunca dispara. Mismo criterio para
+`PaymentReconciliationJob` (#773): `job_name="payment.reconciliation"` (cron cada hora, :00) ya
+tiene su umbral en `VetSoftwareScheduledJobOverdue`.
+
+## VetSoftwareSubscriptionPaymentPendingAged
+
+Al menos un pago `PENDING` de pasarela lleva más de una hora sin resolverse (gauge
+`vetsoftware_business_subscription_payments_pending_aged`, refrescado con caché de 60 s).
+
+**Qué mirar**: si Wompi dejó de notificar el desenlace (webhook perdido, checksum mal rotado) o si
+el sondeo de `GatewayCharger` se agotó sin llegar a un estado final. Antes de reintentar el cobro a
+mano, comprobar en la base si el pago ya se resolvió del lado de Wompi — reintentar sobre un
+`PENDING` que en realidad ya se aprobó duplica el cargo.
+
+**`PaymentReconciliationJob` (#773) ya reintenta esta consulta cada hora** contra pagos con más de
+`payment.reconciliation.stale-minutes` (60 por defecto) sin resolver, así que si esta alerta sigue
+sonando después de una hora, el problema no es la ausencia de reintento: es que la propia consulta
+a Wompi también está fallando (ver `VetSoftwareScheduledJobFailing` con
+`job_name="payment.reconciliation"`) o que el pago sigue `PENDING` del lado de Wompi.
+
+## VetSoftwarePaymentGatewayChecksumRejectedRepeated
+
+Más de tres webhooks de Wompi seguidos fallan la verificación de checksum en 15 minutos.
+
+**`outcome="rejected_checksum"` ya no incluye los eventos fuera de ventana de frescura (#789).**
+Antes de esa separación, un webhook demorado de Wompi con checksum válido también contaba aquí, y
+esta alerta no podía distinguir un secreto mal rotado de un reintento tardío legítimo. Un evento
+fuera de ventana pero autenticado ahora se persiste como `REJECTED_STALE` y no dispara esta regla;
+si suena, es porque el checksum en sí no coincidió con el secreto.
+
+**Qué mirar**: si es un único origen repetido, es más probable un secreto de integridad mal
+propagado a producción (ver #756) que un ataque; si son eventos dispersos con transacciones
+distintas, revisar si alguien está reproduciendo webhooks capturados. El webhook responde 401 y
+Wompi reintenta, así que un checksum mal rotado se ve aquí antes que en un pago perdido.
+
+## VetSoftwarePaymentGatewayPaymentNotFound
+
+Llegó un webhook de Wompi con un `transaction_id` para el que no hay ningún pago registrado.
+
+**Qué mirar**: no es una pérdida de datos —el evento crudo queda en `gateway_webhook_events` con
+`processing_outcome=PAYMENT_NOT_FOUND`—, pero el pago que Wompi cree resuelto sigue sin liquidarse
+del lado de VetSoftware. Revisar si el registro síncrono del pago (`GatewayCharger.charge`) llegó a
+completarse antes de que el webhook llegara, o si el `transaction_id` corresponde a un intento de
+otra integración.
+
+## VetSoftwarePaymentGatewayDeclineRateHigh
+
+Más del 30 % de los intentos reales de cobro contra Wompi (no las omisiones por falta de medio de
+pago o perfil fiscal) se rechazó en la última hora, con al menos 10 intentos en la ventana.
+
+**Qué mirar primero**: `decline_kind` de las series que alimentan `vetsoftware_business_payment
+_gateway_charge_outcomes`. `soft` disperso entre muchas empresas es ruido normal de tarjetas sin
+fondos; `hard` o `configuration` concentrados, o subiendo todos a la vez, son sistémicos —una
+integración de Wompi rota, o una configuración de comercio revocada— y no se resuelven esperando a
+que paguen mejor los clientes.
+
+## VetSoftwarePaymentGatewayDeterministicFailuresSustained
+
+Al menos dos candidatos del barrido de cobranza (`RunPaymentCollectionService`) o del de
+conciliación (`ReconcilePendingPaymentsService`) fallaron con `failure_kind="deterministic"` en
+las últimas 24 horas, sostenido 30 minutos.
+
+**Qué es `deterministic` y qué no.** Es todo lo que cae en el `catch (RuntimeException e)`
+genérico de los dos servicios: ni un fallo transitorio de Wompi (`failure_kind="transient"`, que
+se cura solo al reintentar) ni un presupuesto de reintentos agotado
+(`failure_kind="budget_exhausted"`, el desenlace esperado del negocio). Lo típico es una empresa
+sin perfil fiscal vigente (`IllegalStateException` en `GatewayCharger`) o, en conciliación, una
+transacción con un estado que Wompi devuelve y el código no reconoce.
+
+**Qué mirar**: filtrar los logs por `level=ERROR` y el nombre del servicio en la ventana de la
+alerta para identificar la empresa o el pago concreto — la métrica cuenta, no identifica, a
+propósito (`BusinessMetricCardinalityFilter` prohíbe `companyId` como etiqueta). Un mismo
+candidato repitiendo el fallo día tras día en el barrido de cobranza y hora tras hora en el de
+conciliación es la señal de que nadie ha corregido la causa raíz.
 
 ## Alertas de negocio
 

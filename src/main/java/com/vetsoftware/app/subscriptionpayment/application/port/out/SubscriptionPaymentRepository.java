@@ -2,6 +2,9 @@ package com.vetsoftware.app.subscriptionpayment.application.port.out;
 
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPayment;
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentStatus;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -50,4 +53,29 @@ public interface SubscriptionPaymentRepository {
 
     /** Barrido de plataforma cross-tenant. Solo lo consume un puerto SYSTEM. */
     PageResult<SubscriptionPayment> findAll(int page, int pageSize);
+
+    /**
+     * Pagos {@code PENDING} de pasarela envejecidos, ascendente por
+     * {@code receivedAt} y acotado a {@code limit}.
+     */
+    List<SubscriptionPayment> findStalePendingGatewayPayments(LocalDateTime threshold, int limit);
+
+    /**
+     * Barrido de tesorería con filtros opcionales. {@code pendingThreshold} no nulo
+     * añade {@code gateway IS NOT NULL AND receivedAt < pendingThreshold} —el mismo
+     * criterio que {@link #findStalePendingGatewayPayments}— y ordena ascendente
+     * por {@code receivedAt}; si es nulo, ordena descendente. Las dos ramas
+     * desempatan por {@code id}.
+     */
+    PageResult<SubscriptionPayment> findAllFiltered(Long companyId,
+            SubscriptionPaymentStatus status, LocalDateTime receivedFrom, LocalDateTime receivedTo,
+            LocalDateTime pendingThreshold, int page, int pageSize);
+
+    /**
+     * Mismo filtro que {@link #findAllFiltered}, sin paginar: para el cierre de
+     * mes.
+     */
+    List<SubscriptionPayment> findAllFilteredForExport(Long companyId,
+            SubscriptionPaymentStatus status, LocalDateTime receivedFrom, LocalDateTime receivedTo,
+            LocalDateTime pendingThreshold);
 }

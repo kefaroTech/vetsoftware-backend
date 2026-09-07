@@ -6,6 +6,7 @@ import com.vetsoftware.app.paymentgateway.application.port.in.CreateWompiPayment
 import com.vetsoftware.app.paymentgateway.application.port.out.CompanyBillingEmailQueryPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.PaymentGatewayPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.PaymentMethodRegistrarPort;
+import com.vetsoftware.app.paymentgateway.application.port.out.PaymentSourceRateLimitPort;
 import com.vetsoftware.app.paymentgateway.domain.CreatePaymentSourceRequest;
 import com.vetsoftware.app.paymentgateway.domain.GatewayPaymentSource;
 import com.vetsoftware.app.paymentgateway.domain.MerchantAcceptance;
@@ -44,19 +45,24 @@ public class CreateWompiPaymentSourceService implements CreateWompiPaymentSource
     private final PaymentGatewayPort paymentGatewayPort;
     private final CompanyBillingEmailQueryPort companyBillingEmailQueryPort;
     private final PaymentMethodRegistrarPort paymentMethodRegistrarPort;
+    private final PaymentSourceRateLimitPort paymentSourceRateLimitPort;
     private final Clock clock;
 
     public CreateWompiPaymentSourceService(PaymentGatewayPort paymentGatewayPort,
             CompanyBillingEmailQueryPort companyBillingEmailQueryPort,
-            PaymentMethodRegistrarPort paymentMethodRegistrarPort, Clock clock) {
+            PaymentMethodRegistrarPort paymentMethodRegistrarPort,
+            PaymentSourceRateLimitPort paymentSourceRateLimitPort, Clock clock) {
         this.paymentGatewayPort = paymentGatewayPort;
         this.companyBillingEmailQueryPort = companyBillingEmailQueryPort;
         this.paymentMethodRegistrarPort = paymentMethodRegistrarPort;
+        this.paymentSourceRateLimitPort = paymentSourceRateLimitPort;
         this.clock = clock;
     }
 
     @Override
     public WompiPaymentMethodDto execute(CreateWompiPaymentSourceCommand command) {
+        paymentSourceRateLimitPort.checkAndConsume(command.companyId());
+
         String fiscalEmail = companyBillingEmailQueryPort.findFiscalEmail(command.companyId())
                 .orElseThrow(() -> new IllegalStateException(
                         "La empresa " + command.companyId() + " no tiene perfil fiscal vigente"));

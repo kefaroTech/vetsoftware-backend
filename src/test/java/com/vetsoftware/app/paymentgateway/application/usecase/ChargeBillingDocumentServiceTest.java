@@ -20,10 +20,12 @@ import com.vetsoftware.app.paymentgateway.application.port.out.PendingPaymentQue
 import com.vetsoftware.app.paymentgateway.domain.BillingDocumentChargeSnapshot;
 import com.vetsoftware.app.paymentgateway.domain.DocumentChargeOutcome;
 import com.vetsoftware.app.paymentgateway.domain.FirstPeriodChargeOutcome;
+import com.vetsoftware.app.paymentgateway.domain.FiscalProfileNotConfiguredException;
 import com.vetsoftware.app.paymentgateway.domain.GatewayDeclineKind;
 import com.vetsoftware.app.paymentgateway.domain.LastPaymentAttempt;
 import com.vetsoftware.app.paymentgateway.domain.PaymentGatewayNotConfiguredException;
 import com.vetsoftware.app.paymentgateway.domain.PaymentMethodRef;
+import io.micrometer.observation.ObservationRegistry;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -68,7 +70,7 @@ class ChargeBillingDocumentServiceTest {
     void setUp() {
         service = new ChargeBillingDocumentService(documentQueryPort, pendingPaymentQueryPort,
                 paymentAttemptQueryPort, defaultCardPaymentMethodQueryPort,
-                paymentAttemptRecorderPort, gatewayCharger, RELOJ);
+                paymentAttemptRecorderPort, gatewayCharger, ObservationRegistry.NOOP, RELOJ);
     }
 
     private ChargeBillingDocumentCommand comando() {
@@ -76,8 +78,13 @@ class ChargeBillingDocumentServiceTest {
     }
 
     private void documento(BigDecimal total, BigDecimal saldo) {
-        when(documentQueryPort.findByIdAndCompanyId(DOCUMENTO, EMPRESA)).thenReturn(Optional
-                .of(new BillingDocumentChargeSnapshot(DOCUMENTO, "FV-1", total, saldo, "COP", 7L)));
+        documento(total, saldo, "AWAITING_EXTERNAL");
+    }
+
+    private void documento(BigDecimal total, BigDecimal saldo, String issueStatus) {
+        when(documentQueryPort.findByIdAndCompanyId(DOCUMENTO, EMPRESA))
+                .thenReturn(Optional.of(new BillingDocumentChargeSnapshot(DOCUMENTO, "FV-1", total,
+                        saldo, "COP", 7L, issueStatus)));
     }
 
     @Test
@@ -88,6 +95,17 @@ class ChargeBillingDocumentServiceTest {
         DocumentChargeDto result = service.execute(comando());
 
         assertThat(result.outcome()).isEqualTo(DocumentChargeOutcome.SKIPPED_NO_BALANCE);
+        verifyNoInteractions(pendingPaymentQueryPort, paymentAttemptQueryPort, gatewayCharger);
+    }
+
+    @Test
+    @DisplayName("documento anulado: SKIPPED_VOIDED sin tocar nada mas, aunque tenga saldo")
+    void documento_anulado() {
+        documento(new BigDecimal("45000"), new BigDecimal("45000"), "VOIDED");
+
+        DocumentChargeDto result = service.execute(comando());
+
+        assertThat(result.outcome()).isEqualTo(DocumentChargeOutcome.SKIPPED_VOIDED);
         verifyNoInteractions(pendingPaymentQueryPort, paymentAttemptQueryPort, gatewayCharger);
     }
 
@@ -177,7 +195,7 @@ class ChargeBillingDocumentServiceTest {
                 assertThat(result.outcome()).isEqualTo(DocumentChargeOutcome.NO_PAYMENT_METHOD);
                 verify(paymentAttemptRecorderPort).record(eq(EMPRESA), eq(DOCUMENTO), isNull(),
                         eq("WOMPI"), eq(new BigDecimal("30000")), isNull(),
-                        eq(GatewayDeclineKind.CONFIGURATION), eq(AHORA), isNull());
+                        eq(GatewayDeclineKind.CONFIGURATION), eq(AHORA), eq(AHORA.plusDays(1)));
                 verifyNoInteractions(gatewayCharger);
             }
 
@@ -210,7 +228,7 @@ class ChargeBillingDocumentServiceTest {
 
                 verify(paymentAttemptRecorderPort).record(eq(EMPRESA), eq(DOCUMENTO), isNull(),
                         eq("WOMPI"), eq(new BigDecimal("30000")), isNull(),
-                        eq(GatewayDeclineKind.CONFIGURATION), eq(AHORA), isNull());
+                        eq(GatewayDeclineKind.CONFIGURATION), eq(AHORA), eq(AHORA.plusDays(1)));
             }
 
             @Nested
@@ -293,6 +311,21 @@ class ChargeBillingDocumentServiceTest {
                     DocumentChargeDto result = service.execute(comando());
 
                     assertThat(result.outcome()).isEqualTo(DocumentChargeOutcome.NOT_CONFIGURED);
+                }
+
+                @Test
+                @DisplayName("perfil fiscal ausente durante el cobro: NOT_CONFIGURED y anota"
+                        + " CONFIGURATION (UX-05)")
+                void perfil_fiscal_ausente() {
+                    when(gatewayCharger.charge(any(), any(), any(), any(), any(), any()))
+                            .thenThrow(new FiscalProfileNotConfiguredException(EMPRESA));
+
+                    DocumentChargeDto result = service.execute(comando());
+
+                    assertThat(result.outcome()).isEqualTo(DocumentChargeOutcome.NOT_CONFIGURED);
+                    verify(paymentAttemptRecorderPort).record(eq(EMPRESA), eq(DOCUMENTO), isNull(),
+                            eq("WOMPI"), eq(new BigDecimal("30000")), isNull(),
+                            eq(GatewayDeclineKind.CONFIGURATION), eq(AHORA), eq(AHORA.plusDays(1)));
                 }
             }
         }

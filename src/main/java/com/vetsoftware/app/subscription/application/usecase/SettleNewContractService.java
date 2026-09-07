@@ -88,8 +88,27 @@ public class SettleNewContractService implements SettleNewContractUseCase {
             return;
         }
 
-        changeStatusUseCase.execute(new ChangeSubscriptionStatusCommand(subscription.getId(),
-                command.companyId(), SubscriptionStatus.ACTIVE,
-                SubscriptionStatusChangeReason.PAYMENT_RECEIVED, ACTOR));
+        activate(command, subscription, outcome);
+    }
+
+    /**
+     * El dinero ya salio de la tarjeta del cliente. Si la activacion falla aqui, el
+     * contrato queda cobrado y sin servicio -un caso muy distinto de un cobro
+     * rechazado, que no puede acabar en el mismo {@code WARN} que el llamador usa
+     * para «no se pudo liquidar»: hace falta el {@link Throwable} completo y los
+     * datos para encontrar la fila a mano.
+     */
+    private void activate(SettleNewContractCommand command, Subscription subscription,
+            ContractPaymentOutcome outcome) {
+        try {
+            changeStatusUseCase.execute(new ChangeSubscriptionStatusCommand(subscription.getId(),
+                    command.companyId(), SubscriptionStatus.ACTIVE,
+                    SubscriptionStatusChangeReason.PAYMENT_RECEIVED, ACTOR));
+        } catch (RuntimeException exception) {
+            log.error(
+                    "Cobro aprobado sin activar el contrato: empresa={} contrato={} referencia={}",
+                    command.companyId(), subscription.getSubscriptionNumber(), outcome.reference(),
+                    exception);
+        }
     }
 }

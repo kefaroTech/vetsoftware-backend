@@ -84,6 +84,64 @@ convierte ese fallo silencioso en un CI rojo para los seis vocabularios nuevos: 
 a `ChargeType`, `IssueStatus`, `PaymentMethod`, `ApplicationSourceKind`, `SubscriptionStatus` o
 `Trigger` sin tocar la lista blanca rompe el build.
 
+## La cadena de cobro Wompi (#606 seguimiento, #765, #767, #764)
+
+Cuatro series nuevas, con el mismo criterio de conteo absoluto que el resto del bloque de dinero
+de suscripciones (`docs/SLO_VETSOFTWARE.md` §1) y la misma prohibición de `companyId` como
+etiqueta. Alertas en `docker/prometheus-platform-alerts.yml` (grupo `vetsoftware-payments`),
+runbooks en `docs/ALERTAS_STACK_LOCAL.md`.
+
+| Métrica | Tipo | Etiquetas de baja cardinalidad | Qué responde |
+|---|---|---|---|
+| `vetsoftware.business.payment.gateway.webhook.events` | Contador | `outcome` (6, cerrado por `GatewayWebhookOutcome`) | ¿Cuántos webhooks de Wompi se aplicaron, ignoraron o rechazaron, y por qué? |
+| `vetsoftware.business.payment.gateway.charge.outcomes` | Contador | `payment.outcome` (approved/pending/declined) · `decline.kind` (soft/hard/configuration/none) | ¿Cuántos intentos reales contra Wompi se aprobaron o rechazaron, y por qué causa? |
+| `vetsoftware.business.subscription.payments.pending.aged` | Gauge | — | ¿Hay algún pago `PENDING` de pasarela atascado hace más de una hora? |
+| `vetsoftware.business.payment.attempt.retry.queue.size` | Gauge | — | ¿Cuántos intentos de cobro tienen reintento programado a futuro? |
+| `vetsoftware.business.payment.gateway.collection.failures` | Contador | `failure.kind` (transient/deterministic/budget_exhausted) | ¿Por qué fallaron los candidatos del barrido de cobranza y del de conciliación? |
+
+**`payment.gateway.collection.failures` distingue las tres poblaciones que antes compartían un
+único `failures++` en `RunPaymentCollectionService` y en `ReconcilePendingPaymentsService`**:
+`transient` es un fallo aislado de Wompi (reintenta solo al día siguiente), `budget_exhausted` es
+el desenlace esperado cuando se agotó la ventana de reintentos imputables, y `deterministic` es
+cualquier otra `RuntimeException` — el `catch` genérico de ambos servicios, que hoy captura sobre
+todo configuración de empresa incompleta y candidatos con datos inesperados de la pasarela.
+`failure.kind="deterministic"` sostenido en el tiempo no se cura con un reintento: hace falta que
+alguien intervenga.
+
+**`payment.gateway.webhook.events` sustituye a los dos contadores que proponía #767**
+(`webhook.rejected` / `webhook.discarded`, uno por causa de descarte). Un único contador con el
+enum completo de `processing_outcome` como etiqueta cubre las mismas dos causas —
+`rejected_checksum` y `payment_not_found`— y además los otros cuatro desenlaces, sin abrir un
+segundo nombre de métrica para el mismo concepto.
+
+**Solo los intentos reales entran en `charge.outcomes`.** `GatewayOutcomeSettler.settle` y
+`GatewayCharger.charge` son los dos únicos puntos que ven un desenlace final o un `PENDING` tras
+sondear; las omisiones anteriores a la pasarela (`SKIPPED_*`, `NOT_CONFIGURED`,
+`NO_PAYMENT_METHOD`) no la tocan a propósito — no fallaron el cobro, nunca llegaron a intentarlo,
+y contarlas junto a un rechazo real diluiría la tasa de la alerta.
+
+**Los dos gauges se cachean 60 s** en `PaymentGatewayGaugeMetrics`
+(`paymentgateway/infrastructure/observability`), para que subir la frecuencia de scrape no
+multiplique la carga SQL — mismo motivo que `BusinessGaugeMetrics`, resuelto aquí con un caché
+perezoso por gauge en vez de un `@Scheduled` propio.
+
+**Lo que quedó fuera, con su motivo:**
+
+- **Un 5xx de Wompi como serie de alerta.** `http_client_requests` (Spring Boot, cliente
+  `RestClient` de `WompiHttpConfig`) ya existe y está en vivo en Grafana Cloud, pero el valor real
+  que tomará `client_name` para Wompi no se pudo confirmar: en dev no hay tráfico contra Wompi
+  todavía (`client_name` solo trae `api.resend.com` y `www.google.com`). Escribir la alerta con un
+  valor sin confirmar es el defecto que este documento denuncia en otros sitios — una serie que
+  "se ve configurada" y nunca dispara.
+- **Atributos de span en `GatewayOutcomeSettler` y `GatewayCharger`.** Los dos quedaron acotados a
+  añadir la llamada al puerto de métricas y nada más, para no ampliar el radio de un cambio que
+  comparten `ChargeBillingDocumentService` (cobro recurrente, tocado en paralelo por otra rodaja) y
+  el resto de llamadores. `payment.outcome` / `payment.gateway` / `gateway.reference` sí se
+  publican desde `ChargeContractFirstPeriodService.execute` (primer periodo) y
+  `ProcessWompiEventService.execute` (webhook) vía `ObservationRegistry.getCurrentObservation()`,
+  el mismo mecanismo que ya usa `ScheduledJobTelemetry`. El cobro recurrente
+  (`ChargeBillingDocumentService`) queda sin esos atributos hasta que se toque esa clase.
+
 ## Latencias de lectura que NO se publican
 
 `ReadObservationMeterFilter` deniega el medidor de **diecinueve observaciones de lectura** del bloque de

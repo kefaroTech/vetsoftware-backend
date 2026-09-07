@@ -57,6 +57,8 @@ class PaymentAttemptPersistenceIT extends AbstractDataJpaTest {
 
     @Autowired
     private JpaPaymentAttemptRepository repository;
+    @Autowired
+    private PaymentAttemptJpaRepository jpaRepository;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -306,12 +308,17 @@ class PaymentAttemptPersistenceIT extends AbstractDataJpaTest {
     class RestriccionesDelMotor {
 
         @Test
-        @DisplayName("un rechazo duro con reintento programado lo para chk_payment_attempts_hard_has_no_retry")
-        void un_rechazo_duro_con_reintento_lo_para_el_check() {
-            // El dominio ya lo impide, asi que la unica forma de comprobar que la base
-            // tambien lo cuida es escribir la fila cruda.
-            EngineConstraint.assertViolates("chk_payment_attempts_hard_has_no_retry",
-                    () -> insertarIntentoCrudo(1, "HARD", "lost_card", AHORA, AHORA.plusDays(2)));
+        @DisplayName("un rechazo duro con reintento programado ya se persiste: RES-45 retiro la restriccion del motor")
+        void un_rechazo_duro_con_reintento_se_persiste() {
+            PaymentAttempt duro = repository.save(intento(1, DeclineKind.HARD, AHORA, null));
+
+            duro.reschedule(AHORA.plusDays(2));
+            repository.save(duro);
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(repository.findByIdAndCompanyId(duro.getId(), SchemaSeed.COMPANY_ID)).get()
+                    .extracting(PaymentAttempt::getNextAttemptAt).isEqualTo(AHORA.plusDays(2));
         }
 
         @Test
@@ -354,6 +361,23 @@ class PaymentAttemptPersistenceIT extends AbstractDataJpaTest {
             assertThat(repository.findAllDueForRetry(AHORA, 0, 20).content())
                     .extracting(PaymentAttempt::getId)
                     .containsExactly(vencidoPronto.getId(), vencidoTarde.getId());
+        }
+
+        @Test
+        @DisplayName("un documento anulado con saldo no vuelve a la cola de reintentos")
+        void un_documento_anulado_no_vuelve_a_la_cola() {
+            // El documento nace DRAFT en el seed y con saldo entero: voidDocument()
+            // solo exige que la factura externa no exista todavia, no saldo cero.
+            entityManager
+                    .createNativeQuery(
+                            "update subscription_billing_documents set issue_status = 'VOIDED' "
+                                    + "where id = :id")
+                    .setParameter("id", DOCUMENTO).executeUpdate();
+            repository.save(intento(1, DeclineKind.SOFT, AHORA.minusDays(2), AHORA.minusHours(1)));
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(repository.findAllDueForRetry(AHORA, 0, 20).content()).isEmpty();
         }
 
         @Test
@@ -406,6 +430,141 @@ class PaymentAttemptPersistenceIT extends AbstractDataJpaTest {
                     .isPresent();
             assertThat(repository.findByIdAndCompanyId(propio.getId(), SchemaSeed.OTRA_COMPANY_ID))
                     .isEmpty();
+        }
+
+        @Test
+        @DisplayName("el tamano de la cola de reintentos (#765) cuenta lo programado a futuro de"
+                + " todas las empresas, sin exigir que ya haya vencido")
+        void cuenta_la_cola_de_reintentos_a_futuro() {
+            repository.save(intento(1, DeclineKind.SOFT, AHORA.minusDays(5), AHORA.plusHours(1)));
+            repository.save(intentoDe(SchemaSeed.OTRA_COMPANY_ID, DOCUMENTO_AJENO, 1,
+                    DeclineKind.SOFT, AHORA.minusDays(6), AHORA.plusDays(2)));
+            repository.save(intentoDe(SchemaSeed.COMPANY_ID, OTRO_DOCUMENTO, 1, DeclineKind.HARD,
+                    AHORA.minusDays(3), null));
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(jpaRepository.countByNextAttemptAtGreaterThan(AHORA)).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("un documento con pago PENDING aplicado no vuelve a la cola (RES2-35)")
+        void un_documento_con_pago_pending_no_vuelve_a_la_cola() {
+            repository.save(intento(1, DeclineKind.SOFT, AHORA.minusDays(2), AHORA.minusHours(1)));
+            pago(9500L, "PENDING");
+            aplicacionDePago(9600L, DOCUMENTO, 9500L);
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(repository.findAllDueForRetry(AHORA, 0, 20).content()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("un pago REFUNDED aplicado al documento tampoco lo reabre (RES2-35)")
+        void un_documento_con_pago_refunded_no_vuelve_a_la_cola() {
+            repository.save(intento(1, DeclineKind.SOFT, AHORA.minusDays(2), AHORA.minusHours(1)));
+            pago(9501L, "REFUNDED");
+            aplicacionDePago(9601L, DOCUMENTO, 9501L);
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(repository.findAllDueForRetry(AHORA, 0, 20).content()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("un pago CONFIRMED no excluye por si mismo: el intento sigue en la cola")
+        void un_documento_con_pago_confirmed_sigue_en_la_cola() {
+            PaymentAttempt vencido = repository
+                    .save(intento(1, DeclineKind.SOFT, AHORA.minusDays(2), AHORA.minusHours(1)));
+            pago(9502L, "CONFIRMED");
+            aplicacionDePago(9602L, DOCUMENTO, 9502L);
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(repository.findAllDueForRetry(AHORA, 0, 20).content())
+                    .extracting(PaymentAttempt::getId).containsExactly(vencido.getId());
+        }
+
+        @Test
+        @DisplayName("un contrato CANCELLED no ofrece sus documentos a la cola de reintentos")
+        void un_contrato_cancelled_no_ofrece_documentos() {
+            repository.save(intento(1, DeclineKind.SOFT, AHORA.minusDays(2), AHORA.minusHours(1)));
+            cambiarEstadoSuscripcion("CANCELLED", SchemaSeed.SUBSCRIPTION_ID);
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(repository.findAllDueForRetry(AHORA, 0, 20).content()).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("Último intento por clase de rechazo (RES-45)")
+    class UltimoIntentoPorClaseDeRechazo {
+
+        @Test
+        @DisplayName("trae el ultimo intento CONFIGURATION de un documento con saldo")
+        void trae_el_ultimo_intento_configuration_con_saldo() {
+            repository.save(intento(1, DeclineKind.SOFT, AHORA.minusDays(5), null));
+            PaymentAttempt ultimo = repository
+                    .save(intento(2, DeclineKind.CONFIGURATION, AHORA.minusDays(1), null));
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(jpaRepository.findLastAttemptsByCompanyIdAndDeclineKind(
+                    SchemaSeed.COMPANY_ID, DeclineKind.CONFIGURATION))
+                    .extracting(PaymentAttemptJpaEntity::getId).containsExactly(ultimo.getId());
+        }
+
+        @Test
+        @DisplayName("no trae un HARD superado por un CONFIGURATION mas reciente")
+        void no_trae_un_hard_superado() {
+            repository.save(intento(1, DeclineKind.HARD, AHORA.minusDays(3), null));
+            repository.save(intento(2, DeclineKind.CONFIGURATION, AHORA.minusDays(1), null));
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(jpaRepository.findLastAttemptsByCompanyIdAndDeclineKind(
+                    SchemaSeed.COMPANY_ID, DeclineKind.HARD)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("un documento sin saldo o anulado no se ofrece para reactivar")
+        void un_documento_sin_saldo_o_anulado_no_se_ofrece() {
+            repository.save(intento(1, DeclineKind.HARD, AHORA.minusDays(3), null));
+            entityManager
+                    .createNativeQuery(
+                            "update subscription_billing_documents set issue_status = 'VOIDED' "
+                                    + "where id = :id")
+                    .setParameter("id", DOCUMENTO).executeUpdate();
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(jpaRepository.findLastAttemptsByCompanyIdAndDeclineKind(
+                    SchemaSeed.COMPANY_ID, DeclineKind.HARD)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("la empresa acota: un HARD de otra empresa no aparece")
+        void la_empresa_acota() {
+            repository.save(intentoDe(SchemaSeed.OTRA_COMPANY_ID, DOCUMENTO_AJENO, 1,
+                    DeclineKind.HARD, AHORA.minusDays(3), null));
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(jpaRepository.findLastAttemptsByCompanyIdAndDeclineKind(
+                    SchemaSeed.COMPANY_ID, DeclineKind.HARD)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("un contrato CANCELLED no ofrece sus documentos para reactivar (RES2-10)")
+        void un_contrato_cancelled_no_se_ofrece_para_reactivar() {
+            repository.save(intento(1, DeclineKind.HARD, AHORA.minusDays(3), null));
+            cambiarEstadoSuscripcion("CANCELLED", SchemaSeed.SUBSCRIPTION_ID);
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(jpaRepository.findLastAttemptsByCompanyIdAndDeclineKind(
+                    SchemaSeed.COMPANY_ID, DeclineKind.HARD)).isEmpty();
         }
     }
 
@@ -462,6 +621,37 @@ class PaymentAttemptPersistenceIT extends AbstractDataJpaTest {
                 """).setParameter("id", id).setParameter("numero", numero)
                 .setParameter("companyId", companyId).setParameter("subscriptionId", subscriptionId)
                 .setParameter("inicio", inicio).setParameter("fin", fin).executeUpdate();
+    }
+
+    private void cambiarEstadoSuscripcion(String estado, Long subscriptionId) {
+        entityManager.createNativeQuery("update subscriptions set status = :estado where id = :id")
+                .setParameter("estado", estado).setParameter("id", subscriptionId).executeUpdate();
+    }
+
+    private void pago(Long id, String estado) {
+        entityManager.createNativeQuery("""
+                INSERT INTO subscription_payments (id, company_id, amount, currency,
+                                                   payment_method, gateway, gateway_reference,
+                                                   received_at, status, reconciled_at,
+                                                   client_request_id, created_date, version)
+                VALUES (:id, :companyId, 119000.00, 'COP', 'TRANSFER', NULL, NULL,
+                        '2026-03-05 09:00:00', :estado, NULL, NULL, NOW(), 0)
+                """).setParameter("id", id).setParameter("companyId", SchemaSeed.COMPANY_ID)
+                .setParameter("estado", estado).executeUpdate();
+    }
+
+    private void aplicacionDePago(Long id, Long documentoId, Long pagoId) {
+        entityManager.createNativeQuery("""
+                INSERT INTO billing_document_applications (id, company_id, target_document_id,
+                                                           source_kind, payment_id,
+                                                           source_document_id, applied_amount,
+                                                           reversal_of_id, applied_at, value_date,
+                                                           client_request_id, created_date)
+                VALUES (:id, :companyId, :documentoId, 'PAYMENT', :pagoId, NULL, 119000.00,
+                        NULL, '2026-03-05 09:30:00', '2026-03-05', NULL, NOW())
+                """).setParameter("id", id).setParameter("companyId", SchemaSeed.COMPANY_ID)
+                .setParameter("documentoId", documentoId).setParameter("pagoId", pagoId)
+                .executeUpdate();
     }
 
     /**

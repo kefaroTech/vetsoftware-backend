@@ -67,6 +67,7 @@ public class RegisterSubscriptionPaymentService implements RegisterSubscriptionP
         // un reintento no es un pago nuevo, y contarlo duplicaria la plata que entro.
         metrics.paymentRegistered(saved.getPaymentMethod(), saved.getStatus());
         audit.paymentRegistered(saved.getId(), saved.getPaymentMethod(), saved.getAmount(),
+                saved.getCurrency(), saved.getGateway(), saved.getGatewayReference(),
                 saved.getStatus());
         return SubscriptionPaymentDto.from(saved);
     }

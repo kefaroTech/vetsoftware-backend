@@ -18,6 +18,11 @@ public class SubscriptionPaymentJpaMapper {
         entity.setReceivedAt(payment.getReceivedAt());
         entity.setStatus(payment.getStatus());
         entity.setReconciledAt(payment.getReconciledAt());
+        entity.setFeeAmount(payment.getFeeAmount());
+        entity.setNetAmount(payment.getNetAmount());
+        entity.setSettlementReference(payment.getSettlementReference());
+        entity.setSettledOn(payment.getSettledOn());
+        entity.setRefundedAmount(payment.getRefundedAmount());
         entity.setClientRequestId(payment.getClientRequestId());
         entity.setCreatedDate(payment.getCreatedDate());
         entity.setVersion(payment.getVersion());
@@ -28,7 +33,8 @@ public class SubscriptionPaymentJpaMapper {
         return new SubscriptionPayment(entity.getId(), entity.getCompanyId(), entity.getAmount(),
                 entity.getCurrency(), entity.getPaymentMethod(), entity.getGateway(),
                 entity.getGatewayReference(), entity.getReceivedAt(), entity.getStatus(),
-                entity.getReconciledAt(), entity.getClientRequestId(), entity.getCreatedDate(),
-                entity.getVersion());
+                entity.getReconciledAt(), entity.getFeeAmount(), entity.getNetAmount(),
+                entity.getSettlementReference(), entity.getSettledOn(), entity.getRefundedAmount(),
+                entity.getClientRequestId(), entity.getCreatedDate(), entity.getVersion());
     }
 }

@@ -1,14 +1,18 @@
 package com.vetsoftware.app.subscriptionpayment.infrastructure.web;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.subscriptionpayment.application.dto.SubscriptionPaymentDto;
+import com.vetsoftware.app.subscriptionpayment.application.port.in.ExportSubscriptionPaymentsUseCase;
 import com.vetsoftware.app.subscriptionpayment.application.port.in.ListAllSubscriptionPaymentsUseCase;
+import com.vetsoftware.app.subscriptionpayment.application.query.ListAllSubscriptionPaymentsQuery;
 import com.vetsoftware.app.subscriptionpayment.testsupport.SubscriptionPaymentMother;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.util.List;
@@ -31,13 +35,16 @@ class SystemSubscriptionPaymentControllerTest {
     private MockMvc mockMvc;
     @MockitoBean
     private ListAllSubscriptionPaymentsUseCase listUseCase;
+    @MockitoBean
+    private ExportSubscriptionPaymentsUseCase exportUseCase;
 
     @Test
     @DisplayName("expone companyId y propaga filtro y pagina")
     void expone_company_id_y_paginacion() throws Exception {
         SubscriptionPaymentDto payment = SubscriptionPaymentDto
                 .from(SubscriptionPaymentMother.pagoPendiente());
-        when(listUseCase.listAll(SubscriptionPaymentMother.EMPRESA, 2, 5))
+        when(listUseCase.listAll(new ListAllSubscriptionPaymentsQuery(
+                SubscriptionPaymentMother.EMPRESA, null, null, null, null, 2, 5)))
                 .thenReturn(PageResult.of(List.of(payment), 2, 5, 11));
 
         mockMvc.perform(get("/system/subscription-payments")
@@ -49,6 +56,34 @@ class SystemSubscriptionPaymentControllerTest {
                 .andExpect(jsonPath("$.page").value(2)).andExpect(jsonPath("$.pageSize").value(5))
                 .andExpect(jsonPath("$.totalElements").value(11));
 
-        verify(listUseCase).listAll(SubscriptionPaymentMother.EMPRESA, 2, 5);
+        verify(listUseCase).listAll(new ListAllSubscriptionPaymentsQuery(
+                SubscriptionPaymentMother.EMPRESA, null, null, null, null, 2, 5));
+    }
+
+    @Test
+    @DisplayName("propaga pendingOlderThanMinutes")
+    void propaga_pending_older_than_minutes() throws Exception {
+        when(listUseCase.listAll(any())).thenReturn(PageResult.empty(0, 20));
+
+        mockMvc.perform(get("/system/subscription-payments").param("pendingOlderThanMinutes", "30"))
+                .andExpect(status().isOk());
+
+        verify(listUseCase)
+                .listAll(new ListAllSubscriptionPaymentsQuery(null, null, null, null, 30, 0, 20));
+    }
+
+    @Test
+    @DisplayName("export devuelve un CSV descargable")
+    void export_devuelve_csv() throws Exception {
+        SubscriptionPaymentDto payment = SubscriptionPaymentDto
+                .from(SubscriptionPaymentMother.pagoConfirmado("500000.00"));
+        when(exportUseCase.export(any())).thenReturn(List.of(payment));
+
+        mockMvc.perform(get("/system/subscription-payments/export").param("companyId",
+                SubscriptionPaymentMother.EMPRESA.toString())).andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/csv"));
+
+        verify(exportUseCase).export(new ListAllSubscriptionPaymentsQuery(
+                SubscriptionPaymentMother.EMPRESA, null, null, null, null, 0, 0));
     }
 }

@@ -83,6 +83,38 @@ public final class BusinessMetricNames {
     public static final String SUBSCRIPTION_ENTITLEMENT_RECALCULATIONS = PREFIX
             + "subscription.entitlement.recalculations";
 
+    // ── Cadena de cobro Wompi (#767, #765) ───────────────────────────────────────
+    //
+    // El webhook y los intentos de cobro son la mitad operativa del mismo bloque
+    // de dinero de #606: mismo criterio de conteo absoluto (SLO_VETSOFTWARE.md
+    // §1) y misma prohibicion de companyId como etiqueta.
+
+    /** Webhooks de Wompi procesados, por desenlace (processing_outcome). */
+    public static final String PAYMENT_GATEWAY_WEBHOOK_EVENTS = PREFIX
+            + "payment.gateway.webhook.events";
+
+    /** Intentos reales de cobro contra Wompi resueltos, por desenlace y causa. */
+    public static final String PAYMENT_GATEWAY_CHARGE_OUTCOMES = PREFIX
+            + "payment.gateway.charge.outcomes";
+
+    /** Pagos PENDING de pasarela con mas de una hora sin resolverse. Gauge. */
+    public static final String SUBSCRIPTION_PAYMENTS_PENDING_AGED = PREFIX
+            + "subscription.payments.pending.aged";
+
+    /** Intentos de cobro con reintento programado a futuro. Gauge. */
+    public static final String PAYMENT_ATTEMPT_RETRY_QUEUE_SIZE = PREFIX
+            + "payment.attempt.retry.queue.size";
+
+    /**
+     * Candidatos de cobranza o conciliación que fallaron, por causa. Cuenta
+     * absoluta y no tasa: un {@code failure.kind="deterministic"} sostenido
+     * significa que una empresa concreta no cobrará nunca hasta que alguien corrija
+     * su configuración, y eso no lo distingue ningún nivel de log agregado por
+     * texto.
+     */
+    public static final String PAYMENT_GATEWAY_COLLECTION_FAILURES = PREFIX
+            + "payment.gateway.collection.failures";
+
     // Alta de superadministradores de plataforma por invitacion (#360). El
     // prefijo dice "business" y esto es administracion de plataforma: es el
     // precio de heredar la lista blanca de cardinalidad, que solo actua dentro

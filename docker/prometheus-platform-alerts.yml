@@ -552,3 +552,95 @@ groups:
           summary: "Más de una réplica está ejecutando el barrido {{ $labels.job_name }}"
           description: "Ese barrido recorre su tabla con un cursor y no arbitra nada entre réplicas: dos procesos con el mismo cron procesan el mismo lote y duplican su efecto —cargos emitidos dos veces, degradaciones repetidas—. O se vuelve a una sola tarea, o hay que implementar el candado distribuido antes del siguiente cierre de mes."
           runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarescheduledjobmultiplereplicas"
+
+  # ───────────────────── Cadena de cobro Wompi (#768) ─────────────────────
+  #
+  # Mismo criterio de conteo absoluto y umbral de tasa que el resto del bloque de dinero de
+  # suscripciones (SLO_VETSOFTWARE.md §1): volumen del orden de cientos de eventos al mes, así
+  # que un SLO por tasa sobre 5 minutos sería estadísticamente vacío. "PaymentCollectionJob sin
+  # ejecutar tras las 05:30" no lleva regla propia: VetSoftwareScheduledJobOverdue ya lo cubre
+  # de forma genérica por job_name="payment.collection" (cron 05:10 + margen del 25 %).
+  #
+  # La cuarta pregunta del encargo -5xx de Wompi- queda deliberadamente fuera: http_client_requests
+  # existe y ya está en vivo en Grafana Cloud (comprobado, MCP), pero client_name solo tiene
+  # api.resend.com y www.google.com hasta hoy -Wompi no ha recibido tráfico en dev-. Escribir la
+  # regla con un valor de client_name sin confirmar es precisamente el defecto que este bloque
+  # vigila en el resto del sistema: una alerta que "se ve configurada" y nunca dispara. Queda
+  # como issue abierto para confirmar el valor real de client_name en el primer cobro de prueba.
+  - name: vetsoftware-payments
+    interval: 30s
+    rules:
+      - alert: VetSoftwareSubscriptionPaymentPendingAged
+        expr: vetsoftware_business_subscription_payments_pending_aged{job="vetsoftware"} > 0
+        for: 15m
+        labels:
+          severity: warning
+          domain: billing
+          service: vetsoftware
+        annotations:
+          summary: "Hay al menos un pago PENDING de pasarela sin resolver hace más de una hora"
+          description: "Wompi puede haber dejado de notificar el desenlace, o el webhook se perdió. El pago sigue PENDING y no se sabe si cobrar de nuevo duplicaría el cargo."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwaresubscriptionpaymentpendingaged"
+
+      - alert: VetSoftwarePaymentGatewayChecksumRejectedRepeated
+        expr: increase(vetsoftware_business_payment_gateway_webhook_events_total{job="vetsoftware",outcome="rejected_checksum"}[15m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          domain: billing
+          service: vetsoftware
+        annotations:
+          summary: "Varios webhooks de Wompi seguidos fallan el checksum"
+          description: "Más de 3 webhooks con checksum inválido en 15 minutos (no confundir con REJECTED_STALE, un evento autenticado fuera de ventana de frescura: #789). Puede ser un secreto de integridad mal rotado en producción, o un intento de forjar webhooks (#767)."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarepaymentgatewaychecksumrejectedrepeated"
+
+      # Conteo absoluto y no tasa (#767): un evento perdido por "transaccion sin pago conocido"
+      # no deja ningun otro rastro persistente, y a este volumen la afirmacion es "esto deberia
+      # ser cero", igual que VetSoftwareDianBacklogOlderThanOneHour.
+      - alert: VetSoftwarePaymentGatewayPaymentNotFound
+        expr: increase(vetsoftware_business_payment_gateway_webhook_events_total{job="vetsoftware",outcome="payment_not_found"}[24h]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          domain: billing
+          service: vetsoftware
+        annotations:
+          summary: "Un webhook de Wompi llegó para una transacción sin pago conocido"
+          description: "Puede ser una condición de carrera entre el alta síncrona del pago y la llegada del webhook, o un evento fuera de orden. El evento no queda perdido -se persiste en gateway_webhook_events- pero nadie liquidó el pago que Wompi cree haber resuelto."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarepaymentgatewaypaymentnotfound"
+
+      - alert: VetSoftwarePaymentGatewayDeclineRateHigh
+        expr: |
+          (
+            sum(increase(vetsoftware_business_payment_gateway_charge_outcomes_total{job="vetsoftware",payment_outcome="declined"}[1h]))
+            /
+            clamp_min(sum(increase(vetsoftware_business_payment_gateway_charge_outcomes_total{job="vetsoftware"}[1h])), 1)
+          ) > 0.3
+          and
+          sum(increase(vetsoftware_business_payment_gateway_charge_outcomes_total{job="vetsoftware"}[1h])) >= 10
+        for: 15m
+        labels:
+          severity: warning
+          domain: billing
+          service: vetsoftware
+        annotations:
+          summary: "La tasa de rechazo de cobros contra Wompi supera el 30 %"
+          description: "Al menos 10 intentos reales de cobro ocurrieron en la última hora y más del 30 % se rechazó. Si decline_kind es mayoritariamente configuration o hard, es sistémico y no una ráfaga de tarjetas sin fondos."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarepaymentgatewaydeclineratehigh"
+
+      # Conteo absoluto sobre una ventana de 24h y ademas sostenido 30 minutos: un unico fallo
+      # determinista no dispara nada -puede ser un dato suelto-, pero dos o mas en el mismo dia
+      # (entre el barrido diario de cobranza y los doce de conciliacion) apuntan a la misma causa
+      # sin curarse sola: una empresa sin perfil fiscal vigente, o un candidato con un estado que
+      # la pasarela no reconoce.
+      - alert: VetSoftwarePaymentGatewayDeterministicFailuresSustained
+        expr: increase(vetsoftware_business_payment_gateway_collection_failures_total{job="vetsoftware",failure_kind="deterministic"}[24h]) >= 2
+        for: 30m
+        labels:
+          severity: warning
+          domain: billing
+          service: vetsoftware
+        annotations:
+          summary: "El barrido de cobranza o de conciliación acumula fallos deterministas"
+          description: "Al menos dos candidatos fallaron con failure_kind=\"deterministic\" en las últimas 24 horas. Ninguno de los dos jobs lo recupera solo: hace falta completar la configuración de la empresa afectada o revisar el dato del candidato."
+          runbook: "docs/ALERTAS_STACK_LOCAL.md#vetsoftwarepaymentgatewaydeterministicfailuressustained"

@@ -15,11 +15,13 @@ import com.vetsoftware.app.paymentrefund.application.port.out.BillingDocumentVal
 import com.vetsoftware.app.paymentrefund.application.port.out.PaymentRefundRepository;
 import com.vetsoftware.app.paymentrefund.application.port.out.SubscriptionPaymentQueryPort;
 import com.vetsoftware.app.paymentrefund.application.port.out.SystemUserValidationPort;
+import com.vetsoftware.app.paymentrefund.application.port.out.WithdrawalDeadlinePort;
 import com.vetsoftware.app.paymentrefund.domain.PaymentRefund;
 import com.vetsoftware.app.paymentrefund.domain.RefundExceedsPaymentAmountException;
 import com.vetsoftware.app.paymentrefund.domain.RefundMethod;
 import com.vetsoftware.app.paymentrefund.domain.RefundReasonCode;
 import com.vetsoftware.app.paymentrefund.domain.SubscriptionPaymentRef;
+import com.vetsoftware.app.paymentrefund.domain.WithdrawalRefundPeriodExpiredException;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -78,6 +80,8 @@ class RegisterPaymentRefundServiceTest {
     private BillingDocumentValidationPort billingDocumentValidationPort;
     @Mock
     private SystemUserValidationPort systemUserValidationPort;
+    @Mock
+    private WithdrawalDeadlinePort withdrawalDeadlinePort;
 
     private RegisterPaymentRefundService service;
 
@@ -86,7 +90,8 @@ class RegisterPaymentRefundServiceTest {
         // El Clock no es un puerto: se inyecta de verdad y fijo, para que
         // createdDate sea afirmable sin depender del reloj de la maquina.
         service = new RegisterPaymentRefundService(repository, subscriptionPaymentQueryPort,
-                billingDocumentValidationPort, systemUserValidationPort, RELOJ);
+                billingDocumentValidationPort, systemUserValidationPort, withdrawalDeadlinePort,
+                RELOJ);
     }
 
     @Nested
@@ -190,6 +195,84 @@ class RegisterPaymentRefundServiceTest {
     }
 
     @Nested
+    @DisplayName("Plazo de retracto (#784)")
+    class PlazoDeRetracto {
+
+        private static final LocalDateTime COBRO = LocalDateTime.of(2026, 3, 1, 9, 0);
+
+        /**
+         * Viernes 6 de marzo de 2026 a las 23:59:59.999999999: el ultimo instante del
+         * quinto dia habil desde el cobro del domingo 1, tal como lo resolveria
+         * {@code publicholiday} sin ningun festivo en el camino.
+         */
+        private static final LocalDateTime QUINTO_DIA_HABIL = LocalDateTime.of(2026, 3, 6, 23, 59,
+                59, 999_999_999);
+
+        @Test
+        @DisplayName("un retracto dentro de los cinco dias habiles del cobro se registra")
+        void retracto_dentro_del_plazo_se_registra() {
+            elPagoExisteCobradoEl(COBRO);
+            laFirmaExiste();
+            when(repository.findByCompanyIdAndClientRequestId(EMPRESA, "req-retracto-a-tiempo"))
+                    .thenReturn(Optional.empty());
+            when(repository.sumRefundedByPaymentAndCompanyId(PAGO, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
+            when(withdrawalDeadlinePort.deadlineFrom(COBRO,
+                    PaymentRefund.WITHDRAWAL_PERIOD_BUSINESS_DAYS)).thenReturn(QUINTO_DIA_HABIL);
+            when(repository.save(any())).thenAnswer(llamada -> llamada.getArgument(0));
+
+            service.execute(
+                    comandoRetracto(LocalDateTime.of(2026, 3, 5, 10, 0), "req-retracto-a-tiempo"));
+
+            verify(repository).save(any());
+        }
+
+        @Test
+        @DisplayName("un retracto despues del quinto dia habil se rechaza y no escribe nada")
+        void retracto_fuera_de_plazo_se_rechaza() {
+            elPagoExisteCobradoEl(COBRO);
+            laFirmaExiste();
+            when(repository.findByCompanyIdAndClientRequestId(EMPRESA, "req-retracto-tarde"))
+                    .thenReturn(Optional.empty());
+            when(repository.sumRefundedByPaymentAndCompanyId(PAGO, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
+            when(withdrawalDeadlinePort.deadlineFrom(COBRO,
+                    PaymentRefund.WITHDRAWAL_PERIOD_BUSINESS_DAYS)).thenReturn(QUINTO_DIA_HABIL);
+
+            assertThatThrownBy(() -> service.execute(
+                    comandoRetracto(LocalDateTime.of(2026, 3, 9, 10, 0), "req-retracto-tarde")))
+                    .isInstanceOf(WithdrawalRefundPeriodExpiredException.class);
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("un motivo distinto de WITHDRAWAL no comprueba ningun plazo ni consulta el calendario")
+        void otro_motivo_no_comprueba_plazo() {
+            elPagoExisteCobradoEl(LocalDateTime.of(2020, 1, 1, 9, 0));
+            laFirmaExiste();
+            when(repository.findByCompanyIdAndClientRequestId(EMPRESA, "req-sin-plazo"))
+                    .thenReturn(Optional.empty());
+            when(repository.sumRefundedByPaymentAndCompanyId(PAGO, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
+            when(repository.save(any())).thenAnswer(llamada -> llamada.getArgument(0));
+
+            service.execute(comando(new BigDecimal("1000.00"), "req-sin-plazo", null));
+
+            verify(repository).save(any());
+            verifyNoInteractions(withdrawalDeadlinePort);
+        }
+
+        private RegisterPaymentRefundCommand comandoRetracto(LocalDateTime refundedAt,
+                String llave) {
+            return new RegisterPaymentRefundCommand(EMPRESA, PAGO, null, new BigDecimal("1000.00"),
+                    RefundMethod.BANK_TRANSFER, "CTA-AHORROS-0099", refundedAt,
+                    refundedAt.toLocalDate(), RefundReasonCode.WITHDRAWAL,
+                    "El cliente ejerce su derecho de retracto", FIRMANTE, llave);
+        }
+    }
+
+    @Nested
     @DisplayName("Validaciones")
     class Validaciones {
 
@@ -246,9 +329,15 @@ class RegisterPaymentRefundServiceTest {
 
     // --- andamio ------------------------------------------------------------
 
+    private static final LocalDateTime COBRO_DEL_PAGO = LocalDateTime.of(2026, 3, 1, 9, 0);
+
     private void elPagoExiste() {
-        when(subscriptionPaymentQueryPort.findByIdAndCompanyId(PAGO, EMPRESA)).thenReturn(
-                Optional.of(new SubscriptionPaymentRef(PAGO, EMPRESA, IMPORTE_DEL_PAGO)));
+        elPagoExisteCobradoEl(COBRO_DEL_PAGO);
+    }
+
+    private void elPagoExisteCobradoEl(LocalDateTime receivedAt) {
+        when(subscriptionPaymentQueryPort.findByIdAndCompanyId(PAGO, EMPRESA)).thenReturn(Optional
+                .of(new SubscriptionPaymentRef(PAGO, EMPRESA, IMPORTE_DEL_PAGO, receivedAt)));
     }
 
     private void laFirmaExiste() {

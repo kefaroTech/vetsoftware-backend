@@ -7,7 +7,9 @@ import com.vetsoftware.app.paymentrefund.application.port.out.BillingDocumentVal
 import com.vetsoftware.app.paymentrefund.application.port.out.PaymentRefundRepository;
 import com.vetsoftware.app.paymentrefund.application.port.out.SubscriptionPaymentQueryPort;
 import com.vetsoftware.app.paymentrefund.application.port.out.SystemUserValidationPort;
+import com.vetsoftware.app.paymentrefund.application.port.out.WithdrawalDeadlinePort;
 import com.vetsoftware.app.paymentrefund.domain.PaymentRefund;
+import com.vetsoftware.app.paymentrefund.domain.RefundReasonCode;
 import com.vetsoftware.app.paymentrefund.domain.SubscriptionPaymentRef;
 import io.micrometer.observation.annotation.Observed;
 import java.math.BigDecimal;
@@ -45,16 +47,19 @@ public class RegisterPaymentRefundService implements RegisterPaymentRefundUseCas
     private final SubscriptionPaymentQueryPort subscriptionPaymentQueryPort;
     private final BillingDocumentValidationPort billingDocumentValidationPort;
     private final SystemUserValidationPort systemUserValidationPort;
+    private final WithdrawalDeadlinePort withdrawalDeadlinePort;
     private final Clock clock;
 
     public RegisterPaymentRefundService(PaymentRefundRepository repository,
             SubscriptionPaymentQueryPort subscriptionPaymentQueryPort,
             BillingDocumentValidationPort billingDocumentValidationPort,
-            SystemUserValidationPort systemUserValidationPort, Clock clock) {
+            SystemUserValidationPort systemUserValidationPort,
+            WithdrawalDeadlinePort withdrawalDeadlinePort, Clock clock) {
         this.repository = repository;
         this.subscriptionPaymentQueryPort = subscriptionPaymentQueryPort;
         this.billingDocumentValidationPort = billingDocumentValidationPort;
         this.systemUserValidationPort = systemUserValidationPort;
+        this.withdrawalDeadlinePort = withdrawalDeadlinePort;
         this.clock = clock;
     }
 
@@ -110,8 +115,21 @@ public class RegisterPaymentRefundService implements RegisterPaymentRefundUseCas
                 command.sourceDocumentId(), command.amount(), command.method(),
                 command.destinationReference(), command.refundedAt(), command.valueDate(),
                 command.reasonCode(), command.reason(), command.authorizedBySystemUserId(),
-                command.clientRequestId(), LocalDateTime.now(clock));
+                command.clientRequestId(), LocalDateTime.now(clock),
+                withdrawalDeadlineIfApplicable(command, payment));
         return PaymentRefundDto.from(repository.save(refund));
+    }
+
+    /**
+     * Solo un retracto tiene plazo legal: resolverlo para cualquier otro motivo
+     * seria una consulta de mas contra {@code publicholiday}.
+     */
+    private LocalDateTime withdrawalDeadlineIfApplicable(RegisterPaymentRefundCommand command,
+            SubscriptionPaymentRef payment) {
+        if (command.reasonCode() != RefundReasonCode.WITHDRAWAL)
+            return null;
+        return withdrawalDeadlinePort.deadlineFrom(payment.receivedAt(),
+                PaymentRefund.WITHDRAWAL_PERIOD_BUSINESS_DAYS);
     }
 
     /** Cubre el doble clic del operador que registra la devolucion. */

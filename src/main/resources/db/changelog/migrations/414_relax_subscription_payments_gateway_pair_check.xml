@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #776. chk_subscription_payments_gateway_pair (252, YA APLICADO — no se toca,
+         se corrige aparte) exigia gateway y gateway_reference AMBOS nulos o AMBOS no nulos.
+         El cierre de contratacion idempotente reserva el pago con gateway='WOMPI' y
+         gateway_reference=NULL ANTES de llamar a Wompi -para tener una fila que idempotencia
+         pueda encontrar si el proceso muere entre la reserva y la respuesta de la pasarela- y
+         solo asigna gateway_reference cuando Wompi responde. Ese estado intermedio,
+         gateway NOT NULL y gateway_reference NULL, es exactamente el que la regla vieja
+         rechazaba.
+
+         Se sustituye por la mitad de la regla que sigue teniendo sentido: gateway_reference
+         NUNCA viaja sin su pasarela (gateway_reference IS NULL OR gateway IS NOT NULL). La
+         mitad que se retira -gateway NOT NULL exigia gateway_reference NOT NULL- es
+         precisamente el estado de reserva que el diseño necesita poder persistir. -->
+    <changeSet id="414_relax_subscription_payments_gateway_pair_check" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE subscription_payments
+                DROP CONSTRAINT chk_subscription_payments_gateway_pair,
+                ADD CONSTRAINT chk_subscription_payments_gateway_pair
+                    CHECK (gateway_reference IS NULL OR gateway IS NOT NULL)
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE subscription_payments
+                    DROP CONSTRAINT chk_subscription_payments_gateway_pair,
+                    ADD CONSTRAINT chk_subscription_payments_gateway_pair
+                        CHECK ((gateway IS NULL AND gateway_reference IS NULL)
+                               OR (gateway IS NOT NULL AND gateway_reference IS NOT NULL))
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

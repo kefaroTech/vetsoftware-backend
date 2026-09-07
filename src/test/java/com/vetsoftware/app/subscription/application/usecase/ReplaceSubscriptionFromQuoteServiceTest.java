@@ -13,22 +13,30 @@ import com.vetsoftware.app.subscription.application.command.CreateSubscriptionCo
 import com.vetsoftware.app.subscription.application.command.ReplaceSubscriptionFromQuoteCommand;
 import com.vetsoftware.app.subscription.application.command.SubscriptionItemLineCommand;
 import com.vetsoftware.app.subscription.application.dto.InitialContractTemplate;
+import com.vetsoftware.app.subscription.application.dto.IssuedPeriodDocument;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionItemSnapshot;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionQuoteSnapshot;
 import com.vetsoftware.app.subscription.application.port.in.CreateSubscriptionUseCase;
+import com.vetsoftware.app.subscription.application.port.out.CustomerCreditGrantPort;
 import com.vetsoftware.app.subscription.application.port.out.PlatformCatalogPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionGatewayPaymentQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionLifecycleMetrics;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionOpenDocumentsQueryPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionPeriodDocumentIssuerPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionProrationCreditApplicationPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionQuoteSnapshotPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionStatusHistoryRepository;
+import com.vetsoftware.app.subscription.application.port.out.VoidSubscriptionBillingDocumentPort;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
 import com.vetsoftware.app.subscription.domain.EffectivePeriod;
 import com.vetsoftware.app.subscription.domain.ItemOrigin;
 import com.vetsoftware.app.subscription.domain.StructuralMinimumNotCarriedException;
 import com.vetsoftware.app.subscription.domain.Subscription;
+import com.vetsoftware.app.subscription.domain.SubscriptionHasPendingGatewayPaymentException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItem;
 import com.vetsoftware.app.subscription.domain.SubscriptionItemType;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
@@ -123,10 +131,30 @@ class ReplaceSubscriptionFromQuoteServiceTest {
     @Mock
     private CreateSubscriptionUseCase createSubscriptionUseCase;
 
+    @Mock
+    private SubscriptionPeriodDocumentIssuerPort documentIssuerPort;
+
+    @Mock
+    private SubscriptionGatewayPaymentQueryPort gatewayPaymentQueryPort;
+
+    @Mock
+    private CustomerCreditGrantPort customerCreditGrantPort;
+
+    @Mock
+    private SubscriptionOpenDocumentsQueryPort openDocumentsQueryPort;
+
+    @Mock
+    private VoidSubscriptionBillingDocumentPort voidDocumentPort;
+
+    @Mock
+    private SubscriptionProrationCreditApplicationPort prorationCreditApplicationPort;
+
     private ReplaceSubscriptionFromQuoteService service() {
         return new ReplaceSubscriptionFromQuoteService(quoteSnapshotPort, repository,
                 itemRepository, historyRepository, audit, metrics, platformCatalogPort,
-                createSubscriptionUseCase, RELOJ);
+                createSubscriptionUseCase, documentIssuerPort, gatewayPaymentQueryPort,
+                customerCreditGrantPort, openDocumentsQueryPort, voidDocumentPort,
+                prorationCreditApplicationPort, RELOJ);
     }
 
     // ---------------------------------------------------------------- fixtures
@@ -516,6 +544,307 @@ class ReplaceSubscriptionFromQuoteServiceTest {
             assertThat(firmado.priceListId()).isEqualTo(TARIFA);
             // El actor de la bitacora es quien acepto, no un SYSTEM generico.
             assertThat(firmado.actor()).isEqualTo("duena@clinica.com");
+        }
+    }
+
+    // -------------------------------------------------- documento del primer
+    // periodo
+
+    @Nested
+    @DisplayName("El documento del primer periodo se emite en la misma transaccion (#774)")
+    class DocumentoDelPrimerPeriodo {
+
+        @Test
+        @DisplayName("con contrato ACTIVE emite el documento del periodo que acaba de nacer")
+        void con_contrato_active_emite_el_documento() {
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(null)));
+            catalogoSinPrueba();
+            guardaElCierre();
+            devuelveContratoNuevo();
+
+            service().execute(comando());
+
+            LocalDate periodEnd = HOY.plusMonths(1).minusDays(1);
+            verify(documentIssuerPort).issueFirstPeriod(EMPRESA, null, HOY, periodEnd);
+        }
+
+        @Test
+        @DisplayName("con contrato TRIALING no emite ningun documento")
+        void con_contrato_trialing_no_emite_nada() {
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(null)));
+            when(platformCatalogPort.findInitialContractTemplate(BillingCycle.MONTHLY)).thenReturn(
+                    Optional.of(new InitialContractTemplate(TARIFA, 1L, "CORE", "Nucleo",
+                            SubscriptionItemType.MODULE, null, 0, 1, new BigDecimal("100000.00"),
+                            new BigDecimal("19.00"), TaxTreatment.TAXED, 5, 14)));
+            guardaElCierre();
+            devuelveContratoNuevo();
+
+            service().execute(comando());
+
+            verifyNoInteractions(documentIssuerPort);
+        }
+
+        @Test
+        @DisplayName("un reintento sobre el contrato ya nacido no vuelve a emitir")
+        void un_reintento_no_vuelve_a_emitir() {
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(COTIZACION)));
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+
+            service().execute(comando());
+
+            verifyNoInteractions(documentIssuerPort);
+        }
+    }
+
+    // ------------------------------------------------------- pago de pasarela
+    // pendiente
+
+    @Nested
+    @DisplayName("Un pago pendiente del contrato vigente rechaza la sustitucion (#775)")
+    class PagoPendiente {
+
+        @Test
+        @DisplayName("rechaza con 409 de dominio si el contrato vigente tiene un pago PENDING")
+        void rechaza_si_hay_un_pago_pendiente() {
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(null)));
+            when(gatewayPaymentQueryPort.existsPendingPayment(EMPRESA, CONTRATO_VIEJO))
+                    .thenReturn(true);
+
+            assertThatThrownBy(() -> service().execute(comando()))
+                    .isInstanceOf(SubscriptionHasPendingGatewayPaymentException.class);
+
+            verify(repository, never()).save(any());
+            verifyNoInteractions(createSubscriptionUseCase, customerCreditGrantPort,
+                    documentIssuerPort);
+        }
+    }
+
+    // ---------------------------------------------------- abono del tramo no
+    // consumido
+
+    @Nested
+    @DisplayName("El tramo no consumido de un contrato ya cobrado se abona (#775)")
+    class AbonoDelTramoNoConsumido {
+
+        @Test
+        @DisplayName("con el periodo en curso ya pagado, concede saldo a favor por lo prorrateado")
+        void con_el_periodo_pagado_concede_el_abono() {
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(null)));
+            when(gatewayPaymentQueryPort.isPeriodPaid(EMPRESA, CONTRATO_VIEJO, HOY.minusDays(10),
+                    HOY.plusDays(20))).thenReturn(true);
+            when(itemRepository.findAllCurrentOn(CONTRATO_VIEJO, EMPRESA, HOY))
+                    .thenReturn(List.of(lineaDeCapacidad("USER", 21L, 1, null, 5, "12000.00")));
+            catalogoSinPrueba();
+            guardaElCierre();
+            devuelveContratoNuevo();
+
+            service().execute(comando());
+
+            // recurringSubtotal = (5 - 2 incluidas) x 12000 = 36000; 21 de los 31 dias
+            // del periodo (HOY..HOY+20) quedan sin consumir: 36000 x 21 / 31 = 24387.10
+            verify(customerCreditGrantPort).grantForUnusedPeriod(EMPRESA, CONTRATO_VIEJO,
+                    new BigDecimal("24387.10"), HOY, "quote-replace-proration-" + CONTRATO_VIEJO);
+        }
+
+        @Test
+        @DisplayName("sin pago confirmado sobre el periodo anterior no concede nada")
+        void sin_periodo_pagado_no_concede_nada() {
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(null)));
+            catalogoSinPrueba();
+            guardaElCierre();
+            devuelveContratoNuevo();
+
+            service().execute(comando());
+
+            verifyNoInteractions(customerCreditGrantPort);
+        }
+    }
+
+    // ------------------------------------------ abono aplicado al primer periodo
+
+    @Nested
+    @DisplayName("El abono por prorrateo se aplica al documento del primer periodo (RES2-09)")
+    class AbonoAplicadoAlPrimerPeriodo {
+
+        @Test
+        @DisplayName("con credito concedido y documento emitido, aplica hasta el menor de los dos")
+        void aplica_hasta_el_menor_de_los_dos() {
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(null)));
+            when(gatewayPaymentQueryPort.isPeriodPaid(EMPRESA, CONTRATO_VIEJO, HOY.minusDays(10),
+                    HOY.plusDays(20))).thenReturn(true);
+            when(itemRepository.findAllCurrentOn(CONTRATO_VIEJO, EMPRESA, HOY))
+                    .thenReturn(List.of(lineaDeCapacidad("USER", 21L, 1, null, 5, "12000.00")));
+            when(customerCreditGrantPort.grantForUnusedPeriod(EMPRESA, CONTRATO_VIEJO,
+                    new BigDecimal("24387.10"), HOY, "quote-replace-proration-" + CONTRATO_VIEJO))
+                    .thenReturn(9001L);
+            catalogoSinPrueba();
+            guardaElCierre();
+            devuelveContratoNuevo();
+            when(documentIssuerPort.issueFirstPeriod(EMPRESA, null, HOY,
+                    HOY.plusMonths(1).minusDays(1)))
+                    .thenReturn(new IssuedPeriodDocument(700L, new BigDecimal("100000.00")));
+
+            service().execute(comando());
+
+            verify(prorationCreditApplicationPort).applyToDocument(EMPRESA, 700L, 9001L,
+                    new BigDecimal("24387.10"), "quote-replace-proration-apply-700");
+        }
+
+        @Test
+        @DisplayName("el credito no cubre mas de lo que el documento vale")
+        void no_cubre_mas_de_lo_que_el_documento_vale() {
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(null)));
+            when(gatewayPaymentQueryPort.isPeriodPaid(EMPRESA, CONTRATO_VIEJO, HOY.minusDays(10),
+                    HOY.plusDays(20))).thenReturn(true);
+            when(itemRepository.findAllCurrentOn(CONTRATO_VIEJO, EMPRESA, HOY))
+                    .thenReturn(List.of(lineaDeCapacidad("USER", 21L, 1, null, 5, "12000.00")));
+            when(customerCreditGrantPort.grantForUnusedPeriod(EMPRESA, CONTRATO_VIEJO,
+                    new BigDecimal("24387.10"), HOY, "quote-replace-proration-" + CONTRATO_VIEJO))
+                    .thenReturn(9001L);
+            catalogoSinPrueba();
+            guardaElCierre();
+            devuelveContratoNuevo();
+            when(documentIssuerPort.issueFirstPeriod(EMPRESA, null, HOY,
+                    HOY.plusMonths(1).minusDays(1)))
+                    .thenReturn(new IssuedPeriodDocument(700L, new BigDecimal("10000.00")));
+
+            service().execute(comando());
+
+            verify(prorationCreditApplicationPort).applyToDocument(EMPRESA, 700L, 9001L,
+                    new BigDecimal("10000.00"), "quote-replace-proration-apply-700");
+        }
+
+        @Test
+        @DisplayName("sin documento emitido no aplica nada")
+        void sin_documento_emitido_no_aplica_nada() {
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(null)));
+            when(gatewayPaymentQueryPort.isPeriodPaid(EMPRESA, CONTRATO_VIEJO, HOY.minusDays(10),
+                    HOY.plusDays(20))).thenReturn(true);
+            when(itemRepository.findAllCurrentOn(CONTRATO_VIEJO, EMPRESA, HOY))
+                    .thenReturn(List.of(lineaDeCapacidad("USER", 21L, 1, null, 5, "12000.00")));
+            when(customerCreditGrantPort.grantForUnusedPeriod(EMPRESA, CONTRATO_VIEJO,
+                    new BigDecimal("24387.10"), HOY, "quote-replace-proration-" + CONTRATO_VIEJO))
+                    .thenReturn(9001L);
+            catalogoSinPrueba();
+            guardaElCierre();
+            devuelveContratoNuevo();
+
+            service().execute(comando());
+
+            verifyNoInteractions(prorationCreditApplicationPort);
+        }
+
+        @Test
+        @DisplayName("sin credito concedido no aplica nada, aunque se emita el documento")
+        void sin_credito_no_aplica_nada() {
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(null)));
+            catalogoSinPrueba();
+            guardaElCierre();
+            devuelveContratoNuevo();
+            when(documentIssuerPort.issueFirstPeriod(EMPRESA, null, HOY,
+                    HOY.plusMonths(1).minusDays(1)))
+                    .thenReturn(new IssuedPeriodDocument(700L, new BigDecimal("100000.00")));
+
+            service().execute(comando());
+
+            verifyNoInteractions(prorationCreditApplicationPort);
+        }
+    }
+
+    // -------------------------------------------- documentos abiertos anulados
+
+    @Nested
+    @DisplayName("Los documentos abiertos del contrato anterior se anulan (RES2-10)")
+    class DocumentosAbiertosAnulados {
+
+        @Test
+        @DisplayName("anula cada documento abierto con saldo del contrato que se cierra")
+        void anula_cada_documento_abierto() {
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(null)));
+            when(openDocumentsQueryPort.findOpenDocumentIdsWithBalance(EMPRESA, CONTRATO_VIEJO))
+                    .thenReturn(List.of(600L, 601L));
+            catalogoSinPrueba();
+            guardaElCierre();
+            devuelveContratoNuevo();
+
+            service().execute(comando());
+
+            verify(voidDocumentPort).voidDocument(EMPRESA, 600L);
+            verify(voidDocumentPort).voidDocument(EMPRESA, 601L);
+        }
+
+        @Test
+        @DisplayName("sin documentos abiertos no anula nada")
+        void sin_documentos_abiertos_no_anula_nada() {
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(null)));
+            catalogoSinPrueba();
+            guardaElCierre();
+            devuelveContratoNuevo();
+
+            service().execute(comando());
+
+            verifyNoInteractions(voidDocumentPort);
+        }
+
+        @Test
+        @DisplayName("un reintento sobre el contrato ya nacido no vuelve a anular nada")
+        void un_reintento_no_vuelve_a_anular_nada() {
+            when(repository.findCurrentByCompanyId(EMPRESA))
+                    .thenReturn(Optional.of(contratoVigente(COTIZACION)));
+            when(quoteSnapshotPort.findByIdAndCompanyId(COTIZACION, EMPRESA))
+                    .thenReturn(Optional.of(ofertaAceptada(moduloAgenda(), capacidad("BRANCH", 20L),
+                            capacidad("USER", 21L))));
+
+            service().execute(comando());
+
+            verifyNoInteractions(openDocumentsQueryPort, voidDocumentPort);
         }
     }
 }

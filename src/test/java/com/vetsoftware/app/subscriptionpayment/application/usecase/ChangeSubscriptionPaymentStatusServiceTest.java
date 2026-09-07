@@ -1,6 +1,8 @@
 package com.vetsoftware.app.subscriptionpayment.application.usecase;
 
+import static com.vetsoftware.app.subscriptionpayment.testsupport.SubscriptionPaymentMother.AHORA;
 import static com.vetsoftware.app.subscriptionpayment.testsupport.SubscriptionPaymentMother.EMPRESA;
+import static com.vetsoftware.app.subscriptionpayment.testsupport.SubscriptionPaymentMother.factura;
 import static com.vetsoftware.app.subscriptionpayment.testsupport.SubscriptionPaymentMother.pagoConfirmado;
 import static com.vetsoftware.app.subscriptionpayment.testsupport.SubscriptionPaymentMother.pagoPendiente;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,10 +20,13 @@ import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocum
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentQueryPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.BillingDocumentSettlementPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.DunningReevaluationPort;
+import com.vetsoftware.app.subscriptionpayment.application.port.out.OverpaymentCreditGrantPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentAuditPort;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentMetrics;
 import com.vetsoftware.app.subscriptionpayment.application.port.out.SubscriptionPaymentRepository;
 import com.vetsoftware.app.subscriptionpayment.domain.InvalidSubscriptionPaymentStatusTransitionException;
+import com.vetsoftware.app.subscriptionpayment.domain.PaymentMethod;
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPayment;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentHasActiveApplicationsException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotFoundException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentStatus;
@@ -62,13 +67,16 @@ class ChangeSubscriptionPaymentStatusServiceTest {
     private SubscriptionPaymentMetrics metrics;
     @Mock
     private SubscriptionPaymentAuditPort audit;
+    @Mock
+    private OverpaymentCreditGrantPort overpaymentCreditGrantPort;
 
     private ChangeSubscriptionPaymentStatusService service;
 
     @BeforeEach
     void setUp() {
         service = new ChangeSubscriptionPaymentStatusService(repository, applicationRepository,
-                billingDocumentQueryPort, settlementPort, dunningReevaluationPort, metrics, audit);
+                billingDocumentQueryPort, settlementPort, dunningReevaluationPort, metrics, audit,
+                overpaymentCreditGrantPort);
     }
 
     @Nested
@@ -103,6 +111,25 @@ class ChangeSubscriptionPaymentStatusServiceTest {
 
             verify(repository, never()).save(any());
             verifyNoInteractions(settlementPort, billingDocumentQueryPort, dunningReevaluationPort);
+        }
+
+        @Test
+        @DisplayName("CONFIRMED->CONFIRMED de un pago de pasarela es idempotente bajo el candado (REG-02)")
+        void confirmado_a_confirmado_de_pasarela_es_idempotente() {
+            SubscriptionPayment pagoDePasarelaConfirmado = new SubscriptionPayment(7L, EMPRESA,
+                    new BigDecimal("500000.00"), "COP", PaymentMethod.PSE, "wompi", "TX-2026-0001",
+                    AHORA, SubscriptionPaymentStatus.CONFIRMED, null, null, null, null, null,
+                    BigDecimal.ZERO, null, AHORA, 0L);
+            when(repository.lockByIdAndCompanyId(7L, EMPRESA))
+                    .thenReturn(Optional.of(pagoDePasarelaConfirmado));
+
+            SubscriptionPaymentDto dto = service
+                    .execute(comando(SubscriptionPaymentStatus.CONFIRMED));
+
+            assertThat(dto.status()).isEqualTo(SubscriptionPaymentStatus.CONFIRMED);
+            verify(repository, never()).save(any());
+            verifyNoInteractions(settlementPort, billingDocumentQueryPort, dunningReevaluationPort,
+                    metrics, audit);
         }
 
         @Test
@@ -174,6 +201,66 @@ class ChangeSubscriptionPaymentStatusServiceTest {
 
             verify(settlementPort).recalculateSettledAmount(100L, EMPRESA);
             verify(dunningReevaluationPort).reevaluate(100L, EMPRESA);
+        }
+    }
+
+    @Nested
+    @DisplayName("Sobrepago (#785)")
+    class Sobrepago {
+
+        @Test
+        @DisplayName("el exceso entre dos pagos confirmados se concede como saldo a favor")
+        void el_exceso_se_concede_como_saldo_a_favor() {
+            when(repository.lockByIdAndCompanyId(7L, EMPRESA))
+                    .thenReturn(Optional.of(pagoPendiente()));
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(applicationRepository.findTargetDocumentIdsByPaymentId(7L, EMPRESA))
+                    .thenReturn(List.of(100L));
+            when(billingDocumentQueryPort.findByIdAndCompanyId(100L, EMPRESA))
+                    .thenReturn(Optional.of(factura()));
+            when(settlementPort.computeUncappedSettledAmount(100L, EMPRESA))
+                    .thenReturn(new BigDecimal("1500000.00"));
+
+            service.execute(comando(SubscriptionPaymentStatus.CONFIRMED));
+
+            verify(overpaymentCreditGrantPort).grantForOverpayment(EMPRESA, 7L, 100L,
+                    new BigDecimal("500000.00"));
+            verify(audit).overpaymentCredited(7L, 100L, new BigDecimal("500000.00"));
+        }
+
+        @Test
+        @DisplayName("sin exceso no concede nada")
+        void sin_exceso_no_concede_nada() {
+            when(repository.lockByIdAndCompanyId(7L, EMPRESA))
+                    .thenReturn(Optional.of(pagoPendiente()));
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(applicationRepository.findTargetDocumentIdsByPaymentId(7L, EMPRESA))
+                    .thenReturn(List.of(100L));
+            when(billingDocumentQueryPort.findByIdAndCompanyId(100L, EMPRESA))
+                    .thenReturn(Optional.of(factura()));
+            when(settlementPort.computeUncappedSettledAmount(100L, EMPRESA))
+                    .thenReturn(new BigDecimal("1000000.00"));
+
+            service.execute(comando(SubscriptionPaymentStatus.CONFIRMED));
+
+            verifyNoInteractions(overpaymentCreditGrantPort);
+        }
+
+        @Test
+        @DisplayName("devolver un pago no comprueba sobrepago: solo aplica al confirmar")
+        void devolver_no_comprueba_sobrepago() {
+            when(repository.lockByIdAndCompanyId(7L, EMPRESA))
+                    .thenReturn(Optional.of(pagoConfirmado("500000.00")));
+            when(applicationRepository.sumAppliedFromPayment(7L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(applicationRepository.findTargetDocumentIdsByPaymentId(7L, EMPRESA))
+                    .thenReturn(List.of(100L));
+
+            service.execute(comando(SubscriptionPaymentStatus.REFUNDED));
+
+            verifyNoInteractions(overpaymentCreditGrantPort);
+            verify(billingDocumentQueryPort, never()).findByIdAndCompanyId(any(), any());
         }
     }
 

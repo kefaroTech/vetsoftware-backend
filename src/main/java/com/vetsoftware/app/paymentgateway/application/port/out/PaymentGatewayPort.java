@@ -6,6 +6,7 @@ import com.vetsoftware.app.paymentgateway.domain.GatewayPaymentSource;
 import com.vetsoftware.app.paymentgateway.domain.GatewayTransaction;
 import com.vetsoftware.app.paymentgateway.domain.MerchantAcceptance;
 import java.time.Duration;
+import java.util.Optional;
 
 /**
  * La pasarela de pago. Hoy Wompi ({@code WompiGatewayClient}); un cambio de
@@ -27,6 +28,16 @@ public interface PaymentGatewayPort {
     GatewayTransaction findTransaction(String id);
 
     /**
+     * Busca la transacción por la referencia propia del comercio
+     * ({@code client_request_id}). La guía pública de Wompi solo documenta
+     * {@link #findTransaction(String)} por el {@code id} de Wompi; esta consulta
+     * usa el filtro {@code ?reference=} de {@code GET /transactions}, sin página
+     * propia en esa guía. Vacío si Wompi no tiene ninguna transacción con esa
+     * referencia.
+     */
+    Optional<GatewayTransaction> findByReference(String reference);
+
+    /**
      * La llave pública configurada. Nunca la privada: esta sí puede llegar al
      * front.
      */
@@ -42,4 +53,10 @@ public interface PaymentGatewayPort {
 
     /** Espera entre sondeos. */
     Duration statusPollInterval();
+
+    /**
+     * Cuanto puede seguir {@code PENDING} una transaccion antes de que la
+     * conciliacion la trate como estancada.
+     */
+    Duration pendingTransactionMaxAge();
 }

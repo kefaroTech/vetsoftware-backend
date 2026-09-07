@@ -5,6 +5,7 @@ import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentStatus;
 import com.vetsoftware.app.subscriptionpayment.application.dto.SubscriptionPaymentDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record SubscriptionPaymentResponse(
@@ -16,14 +17,18 @@ public record SubscriptionPaymentResponse(
         String gateway, String gatewayReference,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime receivedAt,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) SubscriptionPaymentStatus status,
-        LocalDateTime reconciledAt,
+        LocalDateTime reconciledAt, BigDecimal feeAmount, BigDecimal netAmount,
+        String settlementReference, LocalDate settledOn, BigDecimal refundedAmount,
+        String clientRequestId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean reservation,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdDate,
         Long version) {
 
     public static SubscriptionPaymentResponse from(SubscriptionPaymentDto dto) {
         return new SubscriptionPaymentResponse(dto.id(), dto.companyId(), dto.amount(),
                 dto.currency(), dto.paymentMethod(), dto.gateway(), dto.gatewayReference(),
-                dto.receivedAt(), dto.status(), dto.reconciledAt(), dto.createdDate(),
-                dto.version());
+                dto.receivedAt(), dto.status(), dto.reconciledAt(), dto.feeAmount(),
+                dto.netAmount(), dto.settlementReference(), dto.settledOn(), dto.refundedAmount(),
+                dto.clientRequestId(), dto.reservation(), dto.createdDate(), dto.version());
     }
 }

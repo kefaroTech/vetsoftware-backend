@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Issue #772: bloqueo distribuido de jobs con ShedLock, proveedor jdbc-template.
+         Esquema oficial de la libreria (org.javacrumbs.shedlock:shedlock-provider-jdbc-template,
+         JdbcTemplateStorageAccessor), no una tabla de dominio: name/lock_until/locked_at/
+         locked_by son los nombres y tipos que la libreria escribe en SQL literal dentro de sus
+         propios INSERT/UPDATE/SELECT. Por eso la PK NO sigue la convencion BIGINT AUTO_INCREMENT
+         del resto del esquema -la libreria no conoce ni consulta un id sustituto, bloquea por
+         `name`- y las columnas no llevan mas ajuste que el motor, el charset y la precision de
+         los TIMESTAMP para encajar con el resto de VetSoftware.
+
+         name/locked_by en ascii/ascii_bin, mismo criterio que los demas identificadores exactos
+         del esquema (409, 411): son nombres de lock y principals tecnicos, se comparan por
+         igualdad exacta y no admiten acentos ni busqueda insensible a mayusculas.
+
+         DATETIME(3) y no TIMESTAMP: el esquema oficial de ShedLock usa TIMESTAMP(3), pero este
+         repositorio no usa TIMESTAMP en ninguna migracion -401/410/411 usan DATETIME(N)-, y
+         TIMESTAMP en MySQL reescribe su valor con la zona horaria de la sesion, cosa que
+         DATETIME no hace. JdbcTemplateStorageAccessor compara estos dos campos con
+         `Timestamp.valueOf(Instant)` sobre UTC en ambos lados; DATETIME(3) los persiste tal cual
+         sin la conversion de zona que TIMESTAMP anadiria.
+
+         Sin company_id: es infraestructura de plataforma para coordinar jobs entre instancias
+         de la aplicacion, no un dato de ninguna empresa -mismo criterio que gateway_settlements
+         (326) y gateway_webhook_events (411)-. Sin @Entity: ShedLock la lee y escribe por JDBC
+         puro (JdbcTemplateLockProvider), nunca a traves de Hibernate, asi que no entra en
+         ENTIDADES_EXENTAS_DE_VERSION ni en ninguna regla de ArchUnit sobre @Entity -no hay
+         @Entity que exentar-. Sin created_date/version: la libreria sobrescribe la fila entera
+         en cada renovacion del lock y no hay historia que auditar. -->
+    <changeSet id="412_create_shedlock" author="orlando">
+        <createTable tableName="shedlock">
+            <column name="name" type="VARCHAR(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="lock_until" type="DATETIME(3)"><constraints nullable="false"/></column>
+            <column name="locked_at" type="DATETIME(3)"><constraints nullable="false"/></column>
+            <column name="locked_by" type="VARCHAR(255)"><constraints nullable="false"/></column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE shedlock
+                MODIFY COLUMN name VARCHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN locked_by VARCHAR(255)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL
+        ]]></sql>
+
+        <rollback>
+            <dropTable tableName="shedlock"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

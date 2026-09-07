@@ -30,6 +30,9 @@ import com.vetsoftware.app.openaccount.domain.OpenAccountVersionConflictExceptio
 import com.vetsoftware.app.openaccount.domain.OwnerAlreadyHasOpenAccountException;
 import com.vetsoftware.app.paymentgateway.domain.PaymentGatewayNotConfiguredException;
 import com.vetsoftware.app.paymentgateway.domain.WompiChecksumMismatchException;
+import com.vetsoftware.app.paymentgateway.domain.WompiMalformedEventException;
+import com.vetsoftware.app.paymentgateway.domain.WompiStaleEventException;
+import com.vetsoftware.app.paymentrefund.domain.WithdrawalRefundPeriodExpiredException;
 import com.vetsoftware.app.petshopcatalog.domain.PetshopCatalogConflictException;
 import com.vetsoftware.app.product.domain.ProductCodeAlreadyExistsException;
 import com.vetsoftware.app.product.domain.ProductNameAlreadyExistsException;
@@ -42,6 +45,10 @@ import com.vetsoftware.app.registration.domain.EmployeeCodeAlreadyExistsExceptio
 import com.vetsoftware.app.registration.domain.InvalidVerificationTokenException;
 import com.vetsoftware.app.registration.infrastructure.security.CaptchaConfigurationException;
 import com.vetsoftware.app.registration.infrastructure.security.CaptchaProviderUnavailableException;
+import com.vetsoftware.app.subscription.domain.QuoteAlreadyConvertedException;
+import com.vetsoftware.app.subscription.domain.SubscriptionHasPendingGatewayPaymentException;
+import com.vetsoftware.app.subscriptionbilling.domain.BillingDocumentHasPendingPaymentException;
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentMissingGatewayReferenceException;
 import com.vetsoftware.app.supplierinvoice.domain.InvalidSupplierInvoiceStateException;
 import com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException;
 import com.vetsoftware.app.passwordreset.domain.InvalidPasswordResetTokenException;
@@ -126,6 +133,18 @@ class GlobalExceptionHandlerUnitTest {
             assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
             assertThat(pd.getProperties()).containsEntry("code", "ENTITY_HAS_ACTIVE_CHILDREN");
             assertThat(pd.getDetail()).contains("active");
+        }
+
+        @Test
+        @DisplayName("un ano sin festivos sembrados no cae a 500: HolidayCalendarGapException es 409")
+        void un_hueco_del_calendario_de_festivos_es_conflicto() {
+            ProblemDetail pd = handler.handleCollectionConflict(
+                    new com.vetsoftware.app.publicholiday.domain.HolidayCalendarGapException(
+                            java.time.LocalDate.of(2027, 1, 1)));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties()).containsEntry("code", "HOLIDAY_CALENDAR_GAP");
+            assertThat(pd.getDetail()).contains("2027-01-01");
         }
 
         @Test
@@ -338,14 +357,81 @@ class GlobalExceptionHandlerUnitTest {
             assertThat(pd.getDetail())
                     .isEqualTo("La cuenta fue modificada por otra operación. Reintenta.");
         }
+
+        @Test
+        @DisplayName("documento de cobro con una aplicacion de pago pendiente")
+        void documento_de_cobro_con_pago_pendiente() {
+            ProblemDetail pd = handler.handleBillingDocumentHasPendingPayment(
+                    new BillingDocumentHasPendingPaymentException(11L));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties())
+                    .containsEntry("code", "BILLING_DOCUMENT_HAS_PENDING_PAYMENT")
+                    .containsEntry("billingDocumentId", 11L);
+            assertThat(pd.getDetail()).doesNotContain("has a pending")
+                    .startsWith("Este documento de cobro tiene un pago en proceso");
+        }
+
+        @Test
+        @DisplayName("cotizacion ya convertida: el id va en una propiedad, no en el mensaje")
+        void cotizacion_ya_convertida() {
+            ProblemDetail pd = handler
+                    .handleQuoteAlreadyConverted(new QuoteAlreadyConvertedException(31L));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties()).containsEntry("code", "QUOTE_ALREADY_CONVERTED")
+                    .containsEntry("quoteId", 31L);
+            assertThat(pd.getDetail()).doesNotContain("Quote already")
+                    .startsWith("Esta cotizacion ya fue aceptada");
+        }
+
+        @Test
+        @DisplayName("contrato con un cobro de pasarela pendiente: el id va en una propiedad")
+        void contrato_con_cobro_de_pasarela_pendiente() {
+            ProblemDetail pd = handler.handleSubscriptionHasPendingGatewayPayment(
+                    new SubscriptionHasPendingGatewayPaymentException(7L));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties())
+                    .containsEntry("code", "SUBSCRIPTION_HAS_PENDING_GATEWAY_PAYMENT")
+                    .containsEntry("subscriptionId", 7L);
+            assertThat(pd.getDetail()).doesNotContain("has a pending")
+                    .startsWith("Todavia hay un cobro en proceso");
+        }
+
+        @Test
+        @DisplayName("pago sin referencia de pasarela no se puede confirmar (#781)")
+        void pago_sin_referencia_de_pasarela_no_se_puede_confirmar() {
+            ProblemDetail pd = handler.handleSubscriptionPaymentMissingGatewayReference(
+                    new SubscriptionPaymentMissingGatewayReferenceException(300L));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties())
+                    .containsEntry("code", "PAYMENT_MISSING_GATEWAY_REFERENCE")
+                    .containsEntry("paymentId", 300L);
+            assertThat(pd.getDetail()).doesNotContain("300").isEqualTo(
+                    "El pago todavia no tiene una referencia de la pasarela y no puede confirmarse");
+        }
+
+        @Test
+        @DisplayName("el plazo de retracto ya vencio (#784/#796)")
+        void el_plazo_de_retracto_ya_vencio() {
+            ProblemDetail pd = handler.handleWithdrawalRefundPeriodExpired(
+                    new WithdrawalRefundPeriodExpiredException(300L,
+                            java.time.LocalDateTime.of(2026, 3, 6, 23, 59, 59)));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties()).containsEntry("code", "WITHDRAWAL_REFUND_PERIOD_EXPIRED")
+                    .containsEntry("paymentId", 300L);
+        }
     }
 
     @Nested
-    @DisplayName("pasarela de pago Wompi: los dos codigos que no cubre ningun @WebMvcTest")
+    @DisplayName("pasarela de pago Wompi: los codigos que no cubre ningun @WebMvcTest")
     class PasarelaDePagoWompi {
 
         @Test
-        @DisplayName("pasarela no configurada responde 409 con su propio codigo")
+        @DisplayName("pasarela no configurada responde 409 con su propio codigo, sin revelar la propiedad interna")
         void pasarela_no_configurada_responde_409() {
             ProblemDetail pd = handler
                     .handlePaymentGatewayNotConfigured(new PaymentGatewayNotConfiguredException(
@@ -353,7 +439,7 @@ class GlobalExceptionHandlerUnitTest {
 
             assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
             assertThat(pd.getProperties()).containsEntry("code", "PAYMENT_GATEWAY_NOT_CONFIGURED");
-            assertThat(pd.getDetail()).contains("Wompi no está habilitado");
+            assertThat(pd.getDetail()).doesNotContain("vetsoftware.payments.wompi");
         }
 
         @Test
@@ -365,6 +451,28 @@ class GlobalExceptionHandlerUnitTest {
             assertThat(pd.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
             assertThat(pd.getProperties()).containsEntry("code", "WOMPI_CHECKSUM_MISMATCH");
             assertThat(pd.getDetail()).contains("checksum");
+        }
+
+        @Test
+        @DisplayName("cuerpo del webhook malformado responde 400, sin volcar el cuerpo ni el secreto")
+        void cuerpo_malformado_responde_400() {
+            ProblemDetail pd = handler.handleWompiMalformedEvent(new WompiMalformedEventException(
+                    "No se pudo interpretar el webhook de Wompi", new RuntimeException("boom")));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+            assertThat(pd.getProperties()).containsEntry("code", "WOMPI_MALFORMED_EVENT");
+            assertThat(pd.getDetail()).doesNotContain("boom");
+        }
+
+        @Test
+        @DisplayName("evento fuera de la ventana de frescura responde 401, no 200")
+        void evento_sin_frescura_responde_401() {
+            ProblemDetail pd = handler.handleWompiStaleEvent(new WompiStaleEventException(
+                    "El webhook de Wompi llegó fuera de la ventana de frescura permitida"));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+            assertThat(pd.getProperties()).containsEntry("code", "WOMPI_STALE_EVENT");
+            assertThat(pd.getDetail()).contains("frescura");
         }
     }
 

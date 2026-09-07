@@ -702,11 +702,13 @@ public class AuditLogger {
     }
 
     public void subscriptionPaymentRegistered(Long paymentId, String paymentMethod,
-            BigDecimal amount, String toStatus) {
+            BigDecimal amount, String currency, String gateway, String gatewayReference,
+            String toStatus) {
         audit.atInfo().addKeyValue("event", "subscription_payment_registered")
                 .addKeyValue("payment.id", paymentId).addKeyValue("payment.method", paymentMethod)
-                .addKeyValue("amount", amount).addKeyValue("to.status", toStatus)
-                .addKeyValue("outcome", "SUCCESS")
+                .addKeyValue("amount", amount).addKeyValue("currency", currency)
+                .addKeyValue("gateway", gateway).addKeyValue("gateway.reference", gatewayReference)
+                .addKeyValue("to.status", toStatus).addKeyValue("outcome", "SUCCESS")
                 .log("subscription payment registered payment={} method={}", paymentId,
                         paymentMethod);
     }
@@ -715,14 +717,27 @@ public class AuditLogger {
      * Cambio de estado de un pago. {@code CONFIRMED -> REFUNDED} es plata que sale;
      * {@code PENDING -> FAILED}, plata que nunca entro y que alguien puede haber
      * dado por cobrada.
+     *
+     * <p>
+     * <strong>{@code outcome} refleja {@code toStatus} y no un literal
+     * fijo</strong>: un filtro {@code outcome=FAILURE} sobre el canal AUDIT tiene
+     * que encontrar los cobros declinados.
      */
-    public void subscriptionPaymentStatusChanged(Long paymentId, String fromStatus,
-            String toStatus) {
+    public void subscriptionPaymentStatusChanged(Long paymentId, String fromStatus, String toStatus,
+            BigDecimal amount, String currency, String gateway, String gatewayReference) {
         audit.atInfo().addKeyValue("event", "subscription_payment_status_changed")
                 .addKeyValue("payment.id", paymentId).addKeyValue("from.status", fromStatus)
-                .addKeyValue("to.status", toStatus).addKeyValue("outcome", "SUCCESS")
+                .addKeyValue("to.status", toStatus).addKeyValue("amount", amount)
+                .addKeyValue("currency", currency).addKeyValue("gateway", gateway)
+                .addKeyValue("gateway.reference", gatewayReference)
+                .addKeyValue("outcome", outcomeOf(toStatus))
                 .log("subscription payment status changed payment={} {} -> {}", paymentId,
                         fromStatus, toStatus);
+    }
+
+    /** {@code FAILED} es lo unico que representa un cobro que no llego a nada. */
+    private static String outcomeOf(String toStatus) {
+        return "FAILED".equals(toStatus) ? "FAILURE" : "SUCCESS";
     }
 
     /**
@@ -741,15 +756,61 @@ public class AuditLogger {
                         applicationId, documentId, sourceKind);
     }
 
-    /** Reverso de una imputacion: el saldo de la cuenta de cobro vuelve a subir. */
+    /**
+     * Reverso de una imputacion: el saldo de la cuenta de cobro vuelve a subir.
+     *
+     * <p>
+     * {@code change.reason} y no {@code reason}, por el mismo motivo que
+     * {@link #subscriptionDocumentVoided}: el motivo lo teclea quien revierte, asi
+     * que puede traer un correo, una cedula o un CRLF que fabrique una linea de
+     * auditoria falsa. SCANNED lo deja pasar entero cuando es texto normal y
+     * enmascara el dato personal.
+     */
     public void subscriptionApplicationReversed(Long applicationId, Long documentId,
-            BigDecimal amount) {
+            BigDecimal amount, String reason) {
         audit.atInfo().addKeyValue("event", "subscription_application_reversed")
                 .addKeyValue("application.id", applicationId)
                 .addKeyValue("billing.document.id", documentId).addKeyValue("amount", amount)
-                .addKeyValue("outcome", "SUCCESS")
+                .addKeyValue("change.reason", reason).addKeyValue("outcome", "SUCCESS")
                 .log("subscription application reversed application={} billingDocument={}",
                         applicationId, documentId);
+    }
+
+    /**
+     * El exceso de dos aplicaciones confirmadas sobre el mismo documento: no
+     * revento {@code chk_sbd_settled_cap}, se convirtio en saldo a favor.
+     */
+    public void subscriptionPaymentOverpaymentCredited(Long paymentId, Long documentId,
+            BigDecimal amount) {
+        audit.atInfo().addKeyValue("event", "subscription_payment_overpayment_credited")
+                .addKeyValue("payment.id", paymentId).addKeyValue("billing.document.id", documentId)
+                .addKeyValue("amount", amount).addKeyValue("outcome", "SUCCESS")
+                .log("subscription payment overpayment credited payment={} billingDocument={}",
+                        paymentId, documentId);
+    }
+
+    /**
+     * Alta de saldo a favor: abre un lote. Ninguno de sus origenes -exceso de pago,
+     * baja con periodo pagado por delante, nota credito- cruza el borde HTTP, asi
+     * que sin este evento la unica forma de reconstruir «de donde salio este saldo»
+     * es leer {@code customer_credit_entries.origin_kind} directamente en la base.
+     *
+     * <p>
+     * De los tres {@code origin.*} solo uno llega poblado por asiento, segun la
+     * rama de {@code originKind}; los otros dos viajan {@code null}.
+     */
+    public void customerCreditGranted(Long entryId, Long companyId, BigDecimal amount,
+            String originKind, Long originPaymentId, Long originDocumentId,
+            Long originSubscriptionId) {
+        audit.atInfo().addKeyValue("event", "customer_credit_granted")
+                .addKeyValue("credit.entry.id", entryId).addKeyValue("company.id", companyId)
+                .addKeyValue("amount", amount).addKeyValue("credit.origin.kind", originKind)
+                .addKeyValue("payment.id", originPaymentId)
+                .addKeyValue("billing.document.id", originDocumentId)
+                .addKeyValue("subscription.id", originSubscriptionId)
+                .addKeyValue("outcome", "SUCCESS")
+                .log("customer credit granted entry={} company={} origin={}", entryId, companyId,
+                        originKind);
     }
 
     /**
@@ -770,5 +831,34 @@ public class AuditLogger {
                 .addKeyValue("entitlement.rows", permissionRows).addKeyValue("outcome", "SUCCESS")
                 .log("company entitlements recalculated company={} trigger={} rows={}", companyId,
                         triggerReason, permissionRows);
+    }
+
+    /**
+     * Una cotizacion paso a {@code ACCEPTED}. {@code subscriptionId} viaja
+     * {@code null} cuando la oferta era de un prospecto sin empresa todavia: la
+     * aceptacion es la prueba de que dijo que si, y el contrato llega despues.
+     *
+     * <p>
+     * <strong>{@code accepted.by.email} y no {@code actor.identifier}. </strong>
+     * Quien acepta no es el empleado autenticado que el resto del canal AUDIT
+     * identifica con esa clave -en el camino de prospecto no hay ninguno-, es el
+     * correo que el cliente tecleo en el formulario de aceptacion. SCANNED por el
+     * mismo motivo que ese: lo elige un humano y puede traer un documento o un
+     * CRLF.
+     *
+     * <p>
+     * {@code accepted.ip} es VERBATIM y no {@code client.ip}: es la IP de la
+     * peticion de aceptacion tal como la registra {@code Quote.accept}, prueba de
+     * la aceptacion y no un dato de sesion que ya viaje por el MDC.
+     */
+    public void quoteAccepted(Long quoteId, String quoteNumber, Long companyId, Long subscriptionId,
+            BigDecimal totalAmount, String currency, String acceptedByEmail, String acceptedIp) {
+        audit.atInfo().addKeyValue("event", "quote_accepted").addKeyValue("quote.id", quoteId)
+                .addKeyValue("quote.number", quoteNumber).addKeyValue("company.id", companyId)
+                .addKeyValue("subscription.id", subscriptionId).addKeyValue("amount", totalAmount)
+                .addKeyValue("currency", currency).addKeyValue("accepted.by.email", acceptedByEmail)
+                .addKeyValue("accepted.ip", acceptedIp).addKeyValue("outcome", "SUCCESS")
+                .log("quote accepted quote={} number={} subscription={}", quoteId, quoteNumber,
+                        subscriptionId);
     }
 }

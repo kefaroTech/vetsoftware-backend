@@ -35,6 +35,7 @@ import com.vetsoftware.app.subscription.application.port.in.RemoveSubscriptionIt
 import com.vetsoftware.app.subscription.domain.BillingCycle;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
 import com.vetsoftware.app.subscriptionpayment.application.command.ApplyBillingDocumentCommand;
+import com.vetsoftware.app.subscriptionpayment.application.command.AssignGatewayReferenceCommand;
 import com.vetsoftware.app.subscriptionpayment.application.command.ChangeSubscriptionPaymentStatusCommand;
 import com.vetsoftware.app.subscriptionpayment.application.command.ReconcileSubscriptionPaymentCommand;
 import com.vetsoftware.app.subscriptionpayment.application.command.RegisterSubscriptionPaymentCommand;
@@ -74,6 +75,8 @@ class SaasBillingMutationAuthorizationTest {
     private ChangeSubscriptionPaymentStatusUseCase changePaymentStatus;
     @Autowired
     private ReconcileSubscriptionPaymentUseCase reconcilePayment;
+    @Autowired
+    private AssignGatewayReferenceUseCase assignGatewayReference;
     @Autowired
     private ApplyBillingDocumentUseCase applyDocument;
     @Autowired
@@ -133,6 +136,14 @@ class SaasBillingMutationAuthorizationTest {
         }
 
         @Test
+        void no_puede_asignar_la_referencia_de_pasarela_a_una_reserva() {
+            authenticateTenantAdmin();
+            assertThatThrownBy(() -> assignGatewayReference.execute(
+                    new AssignGatewayReferenceCommand(10L, COMPANY_ID, "TX-2026-0001", null)))
+                    .isInstanceOf(AccessDeniedException.class);
+        }
+
+        @Test
         void no_puede_aplicar_un_pago_a_una_factura_saas() {
             authenticateTenantAdmin();
             assertThatThrownBy(() -> applyDocument.execute(applyCommand()))
@@ -142,8 +153,9 @@ class SaasBillingMutationAuthorizationTest {
         @Test
         void no_puede_revertir_una_aplicacion() {
             authenticateTenantAdmin();
-            assertThatThrownBy(() -> reverseApplication
-                    .execute(new ReverseBillingDocumentApplicationCommand(500L, COMPANY_ID)))
+            assertThatThrownBy(
+                    () -> reverseApplication.execute(new ReverseBillingDocumentApplicationCommand(
+                            500L, COMPANY_ID, "motivo de prueba")))
                     .isInstanceOf(AccessDeniedException.class);
         }
 
@@ -260,17 +272,19 @@ class SaasBillingMutationAuthorizationTest {
     class SystemActor {
 
         @Test
-        void puede_ejecutar_las_seis_mutaciones_de_plataforma() {
+        void puede_ejecutar_las_siete_mutaciones_de_plataforma() {
             authenticateSystem();
 
             assertThat(registerPayment.execute(registerCommand())).isNull();
             assertThat(changePaymentStatus.execute(changeStatusCommand())).isNull();
             assertThat(reconcilePayment
                     .execute(new ReconcileSubscriptionPaymentCommand(7L, COMPANY_ID))).isNull();
-            assertThat(applyDocument.execute(applyCommand())).isNull();
-            assertThat(reverseApplication
-                    .execute(new ReverseBillingDocumentApplicationCommand(500L, COMPANY_ID)))
+            assertThat(assignGatewayReference.execute(
+                    new AssignGatewayReferenceCommand(10L, COMPANY_ID, "TX-2026-0001", null)))
                     .isNull();
+            assertThat(applyDocument.execute(applyCommand())).isNull();
+            assertThat(reverseApplication.execute(new ReverseBillingDocumentApplicationCommand(500L,
+                    COMPANY_ID, "motivo de prueba"))).isNull();
             assertThat(recordDunningEvent.execute(dunningCommand())).isNull();
             assertThat(createSubscription.execute(subscriptionCommand())).isNull();
             assertThat(addSubscriptionItem.execute(addItemCommand())).isNull();
@@ -382,6 +396,7 @@ class SaasBillingMutationAuthorizationTest {
                 RegisterSubscriptionPaymentUseCase,
                 ChangeSubscriptionPaymentStatusUseCase,
                 ReconcileSubscriptionPaymentUseCase,
+                AssignGatewayReferenceUseCase,
                 ApplyBillingDocumentUseCase,
                 ReverseBillingDocumentApplicationUseCase,
                 RecordDunningEventUseCase,
@@ -408,6 +423,11 @@ class SaasBillingMutationAuthorizationTest {
 
         @Override
         public SubscriptionPaymentDto execute(ReconcileSubscriptionPaymentCommand command) {
+            return null;
+        }
+
+        @Override
+        public SubscriptionPaymentDto execute(AssignGatewayReferenceCommand command) {
             return null;
         }
 

@@ -11,12 +11,15 @@ import com.vetsoftware.app.paymentgateway.domain.PaymentMethodRef;
 import com.vetsoftware.app.subscriptionpaymentmethod.domain.MandateStatus;
 import com.vetsoftware.app.subscriptionpaymentmethod.infrastructure.persistence.SubscriptionPaymentMethodJpaEntity;
 import com.vetsoftware.app.subscriptionpaymentmethod.infrastructure.persistence.SubscriptionPaymentMethodJpaRepository;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -41,14 +44,28 @@ class JpaDefaultCardPaymentMethodQueryPortTest {
     private static final Long EMPRESA_A = 42L;
     private static final Long EMPRESA_B = 99L;
     private static final String WOMPI = "WOMPI";
+    private static final LocalDate HOY = LocalDate.of(2026, 3, 20);
+    private static final Clock CLOCK = Clock.fixed(HOY.atStartOfDay(ZoneOffset.UTC).toInstant(),
+            ZoneOffset.UTC);
 
     @Mock
     private SubscriptionPaymentMethodJpaRepository paymentMethodJpaRepository;
-    @InjectMocks
+
     private JpaDefaultCardPaymentMethodQueryPort port;
+
+    @BeforeEach
+    void montar() {
+        port = new JpaDefaultCardPaymentMethodQueryPort(paymentMethodJpaRepository, CLOCK);
+    }
 
     private static SubscriptionPaymentMethodJpaEntity medio(long id, String token,
             boolean defaultMethod, String gateway, MandateStatus mandateStatus) {
+        return medio(id, token, defaultMethod, gateway, mandateStatus, null);
+    }
+
+    private static SubscriptionPaymentMethodJpaEntity medio(long id, String token,
+            boolean defaultMethod, String gateway, MandateStatus mandateStatus,
+            LocalDate expiresOn) {
         SubscriptionPaymentMethodJpaEntity entity = mock(SubscriptionPaymentMethodJpaEntity.class);
         // lenient(): getId/getToken solo se leen si el filtro deja pasar la entidad; en
         // los escenarios de descarte (no default, otro gateway, mandato no ACTIVE) esta
@@ -60,6 +77,9 @@ class JpaDefaultCardPaymentMethodQueryPortTest {
         // (cortocircuito de &&), y esta fabrica no distingue ese caso al construir.
         org.mockito.Mockito.lenient().when(entity.getGateway()).thenReturn(gateway);
         org.mockito.Mockito.lenient().when(entity.getMandateStatus()).thenReturn(mandateStatus);
+        // lenient(): solo se lee cuando las tres condiciones anteriores ya dejaron
+        // pasar la entidad (cortocircuito de &&).
+        org.mockito.Mockito.lenient().when(entity.getExpiresOn()).thenReturn(expiresOn);
         return entity;
     }
 
@@ -124,6 +144,46 @@ class JpaDefaultCardPaymentMethodQueryPortTest {
                     .thenReturn(pageOf());
 
             assertThat(port.findDefaultActiveCard(EMPRESA_A, WOMPI)).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("Caducidad (RES-30)")
+    class Caducidad {
+
+        @Test
+        @DisplayName("una tarjeta vencida se descarta aunque sea predeterminada y ACTIVE")
+        void una_tarjeta_vencida_se_descarta() {
+            Page<SubscriptionPaymentMethodJpaEntity> pagina = pageOf(
+                    medio(10L, "tok_abc", true, WOMPI, MandateStatus.ACTIVE, HOY.minusDays(1)));
+            when(paymentMethodJpaRepository.findAllByCompanyId(eq(EMPRESA_A), any()))
+                    .thenReturn(pagina);
+
+            assertThat(port.findDefaultActiveCard(EMPRESA_A, WOMPI)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("una tarjeta que vence justo hoy todavia no esta vencida")
+        void una_tarjeta_que_vence_hoy_no_esta_vencida() {
+            Page<SubscriptionPaymentMethodJpaEntity> pagina = pageOf(
+                    medio(10L, "tok_abc", true, WOMPI, MandateStatus.ACTIVE, HOY));
+            when(paymentMethodJpaRepository.findAllByCompanyId(eq(EMPRESA_A), any()))
+                    .thenReturn(pagina);
+
+            assertThat(port.findDefaultActiveCard(EMPRESA_A, WOMPI))
+                    .contains(new PaymentMethodRef(10L, "tok_abc"));
+        }
+
+        @Test
+        @DisplayName("un medio PSE sin fecha de vencimiento nunca se descarta por caducidad")
+        void un_medio_pse_sin_vencimiento_no_se_descarta() {
+            Page<SubscriptionPaymentMethodJpaEntity> pagina = pageOf(
+                    medio(10L, "tok_pse", true, WOMPI, MandateStatus.ACTIVE, null));
+            when(paymentMethodJpaRepository.findAllByCompanyId(eq(EMPRESA_A), any()))
+                    .thenReturn(pagina);
+
+            assertThat(port.findDefaultActiveCard(EMPRESA_A, WOMPI))
+                    .contains(new PaymentMethodRef(10L, "tok_pse"));
         }
     }
 

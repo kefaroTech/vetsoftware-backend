@@ -1,6 +1,9 @@
 package com.vetsoftware.app.subscriptionpayment.infrastructure.persistence;
 
+import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentStatus;
 import jakarta.persistence.LockModeType;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -54,4 +57,55 @@ public interface SubscriptionPaymentJpaRepository
             String gatewayReference);
 
     Page<SubscriptionPaymentJpaEntity> findAllByCompanyId(Long companyId, Pageable pageable);
+
+    /**
+     * Pagos PENDING de pasarela envejecidos. {@code gateway is not null} los
+     * distingue de un pago manual por transferencia a la espera de conciliacion,
+     * que no es lo que esta metrica vigila.
+     */
+    long countByStatusAndGatewayIsNotNullAndReceivedAtBefore(SubscriptionPaymentStatus status,
+            LocalDateTime threshold);
+
+    /**
+     * Las mismas filas que cuenta
+     * {@link #countByStatusAndGatewayIsNotNullAndReceivedAtBefore}, pero devueltas
+     * y en orden ascendente: el barrido de conciliación de {@code paymentgateway}
+     * necesita las más viejas primero, no un conteo.
+     */
+    List<SubscriptionPaymentJpaEntity> findByStatusAndGatewayIsNotNullAndReceivedAtBeforeOrderByReceivedAtAsc(
+            SubscriptionPaymentStatus status, LocalDateTime threshold, Pageable pageable);
+
+    /**
+     * El orden lo añade el {@code Sort} del {@code Pageable}.
+     */
+    @Query("""
+            SELECT p FROM SubscriptionPaymentJpaEntity p
+            WHERE (:companyId IS NULL OR p.companyId = :companyId)
+              AND (:status IS NULL OR p.status = :status)
+              AND (:receivedFrom IS NULL OR p.receivedAt >= :receivedFrom)
+              AND (:receivedTo IS NULL OR p.receivedAt <= :receivedTo)
+              AND (:pendingThreshold IS NULL
+                   OR (p.gateway IS NOT NULL AND p.receivedAt < :pendingThreshold))
+            """)
+    Page<SubscriptionPaymentJpaEntity> findAllFiltered(@Param("companyId") Long companyId,
+            @Param("status") SubscriptionPaymentStatus status,
+            @Param("receivedFrom") LocalDateTime receivedFrom,
+            @Param("receivedTo") LocalDateTime receivedTo,
+            @Param("pendingThreshold") LocalDateTime pendingThreshold, Pageable pageable);
+
+    @Query("""
+            SELECT p FROM SubscriptionPaymentJpaEntity p
+            WHERE (:companyId IS NULL OR p.companyId = :companyId)
+              AND (:status IS NULL OR p.status = :status)
+              AND (:receivedFrom IS NULL OR p.receivedAt >= :receivedFrom)
+              AND (:receivedTo IS NULL OR p.receivedAt <= :receivedTo)
+              AND (:pendingThreshold IS NULL
+                   OR (p.gateway IS NOT NULL AND p.receivedAt < :pendingThreshold))
+            ORDER BY p.receivedAt DESC, p.id DESC
+            """)
+    List<SubscriptionPaymentJpaEntity> findAllFilteredForExport(@Param("companyId") Long companyId,
+            @Param("status") SubscriptionPaymentStatus status,
+            @Param("receivedFrom") LocalDateTime receivedFrom,
+            @Param("receivedTo") LocalDateTime receivedTo,
+            @Param("pendingThreshold") LocalDateTime pendingThreshold);
 }

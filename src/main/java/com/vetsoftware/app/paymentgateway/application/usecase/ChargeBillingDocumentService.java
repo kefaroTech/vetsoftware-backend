@@ -11,16 +11,20 @@ import com.vetsoftware.app.paymentgateway.application.port.out.PaymentAttemptRec
 import com.vetsoftware.app.paymentgateway.application.port.out.PendingPaymentQueryPort;
 import com.vetsoftware.app.paymentgateway.domain.BillingDocumentChargeSnapshot;
 import com.vetsoftware.app.paymentgateway.domain.DocumentChargeOutcome;
+import com.vetsoftware.app.paymentgateway.domain.FiscalProfileNotConfiguredException;
 import com.vetsoftware.app.paymentgateway.domain.GatewayDeclineKind;
 import com.vetsoftware.app.paymentgateway.domain.LastPaymentAttempt;
 import com.vetsoftware.app.paymentgateway.domain.PaymentGatewayNames;
 import com.vetsoftware.app.paymentgateway.domain.PaymentGatewayNotConfiguredException;
 import com.vetsoftware.app.paymentgateway.domain.PaymentMethodRef;
 import com.vetsoftware.app.paymentgateway.domain.RetrySchedule;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
@@ -54,6 +58,7 @@ public class ChargeBillingDocumentService implements ChargeBillingDocumentUseCas
     private final DefaultCardPaymentMethodQueryPort defaultCardPaymentMethodQueryPort;
     private final PaymentAttemptRecorderPort paymentAttemptRecorderPort;
     private final GatewayCharger gatewayCharger;
+    private final ObservationRegistry observationRegistry;
     private final Clock clock;
 
     public ChargeBillingDocumentService(BillingDocumentChargeQueryPort documentQueryPort,
@@ -61,13 +66,14 @@ public class ChargeBillingDocumentService implements ChargeBillingDocumentUseCas
             PaymentAttemptQueryPort paymentAttemptQueryPort,
             DefaultCardPaymentMethodQueryPort defaultCardPaymentMethodQueryPort,
             PaymentAttemptRecorderPort paymentAttemptRecorderPort, GatewayCharger gatewayCharger,
-            Clock clock) {
+            ObservationRegistry observationRegistry, Clock clock) {
         this.documentQueryPort = documentQueryPort;
         this.pendingPaymentQueryPort = pendingPaymentQueryPort;
         this.paymentAttemptQueryPort = paymentAttemptQueryPort;
         this.defaultCardPaymentMethodQueryPort = defaultCardPaymentMethodQueryPort;
         this.paymentAttemptRecorderPort = paymentAttemptRecorderPort;
         this.gatewayCharger = gatewayCharger;
+        this.observationRegistry = observationRegistry;
         this.clock = clock;
     }
 
@@ -78,12 +84,15 @@ public class ChargeBillingDocumentService implements ChargeBillingDocumentUseCas
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Billing document not found: " + command.billingDocumentId()));
 
+        if ("VOIDED".equals(document.issueStatus())) {
+            return tagged(document, skip(DocumentChargeOutcome.SKIPPED_VOIDED));
+        }
         if (document.balanceAmount().signum() <= 0) {
-            return skip(DocumentChargeOutcome.SKIPPED_NO_BALANCE);
+            return tagged(document, skip(DocumentChargeOutcome.SKIPPED_NO_BALANCE));
         }
         if (pendingPaymentQueryPort.existsPendingPayment(command.companyId(),
                 document.documentId())) {
-            return skip(DocumentChargeOutcome.SKIPPED_PENDING_PAYMENT);
+            return tagged(document, skip(DocumentChargeOutcome.SKIPPED_PENDING_PAYMENT));
         }
 
         LocalDateTime now = LocalDateTime.now(clock);
@@ -92,24 +101,24 @@ public class ChargeBillingDocumentService implements ChargeBillingDocumentUseCas
         if (last.isPresent()) {
             LastPaymentAttempt attempt = last.get();
             if (attempt.declineKind() == GatewayDeclineKind.HARD) {
-                return skip(DocumentChargeOutcome.SKIPPED_HARD_DECLINE);
+                return tagged(document, skip(DocumentChargeOutcome.SKIPPED_HARD_DECLINE));
             }
             if (attempt.nextAttemptAt() != null && attempt.nextAttemptAt().isAfter(now)) {
-                return skip(DocumentChargeOutcome.SKIPPED_NOT_DUE);
+                return tagged(document, skip(DocumentChargeOutcome.SKIPPED_NOT_DUE));
             }
         }
 
         int retryable = paymentAttemptQueryPort.countRetryableSince(command.companyId(),
                 document.documentId(), now.minus(RetrySchedule.RETRY_WINDOW));
         if (retryable >= RetrySchedule.MAX_SOFT_ATTEMPTS) {
-            return skip(DocumentChargeOutcome.SKIPPED_BUDGET);
+            return tagged(document, skip(DocumentChargeOutcome.SKIPPED_BUDGET));
         }
 
         PaymentMethodRef paymentMethod = defaultCardPaymentMethodQueryPort
                 .findDefaultActiveCard(command.companyId(), PaymentGatewayNames.WOMPI).orElse(null);
         if (paymentMethod == null) {
             recordConfigurationAttemptUnlessRecent(command, document, last, now);
-            return skip(DocumentChargeOutcome.NO_PAYMENT_METHOD);
+            return tagged(document, skip(DocumentChargeOutcome.NO_PAYMENT_METHOD));
         }
 
         int nextAttemptNumber = last.map(LastPaymentAttempt::attemptNumber).orElse(0) + 1;
@@ -120,7 +129,10 @@ public class ChargeBillingDocumentService implements ChargeBillingDocumentUseCas
             result = gatewayCharger.charge(command.companyId(), document.documentId(),
                     paymentMethod, document.balanceAmount(), document.currency(), reference);
         } catch (PaymentGatewayNotConfiguredException e) {
-            return skip(DocumentChargeOutcome.NOT_CONFIGURED);
+            return tagged(document, skip(DocumentChargeOutcome.NOT_CONFIGURED));
+        } catch (FiscalProfileNotConfiguredException e) {
+            recordConfigurationAttemptUnlessRecent(command, document, last, now);
+            return tagged(document, skip(DocumentChargeOutcome.NOT_CONFIGURED));
         }
 
         DocumentChargeOutcome outcome = switch (result.outcome()) {
@@ -130,12 +142,38 @@ public class ChargeBillingDocumentService implements ChargeBillingDocumentUseCas
             default -> throw new IllegalStateException(
                     "GatewayCharger devolvió un desenlace inesperado: " + result.outcome());
         };
-        return new DocumentChargeDto(outcome, result.gatewayReference(), result.declineReason());
+        return tagged(document,
+                new DocumentChargeDto(outcome, result.gatewayReference(), result.declineReason()));
+    }
+
+    /**
+     * Deja el desenlace, la pasarela y la suscripción en el span envolvente
+     * ({@code payment.gateway.charge.document}). {@code subscription.number} va
+     * como el id numérico de la suscripción y no como su referencia de negocio
+     * {@code VS-<n>}: este documento no la trae y traerla exigiría una consulta a
+     * {@code subscription}, que este puerto no expone.
+     */
+    private DocumentChargeDto tagged(BillingDocumentChargeSnapshot document,
+            DocumentChargeDto dto) {
+        Observation current = observationRegistry.getCurrentObservation();
+        if (current != null) {
+            current.lowCardinalityKeyValue("payment.outcome",
+                    dto.outcome().name().toLowerCase(Locale.ROOT));
+            current.lowCardinalityKeyValue("payment.gateway", PaymentGatewayNames.WOMPI);
+            current.highCardinalityKeyValue("subscription.number",
+                    String.valueOf(document.subscriptionId()));
+            if (dto.gatewayReference() != null) {
+                current.highCardinalityKeyValue("gateway.reference", dto.gatewayReference());
+            }
+        }
+        return dto;
     }
 
     /**
      * Evita una fila diaria idéntica: si el último intento ya es un
-     * {@code CONFIGURATION} de las últimas 24 h, este barrido no anota otro.
+     * {@code CONFIGURATION} de las últimas 24 h, este barrido no anota otro. Cuando
+     * sí anota, {@code next_attempt_at} nunca queda nulo: sin fecha de reintento el
+     * documento sale de las dos colas de cobro.
      */
     private void recordConfigurationAttemptUnlessRecent(ChargeBillingDocumentCommand command,
             BillingDocumentChargeSnapshot document, Optional<LastPaymentAttempt> last,
@@ -150,7 +188,7 @@ public class ChargeBillingDocumentService implements ChargeBillingDocumentUseCas
         }
         paymentAttemptRecorderPort.record(command.companyId(), document.documentId(), null,
                 PaymentGatewayNames.WOMPI, document.balanceAmount(), null,
-                GatewayDeclineKind.CONFIGURATION, now, null);
+                GatewayDeclineKind.CONFIGURATION, now, now.plusDays(1));
     }
 
     private static DocumentChargeDto skip(DocumentChargeOutcome outcome) {

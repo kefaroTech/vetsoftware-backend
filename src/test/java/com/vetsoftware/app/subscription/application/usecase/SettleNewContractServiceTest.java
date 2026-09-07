@@ -1,6 +1,7 @@
 package com.vetsoftware.app.subscription.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -147,6 +148,25 @@ class SettleNewContractServiceTest {
                     SubscriptionMother.EMPRESA));
 
             verifyNoInteractions(changeStatusUseCase);
+        }
+
+        @Test
+        @DisplayName("aprobado pero la activacion falla: no propaga la excepcion (OBS #759)")
+        void aprobado_pero_la_activacion_falla_no_propaga() {
+            Subscription contrato = SubscriptionMother.contratoEn(SubscriptionStatus.PAST_DUE);
+            when(repository.findByIdAndCompanyId(SubscriptionMother.CONTRATO,
+                    SubscriptionMother.EMPRESA)).thenReturn(Optional.of(contrato));
+            when(paymentPort.chargeFirstPeriod(any(), any(), any(), any(), any(), any()))
+                    .thenReturn(ContractPaymentOutcome.approved("wompi-ref"));
+            org.mockito.Mockito.doThrow(new IllegalStateException("no se pudo recalcular"))
+                    .when(changeStatusUseCase).execute(any());
+
+            assertThatCode(
+                    () -> service.execute(new SettleNewContractCommand(SubscriptionMother.CONTRATO,
+                            SubscriptionMother.EMPRESA)))
+                    .doesNotThrowAnyException();
+
+            verify(changeStatusUseCase).execute(any());
         }
 
         @Test

@@ -7,6 +7,7 @@ import com.vetsoftware.app.dunning.application.dto.DunningEventDto;
 import com.vetsoftware.app.dunning.application.port.in.ListAllDunningEventsUseCase;
 import com.vetsoftware.app.shared.pagination.PageResult;
 import com.vetsoftware.app.subscriptionpayment.application.dto.SubscriptionPaymentDto;
+import com.vetsoftware.app.subscriptionpayment.application.query.ListAllSubscriptionPaymentsQuery;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,8 @@ class SaasBillingPlatformReadAuthorizationTest {
     void tenant_no_puede_listar_cross_tenant() {
         authenticate("ROLE_ADMIN", "subscriptionPayment.read", "dunningEvent.read");
 
-        assertThatThrownBy(() -> listPayments.listAll(null, 0, 20))
+        assertThatThrownBy(() -> listPayments
+                .listAll(new ListAllSubscriptionPaymentsQuery(null, null, null, null, null, 0, 20)))
                 .isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> listDunning.listAll(null, 0, 20))
                 .isInstanceOf(AccessDeniedException.class);
@@ -49,7 +51,9 @@ class SaasBillingPlatformReadAuthorizationTest {
     void system_puede_listar_cross_tenant() {
         authenticate("ROLE_SYSTEM");
 
-        assertThatCode(() -> listPayments.listAll(42L, 0, 20)).doesNotThrowAnyException();
+        assertThatCode(() -> listPayments
+                .listAll(new ListAllSubscriptionPaymentsQuery(42L, null, null, null, null, 0, 20)))
+                .doesNotThrowAnyException();
         assertThatCode(() -> listDunning.listAll(42L, 0, 20)).doesNotThrowAnyException();
     }
 
@@ -61,8 +65,8 @@ class SaasBillingPlatformReadAuthorizationTest {
     static final class PaymentReadStub implements ListAllSubscriptionPaymentsUseCase {
 
         @Override
-        public PageResult<SubscriptionPaymentDto> listAll(Long companyId, int page, int pageSize) {
-            return PageResult.empty(page, pageSize);
+        public PageResult<SubscriptionPaymentDto> listAll(ListAllSubscriptionPaymentsQuery query) {
+            return PageResult.empty(query.page(), query.pageSize());
         }
     }
 

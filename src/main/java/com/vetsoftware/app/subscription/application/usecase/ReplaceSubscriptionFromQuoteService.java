@@ -4,26 +4,39 @@ import com.vetsoftware.app.subscription.application.command.CreateSubscriptionCo
 import com.vetsoftware.app.subscription.application.command.ReplaceSubscriptionFromQuoteCommand;
 import com.vetsoftware.app.subscription.application.command.SubscriptionItemLineCommand;
 import com.vetsoftware.app.subscription.application.dto.InitialContractTemplate;
+import com.vetsoftware.app.subscription.application.dto.IssuedPeriodDocument;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionQuoteSnapshot;
 import com.vetsoftware.app.subscription.application.port.in.CreateSubscriptionUseCase;
 import com.vetsoftware.app.subscription.application.port.in.ReplaceSubscriptionFromQuoteUseCase;
+import com.vetsoftware.app.subscription.application.port.out.CustomerCreditGrantPort;
 import com.vetsoftware.app.subscription.application.port.out.PlatformCatalogPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionGatewayPaymentQueryPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionLifecycleMetrics;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionOpenDocumentsQueryPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionPeriodDocumentIssuerPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionProrationCreditApplicationPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionQuoteSnapshotPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionStatusHistoryRepository;
+import com.vetsoftware.app.subscription.application.port.out.VoidSubscriptionBillingDocumentPort;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
+import com.vetsoftware.app.subscription.domain.BillingPeriod;
+import com.vetsoftware.app.subscription.domain.EffectivePeriod;
+import com.vetsoftware.app.subscription.domain.Proration;
+import com.vetsoftware.app.subscription.domain.ProrationCalculator;
 import com.vetsoftware.app.subscription.domain.StructuralCapacityMinimum;
 import com.vetsoftware.app.subscription.domain.StructuralMinimumNotCarriedException;
 import com.vetsoftware.app.subscription.domain.Subscription;
+import com.vetsoftware.app.subscription.domain.SubscriptionHasPendingGatewayPaymentException;
 import com.vetsoftware.app.subscription.domain.SubscriptionItem;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatus;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatusChange;
 import com.vetsoftware.app.subscription.domain.SubscriptionStatusChangeReason;
 import io.micrometer.observation.annotation.Observed;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -78,19 +91,17 @@ import org.springframework.transaction.annotation.Transactional;
  * de que se intente el {@code INSERT} del alta.
  *
  * <p>
- * <strong>&#9940; AQUI ENTRARA EL PRORRATEO DEL TRAMO NO CONSUMIDO, y hoy no
- * existe a proposito.</strong> Cuando el contrato que se cierra haya sido
- * cobrado de verdad, al cliente le quedara periodo pagado sin usar y habra que
- * abonarselo: el importe se calcula con {@code ProrationCalculator} —que ya
- * vive en este dominio y ya sabe repartir un periodo por dias— sobre
+ * <strong>El tramo no consumido del contrato que se cierra se prorratea y se
+ * abona.</strong> Si su periodo en curso ya tiene un pago de pasarela
+ * {@code CONFIRMED} aplicado ({@link SubscriptionGatewayPaymentQueryPort}), el
+ * importe se calcula con {@code ProrationCalculator} sobre
  * {@code getCurrentPeriodStart()}, {@code getCurrentPeriodEnd()} y la suma de
- * {@code SubscriptionItem.recurringSubtotal()} de las lineas vigentes, y el
- * abono se emite por {@code subscriptionbilling} / {@code customercredit}, que
- * es donde vive el dinero. <strong>Hoy no hay nada que devolver</strong>: no
- * hay pasarela, no se ha cobrado un solo peso, y un abono por un cobro que
- * nunca ocurrio seria dinero inventado en la contabilidad. El sitio exacto
- * donde va es {@link #terminate}, justo antes de escribir el cierre, que es
- * cuando todavia se conocen el periodo y las lineas del contrato que muere.
+ * {@code SubscriptionItem.recurringSubtotal()} de las lineas vigentes, y se
+ * concede como saldo a favor ({@link CustomerCreditGrantPort}, origen
+ * {@code CANCELLATION}). Sin pago confirmado sobre ese periodo no hay nada que
+ * devolver, y no se abona nada. El calculo vive en {@link #terminate}, justo
+ * antes de escribir el cierre, que es cuando todavia se conocen el periodo y
+ * las lineas del contrato que muere.
  */
 @Observed(name = "subscription.replace.from.quote")
 @Service
@@ -113,6 +124,12 @@ public class ReplaceSubscriptionFromQuoteService implements ReplaceSubscriptionF
     private final SubscriptionLifecycleMetrics metrics;
     private final PlatformCatalogPort platformCatalogPort;
     private final CreateSubscriptionUseCase createSubscriptionUseCase;
+    private final SubscriptionPeriodDocumentIssuerPort documentIssuerPort;
+    private final SubscriptionGatewayPaymentQueryPort gatewayPaymentQueryPort;
+    private final CustomerCreditGrantPort customerCreditGrantPort;
+    private final SubscriptionOpenDocumentsQueryPort openDocumentsQueryPort;
+    private final VoidSubscriptionBillingDocumentPort voidDocumentPort;
+    private final SubscriptionProrationCreditApplicationPort prorationCreditApplicationPort;
     private final Clock clock;
 
     @SuppressWarnings("java:S107")
@@ -120,7 +137,14 @@ public class ReplaceSubscriptionFromQuoteService implements ReplaceSubscriptionF
             SubscriptionRepository repository, SubscriptionItemRepository itemRepository,
             SubscriptionStatusHistoryRepository historyRepository, SubscriptionAuditPort audit,
             SubscriptionLifecycleMetrics metrics, PlatformCatalogPort platformCatalogPort,
-            CreateSubscriptionUseCase createSubscriptionUseCase, Clock clock) {
+            CreateSubscriptionUseCase createSubscriptionUseCase,
+            SubscriptionPeriodDocumentIssuerPort documentIssuerPort,
+            SubscriptionGatewayPaymentQueryPort gatewayPaymentQueryPort,
+            CustomerCreditGrantPort customerCreditGrantPort,
+            SubscriptionOpenDocumentsQueryPort openDocumentsQueryPort,
+            VoidSubscriptionBillingDocumentPort voidDocumentPort,
+            SubscriptionProrationCreditApplicationPort prorationCreditApplicationPort,
+            Clock clock) {
         this.quoteSnapshotPort = quoteSnapshotPort;
         this.repository = repository;
         this.itemRepository = itemRepository;
@@ -129,6 +153,12 @@ public class ReplaceSubscriptionFromQuoteService implements ReplaceSubscriptionF
         this.metrics = metrics;
         this.platformCatalogPort = platformCatalogPort;
         this.createSubscriptionUseCase = createSubscriptionUseCase;
+        this.documentIssuerPort = documentIssuerPort;
+        this.gatewayPaymentQueryPort = gatewayPaymentQueryPort;
+        this.customerCreditGrantPort = customerCreditGrantPort;
+        this.openDocumentsQueryPort = openDocumentsQueryPort;
+        this.voidDocumentPort = voidDocumentPort;
+        this.prorationCreditApplicationPort = prorationCreditApplicationPort;
         this.clock = clock;
     }
 
@@ -159,28 +189,58 @@ public class ReplaceSubscriptionFromQuoteService implements ReplaceSubscriptionF
         // devuelve el que hay y no se firma otro. Sin esta guarda, un segundo clic
         // -o el reintento de un cliente HTTP- cancelaria el contrato recien creado y
         // abriria un tercero a partir del mismo papel, dejando una cadena de
-        // contratos cancelados que nadie pidio.
-        //
-        // &#9940; Esto NO es la garantia, es la comodidad. Un SELECT seguido de un
-        // INSERT es una carrera: dos peticiones simultaneas leen las dos «todavia no»
-        // y firman las dos. La autoridad tiene que ser un unico de base de datos sobre
-        // subscriptions.quote_id -pedido y todavia no aplicado-, exactamente por el
-        // mismo razonamiento con el que
-        // CompanyAlreadyHasActiveSubscriptionException documenta que el codigo no
-        // puede comprobar antes «una empresa, un contrato» y darlo por bueno. Mientras
-        // ese indice no exista, la carrera sigue abierta.
+        // contratos cancelados que nadie pidio. La autoridad final es
+        // uq_subscriptions_quote (changeset 391): esta guarda evita la vuelta
+        // innecesaria, el indice unico cierra la carrera de dos peticiones
+        // simultaneas.
         if (replaced.isPresent() && command.quoteId().equals(replaced.get().getQuoteId())) {
             return SubscriptionDto.from(replaced.get());
         }
+
+        replaced.ifPresent(previous -> {
+            if (gatewayPaymentQueryPort.existsPendingPayment(command.companyId(),
+                    previous.getId())) {
+                throw new SubscriptionHasPendingGatewayPaymentException(previous.getId());
+            }
+        });
 
         // Se calcula ANTES de cerrar: lo que se arrastra sale del contrato que muere.
         List<SubscriptionItemLineCommand> lines = withStructuralMinimum(command.companyId(),
                 resolved.items(), replaced.orElse(null), today);
 
-        replaced.ifPresent(previous -> terminate(previous, command.companyId()));
+        GrantedProrationCredit prorationCredit = replaced
+                .map(previous -> terminate(previous, command.companyId(), today)).orElse(null);
 
-        return createSubscriptionUseCase
+        SubscriptionDto created = createSubscriptionUseCase
                 .execute(newContract(command.companyId(), quote, resolved.actor(), lines, today));
+        if (created.status() != SubscriptionStatus.TRIALING) {
+            IssuedPeriodDocument issued = documentIssuerPort.issueFirstPeriod(command.companyId(),
+                    created.id(), created.currentPeriodStart(), created.currentPeriodEnd());
+            applyProrationCreditToFirstPeriod(command.companyId(), issued, prorationCredit);
+        }
+        return created;
+    }
+
+    /**
+     * el abono por prorrateo del contrato que se cierra se aplica al documento del
+     * primer periodo del contrato nuevo, en la misma transaccion de la firma.
+     *
+     * <p>
+     * Acotado al menor de los dos: aplicar mas de lo que el documento vale revienta
+     * {@code chk_sbd_settled_cap} en cuanto ese origen cuenta —a diferencia de un
+     * pago, un saldo a favor consumido salda de inmediato, sin esperar
+     * confirmacion—.
+     */
+    private void applyProrationCreditToFirstPeriod(Long companyId, IssuedPeriodDocument issued,
+            GrantedProrationCredit prorationCredit) {
+        if (issued == null || prorationCredit == null || prorationCredit.creditEntryId() == null)
+            return;
+        BigDecimal toApply = prorationCredit.amount().min(issued.totalAmount());
+        if (toApply.signum() <= 0)
+            return;
+        prorationCreditApplicationPort.applyToDocument(companyId, issued.documentId(),
+                prorationCredit.creditEntryId(), toApply,
+                "quote-replace-proration-apply-" + issued.documentId());
     }
 
     /**
@@ -248,16 +308,20 @@ public class ReplaceSubscriptionFromQuoteService implements ReplaceSubscriptionF
                 null);
     }
 
+    /** El lote de saldo a favor concedido por el tramo no consumido, o nada. */
+    private record GrantedProrationCredit(Long creditEntryId, BigDecimal amount) {
+    }
+
     /**
      * Cierra el contrato anterior. Ver el javadoc de la clase: por el dominio y no
      * por {@code ChangeSubscriptionStatusUseCase}, para no disparar un recalculo de
      * permisos en el instante en que la empresa no tiene contrato vigente.
-     *
-     * <p>
-     * &#9940; <strong>El prorrateo del tramo no consumido va aqui</strong> cuando
-     * exista cobro real. Ver el javadoc de la clase.
      */
-    private void terminate(Subscription replaced, Long companyId) {
+    private GrantedProrationCredit terminate(Subscription replaced, Long companyId,
+            LocalDate today) {
+        GrantedProrationCredit prorationCredit = grantUnusedPeriodCredit(replaced, companyId,
+                today);
+        voidOpenDocuments(replaced, companyId);
         LocalDateTime occurredAt = LocalDateTime.now(clock);
         SubscriptionStatusChange change = replaced.changeStatus(SubscriptionStatus.CANCELLED,
                 REASON.code(), ACTOR, occurredAt);
@@ -267,6 +331,47 @@ public class ReplaceSubscriptionFromQuoteService implements ReplaceSubscriptionF
                 change.getOccurredAt(), change.getActor(), null));
         metrics.statusTransitioned(change.getToStatus());
         audit.statusChanged(saved.getId(), change.getFromStatus(), change.getToStatus(), REASON);
+        return prorationCredit;
+    }
+
+    /**
+     * los documentos {@code DRAFT}/{@code AWAITING_EXTERNAL} con saldo que el
+     * contrato que se cierra deja abiertos no pueden quedar colgando de un contrato
+     * ya {@code CANCELLED} -nadie los va a cobrar-. Uno con un pago
+     * {@code CONFIRMED} ya aplicado sigue el mismo camino:
+     * {@code VoidBillingDocumentUseCase} revierte esa aplicacion el solo.
+     */
+    private void voidOpenDocuments(Subscription replaced, Long companyId) {
+        for (Long documentId : openDocumentsQueryPort.findOpenDocumentIdsWithBalance(companyId,
+                replaced.getId())) {
+            voidDocumentPort.voidDocument(companyId, documentId);
+        }
+    }
+
+    /**
+     * El abono del tramo no consumido, cuando el periodo en curso del contrato que
+     * se cierra ya se cobro de verdad. Ver el javadoc de la clase.
+     */
+    private GrantedProrationCredit grantUnusedPeriodCredit(Subscription replaced, Long companyId,
+            LocalDate today) {
+        if (today.isAfter(replaced.getCurrentPeriodEnd()))
+            return null;
+        if (!gatewayPaymentQueryPort.isPeriodPaid(companyId, replaced.getId(),
+                replaced.getCurrentPeriodStart(), replaced.getCurrentPeriodEnd()))
+            return null;
+        BigDecimal cycleDelta = itemRepository.findAllCurrentOn(replaced.getId(), companyId, today)
+                .stream().map(SubscriptionItem::recurringSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add).negate();
+        if (cycleDelta.signum() == 0)
+            return null;
+        Proration proration = ProrationCalculator.onCurrentPeriod(cycleDelta,
+                BillingPeriod.of(replaced), EffectivePeriod.openFrom(today));
+        if (proration.amount().signum() == 0)
+            return null;
+        BigDecimal amount = proration.amount().abs();
+        Long creditEntryId = customerCreditGrantPort.grantForUnusedPeriod(companyId,
+                replaced.getId(), amount, today, "quote-replace-proration-" + replaced.getId());
+        return new GrantedProrationCredit(creditEntryId, amount);
     }
 
     /**

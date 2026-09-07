@@ -3,6 +3,7 @@ package com.vetsoftware.app.customercredit.application.usecase;
 import com.vetsoftware.app.customercredit.application.command.GrantCustomerCreditCommand;
 import com.vetsoftware.app.customercredit.application.dto.CustomerCreditEntryDto;
 import com.vetsoftware.app.customercredit.application.port.in.GrantCustomerCreditUseCase;
+import com.vetsoftware.app.customercredit.application.port.out.CustomerCreditAuditPort;
 import com.vetsoftware.app.customercredit.application.port.out.CustomerCreditBalanceRepository;
 import com.vetsoftware.app.customercredit.application.port.out.CustomerCreditEntryRepository;
 import com.vetsoftware.app.customercredit.domain.CustomerCreditEntry;
@@ -35,12 +36,15 @@ public class GrantCustomerCreditService implements GrantCustomerCreditUseCase {
 
     private final CustomerCreditEntryRepository entryRepository;
     private final CustomerCreditBalanceRepository balanceRepository;
+    private final CustomerCreditAuditPort auditPort;
     private final Clock clock;
 
     public GrantCustomerCreditService(CustomerCreditEntryRepository entryRepository,
-            CustomerCreditBalanceRepository balanceRepository, Clock clock) {
+            CustomerCreditBalanceRepository balanceRepository, CustomerCreditAuditPort auditPort,
+            Clock clock) {
         this.entryRepository = entryRepository;
         this.balanceRepository = balanceRepository;
+        this.auditPort = auditPort;
         this.clock = clock;
     }
 
@@ -65,6 +69,9 @@ public class GrantCustomerCreditService implements GrantCustomerCreditUseCase {
                 command.originSubscriptionId(), now, today, command.expiresOn(),
                 command.clientRequestId(), now);
         CustomerCreditEntry saved = entryRepository.save(entry);
+        auditPort.granted(saved.getId(), saved.getCompanyId(), saved.getAmount(),
+                saved.getOriginKind(), saved.getOriginPaymentId(), saved.getOriginDocumentId(),
+                saved.getOriginSubscriptionId());
 
         // Un delta positivo siempre satisface la condicion del WHERE, asi que cero
         // filas aqui solo puede significar que la fila resumen no existe — y

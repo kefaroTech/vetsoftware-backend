@@ -20,14 +20,18 @@ public class SubscriptionPaymentAuditAdapter implements SubscriptionPaymentAudit
 
     @Override
     public void paymentRegistered(Long paymentId, PaymentMethod method, BigDecimal amount,
+            String currency, String gateway, String gatewayReference,
             SubscriptionPaymentStatus status) {
-        auditLogger.subscriptionPaymentRegistered(paymentId, name(method), amount, name(status));
+        auditLogger.subscriptionPaymentRegistered(paymentId, name(method), amount, currency,
+                gateway, gatewayReference, name(status));
     }
 
     @Override
     public void paymentStatusChanged(Long paymentId, SubscriptionPaymentStatus fromStatus,
-            SubscriptionPaymentStatus toStatus) {
-        auditLogger.subscriptionPaymentStatusChanged(paymentId, name(fromStatus), name(toStatus));
+            SubscriptionPaymentStatus toStatus, BigDecimal amount, String currency, String gateway,
+            String gatewayReference) {
+        auditLogger.subscriptionPaymentStatusChanged(paymentId, name(fromStatus), name(toStatus),
+                amount, currency, gateway, gatewayReference);
     }
 
     @Override
@@ -38,8 +42,14 @@ public class SubscriptionPaymentAuditAdapter implements SubscriptionPaymentAudit
     }
 
     @Override
-    public void applicationReversed(Long applicationId, Long documentId, BigDecimal amount) {
-        auditLogger.subscriptionApplicationReversed(applicationId, documentId, amount);
+    public void applicationReversed(Long applicationId, Long documentId, BigDecimal amount,
+            String reason) {
+        auditLogger.subscriptionApplicationReversed(applicationId, documentId, amount, reason);
+    }
+
+    @Override
+    public void overpaymentCredited(Long paymentId, Long documentId, BigDecimal amount) {
+        auditLogger.subscriptionPaymentOverpaymentCredited(paymentId, documentId, amount);
     }
 
     private static String name(Enum<?> value) {

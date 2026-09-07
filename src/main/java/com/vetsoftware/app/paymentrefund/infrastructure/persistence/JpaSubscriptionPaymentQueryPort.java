@@ -34,7 +34,7 @@ public class JpaSubscriptionPaymentQueryPort implements SubscriptionPaymentQuery
     public Optional<SubscriptionPaymentRef> findByIdAndCompanyId(Long paymentId, Long companyId) {
         return subscriptionPaymentJpaRepository.findByIdAndCompanyId(paymentId, companyId)
                 .map(entity -> new SubscriptionPaymentRef(entity.getId(), entity.getCompanyId(),
-                        entity.getAmount()));
+                        entity.getAmount(), entity.getReceivedAt()));
     }
 
     @Override

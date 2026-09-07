@@ -12,7 +12,7 @@ import java.util.List;
  *            {@code WompiSignatures.eventChecksum}
  */
 public record ParsedWompiEvent(String eventType, String transactionId,
-        GatewayTransactionStatus status, String statusMessage, long timestamp,
+        GatewayTransactionStatus status, String statusMessage, long timestamp, long amountInCents,
         List<String> checksumPropertyValues) {
 
     private static final String TRANSACTION_UPDATED = "transaction.updated";

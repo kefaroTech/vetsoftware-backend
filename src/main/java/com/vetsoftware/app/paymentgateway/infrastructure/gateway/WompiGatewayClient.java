@@ -11,13 +11,18 @@ import com.vetsoftware.app.paymentgateway.domain.GatewayTransactionStatus;
 import com.vetsoftware.app.paymentgateway.domain.MerchantAcceptance;
 import com.vetsoftware.app.paymentgateway.domain.PaymentGatewayNotConfiguredException;
 import com.vetsoftware.app.paymentgateway.domain.WompiGatewayException;
+import com.vetsoftware.app.paymentgateway.domain.WompiRateLimitedException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -102,7 +107,10 @@ public class WompiGatewayClient implements PaymentGatewayPort {
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.privateKey())
                     .contentType(MediaType.APPLICATION_JSON).body(body).retrieve()
                     .body(TransactionEnvelope.class);
-            return toGatewayTransaction(envelope.data());
+            return toGatewayTransaction(requireData(envelope));
+        } catch (HttpClientErrorException.TooManyRequests e) {
+            throw new WompiRateLimitedException("Wompi limitó la tasa de peticiones al cobrar",
+                    retryAfterFrom(e));
         } catch (RestClientException e) {
             throw new WompiGatewayException("No se pudo iniciar la transacción en Wompi", e);
         }
@@ -129,6 +137,11 @@ public class WompiGatewayClient implements PaymentGatewayPort {
     }
 
     @Override
+    public Duration pendingTransactionMaxAge() {
+        return properties.pendingTransactionMaxAge();
+    }
+
+    @Override
     public GatewayTransaction findTransaction(String id) {
         requireEnabled();
         try {
@@ -136,10 +149,54 @@ public class WompiGatewayClient implements PaymentGatewayPort {
                     .uri(properties.baseUrl() + "/transactions/{id}", id)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.privateKey())
                     .retrieve().body(TransactionEnvelope.class);
-            return toGatewayTransaction(envelope.data());
+            return toGatewayTransaction(requireData(envelope));
+        } catch (HttpClientErrorException.TooManyRequests e) {
+            throw new WompiRateLimitedException(
+                    "Wompi limitó la tasa de peticiones al consultar la transacción " + id,
+                    retryAfterFrom(e));
         } catch (RestClientException e) {
             throw new WompiGatewayException(
                     "No se pudo consultar la transacción " + id + " en Wompi", e);
+        }
+    }
+
+    @Override
+    public Optional<GatewayTransaction> findByReference(String reference) {
+        requireEnabled();
+        try {
+            TransactionListEnvelope envelope = restClient.get()
+                    .uri(properties.baseUrl() + "/transactions?reference={reference}", reference)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.privateKey())
+                    .retrieve().body(TransactionListEnvelope.class);
+            if (envelope == null || envelope.data() == null || envelope.data().isEmpty()) {
+                return Optional.empty();
+            }
+            return Optional.of(toGatewayTransaction(envelope.data().getFirst()));
+        } catch (HttpClientErrorException.TooManyRequests e) {
+            throw new WompiRateLimitedException("Wompi limitó la tasa de peticiones al consultar "
+                    + "transacciones por referencia " + reference, retryAfterFrom(e));
+        } catch (RestClientException e) {
+            throw new WompiGatewayException(
+                    "No se pudo consultar transacciones por referencia " + reference + " en Wompi",
+                    e);
+        }
+    }
+
+    /**
+     * Delta-seconds (RFC 9110 §10.2.3), el único formato que Wompi documenta para
+     * esta cabecera. Un valor ausente o no numérico deja que
+     * {@code WompiRateLimitedException} aplique su mínimo de una hora.
+     */
+    private static Duration retryAfterFrom(HttpClientErrorException e) {
+        HttpHeaders headers = e.getResponseHeaders();
+        String value = headers == null ? null : headers.getFirst(HttpHeaders.RETRY_AFTER);
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Duration.ofSeconds(Long.parseLong(value.trim()));
+        } catch (NumberFormatException ex) {
+            return null;
         }
     }
 
@@ -150,10 +207,31 @@ public class WompiGatewayClient implements PaymentGatewayPort {
         }
     }
 
+    private static TransactionData requireData(TransactionEnvelope envelope) {
+        if (envelope == null || envelope.data() == null) {
+            throw new WompiGatewayException("Wompi respondió sin datos de transacción");
+        }
+        return envelope.data();
+    }
+
+    /**
+     * Un {@code status} que Wompi todavía no documenta se trata como
+     * {@code PENDING} en vez de reventar: la transacción ya existe en Wompi -con su
+     * {@code id}- y el sondeo o la conciliación posterior resuelven el estado real.
+     * Interpretarlo mal no debe impedir asignar la referencia.
+     */
+    private static GatewayTransactionStatus toStatus(String status) {
+        try {
+            return GatewayTransactionStatus.valueOf(status);
+        } catch (RuntimeException e) {
+            return GatewayTransactionStatus.PENDING;
+        }
+    }
+
     private static GatewayTransaction toGatewayTransaction(TransactionData data) {
-        return new GatewayTransaction(data.id(), GatewayTransactionStatus.valueOf(data.status()),
-                data.statusMessage(), data.reference(), data.amountInCents(),
-                data.paymentMethodType());
+        Instant createdAt = data.createdAt() == null ? null : Instant.parse(data.createdAt());
+        return new GatewayTransaction(data.id(), toStatus(data.status()), data.statusMessage(),
+                data.reference(), data.amountInCents(), data.paymentMethodType(), createdAt);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -184,9 +262,14 @@ public class WompiGatewayClient implements PaymentGatewayPort {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    private record TransactionListEnvelope(List<TransactionData> data) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private record TransactionData(String id, String status,
             @JsonProperty("status_message") String statusMessage, String reference,
             @JsonProperty("amount_in_cents") long amountInCents,
-            @JsonProperty("payment_method_type") String paymentMethodType) {
+            @JsonProperty("payment_method_type") String paymentMethodType,
+            @JsonProperty("created_at") String createdAt) {
     }
 }

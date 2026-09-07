@@ -111,16 +111,15 @@ public class PaymentAttempt {
      * Programa el siguiente reintento.
      *
      * <p>
-     * Sobre un {@link DeclineKind#HARD} lanza
-     * {@link HardDeclineCannotBeRetriedException} (409) en vez de dejar que la
-     * violacion de {@code chk_payment_attempts_hard_has_no_retry} llegue a la cara
-     * del operador como un error de integridad sin mensaje.
+     * Tambien sobre un {@link DeclineKind#HARD}: la escalera automatica de cobranza
+     * nunca lo llama con un rechazo duro por su cuenta, pero fijar una tarjeta
+     * nueva como predeterminada si lo hace explicitamente
+     * ({@code SetDefaultPaymentMethodService}), y es el unico camino por el que un
+     * {@code HARD} llega a tener {@code next_attempt_at}.
      */
     public void reschedule(LocalDateTime next) {
         if (next == null)
             throw new IllegalArgumentException("nextAttemptAt is required");
-        if (declineKind == DeclineKind.HARD)
-            throw new HardDeclineCannotBeRetriedException(id);
         if (!next.isAfter(attemptedAt))
             throw new IllegalArgumentException("nextAttemptAt must be after attemptedAt");
         this.nextAttemptAt = next;
@@ -176,11 +175,6 @@ public class PaymentAttempt {
             throw new IllegalArgumentException("gatewayDeclineCode must be 160 chars or less");
         if (attemptedAt == null)
             throw new IllegalArgumentException("attemptedAt is required");
-        // Espejo de chk_payment_attempts_hard_has_no_retry: en un rechazo duro el
-        // vacio ES la regla, no un descuido. No hay siguiente hasta que aparezca
-        // otra tarjeta.
-        if (declineKind == DeclineKind.HARD && nextAttemptAt != null)
-            throw new IllegalArgumentException("a HARD decline cannot schedule a next attempt");
         // Espejo de chk_payment_attempts_retry_is_later.
         if (nextAttemptAt != null && !nextAttemptAt.isAfter(attemptedAt))
             throw new IllegalArgumentException("nextAttemptAt must be after attemptedAt");

@@ -12,6 +12,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.Map;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -68,7 +69,11 @@ public class PaymentCollectionJob {
         this.batchSize = batchSize;
     }
 
+    // lockAtMostFor cubre el peor caso, no el tipico: batchSize (100) x (sondeo
+    // 6x2s + dos llamadas HTTP a 15s de readTimeout) ~ 70 min. PT2H
+    // deja margen sin acercarse al ciclo diario del propio job.
     @Scheduled(cron = "${payment.collection.cron:0 10 5 * * *}", zone = ScheduledJobCatalog.ZONE)
+    @SchedulerLock(name = "payment.collection", lockAtMostFor = "PT2H", lockAtLeastFor = "PT1M")
     public void runCollection() {
         telemetry.observe(JOB, this::executeCollection);
     }

@@ -1,5 +1,7 @@
 package com.vetsoftware.app.subscriptionpayment.application.port.out;
 
+import java.math.BigDecimal;
+
 /**
  * R4: el saldo de una factura es siempre su total menos lo aplicado confirmado.
  *
@@ -26,11 +28,19 @@ public interface BillingDocumentSettlementPort {
 
     /**
      * Recalcula {@code settled_amount} del documento como la suma de sus
-     * aplicaciones cuyo origen cuenta como cobro: las de nota credito siempre, y
-     * las de pago solo si el pago esta {@code CONFIRMED}.
+     * aplicaciones cuyo origen cuenta como cobro: las cinco que no llevan pago
+     * siempre, y las de pago solo si el pago esta {@code CONFIRMED}. El resultado
+     * nunca supera {@code total_amount}: lo que exceda queda fuera del saldo
+     * escrito y {@link #computeUncappedSettledAmount} es lo unico que lo deja ver.
      *
      * @return filas actualizadas: 0 significa que el documento no existe o no es de
      *         esa empresa
      */
     int recalculateSettledAmount(Long documentId, Long companyId);
+
+    /**
+     * Se llama antes de {@link #recalculateSettledAmount}; ver
+     * {@code ChangeSubscriptionPaymentStatusService#capOverpayment}.
+     */
+    BigDecimal computeUncappedSettledAmount(Long documentId, Long companyId);
 }

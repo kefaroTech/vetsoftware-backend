@@ -2,6 +2,7 @@ package com.vetsoftware.app.paymentgateway.application.usecase;
 
 import com.vetsoftware.app.paymentgateway.application.port.out.PaymentAttemptQueryPort;
 import com.vetsoftware.app.paymentgateway.application.port.out.PaymentAttemptRecorderPort;
+import com.vetsoftware.app.paymentgateway.application.port.out.PaymentGatewayMetrics;
 import com.vetsoftware.app.paymentgateway.application.port.out.SubscriptionPaymentLedgerPort;
 import com.vetsoftware.app.paymentgateway.domain.FirstPeriodChargeOutcome;
 import com.vetsoftware.app.paymentgateway.domain.GatewayDeclineCode;
@@ -13,6 +14,7 @@ import com.vetsoftware.app.paymentgateway.domain.WompiDeclineClassifier;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,22 +31,34 @@ public class GatewayOutcomeSettler {
     private final SubscriptionPaymentLedgerPort ledgerPort;
     private final PaymentAttemptRecorderPort attemptPort;
     private final PaymentAttemptQueryPort attemptQueryPort;
+    private final PaymentGatewayMetrics metrics;
     private final Clock clock;
 
     public GatewayOutcomeSettler(SubscriptionPaymentLedgerPort ledgerPort,
             PaymentAttemptRecorderPort attemptPort, PaymentAttemptQueryPort attemptQueryPort,
-            Clock clock) {
+            PaymentGatewayMetrics metrics, Clock clock) {
         this.ledgerPort = ledgerPort;
         this.attemptPort = attemptPort;
         this.attemptQueryPort = attemptQueryPort;
+        this.metrics = metrics;
         this.clock = clock;
     }
 
     public FirstPeriodChargeOutcome settle(GatewayTransactionStatus status, String statusMessage,
             Long companyId, Long paymentId, Long documentId, Long paymentMethodId,
             BigDecimal requestedAmount) {
+        // El webhook y el sondeo pueden llegar los dos a un estado final del mismo
+        // pago: quien pierda la carrera confirma/falla algo que ya no admite esa
+        // transicion. Salir con el desenlace ya registrado evita la excepcion y el
+        // doble intento anotado.
+        Optional<FirstPeriodChargeOutcome> already = ledgerPort.currentOutcome(paymentId,
+                companyId);
+        if (already.isPresent()) {
+            return already.get();
+        }
         if (status == GatewayTransactionStatus.APPROVED) {
             ledgerPort.confirm(paymentId, companyId);
+            metrics.recordChargeOutcome(FirstPeriodChargeOutcome.APPROVED, null);
             return FirstPeriodChargeOutcome.APPROVED;
         }
         ledgerPort.fail(paymentId, companyId);
@@ -54,6 +68,7 @@ public class GatewayOutcomeSettler {
         LocalDateTime nextAttemptAt = nextAttemptAt(kind, companyId, documentId, now);
         attemptPort.record(companyId, documentId, paymentMethodId, PaymentGatewayNames.WOMPI,
                 requestedAmount, code, kind, now, nextAttemptAt);
+        metrics.recordChargeOutcome(FirstPeriodChargeOutcome.DECLINED, kind);
         return FirstPeriodChargeOutcome.DECLINED;
     }
 

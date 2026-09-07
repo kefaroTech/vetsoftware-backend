@@ -94,6 +94,26 @@ public interface SubscriptionBillingDocumentJpaRepository
     Page<SubscriptionBillingDocumentJpaEntity> findAllOverdue(@Param("today") LocalDate today,
             Pageable pageable);
 
+    /**
+     * Los documentos que un contrato que se sustituye deja abiertos: calculados
+     * aqui, no emitidos fuera todavia ({@code DRAFT}/{@code AWAITING_EXTERNAL}) y
+     * con algo pendiente de cobrar. Un {@code EXTERNAL_REGISTERED} no entra -ya
+     * existe fuera y se corrige con nota credito, no se anula-, y tampoco uno ya
+     * {@code VOIDED} o saldado.
+     */
+    @Query(value = """
+            SELECT id
+            FROM subscription_billing_documents
+            WHERE subscription_id = :subscriptionId
+              AND company_id = :companyId
+              AND document_kind = 'INVOICE'
+              AND issue_status IN ('DRAFT', 'AWAITING_EXTERNAL')
+              AND balance_amount > 0
+            ORDER BY id
+            """, nativeQuery = true)
+    List<Long> findOpenIdsBySubscriptionId(@Param("subscriptionId") Long subscriptionId,
+            @Param("companyId") Long companyId);
+
     @Query(value = """
             SELECT *
             FROM subscription_billing_documents

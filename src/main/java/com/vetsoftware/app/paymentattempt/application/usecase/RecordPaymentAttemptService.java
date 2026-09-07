@@ -115,9 +115,15 @@ public class RecordPaymentAttemptService implements RecordPaymentAttemptUseCase 
      * que es un {@code COUNT} sobre una ventana y no admite indice unico -la misma
      * situacion de «esto la base no lo puede expresar» que el tope de las
      * devoluciones-, y ademas convierte un reintento legitimo en un 500.
+     *
+     * <p>
+     * <b>El intento que agota el presupuesto se guarda igual</b>: es el que marca
+     * «aqui se acabaron los reintentos» en el expediente de cobranza. Se guarda
+     * antes de lanzar, y {@code noRollbackFor} impide que el rechazo se lleve el
+     * {@code save} con el rollback.
      */
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
+    @Transactional(isolation = Isolation.READ_COMMITTED, noRollbackFor = RetryBudgetExhaustedException.class)
     public PaymentAttemptDto execute(RecordPaymentAttemptCommand command) {
         if (!billingDocumentValidationPort.existsByIdAndCompanyId(command.billingDocumentId(),
                 command.companyId()))
@@ -144,8 +150,9 @@ public class RecordPaymentAttemptService implements RecordPaymentAttemptUseCase 
                 command.gateway(), command.requestedAmount(), command.gatewayDeclineCode(),
                 command.declineKind(), command.attemptedAt(), command.nextAttemptAt(), now);
 
+        PaymentAttempt saved = repository.save(attempt);
         rejectIfBudgetExhausted(command, attempt, now);
-        return PaymentAttemptDto.from(repository.save(attempt));
+        return PaymentAttemptDto.from(saved);
     }
 
     private int nextAttemptNumber(RecordPaymentAttemptCommand command) {

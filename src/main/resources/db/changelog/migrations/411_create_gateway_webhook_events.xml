@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Hallazgo 3 de docs/db/pasarela-wompi-modelo.md (opcional para esta entrega, se
+         adelanta a peticion del orquestador). Sin esta tabla, un webhook de Wompi que
+         llega sin que findByGatewayAndGatewayReference encuentre el pago (fuera de orden,
+         o un fallo transitorio entre charge() y RegisterSubscriptionPaymentUseCase) solo
+         deja "log WARN y 200" -Wompi no reintenta un 200-, y ese evento se pierde para
+         siempre salvo retencion de logs (no consultable con SQL, sujeto a retencion de
+         logs y no de datos). gateway_webhook_events deja rastro auditable de todo webhook
+         recibido, se procese o no.
+
+         event_checksum, no un id de evento propio: Wompi no expone uno, y el SHA-256 hex
+         del cuerpo del webhook es lo que hace de llave de idempotencia -mismo checksum en
+         cada reintento porque los datos que lo alimentan no cambian entre reintentos-.
+
+         SIN company_id y SIN FK a subscription_payments, a proposito: el evento tiene que
+         poder persistirse incluso cuando NO se encuentra el pago correspondiente -para eso
+         existe esta tabla-, y llega antes de saber a que empresa pertenece. Mismo criterio
+         que gateway_settlements (326): tabla de plataforma pura que agrupa/recibe datos de
+         muchas empresas a la vez y no pertenece a ninguna.
+
+         Con @Version: la fila se escribe dos veces -alta sin procesar, luego relleno de
+         processed_at/processing_outcome en el mismo request o en un barrido posterior- y
+         es una segunda escritura declarada, no una exencion de las de
+         ENTIDADES_EXENTAS_DE_VERSION.
+
+         chk_gwe_processing_outcome NO incluye DUPLICATE: ese caso es un checksum que ya
+         existe, y uq_gateway_webhook_events_checksum impide insertar una segunda fila con
+         el mismo (gateway, event_checksum) -no hay fila nueva donde escribir ese valor, y
+         sobrescribir el outcome de la fila original borraria el desenlace real del primer
+         intento-. El servicio trata el reintento como una lectura de la fila existente, no
+         como una escritura con un outcome propio.
+
+         REJECTED_STALE (#789): el evento llego fuera de la ventana de frescura que valida
+         ProcessWompiEventUseCase antes de aplicarlo -evita reprocesar un webhook demorado
+         contra un pago que ya avanzo por otro camino-. Es un desenlace final igual que los
+         demas REJECTED_*, asi que entra en el mismo CHECK.
+
+         raw_body NULABLE (#791): la retencion del cuerpo crudo la resuelve un job de purga
+         que vacia esta columna pasados N dias -el resto de la fila (gateway, event_type,
+         event_checksum, processing_outcome) es evidencia contable que se conserva
+         indefinidamente-. ix_gateway_webhook_events_purge (received_at) es el indice que ese
+         barrido necesita: filtra por antiguedad de llegada, no por si ya se proceso, asi que
+         ix_gateway_webhook_events_pending (processed_at) no le sirve. -->
+    <changeSet id="411_create_gateway_webhook_events" author="orlando">
+        <createTable tableName="gateway_webhook_events">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="gateway" type="VARCHAR(40)"><constraints nullable="false"/></column>
+            <column name="event_type" type="VARCHAR(60)"><constraints nullable="false"/></column>
+            <column name="event_checksum" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gateway_reference" type="VARCHAR(120)"/>
+            <column name="received_at" type="DATETIME(6)"><constraints nullable="false"/></column>
+            <column name="raw_body" type="TEXT"/>
+            <column name="processed_at" type="DATETIME(6)"/>
+            <column name="processing_outcome" type="VARCHAR(30)"/>
+            <column name="created_date" type="DATETIME(6)"
+                    defaultValueComputed="CURRENT_TIMESTAMP(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql><![CDATA[
+            ALTER TABLE gateway_webhook_events
+                MODIFY COLUMN gateway VARCHAR(40)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN event_type VARCHAR(60)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN event_checksum VARCHAR(64)
+                    CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+                MODIFY COLUMN gateway_reference VARCHAR(120)
+                    CHARACTER SET ascii COLLATE ascii_bin NULL,
+                MODIFY COLUMN raw_body TEXT
+                    CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
+                ADD CONSTRAINT uq_gateway_webhook_events_checksum
+                    UNIQUE (gateway, event_checksum),
+                ADD CONSTRAINT chk_gwe_processed
+                    CHECK ((processed_at IS NULL AND processing_outcome IS NULL)
+                           OR (processed_at IS NOT NULL AND processing_outcome IS NOT NULL)),
+                ADD CONSTRAINT chk_gwe_processing_outcome
+                    CHECK (processing_outcome IN ('APPLIED', 'IGNORED_UNKNOWN_EVENT',
+                           'IGNORED_ALREADY_FINAL', 'PAYMENT_NOT_FOUND', 'REJECTED_CHECKSUM',
+                           'REJECTED_STALE', 'REJECTED_AMOUNT'))
+        ]]></sql>
+
+        <createIndex tableName="gateway_webhook_events"
+                     indexName="ix_gateway_webhook_events_reference">
+            <column name="gateway"/>
+            <column name="gateway_reference"/>
+        </createIndex>
+        <createIndex tableName="gateway_webhook_events"
+                     indexName="ix_gateway_webhook_events_pending">
+            <column name="processed_at"/>
+        </createIndex>
+        <createIndex tableName="gateway_webhook_events"
+                     indexName="ix_gateway_webhook_events_purge">
+            <column name="received_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="gateway_webhook_events"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

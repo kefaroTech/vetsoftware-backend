@@ -186,21 +186,35 @@ class AuditFieldsSurviveRedactionTest {
                                 "emitida sobre el periodo equivocado")),
                 new AuditCase("subscriptionPaymentRegistered", "subscription_payment_registered",
                         audit -> audit.subscriptionPaymentRegistered(300L, "TRANSFER",
-                                new BigDecimal("14875000000.00"), "PENDING")),
+                                new BigDecimal("14875000000.00"), "COP", "WOMPI", "01-1532941443",
+                                "PENDING")),
                 new AuditCase("subscriptionPaymentStatusChanged",
                         "subscription_payment_status_changed",
                         audit -> audit.subscriptionPaymentStatusChanged(300L, "CONFIRMED",
-                                "REFUNDED")),
+                                "REFUNDED", new BigDecimal("14875000000.00"), "COP", "WOMPI",
+                                "01-1532941443")),
                 new AuditCase("subscriptionDocumentApplied", "subscription_document_applied",
                         audit -> audit.subscriptionDocumentApplied(700L, 500L, "CREDIT_NOTE",
                                 new BigDecimal("14875000000.00"))),
                 new AuditCase("subscriptionApplicationReversed",
                         "subscription_application_reversed",
                         audit -> audit.subscriptionApplicationReversed(700L, 500L,
+                                new BigDecimal("14875000000.00"),
+                                "prorrateo del contrato anterior")),
+                new AuditCase("subscriptionPaymentOverpaymentCredited",
+                        "subscription_payment_overpayment_credited",
+                        audit -> audit.subscriptionPaymentOverpaymentCredited(300L, 500L,
                                 new BigDecimal("14875000000.00"))),
                 new AuditCase("companyEntitlementsRecalculated",
                         "company_entitlements_recalculated",
-                        audit -> audit.companyEntitlementsRecalculated(3L, "scheduled_sweep", 42)));
+                        audit -> audit.companyEntitlementsRecalculated(3L, "scheduled_sweep", 42)),
+                new AuditCase("customerCreditGranted", "customer_credit_granted",
+                        audit -> audit.customerCreditGranted(910L, 3L,
+                                new BigDecimal("14875000000.00"), "OVERPAYMENT", 300L, 500L, 7L)),
+                new AuditCase("quoteAccepted", "quote_accepted",
+                        audit -> audit.quoteAccepted(31L, "COT-000031", 7L, 500L,
+                                new BigDecimal("14875000000.00"), "COP", CORREO_DEL_DUENO,
+                                "192.0.2.10")));
     }
 
     /**
@@ -357,6 +371,28 @@ class AuditFieldsSurviveRedactionTest {
                         + "errata al escribirlos, o un rename/borrado en producción que dejó la "
                         + "entrada apuntando a la nada")
                 .containsAll(exercisedByCases);
+    }
+
+    @Test
+    @DisplayName("un cobro que pasa a FAILED audita outcome=FAILURE, no SUCCESS (#761)")
+    void unCobroFallidoAuditaOutcomeFailure() {
+        sink.list.clear();
+        auditLogger.subscriptionPaymentStatusChanged(300L, "PENDING", "FAILED",
+                new BigDecimal("14875000000.00"), "COP", "WOMPI", null);
+
+        assertThat(sink.list.get(0).getKeyValuePairs())
+                .extracting(pair -> pair.key + "=" + pair.value).contains("outcome=FAILURE");
+    }
+
+    @Test
+    @DisplayName("confirmar o devolver un pago sigue auditando outcome=SUCCESS")
+    void confirmarODevolverAuditaOutcomeSuccess() {
+        sink.list.clear();
+        auditLogger.subscriptionPaymentStatusChanged(300L, "CONFIRMED", "REFUNDED",
+                new BigDecimal("14875000000.00"), "COP", "WOMPI", "01-1532941443");
+
+        assertThat(sink.list.get(0).getKeyValuePairs())
+                .extracting(pair -> pair.key + "=" + pair.value).contains("outcome=SUCCESS");
     }
 
     @Test

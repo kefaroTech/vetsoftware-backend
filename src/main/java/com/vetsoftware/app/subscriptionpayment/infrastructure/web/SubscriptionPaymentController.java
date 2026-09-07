@@ -101,9 +101,6 @@ public class SubscriptionPaymentController {
     }
 
     private SubscriptionPaymentResponse toResponse(SubscriptionPaymentDto dto) {
-        return new SubscriptionPaymentResponse(dto.id(), dto.companyId(), dto.amount(),
-                dto.currency(), dto.paymentMethod(), dto.gateway(), dto.gatewayReference(),
-                dto.receivedAt(), dto.status(), dto.reconciledAt(), dto.createdDate(),
-                dto.version());
+        return SubscriptionPaymentResponse.from(dto);
     }
 }

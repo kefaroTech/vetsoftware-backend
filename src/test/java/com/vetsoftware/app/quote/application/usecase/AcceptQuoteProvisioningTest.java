@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.quote.application.command.AcceptQuoteCommand;
+import com.vetsoftware.app.quote.application.port.out.QuoteAuditPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteRepository;
 import com.vetsoftware.app.quote.application.port.out.SubscriptionProvisioningPort;
 import com.vetsoftware.app.quote.domain.BillingCycle;
@@ -63,8 +64,11 @@ class AcceptQuoteProvisioningTest {
     @Mock
     private SubscriptionProvisioningPort provisioning;
 
+    @Mock
+    private QuoteAuditPort audit;
+
     private AcceptQuoteService service() {
-        return new AcceptQuoteService(repository, provisioning, RELOJ);
+        return new AcceptQuoteService(repository, provisioning, audit, RELOJ);
     }
 
     private static AcceptQuoteCommand comando() {

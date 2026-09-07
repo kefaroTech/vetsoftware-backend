@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.infrastructure.config.ClockConfig;
 import com.vetsoftware.app.quote.application.command.AcceptQuoteCommand;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
+import com.vetsoftware.app.quote.application.port.out.QuoteAuditPort;
 import com.vetsoftware.app.quote.application.port.out.QuoteRepository;
 import com.vetsoftware.app.quote.application.port.out.SubscriptionProvisioningPort;
 import com.vetsoftware.app.quote.domain.Quote;
@@ -94,6 +95,9 @@ class AcceptQuoteServiceZoneTest {
     @Mock
     private SubscriptionProvisioningPort provisioning;
 
+    @Mock
+    private QuoteAuditPort audit;
+
     private static AcceptQuoteCommand comando() {
         return new AcceptQuoteCommand(ID, EMPRESA, EMAIL, IP);
     }
@@ -112,7 +116,7 @@ class AcceptQuoteServiceZoneTest {
                     .thenReturn(Optional.of(persistida(ID, QuoteStatus.SENT)));
             when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-            QuoteDto dto = new AcceptQuoteService(repository, provisioning, reloj)
+            QuoteDto dto = new AcceptQuoteService(repository, provisioning, audit, reloj)
                     .execute(comando());
 
             assertThat(dto.status()).isEqualTo(QuoteStatus.ACCEPTED.name());
@@ -127,7 +131,7 @@ class AcceptQuoteServiceZoneTest {
                     .thenReturn(Optional.of(persistida(ID, QuoteStatus.SENT)));
             when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-            new AcceptQuoteService(repository, provisioning, reloj).execute(comando());
+            new AcceptQuoteService(repository, provisioning, audit, reloj).execute(comando());
 
             ArgumentCaptor<Quote> guardada = ArgumentCaptor.forClass(Quote.class);
             verify(repository).save(guardada.capture());
@@ -158,9 +162,8 @@ class AcceptQuoteServiceZoneTest {
             when(repository.findByIdAndCompanyId(ID, EMPRESA))
                     .thenReturn(Optional.of(persistida(ID, QuoteStatus.SENT)));
 
-            assertThatThrownBy(
-                    () -> new AcceptQuoteService(repository, provisioning, relojSinZonaDeNegocio)
-                            .execute(comando()))
+            assertThatThrownBy(() -> new AcceptQuoteService(repository, provisioning, audit,
+                    relojSinZonaDeNegocio).execute(comando()))
                     .isInstanceOf(QuoteExpiredException.class)
                     .hasMessageContaining("expired on " + VIGENTE_HASTA);
         }
@@ -171,9 +174,8 @@ class AcceptQuoteServiceZoneTest {
             when(repository.findByIdAndCompanyId(ID, EMPRESA))
                     .thenReturn(Optional.of(persistida(ID, QuoteStatus.SENT)));
 
-            assertThatThrownBy(
-                    () -> new AcceptQuoteService(repository, provisioning, relojSinZonaDeNegocio)
-                            .execute(comando()))
+            assertThatThrownBy(() -> new AcceptQuoteService(repository, provisioning, audit,
+                    relojSinZonaDeNegocio).execute(comando()))
                     .isInstanceOf(QuoteExpiredException.class);
 
             verify(repository, never()).save(any());

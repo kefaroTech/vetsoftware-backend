@@ -31,6 +31,7 @@ import com.vetsoftware.app.subscriptionpayment.application.port.out.Subscription
 import com.vetsoftware.app.subscriptionpayment.application.port.out.WithholdingQueryPort;
 import com.vetsoftware.app.subscriptionpayment.domain.ApplicationSourceKind;
 import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentApplication;
+import com.vetsoftware.app.subscriptionpayment.domain.BillingDocumentOverpaymentException;
 import com.vetsoftware.app.subscriptionpayment.domain.CustomerCreditLotRef;
 import com.vetsoftware.app.subscriptionpayment.domain.OverAppliedSourceException;
 import com.vetsoftware.app.subscriptionpayment.domain.SubscriptionPaymentNotFoundException;
@@ -105,10 +106,9 @@ class ApplyBillingDocumentServiceTest {
     class EstadoDelPago {
 
         @ParameterizedTest(name = "rechaza {0}")
-        @EnumSource(value = SubscriptionPaymentStatus.class, names = {"PENDING", "FAILED",
-                "REFUNDED"})
-        @DisplayName("rechaza pagos que no estan confirmados y no crea la aplicacion")
-        void rechaza_pagos_que_no_estan_confirmados(SubscriptionPaymentStatus status) {
+        @EnumSource(value = SubscriptionPaymentStatus.class, names = {"FAILED", "REFUNDED"})
+        @DisplayName("rechaza pagos fallidos o devueltos y no crea la aplicacion")
+        void rechaza_pagos_fallidos_o_devueltos(SubscriptionPaymentStatus status) {
             resuelveFactura();
             when(paymentRepository.lockByIdAndCompanyId(7L, EMPRESA))
                     .thenReturn(Optional.of(pagoEnEstado("500000.00", status)));
@@ -126,6 +126,28 @@ class ApplyBillingDocumentServiceTest {
             resuelveFactura();
             when(paymentRepository.lockByIdAndCompanyId(7L, EMPRESA))
                     .thenReturn(Optional.of(pagoConfirmado("500000.00")));
+            when(applicationRepository.sumAppliedFromPayment(7L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
+            when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            BillingDocumentApplicationDto dto = service()
+                    .execute(comandoDePago(pesos("100000.00")));
+
+            assertThat(dto.appliedAmount()).isEqualByComparingTo("100000.00");
+            verify(settlementPort).recalculateSettledAmount(100L, EMPRESA);
+            verify(dunningReevaluationPort).reevaluate(100L, EMPRESA);
+        }
+
+        @Test
+        @DisplayName("acepta un pago PENDING de la pasarela y crea la aplicacion (RES-01)")
+        void acepta_un_pago_pendiente() {
+            // El pago Wompi se registra PENDING y se aplica en ese mismo estado: es lo
+            // unico que evita el doble cobro (SKIPPED_PENDING_PAYMENT).
+            // recalculateSettledAmount solo cuenta los CONFIRMED (R4), asi que aplicar un
+            // PENDING no baja el saldo.
+            resuelveFactura();
+            when(paymentRepository.lockByIdAndCompanyId(7L, EMPRESA)).thenReturn(
+                    Optional.of(pagoEnEstado("500000.00", SubscriptionPaymentStatus.PENDING)));
             when(applicationRepository.sumAppliedFromPayment(7L, EMPRESA))
                     .thenReturn(BigDecimal.ZERO);
             when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -220,6 +242,8 @@ class ApplyBillingDocumentServiceTest {
             when(billingDocumentQueryPort.findByIdAndCompanyId(200L, EMPRESA))
                     .thenReturn(Optional.of(notaCredito()));
             when(applicationRepository.sumAppliedFromSourceDocument(200L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
+            when(settlementPort.computeUncappedSettledAmount(100L, EMPRESA))
                     .thenReturn(BigDecimal.ZERO);
             when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -429,6 +453,8 @@ class ApplyBillingDocumentServiceTest {
                     .thenReturn(Optional.of(notaCredito()));
             when(applicationRepository.sumAppliedFromSourceDocument(200L, EMPRESA))
                     .thenReturn(BigDecimal.ZERO);
+            when(settlementPort.computeUncappedSettledAmount(100L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
             when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             service().execute(comandoDeNotaCredito(pesos("100000.00")));
@@ -537,6 +563,8 @@ class ApplyBillingDocumentServiceTest {
                     Optional.of(new WithholdingRef(300L, EMPRESA, 100L, pesos("7160.00"))));
             when(applicationRepository.sumAppliedFromWithholding(300L, EMPRESA))
                     .thenReturn(BigDecimal.ZERO);
+            when(settlementPort.computeUncappedSettledAmount(100L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
             when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             BillingDocumentApplicationDto dto = service()
@@ -585,6 +613,25 @@ class ApplyBillingDocumentServiceTest {
         }
 
         @Test
+        @DisplayName("una retencion que excede lo ya cobrado por otra via se rechaza (#785 residual)")
+        void la_retencion_no_supera_el_total_ya_cobrado_por_otra_via() {
+            resuelveFactura();
+            when(withholdingQueryPort.findByIdAndCompanyId(300L, EMPRESA)).thenReturn(
+                    Optional.of(new WithholdingRef(300L, EMPRESA, 100L, pesos("900000.00"))));
+            when(applicationRepository.sumAppliedFromWithholding(300L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
+            when(settlementPort.computeUncappedSettledAmount(100L, EMPRESA))
+                    .thenReturn(pesos("900000.00"));
+
+            assertThatThrownBy(
+                    () -> service().execute(comandoDeRetencion(pesos("900000.00"), null)))
+                    .isInstanceOf(BillingDocumentOverpaymentException.class);
+
+            verify(applicationRepository, never()).save(any());
+            verify(settlementPort, never()).recalculateSettledAmount(any(), any());
+        }
+
+        @Test
         @DisplayName("una retencion que no es de esta empresa no se resuelve")
         void retencion_de_otra_empresa() {
             resuelveFactura();
@@ -604,6 +651,8 @@ class ApplyBillingDocumentServiceTest {
                     Optional.of(new CustomerCreditLotRef(800L, EMPRESA, pesos("100000.00"), null)));
             when(applicationRepository.sumAppliedFromCreditEntry(800L, EMPRESA))
                     .thenReturn(pesos("40000.00"));
+            when(settlementPort.computeUncappedSettledAmount(100L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
             when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             BillingDocumentApplicationDto dto = service()
@@ -648,6 +697,8 @@ class ApplyBillingDocumentServiceTest {
         @DisplayName("un residuo de redondeo cierra el saldo que ningun medio de pago mueve")
         void el_redondeo_cierra_el_saldo() {
             resuelveFactura();
+            when(settlementPort.computeUncappedSettledAmount(100L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
             when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             BillingDocumentApplicationDto dto = service().execute(comandoSinReferencia(
@@ -663,6 +714,8 @@ class ApplyBillingDocumentServiceTest {
         @DisplayName("un redondeo por encima del tope no entra: no es redondeo, es un descuadre")
         void el_redondeo_tiene_tope() {
             resuelveFactura();
+            when(settlementPort.computeUncappedSettledAmount(100L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
 
             assertThatThrownBy(
                     () -> service().execute(comandoSinReferencia(ApplicationSourceKind.ROUNDING,
@@ -676,6 +729,8 @@ class ApplyBillingDocumentServiceTest {
         @DisplayName("un castigo firmado da la deuda por incobrable sin borrarla")
         void el_castigo_firmado_entra() {
             resuelveFactura();
+            when(settlementPort.computeUncappedSettledAmount(100L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
             when(applicationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             BillingDocumentApplicationDto dto = service()
@@ -691,6 +746,8 @@ class ApplyBillingDocumentServiceTest {
         @DisplayName("un castigo sin firma nominal no se escribe")
         void el_castigo_sin_firma_no_entra() {
             resuelveFactura();
+            when(settlementPort.computeUncappedSettledAmount(100L, EMPRESA))
+                    .thenReturn(BigDecimal.ZERO);
 
             assertThatThrownBy(
                     () -> service().execute(comandoSinReferencia(ApplicationSourceKind.WRITE_OFF,

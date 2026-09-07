@@ -6,6 +6,7 @@ import static com.vetsoftware.app.subscriptionpayment.testsupport.SubscriptionPa
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -40,7 +41,7 @@ class ReverseBillingDocumentApplicationServiceTest {
 
     private static final Clock RELOJ = Clock.fixed(AHORA.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
     private static final ReverseBillingDocumentApplicationCommand COMANDO = new ReverseBillingDocumentApplicationCommand(
-            500L, EMPRESA);
+            500L, EMPRESA, "correccion manual de soporte");
 
     @Mock
     private BillingDocumentApplicationRepository repository;
@@ -89,6 +90,21 @@ class ReverseBillingDocumentApplicationServiceTest {
         }
 
         @Test
+        @DisplayName("audita el reverso con el motivo del comando (#790)")
+        void audita_con_el_motivo() {
+            when(repository.findByIdAndCompanyId(500L, EMPRESA))
+                    .thenReturn(Optional.of(aplicacionDePago()));
+            when(repository.findByReversalOfIdAndCompanyId(500L, EMPRESA))
+                    .thenReturn(Optional.empty());
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.execute(COMANDO);
+
+            verify(audit).applicationReversed(any(), eq(100L),
+                    eq(new java.math.BigDecimal("-200000.00")), eq("correccion manual de soporte"));
+        }
+
+        @Test
         @DisplayName("recalcula el saldo del destino despues de guardar la reversa")
         void recalcula_el_saldo() {
             when(repository.findByIdAndCompanyId(500L, EMPRESA))
@@ -119,6 +135,25 @@ class ReverseBillingDocumentApplicationServiceTest {
             InOrder orden = inOrder(billingDocumentQueryPort, repository);
             orden.verify(billingDocumentQueryPort).lockByIdAndCompanyId(100L, EMPRESA);
             orden.verify(repository).findByReversalOfIdAndCompanyId(500L, EMPRESA);
+        }
+    }
+
+    @Nested
+    @DisplayName("Motivo obligatorio (#790)")
+    class MotivoObligatorio {
+
+        @Test
+        @DisplayName("sin motivo no revierte ni escribe nada")
+        void sin_motivo_no_revierte() {
+            ReverseBillingDocumentApplicationCommand sinMotivo = new ReverseBillingDocumentApplicationCommand(
+                    500L, EMPRESA, "  ");
+
+            assertThatThrownBy(() -> service.execute(sinMotivo))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("reason is required");
+
+            verifyNoInteractions(repository, billingDocumentQueryPort, settlementPort,
+                    dunningReevaluationPort, audit);
         }
     }
 
