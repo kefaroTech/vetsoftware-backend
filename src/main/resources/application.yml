@@ -223,6 +223,12 @@ management:
         lettuce: 1ms,5ms,25ms,50ms,100ms
 
 vetsoftware:
+  # Apaga CacheConfig/RateLimitConfig y la autoconfiguracion de Redis de Boot (ver
+  # RedisDisabledEnvironmentPostProcessor) cuando el Valkey de un entorno esta apagado por
+  # coste. En false, el rate limiting de login sigue existiendo pero en memoria
+  # (InMemoryRateLimitConfig) y los @Cacheable dejan de cachear.
+  redis:
+    enabled: ${VETSOFTWARE_REDIS_ENABLED:true}
   observability:
     business-metrics:
       initial-delay-ms: ${BUSINESS_METRICS_INITIAL_DELAY_MS:10000}

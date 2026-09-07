@@ -11,8 +11,8 @@ import com.vetsoftware.app.paymentgateway.application.port.out.PaymentGatewayMet
 import com.vetsoftware.app.paymentgateway.domain.PaymentSourceRateLimitExceededException;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.BucketProxy;
+import io.github.bucket4j.distributed.proxy.ProxyManager;
 import io.github.bucket4j.distributed.proxy.RemoteBucketBuilder;
-import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import io.lettuce.core.RedisConnectionException;
 import java.time.Duration;
 import java.util.function.Supplier;
@@ -32,7 +32,7 @@ class Bucket4jPaymentSourceRateLimitPortTest {
     private static final Long EMPRESA = 42L;
 
     @Mock
-    private LettuceBasedProxyManager<String> proxyManager;
+    private ProxyManager<String> proxyManager;
     @Mock
     private RemoteBucketBuilder<String> remoteBucketBuilder;
     @Mock

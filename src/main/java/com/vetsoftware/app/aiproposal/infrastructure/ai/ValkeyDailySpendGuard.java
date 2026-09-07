@@ -17,7 +17,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 /**
@@ -71,9 +71,19 @@ import org.springframework.stereotype.Component;
  * del rate limiting y se inyecta <em>por tipo</em>, sin importar ni una clase
  * de otra rodaja. Abrir una segunda conexion a Valkey para esto seria un socket
  * mas y un modo de fallo mas por cada tarea, para el mismo servidor.
+ *
+ * <p>
+ * <strong>También apagado por {@code vetsoftware.redis.enabled=false}</strong>,
+ * y no solo por {@code spend-guard}: sin Valkey no hay
+ * {@code StatefulRedisConnection} que inyectar, así que esta clase no puede
+ * arrancar. {@link InProcessDailySpendGuard} toma el relevo automáticamente en
+ * ese caso, sea cual sea el valor de {@code spend-guard} — es la misma
+ * degradación que ya aceptaba para una caída prolongada de Valkey, aplicada
+ * ahora también a un Valkey apagado a propósito.
  */
 @Component
-@ConditionalOnProperty(name = "vetsoftware.ai.proposal.spend-guard", havingValue = "valkey", matchIfMissing = true)
+@ConditionalOnExpression("${vetsoftware.redis.enabled:true} and "
+        + "'${vetsoftware.ai.proposal.spend-guard:valkey}' == 'valkey'")
 public class ValkeyDailySpendGuard implements SpendGuardPort {
 
     static final String PREFIJO = "ai:spend:";

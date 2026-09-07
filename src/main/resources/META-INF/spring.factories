@@ -1,0 +1,5 @@
+# Se lee en la fase mas temprana de arranque, antes de que AutoConfigurationImportSelector
+# procese exclusiones: es donde RedisDisabledEnvironmentPostProcessor tiene que engancharse
+# para desactivar la autoconfiguracion de Redis cuando vetsoftware.redis.enabled=false.
+org.springframework.boot.EnvironmentPostProcessor=\
+com.vetsoftware.app.infrastructure.config.RedisDisabledEnvironmentPostProcessor

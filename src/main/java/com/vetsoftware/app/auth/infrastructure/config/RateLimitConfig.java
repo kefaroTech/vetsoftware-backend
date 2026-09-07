@@ -12,6 +12,7 @@ import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.resource.ClientResources;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -31,6 +32,7 @@ import org.springframework.context.annotation.Configuration;
  * CacheConfig}.
  */
 @Configuration
+@ConditionalOnProperty(name = "vetsoftware.redis.enabled", havingValue = "true", matchIfMissing = true)
 public class RateLimitConfig {
 
     @Bean(destroyMethod = "shutdown")

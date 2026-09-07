@@ -5,7 +5,7 @@ import com.vetsoftware.app.shared.ai.ModelPricing;
 import com.vetsoftware.app.shared.ai.PaidInvocationMark;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.BucketProxy;
-import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
+import io.github.bucket4j.distributed.proxy.ProxyManager;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
@@ -232,7 +232,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(LoginRateLimitFilter.class);
 
-    private final LettuceBasedProxyManager<String> proxyManager;
+    private final ProxyManager<String> proxyManager;
     private final ObjectMapper objectMapper;
     private final AuditLogger auditLogger;
 
@@ -253,7 +253,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
      * existe. {@link ModelPricing} es ahora la unica fuente, y se la piden los dos
      * consumidores: el que cobra y el que reparte.
      */
-    public LoginRateLimitFilter(LettuceBasedProxyManager<String> loginRateLimitProxyManager,
+    public LoginRateLimitFilter(ProxyManager<String> loginRateLimitProxyManager,
             ObjectMapper objectMapper, AuditLogger auditLogger,
             @Value("${vetsoftware.ai.proposal.daily-spend-cap-usd:"
                     + DEFECTO_TOPE_DE_GASTO_DIARIO_USD + "}") BigDecimal topeDeGastoDiarioUsd,

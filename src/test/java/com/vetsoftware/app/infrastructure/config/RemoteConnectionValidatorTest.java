@@ -115,6 +115,39 @@ class RemoteConnectionValidatorTest {
     }
 
     /**
+     * Con Redis apagado no hay {@code REDIS_URL} que validar: sin este caso, la
+     * ausencia de la propiedad revienta el arranque en dev/prod aunque el
+     * interruptor esté en {@code false}.
+     */
+    @Test
+    void acceptsMissingRedisUrlWhenRedisIsDisabled() {
+        RemoteConnectionValidator validator = validatorFor(
+                validRemoteEnvironment().withProperty("vetsoftware.redis.enabled", "false")
+                        .withProperty("spring.data.redis.url", ""));
+
+        assertThatCode(
+                () -> validator.postProcessBeanFactory(mock(ConfigurableListableBeanFactory.class)))
+                .doesNotThrowAnyException();
+    }
+
+    /**
+     * Con Redis apagado la URL sigue siendo opcional, pero si alguien la deja
+     * puesta y apunta a localhost, sigue siendo un despiste de despliegue.
+     */
+    @Test
+    void stillRejectsLocalhostRedisUrlWhenRedisIsDisabled() {
+        RemoteConnectionValidator validator = validatorFor(
+                validRemoteEnvironment().withProperty("vetsoftware.redis.enabled", "false")
+                        .withProperty("spring.data.redis.url", "redis://localhost:6379"));
+
+        assertThatThrownBy(
+                () -> validator.postProcessBeanFactory(mock(ConfigurableListableBeanFactory.class)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("no permite conexiones locales")
+                .hasMessageContaining("spring.data.redis.url");
+    }
+
+    /**
      * El sidecar no exime de autenticar: en la rama sin colector local sigue
      * haciendo falta.
      */

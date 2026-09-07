@@ -6,7 +6,10 @@ spring:
     password: ${DB_PASSWORD}
   data:
     redis:
-      url: ${REDIS_URL}
+      # Vacio permitido: mismo motivo que application-dev.yml. Sin el default, el placeholder
+      # irresoluble rompe el arranque en cualquier entorno que despliegue con
+      # VETSOFTWARE_REDIS_ENABLED=false y sin REDIS_URL.
+      url: ${REDIS_URL:}
 
 jwt:
   secret: ${JWT_SECRET}
