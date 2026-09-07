@@ -19,6 +19,7 @@ import com.vetsoftware.app.electronicdocument.domain.DocumentNotValidatedExcepti
 import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionNotEffectiveException;
 import com.vetsoftware.app.electronicdocument.domain.NumberingResolutionRangeExhaustedException;
 import com.vetsoftware.app.employee.domain.AdminEmployeeCannotBeDisabledException;
+import com.vetsoftware.app.entitlement.domain.CompanyCapacityLimitExceededException;
 import com.vetsoftware.app.infrastructure.audit.AuditLogger;
 import com.vetsoftware.app.infrastructure.pdf.PdfRenderException;
 import com.vetsoftware.app.infrastructure.storage.S3StorageException;
@@ -621,6 +622,72 @@ class GlobalExceptionHandlerUnitTest {
                     .containsKey("validFrom");
             assertThat(rango.getProperties()).doesNotContainKey("resolutionNumber")
                     .doesNotContainKey("rangeTo");
+        }
+    }
+
+    @Nested
+    @DisplayName("cupo de capacidad agotado (#511): codigo propio, no el INVALID_STATE generico")
+    class CupoDeCapacidadAgotado {
+
+        @Test
+        @DisplayName("dimension BRANCH con cupo de 1: nombra la sede y sugiere ampliar el plan")
+        void dimension_branch_cupo_de_una_sede() {
+            ProblemDetail pd = handler.handleCompanyCapacityLimitExceeded(
+                    new CompanyCapacityLimitExceededException(4L, "BRANCH", 1, 1, 1));
+
+            assertThat(pd.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+            assertThat(pd.getProperties()).containsEntry("code", "CAPACITY_LIMIT_EXCEEDED")
+                    .containsEntry("dimension", "BRANCH").containsEntry("limit", 1)
+                    .containsEntry("used", 1).doesNotContainKey("companyId");
+            assertThat(pd.getDetail())
+                    .isEqualTo("Tu plan incluye 1 sede y ya está en uso. Amplía el cupo desde Mi"
+                            + " suscripción.")
+                    .doesNotContain("Company 4 has exhausted capacity");
+        }
+
+        @Test
+        @DisplayName("dimension USER con cupo de 1: nombra el usuario")
+        void dimension_user_cupo_de_un_usuario() {
+            ProblemDetail pd = handler.handleCompanyCapacityLimitExceeded(
+                    new CompanyCapacityLimitExceededException(9L, "USER", 1, 1, 1));
+
+            assertThat(pd.getProperties()).containsEntry("dimension", "USER")
+                    .containsEntry("limit", 1).containsEntry("used", 1);
+            assertThat(pd.getDetail())
+                    .isEqualTo("Tu plan incluye 1 usuario y ya está en uso. Amplía el cupo desde Mi"
+                            + " suscripción.");
+        }
+
+        @Test
+        @DisplayName("cupo mayor a uno concuerda en plural: sedes / estan")
+        void cupo_mayor_a_uno_concuerda_en_plural() {
+            ProblemDetail pd = handler.handleCompanyCapacityLimitExceeded(
+                    new CompanyCapacityLimitExceededException(4L, "BRANCH", 3, 3, 1));
+
+            assertThat(pd.getDetail())
+                    .isEqualTo("Tu plan incluye 3 sedes y ya están en uso. Amplía el cupo desde Mi"
+                            + " suscripción.");
+        }
+
+        @Test
+        @DisplayName("dimension sin texto propio: detail generico con el codigo del eje")
+        void dimension_sin_texto_propio_usa_el_generico() {
+            ProblemDetail pd = handler.handleCompanyCapacityLimitExceeded(
+                    new CompanyCapacityLimitExceededException(4L, "TERMINAL", 2, 2, 1));
+
+            assertThat(pd.getProperties()).containsEntry("dimension", "TERMINAL");
+            assertThat(pd.getDetail())
+                    .isEqualTo("Tu plan agotó el cupo de la dimensión TERMINAL. Amplía el cupo"
+                            + " desde Mi suscripción.");
+        }
+
+        @Test
+        @DisplayName("no colapsa al INVALID_STATE generico de handleConflictState")
+        void no_colapsa_al_invalid_state_generico() {
+            ProblemDetail pd = handler.handleCompanyCapacityLimitExceeded(
+                    new CompanyCapacityLimitExceededException(4L, "BRANCH", 1, 1, 1));
+
+            assertThat(pd.getProperties().get("code")).isNotEqualTo("INVALID_STATE");
         }
     }
 
