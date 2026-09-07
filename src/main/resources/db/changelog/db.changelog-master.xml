@@ -1154,4 +1154,10 @@
          gateway_reference IS NULL OR gateway IS NOT NULL. -->
     <include file="db/changelog/migrations/414_relax_subscription_payments_gateway_pair_check.xml"/>
 
+    <!-- 415: issue #771. chk_payment_attempts_hard_has_no_retry (321, aplicado, no se toca)
+         exigia next_attempt_at vacio en todo rechazo HARD; fijar una tarjeta nueva como
+         predeterminada necesita reprogramarlo a "ahora", asi que se retira y la regla pasa a
+         vivir solo en PaymentAttempt.reschedule. -->
+    <include file="db/changelog/migrations/415_drop_payment_attempts_hard_has_no_retry_check.xml"/>
+
 </databaseChangeLog>
