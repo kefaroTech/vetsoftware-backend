@@ -117,6 +117,20 @@ class OwnerControllerTest {
         }
 
         @Test
+        @DisplayName("omitir withholdingAgent equivale a enviarlo en false")
+        void omitir_withholding_agent_equivale_a_false() throws Exception {
+            when(createUseCase.execute(any())).thenReturn(anaRuiz());
+
+            mockMvc.perform(post("/owners").contentType(MediaType.APPLICATION_JSON).content("""
+                    {"name":"Ana Ruiz","email":"ana@vet.com","document":"1020304050",
+                     "documentType":"CEDULA_CIUDADANIA","personType":"NATURAL",
+                     "address":"Calle 1 # 2-3","phone":"3001112233","cityId":5}
+                    """)).andExpect(status().isCreated());
+
+            verify(createUseCase).execute(comandoDeCreacionEsperado());
+        }
+
+        @Test
         @DisplayName("nombre vacio responde 400 y no llega al caso de uso")
         void nombre_vacio_responde_400() throws Exception {
             mockMvc.perform(post("/owners").contentType(MediaType.APPLICATION_JSON).content("""
@@ -242,6 +256,24 @@ class OwnerControllerTest {
 
             mockMvc.perform(put("/owners/" + OwnerMother.OWNER_ID)
                     .contentType(MediaType.APPLICATION_JSON).content(CUERPO_VALIDO));
+
+            verify(updateUseCase).execute(new UpdateOwnerCommand(OwnerMother.OWNER_ID, "Ana Ruiz",
+                    "ana@vet.com", "1020304050", OwnerDocumentType.CEDULA_CIUDADANIA,
+                    PersonType.NATURAL, null, null, "Calle 1 # 2-3", "3001112233", 5L,
+                    WebMvcSliceConfig.COMPANY_ID, false, null, null));
+        }
+
+        @Test
+        @DisplayName("PUT: omitir withholdingAgent equivale a enviarlo en false")
+        void put_omitir_withholding_agent_equivale_a_false() throws Exception {
+            when(updateUseCase.execute(any())).thenReturn(anaRuiz());
+
+            mockMvc.perform(put("/owners/" + OwnerMother.OWNER_ID)
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {"name":"Ana Ruiz","email":"ana@vet.com","document":"1020304050",
+                             "documentType":"CEDULA_CIUDADANIA","personType":"NATURAL",
+                             "address":"Calle 1 # 2-3","phone":"3001112233","cityId":5}
+                            """)).andExpect(status().isOk());
 
             verify(updateUseCase).execute(new UpdateOwnerCommand(OwnerMother.OWNER_ID, "Ana Ruiz",
                     "ana@vet.com", "1020304050", OwnerDocumentType.CEDULA_CIUDADANIA,

@@ -148,6 +148,19 @@ class VaccinationTypeControllerTest {
         }
 
         @Test
+        @DisplayName("omitir general equivale a enviarlo en false")
+        void post_omitir_general_equivale_a_false() throws Exception {
+            when(createUseCase.execute(any())).thenReturn(rabia());
+
+            mockMvc.perform(
+                    post("/vaccination-types").contentType(MediaType.APPLICATION_JSON).content("""
+                            {"name":"Rabia","description":"Vacuna antirrabica"}
+                            """)).andExpect(status().isCreated());
+
+            verify(createUseCase).execute(comandoDeCreacionEsperado());
+        }
+
+        @Test
         @DisplayName("un tipo general responde 201 sin compania en el cuerpo")
         void un_tipo_general_responde_201_sin_compania() throws Exception {
             when(createUseCase.execute(any())).thenReturn(vacunaUniversal());
@@ -329,6 +342,20 @@ class VaccinationTypeControllerTest {
 
             mockMvc.perform(put("/vaccination-types/50").contentType(MediaType.APPLICATION_JSON)
                     .content(CUERPO_VALIDO));
+
+            verify(updateUseCase).execute(new UpdateVaccinationTypeCommand(50L, "Rabia",
+                    "Vacuna antirrabica", COMPANY_ID, false));
+        }
+
+        @Test
+        @DisplayName("PUT: omitir general equivale a enviarlo en false")
+        void put_omitir_general_equivale_a_false() throws Exception {
+            when(updateUseCase.execute(any())).thenReturn(rabia());
+
+            mockMvc.perform(
+                    put("/vaccination-types/50").contentType(MediaType.APPLICATION_JSON).content("""
+                            {"name":"Rabia","description":"Vacuna antirrabica"}
+                            """)).andExpect(status().isOk());
 
             verify(updateUseCase).execute(new UpdateVaccinationTypeCommand(50L, "Rabia",
                     "Vacuna antirrabica", COMPANY_ID, false));

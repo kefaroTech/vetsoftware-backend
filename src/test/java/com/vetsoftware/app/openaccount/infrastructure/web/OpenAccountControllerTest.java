@@ -299,6 +299,20 @@ class OpenAccountControllerTest {
         }
 
         @Test
+        @DisplayName("omitir finalConsumer equivale a enviarlo en false")
+        void status_omitir_final_consumer_equivale_a_false() throws Exception {
+            when(changeStatusUseCase.execute(any())).thenReturn(cerrada());
+
+            mockMvc.perform(patch("/open-accounts/100/status")
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {"status":"CLOSE","documentType":"FE_VENTA","expectedVersion":1}
+                            """)).andExpect(status().isOk());
+
+            verify(changeStatusUseCase).execute(new ChangeOpenAccountStatusCommand(100L, "CLOSE",
+                    EMPLOYEE_ID, null, COMPANY_ID, "FE_VENTA", false, 1L));
+        }
+
+        @Test
         @DisplayName("una transicion invalida responde 409, no 500")
         void transicion_invalida_responde_409() throws Exception {
             when(changeStatusUseCase.execute(any())).thenThrow(

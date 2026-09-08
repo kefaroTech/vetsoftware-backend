@@ -1,5 +1,7 @@
 package com.vetsoftware.app.animal.infrastructure.web.request;
 
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import com.vetsoftware.app.animal.domain.AnimalType;
 import com.vetsoftware.app.animal.domain.Gender;
 import com.vetsoftware.app.animal.domain.ReproductiveState;
@@ -28,6 +30,8 @@ public record CreateAnimalRequest(
         // unidad weightType. El peso posterior se gestiona vía
         // /animals/{id}/weight-records.
         @Positive(message = "El peso debe ser mayor que cero.") BigDecimal weight,
-        @PositiveOrZero(message = "La talla no puede ser negativa.") Integer size, boolean deceased,
-        LocalDate deceasedDate) {
+        @PositiveOrZero(message = "La talla no puede ser negativa.") Integer size,
+        // Jackson 3: sin @JsonSetter, omitir el campo responde 400 en vez de caer a
+        // false (ver CreateAppointmentRequest.forceOverlap).
+        @JsonSetter(nulls = Nulls.AS_EMPTY) boolean deceased, LocalDate deceasedDate) {
 }

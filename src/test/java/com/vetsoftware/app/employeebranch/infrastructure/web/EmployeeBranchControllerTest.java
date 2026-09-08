@@ -126,6 +126,22 @@ class EmployeeBranchControllerTest {
         }
 
         @Test
+        @DisplayName("omitir allBranches equivale a enviarlo en false")
+        void omitir_all_branches_equivale_a_false() throws Exception {
+            when(setUseCase.execute(any()))
+                    .thenReturn(new EmployeeBranchesDto(EMPLOYEE_ID, List.of(910L)));
+
+            mockMvc.perform(put("/employees/100/branches").contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {"branchIds":[910]}
+                            """)).andExpect(status().isOk());
+
+            verify(authz).requireAssignableBranches(List.of(910L));
+            verify(setUseCase).execute(
+                    new SetEmployeeBranchesCommand(EMPLOYEE_ID, COMPANY_ID, false, List.of(910L)));
+        }
+
+        @Test
         @DisplayName("una sede fuera del alcance del actor responde 403 y no llega al caso de uso")
         void sede_fuera_de_alcance_responde_403() throws Exception {
             doThrow(new BranchAccessDeniedException("Branch not assignable by employee: 999"))

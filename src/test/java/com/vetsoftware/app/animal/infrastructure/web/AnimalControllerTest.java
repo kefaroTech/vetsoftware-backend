@@ -121,6 +121,23 @@ class AnimalControllerTest {
         }
 
         @Test
+        @DisplayName("omitir deceased equivale a enviarlo en false")
+        void omitir_deceased_equivale_a_false() throws Exception {
+            when(createUseCase.execute(any())).thenReturn(perroSano());
+
+            mockMvc.perform(post("/animals").contentType(MediaType.APPLICATION_JSON).content("""
+                    {"name":"Firulais","code":"A-001","specieId":1,"breedId":2,"ownerId":3,
+                     "gender":"MALE","weightType":"KILOGRAMS","animalType":"NONE",
+                     "reproductiveState":"STERILIZED","colorId":4,"bod":"2020-05-10","size":30}
+                    """)).andExpect(status().isCreated());
+
+            verify(createUseCase).execute(new CreateAnimalCommand("Firulais", "A-001", 1L, 2L, 3L,
+                    Gender.MALE, WeightType.KILOGRAMS,
+                    com.vetsoftware.app.animal.domain.AnimalType.NONE, ReproductiveState.STERILIZED,
+                    4L, java.time.LocalDate.of(2020, 5, 10), null, 30, false, null, COMPANY_ID));
+        }
+
+        @Test
         @DisplayName("sin nombre responde 400 y no crea nada")
         void sin_nombre_responde_400() throws Exception {
             mockMvc.perform(post("/animals").contentType(MediaType.APPLICATION_JSON).content("""
