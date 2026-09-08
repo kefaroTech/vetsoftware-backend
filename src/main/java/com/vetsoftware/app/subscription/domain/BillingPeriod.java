@@ -90,13 +90,29 @@ public record BillingPeriod(LocalDate start, LocalDate end) {
      * </ul>
      */
     public int daysCoveredBy(EffectivePeriod affected) {
+        CoveredRange range = coveredRange(affected);
+        if (range.end().isBefore(range.start()))
+            return 0;
+        return (int) (range.end().toEpochDay() - range.start().toEpochDay()) + 1;
+    }
+
+    /**
+     * Con un tramo que no toca el periodo devuelve un rango invertido, que es lo
+     * que {@link #daysCoveredBy} lee como cero: quien lo use para un periodo de
+     * servicio tiene que haber comprobado antes que hay dias que cobrar.
+     */
+    public CoveredRange coveredRange(EffectivePeriod affected) {
         if (affected == null)
             throw new IllegalArgumentException("affected period is required");
         LocalDate first = affected.from().isBefore(start) ? start : affected.from();
         LocalDate endExclusive = affected.endExclusive();
         LocalDate last = endExclusive.isAfter(end) ? end : endExclusive.minusDays(1);
-        if (last.isBefore(first))
-            return 0;
-        return (int) (last.toEpochDay() - first.toEpochDay()) + 1;
+        return new CoveredRange(first, last);
+    }
+
+    /**
+     * Los dos extremos inclusive, como {@code service_period_start/end} del cargo.
+     */
+    public record CoveredRange(LocalDate start, LocalDate end) {
     }
 }

@@ -14,6 +14,8 @@ import com.vetsoftware.app.subscription.application.port.out.SubscriptionCommerc
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemCompositionPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionProrationChargePort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionProrationLine;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
 import com.vetsoftware.app.subscription.application.port.out.SystemUserValidationPort;
 import com.vetsoftware.app.subscription.domain.AmendmentType;
@@ -96,6 +98,7 @@ public class AddSubscriptionItemService implements AddSubscriptionItemUseCase {
     private final SubscriptionNumberPort subscriptionNumberPort;
     private final SubscriptionChangedPort subscriptionChangedPort;
     private final SubscriptionAuditPort audit;
+    private final SubscriptionProrationChargePort prorationChargePort;
 
     public AddSubscriptionItemService(SubscriptionRepository subscriptionRepository,
             SubscriptionItemRepository itemRepository,
@@ -104,7 +107,8 @@ public class AddSubscriptionItemService implements AddSubscriptionItemUseCase {
             SubscriptionItemCompositionPort compositionPort, EmployeeQueryPort employeeQueryPort,
             SystemUserValidationPort systemUserValidationPort,
             SubscriptionNumberPort subscriptionNumberPort,
-            SubscriptionChangedPort subscriptionChangedPort, SubscriptionAuditPort audit) {
+            SubscriptionChangedPort subscriptionChangedPort, SubscriptionAuditPort audit,
+            SubscriptionProrationChargePort prorationChargePort) {
         this.subscriptionRepository = subscriptionRepository;
         this.itemRepository = itemRepository;
         this.amendmentRepository = amendmentRepository;
@@ -115,6 +119,7 @@ public class AddSubscriptionItemService implements AddSubscriptionItemUseCase {
         this.subscriptionNumberPort = subscriptionNumberPort;
         this.subscriptionChangedPort = subscriptionChangedPort;
         this.audit = audit;
+        this.prorationChargePort = prorationChargePort;
     }
 
     @Override
@@ -194,18 +199,26 @@ public class AddSubscriptionItemService implements AddSubscriptionItemUseCase {
         // (5) Prorrateo: lo calcula el servidor sobre el precio de la TARIFA, nunca
         // sobre un importe del cuerpo. La linea todavia no existe —necesita el id del
         // otrosi— asi que la cuota que aporta se calcula con la sobrecarga estatica,
-        // sobre los mismos numeros con los que se va a abrir, y sumando todos los
-        // tramos: la ampliacion sube la cuota lo que suman sus lineas.
+        // sobre los mismos numeros con los que se va a abrir. Tramo a tramo y no sobre
+        // la suma: asi el importe del otrosi es exactamente la suma de sus cargos de
+        // prorrateo, sin redondeos que reconciliar.
+        BillingPeriod billingPeriod = BillingPeriod.of(subscription);
         BigDecimal cycleDelta = Money.zero();
+        List<Proration> lineProrations = new ArrayList<>();
         for (ContractTierLine tierLine : allocation) {
-            cycleDelta = cycleDelta.add(SubscriptionItem.recurringSubtotalOf(tierLine.quantity(),
-                    tierLine.includedQuantity(), tierLine.tier().unitAmount()));
+            BigDecimal tierCycleDelta = SubscriptionItem.recurringSubtotalOf(tierLine.quantity(),
+                    tierLine.includedQuantity(), tierLine.tier().unitAmount());
+            cycleDelta = cycleDelta.add(tierCycleDelta);
+            // La ventana es el tramo de la propia linea, no la fecha del otrosi: un alta
+            // puede traer su effectiveFrom, y hasta su effectiveTo, y prorratear por la
+            // fecha del papel cobraria dias que la linea no sirve.
+            lineProrations.add(
+                    ProrationCalculator.onCurrentPeriod(tierCycleDelta, billingPeriod, period));
         }
-        // La ventana es el tramo de la propia linea, no la fecha del otrosi: un alta
-        // puede traer su effectiveFrom, y hasta su effectiveTo, y prorratear por la
-        // fecha del papel cobraria dias que la linea no sirve.
-        Proration proration = ProrationCalculator.onCurrentPeriod(cycleDelta,
-                BillingPeriod.of(subscription), period);
+        BigDecimal prorationAmount = lineProrations.stream().map(Proration::amount)
+                .reduce(Money.zero(), BigDecimal::add);
+        Proration proration = new Proration(prorationAmount, Money.scaled(cycleDelta),
+                lineProrations.get(0).prorationDays(), lineProrations.get(0).periodDays());
 
         SubscriptionAmendment amendment = amendmentRepository
                 .save(SubscriptionAmendment.issue(command.companyId(), subscription.getId(),
@@ -231,6 +244,23 @@ public class AddSubscriptionItemService implements AddSubscriptionItemUseCase {
         for (SubscriptionItem saved : opened) {
             compositionPort.freeze(saved.getCompanyId(), saved.getId(), saved.getCatalogItemId());
         }
+
+        // Un tramo que cae entero dentro de lo incluido no deja cargo: un cargo de
+        // cero no es lo mismo que ninguno, y SubscriptionCharge lo rechaza.
+        for (int i = 0; i < opened.size(); i++) {
+            Proration lineProration = lineProrations.get(i);
+            if (lineProration.amount().signum() <= 0)
+                continue;
+            SubscriptionItem item = opened.get(i);
+            BillingPeriod.CoveredRange servicePeriod = billingPeriod.coveredRange(item.getPeriod());
+            prorationChargePort.chargeProration(new SubscriptionProrationLine(command.companyId(),
+                    subscription.getId(), item.getId(), item.getItemName(), servicePeriod.start(),
+                    servicePeriod.end(), BigDecimal.valueOf(item.billableQuantity()),
+                    item.getUnitAmount(), lineProration.amount(), item.getTaxRate(),
+                    item.getTaxTreatment(), lineProration.prorationDays(),
+                    lineProration.periodDays(), amendment.getId()));
+        }
+
         SubscriptionItem first = opened.get(0);
 
         // cycleDeltaAmount es lo que sube la cuota recurrente, y es EL campo del

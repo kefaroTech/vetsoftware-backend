@@ -3,6 +3,7 @@ package com.vetsoftware.app.subscriptionbilling.infrastructure.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vetsoftware.app.subscriptionbilling.domain.ChargeType;
+import com.vetsoftware.app.subscriptionbilling.domain.ProrationBasis;
 import com.vetsoftware.app.subscriptionbilling.domain.RecurringChargeKey;
 import com.vetsoftware.app.subscriptionbilling.domain.ServicePeriod;
 import com.vetsoftware.app.subscriptionbilling.domain.SubscriptionCharge;
@@ -129,6 +130,80 @@ class SubscriptionChargePersistenceIT extends AbstractDataJpaTest {
 
         assertThat(repository.existsRecurringCharge(RecurringChargeKey.of(SchemaSeed.COMPANY_ID,
                 SchemaSeed.SUBSCRIPTION_ID, SchemaSeed.SUBSCRIPTION_ITEM_ID, PERIOD))).isTrue();
+    }
+
+    /**
+     * El prorrateo nace con {@code service_period_start} anterior al
+     * {@code periodStart} de la factura que lo arrastra: contra MySQL real, no
+     * contra un mock, porque el parametro {@code periodStart} sigue en la firma del
+     * metodo y ya no aparece en el SQL nativo.
+     */
+    @Test
+    @DisplayName("un cargo de prorrateo nacido en el ciclo anterior se arrastra a la factura "
+            + "siguiente aunque su service_period_start sea anterior al periodo de esa factura")
+    void un_cargo_de_prorrateo_del_ciclo_anterior_se_arrastra_a_la_siguiente_factura() {
+        ServicePeriod servicioDelAlta = new ServicePeriod(LocalDate.of(2026, 9, 20),
+                LocalDate.of(2026, 10, 9));
+        SubscriptionCharge prorrateo = repository.save(SubscriptionCharge.create(
+                SchemaSeed.COMPANY_ID, SchemaSeed.SUBSCRIPTION_ID, SchemaSeed.SUBSCRIPTION_ITEM_ID,
+                ChargeType.PRORATION, "Modulo extra a mitad de ciclo", servicioDelAlta,
+                BigDecimal.ONE, new BigDecimal("30000.00"), new BigDecimal("20000.00"),
+                new BigDecimal("19.00"), TaxTreatment.TAXED, new ProrationBasis(20, 30), null,
+                CLOCK));
+        entityManager.flush();
+        entityManager.clear();
+
+        ServicePeriod facturaDeCiclo = new ServicePeriod(LocalDate.of(2026, 10, 10),
+                LocalDate.of(2026, 11, 9));
+
+        assertThat(repository.findPendingByCompanyIdAndSubscription(SchemaSeed.COMPANY_ID,
+                SchemaSeed.SUBSCRIPTION_ID, facturaDeCiclo.start(), facturaDeCiclo.end()))
+                .extracting(SubscriptionCharge::getId).contains(prorrateo.getId());
+    }
+
+    @Test
+    @DisplayName("un cargo cuyo service_period_end cae despues del fin de esta factura no se "
+            + "arrastra todavia")
+    void un_cargo_que_termina_despues_del_periodo_no_se_arrastra() {
+        ServicePeriod servicioAnual = new ServicePeriod(LocalDate.of(2026, 10, 20),
+                LocalDate.of(2027, 9, 9));
+        SubscriptionCharge prorrateoAnual = repository.save(SubscriptionCharge.create(
+                SchemaSeed.COMPANY_ID, SchemaSeed.SUBSCRIPTION_ID, SchemaSeed.SUBSCRIPTION_ITEM_ID,
+                ChargeType.PRORATION, "Modulo anual a mitad de ciclo", servicioAnual,
+                BigDecimal.ONE, new BigDecimal("30000.00"), new BigDecimal("20000.00"),
+                new BigDecimal("19.00"), TaxTreatment.TAXED, new ProrationBasis(325, 365), null,
+                CLOCK));
+        entityManager.flush();
+        entityManager.clear();
+
+        ServicePeriod facturaDeCiclo = new ServicePeriod(LocalDate.of(2026, 10, 10),
+                LocalDate.of(2026, 11, 9));
+
+        assertThat(repository.findPendingByCompanyIdAndSubscription(SchemaSeed.COMPANY_ID,
+                SchemaSeed.SUBSCRIPTION_ID, facturaDeCiclo.start(), facturaDeCiclo.end()))
+                .extracting(SubscriptionCharge::getId).doesNotContain(prorrateoAnual.getId());
+    }
+
+    @Test
+    @DisplayName("un cargo RECURRING del propio periodo sigue saliendo junto al de prorrateo "
+            + "arrastrado")
+    void un_cargo_recurring_del_propio_periodo_sigue_saliendo() {
+        ServicePeriod servicioDelAlta = new ServicePeriod(LocalDate.of(2026, 9, 20),
+                LocalDate.of(2026, 10, 9));
+        SubscriptionCharge prorrateo = repository.save(SubscriptionCharge.create(
+                SchemaSeed.COMPANY_ID, SchemaSeed.SUBSCRIPTION_ID, SchemaSeed.SUBSCRIPTION_ITEM_ID,
+                ChargeType.PRORATION, "Modulo extra a mitad de ciclo", servicioDelAlta,
+                BigDecimal.ONE, new BigDecimal("30000.00"), new BigDecimal("20000.00"),
+                new BigDecimal("19.00"), TaxTreatment.TAXED, new ProrationBasis(20, 30), null,
+                CLOCK));
+        ServicePeriod facturaDeCiclo = new ServicePeriod(LocalDate.of(2026, 10, 10),
+                LocalDate.of(2026, 11, 9));
+        SubscriptionCharge recurrente = devengar(SchemaSeed.SUBSCRIPTION_ITEM_ID, facturaDeCiclo);
+
+        assertThat(repository.findPendingByCompanyIdAndSubscription(SchemaSeed.COMPANY_ID,
+                SchemaSeed.SUBSCRIPTION_ID, facturaDeCiclo.start(), facturaDeCiclo.end()))
+                .extracting(SubscriptionCharge::getId)
+                .contains(prorrateo.getId(), recurrente.getId());
     }
 
     private SubscriptionCharge devengar(Long itemId, ServicePeriod periodo) {

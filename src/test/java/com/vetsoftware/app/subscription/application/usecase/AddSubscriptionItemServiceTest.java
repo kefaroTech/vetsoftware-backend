@@ -26,6 +26,8 @@ import com.vetsoftware.app.subscription.application.port.out.SubscriptionCommerc
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemCompositionPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionProrationChargePort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionProrationLine;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
 import com.vetsoftware.app.subscription.application.port.out.SystemUserValidationPort;
 import com.vetsoftware.app.subscription.domain.AmendmentType;
@@ -106,6 +108,8 @@ class AddSubscriptionItemServiceTest {
     private SubscriptionChangedPort subscriptionChangedPort;
     @Mock
     private SubscriptionAuditPort audit;
+    @Mock
+    private SubscriptionProrationChargePort prorationChargePort;
 
     @InjectMocks
     private AddSubscriptionItemService service;
@@ -537,6 +541,130 @@ class AddSubscriptionItemServiceTest {
             // con la cantidad total pedida y la suma de los dos tramos: 96.000 + 45.000.
             verify(audit).itemAdded(eq(CONTRATO), isNull(), eq(USUARIO_EXTRA), eq(15),
                     eq(new BigDecimal("141000.00")), eq(900L));
+        }
+    }
+
+    @Nested
+    @DisplayName("Prorrateo — un cargo en subscriptionbilling por cada tramo que sube la cuota")
+    class CargoDeProrrateo {
+
+        private static final Long MODULO_EXTRA = 300L;
+
+        /** Periodo canonico del modelo: 10-sep..9-oct de 2026, 30 dias. */
+        private static Subscription contratoMensualSeptiembre() {
+            return new Subscription(CONTRATO, "SUS-2026-00184", EMPRESA, null, TARIFA,
+                    BillingCycle.MONTHLY, SubscriptionStatus.ACTIVE, LocalDate.of(2026, 9, 10),
+                    null, LocalDate.of(2026, 9, 10), LocalDate.of(2026, 10, 9), null, null, 0, null,
+                    true, null, null, 0L, true);
+        }
+
+        private static Subscription contratoAnualSeptiembre() {
+            return new Subscription(CONTRATO, "SUS-2026-00184", EMPRESA, null, TARIFA,
+                    BillingCycle.ANNUAL, SubscriptionStatus.ACTIVE, LocalDate.of(2026, 9, 10), null,
+                    LocalDate.of(2026, 9, 10), LocalDate.of(2027, 9, 9), null, null, 0, null, true,
+                    null, null, 0L, true);
+        }
+
+        private static PublishedCatalogItem moduloExtraPublicado() {
+            return new PublishedCatalogItem(MODULO_EXTRA, "EXTRA", "Modulo extra",
+                    SubscriptionItemType.MODULE, null,
+                    List.of(new ContractPriceTier(1, null, 0, TaxTreatment.TAXED,
+                            new BigDecimal("30000.00"), new BigDecimal("19.00"))));
+        }
+
+        private void escenario(Subscription contrato, PublishedCatalogItem publicado) {
+            when(amendmentRepository.findByClientRequestIdAndCompanyId(LLAVE, EMPRESA))
+                    .thenReturn(Optional.empty());
+            when(subscriptionRepository.lockByIdAndCompanyId(CONTRATO, EMPRESA))
+                    .thenReturn(Optional.of(contrato));
+            when(employeeQueryPort.findByIdAndCompanyId(55L, EMPRESA))
+                    .thenReturn(Optional.of(new EmployeeRef(55L, "Ana")));
+            when(commercialSnapshotPort.findPublishedItem(eqTarifa(), any(), anyLong(), anyInt(),
+                    any())).thenReturn(Optional.of(publicado));
+            when(itemRepository.findOverlapping(anyLong(), anyLong(), anyLong(), any(), any(),
+                    any())).thenReturn(List.of());
+            when(amendmentRepository.save(any())).thenReturn(otrosiGuardado());
+            when(itemRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        }
+
+        @Test
+        @DisplayName("ejemplo canonico: un modulo dado de alta el 20-sep en un periodo 10-sep..9-oct "
+                + "cobra 20 de los 30 dias, contra el fin del periodo en curso")
+        void ejemplo_canonico_veinte_de_treinta_dias() {
+            escenario(contratoMensualSeptiembre(), moduloExtraPublicado());
+            LocalDate altaSep20 = LocalDate.of(2026, 9, 20);
+
+            service.execute(comando(
+                    new RequestedSubscriptionItemCommand(MODULO_EXTRA, 1, altaSep20, null)));
+
+            ArgumentCaptor<SubscriptionProrationLine> captor = ArgumentCaptor
+                    .forClass(SubscriptionProrationLine.class);
+            verify(prorationChargePort).chargeProration(captor.capture());
+            SubscriptionProrationLine cargo = captor.getValue();
+            assertThat(cargo.companyId()).isEqualTo(EMPRESA);
+            assertThat(cargo.subscriptionId()).isEqualTo(CONTRATO);
+            assertThat(cargo.servicePeriodStart()).isEqualTo(altaSep20);
+            assertThat(cargo.servicePeriodEnd()).isEqualTo(LocalDate.of(2026, 10, 9));
+            assertThat(cargo.prorationDays()).isEqualTo(20);
+            assertThat(cargo.periodDays()).isEqualTo(30);
+            assertThat(cargo.subtotalAmount()).isEqualByComparingTo("20000.00");
+            assertThat(cargo.taxRate()).isEqualByComparingTo("19.00");
+            assertThat(cargo.taxTreatment()).isEqualTo(TaxTreatment.TAXED);
+            assertThat(cargo.amendmentId()).isEqualTo(900L);
+        }
+
+        @Test
+        @DisplayName("la suma de los cargos de todos los tramos es exactamente el importe firmado "
+                + "en el otrosi")
+        void la_suma_de_los_cargos_es_el_importe_firmado_en_el_otrosi() {
+            caminoFeliz(usuarioExtraPublicado());
+
+            service.execute(comando(
+                    new RequestedSubscriptionItemCommand(USUARIO_EXTRA, 15, ENERO_17, null)));
+
+            ArgumentCaptor<SubscriptionAmendment> otrosi = ArgumentCaptor
+                    .forClass(SubscriptionAmendment.class);
+            verify(amendmentRepository).save(otrosi.capture());
+            ArgumentCaptor<SubscriptionProrationLine> cargos = ArgumentCaptor
+                    .forClass(SubscriptionProrationLine.class);
+            verify(prorationChargePort, Mockito.times(2)).chargeProration(cargos.capture());
+
+            BigDecimal sumaCargos = cargos.getAllValues().stream()
+                    .map(SubscriptionProrationLine::subtotalAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            assertThat(sumaCargos).isEqualByComparingTo(otrosi.getValue().getProrationAmount());
+        }
+
+        @Test
+        @DisplayName("un tramo que cae entero dentro de lo incluido no genera cargo")
+        void un_tramo_incluido_no_genera_cargo() {
+            caminoFeliz(moduloPublicado());
+
+            service.execute(
+                    comando(new RequestedSubscriptionItemCommand(ARTICULO, 2, ENERO_17, null)));
+
+            verifyNoInteractions(prorationChargePort);
+        }
+
+        @Test
+        @DisplayName("en un contrato ANUAL el prorrateo cuenta contra el fin del periodo anual, no "
+                + "contra un mes comercial")
+        void contrato_anual_prorratea_contra_el_fin_del_periodo_anual() {
+            escenario(contratoAnualSeptiembre(), moduloExtraPublicado());
+            LocalDate altaSep20 = LocalDate.of(2026, 9, 20);
+
+            service.execute(comando(
+                    new RequestedSubscriptionItemCommand(MODULO_EXTRA, 1, altaSep20, null)));
+
+            ArgumentCaptor<SubscriptionProrationLine> captor = ArgumentCaptor
+                    .forClass(SubscriptionProrationLine.class);
+            verify(prorationChargePort).chargeProration(captor.capture());
+            SubscriptionProrationLine cargo = captor.getValue();
+            assertThat(cargo.servicePeriodStart()).isEqualTo(altaSep20);
+            assertThat(cargo.servicePeriodEnd()).isEqualTo(LocalDate.of(2027, 9, 9));
+            assertThat(cargo.prorationDays()).isEqualTo(355);
+            assertThat(cargo.periodDays()).isEqualTo(365);
+            assertThat(cargo.subtotalAmount()).isEqualByComparingTo("29178.08");
         }
     }
 }
