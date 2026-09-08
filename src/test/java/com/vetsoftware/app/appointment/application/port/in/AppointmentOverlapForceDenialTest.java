@@ -9,7 +9,9 @@ import com.vetsoftware.app.appointment.application.dto.AppointmentDto;
 import com.vetsoftware.app.appointment.domain.AppointmentType;
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
+import com.vetsoftware.app.entitlement.application.dto.CompanyAccessDto;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
@@ -245,7 +247,8 @@ class AppointmentOverlapForceDenialTest {
 
         @Bean("authz")
         Authz authz() {
-            return new Authz();
+            return new Authz(
+                    companyId -> new CompanyAccessDto(companyId, List.of(), List.of(), null));
         }
 
         @Bean

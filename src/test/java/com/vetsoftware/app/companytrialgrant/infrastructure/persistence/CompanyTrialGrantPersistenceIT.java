@@ -44,12 +44,15 @@ class CompanyTrialGrantPersistenceIT extends AbstractDataJpaTest {
     void seed() {
         SchemaSeed.seed(entityManager);
         nucleo = SchemaSeed.catalogItemId(entityManager, "CORE");
-        entityManager.createNativeQuery("""
-                INSERT INTO company_trial_windows (company_id, start_date, end_date, window_days,
-                                                   source_quote_id, closed_at, created_date,
-                                                   version)
-                VALUES (:companyId, '2026-09-01', '2026-09-30', 30, :quoteId, NULL, NOW(), 0)
-                """).setParameter("companyId", SchemaSeed.COMPANY_ID)
+        entityManager
+                .createNativeQuery(
+                        """
+                                INSERT INTO company_trial_windows (company_id, start_date, end_date, window_days,
+                                                                   source_quote_id, origin, closed_at, created_date,
+                                                                   version)
+                                VALUES (:companyId, '2026-09-01', '2026-09-30', 30, :quoteId, 'QUOTE', NULL, NOW(), 0)
+                                """)
+                .setParameter("companyId", SchemaSeed.COMPANY_ID)
                 .setParameter("quoteId", SchemaSeed.QUOTE_ID).executeUpdate();
         entityManager.flush();
         ventanaId = trialWindowQueryPort.findOpenByCompanyId(SchemaSeed.COMPANY_ID).orElseThrow()
@@ -102,17 +105,20 @@ class CompanyTrialGrantPersistenceIT extends AbstractDataJpaTest {
         entityManager.flush();
 
         assertViolates("uq_company_trial_grants_item", () -> {
-            entityManager.createNativeQuery("""
-                    INSERT INTO company_trial_grants (company_id, catalog_item_id, trial_window_id,
-                                                      trial_window_end_date, granted_on,
-                                                      days_granted, trial_end_date,
-                                                      policy_trial_days, policy_trial_outcome,
-                                                      source_quote_id, granting_amendment_id,
-                                                      consumed_at, outcome, created_date, version)
-                    VALUES (:companyId, :itemId, :windowId, '2026-09-30', '2026-09-20', 5,
-                            '2026-09-24', 30, 'LIMITED', :quoteId, NULL, NULL, NULL, NOW(), 0)
-                    """).setParameter("companyId", SchemaSeed.COMPANY_ID)
-                    .setParameter("itemId", nucleo).setParameter("windowId", ventanaId)
+            entityManager
+                    .createNativeQuery(
+                            """
+                                    INSERT INTO company_trial_grants (company_id, catalog_item_id, trial_window_id,
+                                                                      trial_window_end_date, granted_on,
+                                                                      days_granted, trial_end_date,
+                                                                      policy_trial_days, policy_trial_outcome,
+                                                                      source_quote_id, granting_amendment_id, origin,
+                                                                      consumed_at, outcome, created_date, version)
+                                    VALUES (:companyId, :itemId, :windowId, '2026-09-30', '2026-09-20', 5,
+                                            '2026-09-24', 30, 'LIMITED', :quoteId, NULL, 'QUOTE', NULL, NULL, NOW(), 0)
+                                    """)
+                    .setParameter("companyId", SchemaSeed.COMPANY_ID).setParameter("itemId", nucleo)
+                    .setParameter("windowId", ventanaId)
                     .setParameter("quoteId", SchemaSeed.QUOTE_ID).executeUpdate();
             entityManager.flush();
         });
@@ -141,17 +147,20 @@ class CompanyTrialGrantPersistenceIT extends AbstractDataJpaTest {
             + " motor")
     void una_fecha_de_fin_inventada_muere_en_el_motor() {
         assertViolates("chk_company_trial_grants_end", () -> {
-            entityManager.createNativeQuery("""
-                    INSERT INTO company_trial_grants (company_id, catalog_item_id, trial_window_id,
-                                                      trial_window_end_date, granted_on,
-                                                      days_granted, trial_end_date,
-                                                      policy_trial_days, policy_trial_outcome,
-                                                      source_quote_id, granting_amendment_id,
-                                                      consumed_at, outcome, created_date, version)
-                    VALUES (:companyId, :itemId, :windowId, '2026-09-30', '2026-09-16', 30,
-                            '2026-10-15', 30, 'LIMITED', :quoteId, NULL, NULL, NULL, NOW(), 0)
-                    """).setParameter("companyId", SchemaSeed.COMPANY_ID)
-                    .setParameter("itemId", nucleo).setParameter("windowId", ventanaId)
+            entityManager
+                    .createNativeQuery(
+                            """
+                                    INSERT INTO company_trial_grants (company_id, catalog_item_id, trial_window_id,
+                                                                      trial_window_end_date, granted_on,
+                                                                      days_granted, trial_end_date,
+                                                                      policy_trial_days, policy_trial_outcome,
+                                                                      source_quote_id, granting_amendment_id, origin,
+                                                                      consumed_at, outcome, created_date, version)
+                                    VALUES (:companyId, :itemId, :windowId, '2026-09-30', '2026-09-16', 30,
+                                            '2026-10-15', 30, 'LIMITED', :quoteId, NULL, 'QUOTE', NULL, NULL, NOW(), 0)
+                                    """)
+                    .setParameter("companyId", SchemaSeed.COMPANY_ID).setParameter("itemId", nucleo)
+                    .setParameter("windowId", ventanaId)
                     .setParameter("quoteId", SchemaSeed.QUOTE_ID).executeUpdate();
             entityManager.flush();
         });

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.vetsoftware.app.subscription.application.command.CreateInitialSubscriptionCommand;
 import com.vetsoftware.app.subscription.application.command.CreateSubscriptionCommand;
 import com.vetsoftware.app.subscription.application.command.SubscriptionItemLineCommand;
+import com.vetsoftware.app.subscription.application.dto.EligibleTrialItemTemplate;
 import com.vetsoftware.app.subscription.application.dto.InitialCapacityTemplate;
 import com.vetsoftware.app.subscription.application.dto.InitialContractTemplate;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
@@ -264,6 +265,88 @@ class CreateInitialSubscriptionServiceTest {
             // sitio que lo decide; fijarlo aqui tambien es como los dos caminos de alta
             // divergieron y un contrato por API nacia con gracia cero (#467).
             assertThat(capturarComando(createSubscriptionUseCase).graceDays()).isNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("Alta gratuita: con ventana de prueba")
+    class ConVentanaDePrueba {
+
+        private static EligibleTrialItemTemplate elegible(Long id, String code,
+                SubscriptionItemType tipo, String unidad, int diasDePrueba) {
+            return new EligibleTrialItemTemplate(id, code, "Articulo " + code, tipo, unidad, 0, 1,
+                    new BigDecimal("50000.00"), new BigDecimal("19.00"), TaxTreatment.TAXED,
+                    diasDePrueba, "LIMITED");
+        }
+
+        @Test
+        @DisplayName("firma una linea TRIAL por cada articulo elegible, no solo el nucleo y las"
+                + " capacidades del minimo")
+        void firma_una_linea_trial_por_cada_articulo_elegible() {
+            when(platformCatalogPort.findInitialContractTemplate(BillingCycle.MONTHLY))
+                    .thenReturn(Optional.of(plantilla(0)));
+            when(platformCatalogPort.findInitialCapacityTemplates(any()))
+                    .thenReturn(capacidadesDelMinimo());
+            when(platformCatalogPort.findEligibleTrialItems(BillingCycle.MONTHLY)).thenReturn(
+                    List.of(elegible(100L, "CORE", SubscriptionItemType.MODULE, null, 30),
+                            elegible(105L, "SCHEDULING", SubscriptionItemType.MODULE, null, 30),
+                            elegible(200L, "CAPACITY_USER", SubscriptionItemType.CAPACITY, "USER",
+                                    30)));
+            when(createSubscriptionUseCase.execute(any())).thenReturn(contratoCreado());
+
+            LocalDate finDeVentana = LocalDate.of(2026, 1, 30);
+            service.execute(
+                    new CreateInitialSubscriptionCommand(EMPRESA, null, ENERO_1, finDeVentana));
+
+            CreateSubscriptionCommand comando = capturarComando(createSubscriptionUseCase);
+            assertThat(comando.items()).hasSize(3);
+            assertThat(comando.items()).extracting(SubscriptionItemLineCommand::chargeMode)
+                    .containsOnly("TRIAL");
+            assertThat(comando.items()).extracting(SubscriptionItemLineCommand::trialEligibility)
+                    .containsOnly("ELIGIBLE");
+            assertThat(comando.items()).extracting(SubscriptionItemLineCommand::activationPath)
+                    .containsOnly("SELF_SERVICE");
+            assertThat(comando.items()).extracting(SubscriptionItemLineCommand::trialEndDate)
+                    .containsOnly(finDeVentana);
+        }
+
+        @Test
+        @DisplayName("el contrato nace TRIALING con el fin de LA ventana, no con el de cada"
+                + " articulo")
+        void el_contrato_nace_trialing_con_el_fin_de_la_ventana() {
+            when(platformCatalogPort.findInitialContractTemplate(BillingCycle.MONTHLY))
+                    .thenReturn(Optional.of(plantilla(0)));
+            when(platformCatalogPort.findInitialCapacityTemplates(any()))
+                    .thenReturn(capacidadesDelMinimo());
+            when(platformCatalogPort.findEligibleTrialItems(BillingCycle.MONTHLY)).thenReturn(
+                    List.of(elegible(100L, "CORE", SubscriptionItemType.MODULE, null, 30)));
+            when(createSubscriptionUseCase.execute(any())).thenReturn(contratoCreado());
+
+            LocalDate finDeVentana = LocalDate.of(2026, 1, 30);
+            service.execute(
+                    new CreateInitialSubscriptionCommand(EMPRESA, null, ENERO_1, finDeVentana));
+
+            CreateSubscriptionCommand comando = capturarComando(createSubscriptionUseCase);
+            assertThat(comando.status()).isEqualTo(SubscriptionStatus.TRIALING);
+            assertThat(comando.trialEndDate()).isEqualTo(finDeVentana);
+        }
+
+        @Test
+        @DisplayName("sin ningun articulo elegible no firma nada: no hay ventana sin prueba que"
+                + " ofrecer")
+        void sin_articulos_elegibles_no_firma_nada() {
+            when(platformCatalogPort.findInitialContractTemplate(BillingCycle.MONTHLY))
+                    .thenReturn(Optional.of(plantilla(0)));
+            when(platformCatalogPort.findInitialCapacityTemplates(any()))
+                    .thenReturn(capacidadesDelMinimo());
+            when(platformCatalogPort.findEligibleTrialItems(BillingCycle.MONTHLY))
+                    .thenReturn(List.of());
+
+            assertThatThrownBy(() -> service.execute(new CreateInitialSubscriptionCommand(EMPRESA,
+                    null, ENERO_1, LocalDate.of(2026, 1, 30))))
+                    .isInstanceOf(PlatformCatalogNotConfiguredForSubscriptionException.class);
+
+            verify(createSubscriptionUseCase, never()).execute(any());
         }
     }
 

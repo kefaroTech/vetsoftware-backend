@@ -6,6 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateDayCareUseCase {
     @PreAuthorize("hasRole('SYSTEM') or "
-            + "(hasAuthority('daycare.create') and @authz.isMyCompany(#command.companyId))")
+            + "(hasAuthority('daycare.create') and @authz.isMyCompany(#command.companyId)"
+            + " and @authz.requireModuleWritable('GROOMING'))")
     DayCareDto execute(CreateDayCareCommand command);
 }

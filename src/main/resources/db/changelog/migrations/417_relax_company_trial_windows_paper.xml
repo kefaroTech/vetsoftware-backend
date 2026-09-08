@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Cuenta gratuita (docs/db/cuenta-gratuita-modelo.md §1). company_trial_windows exigia
+         source_quote_id NOT NULL (301, YA APLICADO -no se toca-) porque D-55 solo conocia un
+         camino de alta: cotizar, firmar, abrir ventana. El alta publica (POST /register) revierte
+         D-55 y abre ventana SIN cotizacion, asi que la columna pasa a nulable y origin declara por
+         que: 'SIGNUP' es la propia politica del catalogo (todo ELIGIBLE se prueba al registrarse),
+         'QUOTE' es el camino que ya existia. Un NULL sin discriminador diria "no se por que esta
+         fila no tiene papel"; con origin, el alta publica queda tan auditable como la cotizacion.
+
+         fk_company_trial_windows_quote (301_link_company_trial_windows_fk, YA APLICADA) no cambia:
+         es una FK simple sobre una columna que ahora es nulable, y NULL nunca dispara la
+         comprobacion de una FK simple.
+
+         Impacto del ALTER: MODIFY COLUMN ... NULL es in place pero reconstruye la tabla (manual de
+         MySQL 8.4, Online DDL Operations); ADD COLUMN NOT NULL sin valor por defecto exige que la
+         tabla este vacia o que todas las filas puedan recibir un valor -aqui no hay backfill
+         posible por decision expresa (BD vacia, cero retrocompatibilidad)-. Con la tabla vacia en
+         todo entorno real hoy, el coste es cero en la practica. -->
+    <changeSet id="417_relax_company_trial_windows_paper" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE company_trial_windows
+                MODIFY COLUMN source_quote_id BIGINT NULL,
+                ADD COLUMN origin VARCHAR(10) NOT NULL
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE company_trial_windows
+                ADD CONSTRAINT chk_company_trial_windows_origin
+                    CHECK (origin IN ('SIGNUP', 'QUOTE')
+                       AND ((origin = 'SIGNUP' AND source_quote_id IS NULL)
+                         OR (origin = 'QUOTE'  AND source_quote_id IS NOT NULL)))
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE company_trial_windows
+                    DROP CONSTRAINT chk_company_trial_windows_origin
+            ]]></sql>
+            <sql><![CDATA[
+                ALTER TABLE company_trial_windows
+                    DROP COLUMN origin,
+                    MODIFY COLUMN source_quote_id BIGINT NOT NULL
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

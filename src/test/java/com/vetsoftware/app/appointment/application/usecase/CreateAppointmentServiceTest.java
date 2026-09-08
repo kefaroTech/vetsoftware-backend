@@ -22,6 +22,7 @@ import com.vetsoftware.app.appointment.application.port.out.AppointmentDurationP
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics.Channel;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentUsageLimitPort;
 import com.vetsoftware.app.appointment.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.EmployeeQueryPort;
@@ -31,6 +32,9 @@ import com.vetsoftware.app.appointment.domain.AppointmentOverlapException;
 import com.vetsoftware.app.appointment.domain.AppointmentStatus;
 import com.vetsoftware.app.appointment.domain.AppointmentType;
 import com.vetsoftware.app.appointment.testsupport.AppointmentMother;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -43,6 +47,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -78,6 +83,10 @@ class CreateAppointmentServiceTest {
     private AppointmentMetrics appointmentMetrics;
     @Mock
     private AppointmentDurationPolicyPort durationPolicyPort;
+    @Mock
+    private AppointmentUsageLimitPort usageLimitPort;
+    @Spy
+    private Clock clock = Clock.fixed(Instant.parse("2026-03-10T09:14:00Z"), ZoneOffset.UTC);
     @InjectMocks
     private CreateAppointmentService service;
 

@@ -305,7 +305,9 @@ public class ReplaceSubscriptionFromQuoteService implements ReplaceSubscriptionF
                 item.getTierMax(), item.getIncludedQuantity(), item.getTaxTreatment(),
                 item.getQuantity(), item.getUnitAmount(), item.getDiscountPercent(),
                 item.getDiscountAmount(), item.isDiscountConditional(), item.getTaxRate(), from,
-                null);
+                null, SubscriptionItemLineCommand.DEFAULT_CHARGE_MODE,
+                SubscriptionItemLineCommand.DEFAULT_TRIAL_ELIGIBILITY, 0, null,
+                SubscriptionItemLineCommand.DEFAULT_ACTIVATION_PATH);
     }
 
     /** El lote de saldo a favor concedido por el tramo no consumido, o nada. */

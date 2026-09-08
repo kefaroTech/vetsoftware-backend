@@ -12,6 +12,7 @@ import com.vetsoftware.app.service.application.dto.ServiceDto;
 import com.vetsoftware.app.service.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.service.application.port.out.ServiceCategoryQueryPort;
 import com.vetsoftware.app.service.application.port.out.ServiceRepository;
+import com.vetsoftware.app.service.application.port.out.ServiceUsageLimitPort;
 import com.vetsoftware.app.service.application.port.out.TaxQueryPort;
 import com.vetsoftware.app.service.domain.Service;
 import com.vetsoftware.app.service.domain.TaxTreatment;
@@ -39,6 +40,8 @@ class CreateServiceServiceTest {
     private ServiceCategoryQueryPort serviceCategoryQueryPort;
     @Mock
     private TaxQueryPort taxQueryPort;
+    @Mock
+    private ServiceUsageLimitPort usageLimitPort;
 
     @InjectMocks
     private CreateServiceService service;

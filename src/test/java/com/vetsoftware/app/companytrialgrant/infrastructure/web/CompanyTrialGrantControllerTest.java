@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.companytrialgrant.application.dto.CompanyTrialGrantDto;
 import com.vetsoftware.app.companytrialgrant.application.port.in.ListCompanyTrialGrantsUseCase;
+import com.vetsoftware.app.companytrialgrant.domain.TrialOrigin;
 import com.vetsoftware.app.companytrialgrant.domain.TrialPolicyOutcome;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
 import java.lang.reflect.Method;
@@ -61,8 +62,8 @@ class CompanyTrialGrantControllerTest {
      */
     private static CompanyTrialGrantDto concesionDe(Long companyId) {
         return new CompanyTrialGrantDto(11L, companyId, 5L, 3L, LocalDate.of(2026, 9, 16), 15, 15,
-                LocalDate.of(2026, 9, 30), 30, TrialPolicyOutcome.LIMITED, 77L, null, null, null,
-                true);
+                LocalDate.of(2026, 9, 30), 30, TrialPolicyOutcome.LIMITED, 77L, null,
+                TrialOrigin.QUOTE, null, null, true);
     }
 
     @Nested

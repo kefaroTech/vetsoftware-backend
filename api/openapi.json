@@ -8674,6 +8674,34 @@
         }
       }
     },
+    "/subscriptions/modules/purchase" : {
+      "post" : {
+        "tags" : [ "module-purchase-controller" ],
+        "operationId" : "purchase",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ModulePurchaseRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ModulePurchaseResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/subscription-payments" : {
       "get" : {
         "tags" : [ "subscription-payment-controller" ],
@@ -19995,6 +20023,27 @@
         }
       }
     },
+    "/subscriptions/modules" : {
+      "get" : {
+        "tags" : [ "subscription-module-controller" ],
+        "operationId" : "list_6",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ModuleShowcaseResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/subscriptions/current" : {
       "get" : {
         "tags" : [ "subscription-controller" ],
@@ -23144,7 +23193,7 @@
     "/entitlements" : {
       "get" : {
         "tags" : [ "company-entitlement-controller" ],
-        "operationId" : "list_6",
+        "operationId" : "list_7",
         "parameters" : [ {
           "name" : "page",
           "in" : "query",
@@ -24395,7 +24444,7 @@
     "/cash-sessions" : {
       "get" : {
         "tags" : [ "cash-session-controller" ],
-        "operationId" : "list_7",
+        "operationId" : "list_8",
         "parameters" : [ {
           "name" : "branchId",
           "in" : "query",
@@ -33000,7 +33049,7 @@
         "properties" : {
           "limitDimensionCode" : {
             "type" : "string",
-            "description" : "Solo los ejes contables: OWNER, ANIMAL, APPOINTMENT o INVOICE.",
+            "description" : "Un eje contable: OWNER, ANIMAL, APPOINTMENT, INVOICE o GROOMING_SERVICE.",
             "maxLength" : 50,
             "minLength" : 0
           },
@@ -33020,6 +33069,11 @@
           },
           "billable" : {
             "type" : "boolean"
+          },
+          "usageOrigin" : {
+            "type" : "string",
+            "description" : "Solo para GROOMING_SERVICE: SPA o DAYCARE.",
+            "pattern" : "^(SPA|DAYCARE)$"
           }
         },
         "required" : [ "billable", "limitDimensionCode", "occurredAt", "periodKey", "usageReferenceId" ]
@@ -33042,7 +33096,7 @@
           "branch" : {
             "type" : "string",
             "description" : "El eje contable del hecho, que dice a que tabla apunta la referencia.",
-            "enum" : [ "OWNER", "ANIMAL", "APPOINTMENT", "INVOICE" ]
+            "enum" : [ "OWNER", "ANIMAL", "APPOINTMENT", "INVOICE", "GROOMING_SERVICE_SPA", "GROOMING_SERVICE_DAYCARE" ]
           },
           "usageReferenceId" : {
             "type" : "integer",
@@ -33119,6 +33173,10 @@
             "type" : "integer",
             "format" : "int64"
           },
+          "origin" : {
+            "type" : "string",
+            "enum" : [ "SIGNUP", "QUOTE" ]
+          },
           "closedAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -33127,7 +33185,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "companyId", "endDate", "id", "open", "sourceQuoteId", "startDate", "windowDays" ]
+        "required" : [ "companyId", "endDate", "id", "open", "origin", "startDate", "windowDays" ]
       },
       "GrantTrialRequest" : {
         "type" : "object",
@@ -33215,6 +33273,10 @@
             "type" : "integer",
             "format" : "int64"
           },
+          "origin" : {
+            "type" : "string",
+            "enum" : [ "SIGNUP", "QUOTE", "AMENDMENT" ]
+          },
           "consumedAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -33227,7 +33289,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "catalogItemId", "companyId", "daysGranted", "effectiveDays", "grantedOn", "id", "live", "policyTrialDays", "policyTrialOutcome", "trialEndDate", "trialWindowId" ]
+        "required" : [ "catalogItemId", "companyId", "daysGranted", "effectiveDays", "grantedOn", "id", "live", "origin", "policyTrialDays", "policyTrialOutcome", "trialEndDate", "trialWindowId" ]
       },
       "ConsumeTrialGrantRequest" : {
         "type" : "object",
@@ -34582,6 +34644,65 @@
           }
         },
         "required" : [ "clientRequestId", "effectiveDate", "newQuantity", "subscriptionItemId" ]
+      },
+      "ModulePurchaseRequest" : {
+        "type" : "object",
+        "properties" : {
+          "catalogItemCodes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "minLength" : 1
+            },
+            "minItems" : 1
+          },
+          "billingCycle" : {
+            "type" : "string",
+            "enum" : [ "MONTHLY", "ANNUAL" ],
+            "minLength" : 1,
+            "pattern" : "MONTHLY|ANNUAL"
+          },
+          "paymentSourceId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "clientRequestId" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 1
+          }
+        },
+        "required" : [ "billingCycle", "catalogItemCodes", "clientRequestId", "paymentSourceId" ]
+      },
+      "ModulePurchaseResponse" : {
+        "type" : "object",
+        "properties" : {
+          "quoteId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PurchasedModuleLineResponse"
+            }
+          }
+        }
+      },
+      "PurchasedModuleLineResponse" : {
+        "type" : "object",
+        "properties" : {
+          "catalogItemCode" : {
+            "type" : "string"
+          },
+          "firstChargeDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "chargedNow" : {
+            "type" : "boolean"
+          }
+        }
       },
       "RegisterSubscriptionPaymentRequest" : {
         "type" : "object",
@@ -42445,6 +42566,71 @@
           "createdDate" : {
             "type" : "string",
             "format" : "date-time"
+          }
+        }
+      },
+      "ModuleCeilingResponse" : {
+        "type" : "object",
+        "properties" : {
+          "dimensionCode" : {
+            "type" : "string"
+          },
+          "measureKind" : {
+            "type" : "string"
+          },
+          "used" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "limit" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "warnThreshold" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "enforcement" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ModuleShowcaseResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "shortDescription" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "trialEndDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "ceilings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ModuleCeilingResponse"
+            }
+          },
+          "monthlyPrice" : {
+            "type" : "number"
+          },
+          "annualPrice" : {
+            "type" : "number"
+          },
+          "purchasable" : {
+            "type" : "boolean"
+          },
+          "canPurchase" : {
+            "type" : "boolean"
           }
         }
       },

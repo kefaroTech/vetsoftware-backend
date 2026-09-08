@@ -10,6 +10,7 @@ import com.vetsoftware.app.dunning.application.command.RecordDunningEventCommand
 import com.vetsoftware.app.dunning.application.dto.DunningEventDto;
 import com.vetsoftware.app.dunning.application.port.in.RecordDunningEventUseCase;
 import com.vetsoftware.app.dunning.domain.DunningEventType;
+import com.vetsoftware.app.entitlement.application.dto.CompanyAccessDto;
 import com.vetsoftware.app.quote.application.command.CreateQuoteCommand;
 import com.vetsoftware.app.quote.application.command.SendQuoteCommand;
 import com.vetsoftware.app.quote.application.dto.QuoteDto;
@@ -516,7 +517,8 @@ class SaasBillingMutationAuthorizationTest {
          */
         @Bean(name = "authz")
         Authz authz() {
-            return new Authz();
+            return new Authz(
+                    companyId -> new CompanyAccessDto(companyId, List.of(), List.of(), null));
         }
     }
 }

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- PRERREQUISITO de 423 (docs/db/cuenta-gratuita-modelo.md §5), mismo patron que
+         341_add_tenant_uniques_for_compliance_prerequisites (YA APLICADO): spas y daycares no
+         tienen hoy una clave unica auxiliar (company_id, id), y sin ella la FK compuesta que 423
+         necesita (fk_cue_spa, fk_cue_daycare) no se puede crear -el motor exige un indice con esas
+         columnas como prefijo izquierdo en la tabla referenciada, manual de MySQL 8.4, Foreign
+         Keys-.
+
+         Coste del ALTER: ADD UNIQUE INDEX es in place (manual de MySQL 8.4, InnoDB Online DDL
+         Operations), no reconstruye la tabla y permite DML concurrente. Sin riesgo de datos:
+         (company_id, id) es unicamente cierto por construccion porque id ya es PK en ambas
+         tablas. -->
+    <changeSet id="422_add_tenant_uniques_for_grooming_service_usage" author="orlando">
+        <addUniqueConstraint tableName="spas" columnNames="company_id, id"
+                             constraintName="uq_spas_company_id"/>
+        <addUniqueConstraint tableName="daycares" columnNames="company_id, id"
+                             constraintName="uq_daycares_company_id"/>
+
+        <rollback>
+            <dropUniqueConstraint tableName="spas"
+                                  constraintName="uq_spas_company_id"/>
+            <dropUniqueConstraint tableName="daycares"
+                                  constraintName="uq_daycares_company_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

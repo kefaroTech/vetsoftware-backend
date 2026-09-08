@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Cuenta gratuita (docs/db/cuenta-gratuita-modelo.md §4, decision 3 del plan): revierte D-06.
+         313_seed_catalog_item_limits (YA APLICADO -no se toca-) sembro las ocho filas de fabrica
+         con trial_mode = 'FULL' (la prueba sin techo, para que un cliente con datos historicos
+         pudiera migrarlos durante la prueba). La decision de negocio del alta gratuita es la
+         contraria: los techos en prueba SON los techos gratuitos, sin excepcion -incluido
+         CAPACITY_TERMINAL/TERMINAL, cuyo limit_quantity es 0 y sigue siendo un valor valido para
+         una columna INT UNSIGNED, no un NULL-.
+
+         chk_catalog_item_limits_trial_mode (303, YA APLICADO) exige exactamente
+         (trial_mode = 'LIMITED' AND trial_limit_quantity IS NOT NULL) OR
+         (trial_mode = 'FULL' AND trial_limit_quantity IS NULL); trial_limit_quantity =
+         limit_quantity satisface la rama LIMITED en las ocho filas sin excepcion.
+
+         UPDATE_MASIVO_MUEVE_LA_VERSION: catalog_item_limits esta versionada; version = version + 1
+         va en el SET del UPDATE, nunca en el WHERE -condicionar por version ahi actualizaria cero
+         filas, no protegeria nada-. Impacto: UPDATE puro sobre ocho filas de un catalogo global
+         sin company_id; coste nulo en cualquier entorno real hoy. -->
+    <changeSet id="420_revert_catalog_item_limits_trial_mode_to_limited" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_item_limits cil
+              JOIN catalog_items ci      ON ci.id = cil.catalog_item_id
+              JOIN limit_dimensions ld   ON ld.id = cil.limit_dimension_id
+               SET cil.trial_mode = 'LIMITED',
+                   cil.trial_limit_quantity = cil.limit_quantity,
+                   cil.version = cil.version + 1
+             WHERE ci.code IN ('CORE', 'SCHEDULING', 'CASH_REGISTER', 'CAPACITY_USER',
+                               'CAPACITY_BRANCH', 'CAPACITY_TERMINAL', 'LAB_IMAGING')
+               AND ld.code IN ('ANIMAL', 'OWNER', 'APPOINTMENT', 'INVOICE',
+                               'USER', 'BRANCH', 'TERMINAL', 'STORAGE_GB')
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                UPDATE catalog_item_limits cil
+                  JOIN catalog_items ci      ON ci.id = cil.catalog_item_id
+                  JOIN limit_dimensions ld   ON ld.id = cil.limit_dimension_id
+                   SET cil.trial_mode = 'FULL',
+                       cil.trial_limit_quantity = NULL,
+                       cil.version = cil.version + 1
+                 WHERE ci.code IN ('CORE', 'SCHEDULING', 'CASH_REGISTER', 'CAPACITY_USER',
+                                   'CAPACITY_BRANCH', 'CAPACITY_TERMINAL', 'LAB_IMAGING')
+                   AND ld.code IN ('ANIMAL', 'OWNER', 'APPOINTMENT', 'INVOICE',
+                                   'USER', 'BRANCH', 'TERMINAL', 'STORAGE_GB')
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

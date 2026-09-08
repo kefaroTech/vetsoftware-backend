@@ -295,7 +295,9 @@ public class SubscriptionController {
                         line.itemName(), line.itemType(), line.capacityUnit(), null, null,
                         line.includedQuantity(), line.taxTreatment(), line.quantity(),
                         line.unitAmount(), null, null, false, line.taxRate(), line.effectiveFrom(),
-                        line.effectiveTo());
+                        line.effectiveTo(), SubscriptionItemLineCommand.DEFAULT_CHARGE_MODE,
+                        SubscriptionItemLineCommand.DEFAULT_TRIAL_ELIGIBILITY, 0, null,
+                        SubscriptionItemLineCommand.DEFAULT_ACTIVATION_PATH);
     }
 
     private static RequestedSubscriptionItemCommand toRequestedItem(

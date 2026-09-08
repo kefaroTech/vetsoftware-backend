@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Cuenta gratuita (docs/db/cuenta-gratuita-modelo.md §1), continua 417. chk_company_trial_grants_paper
+         (302, YA APLICADO -no se toca, se sustituye aqui-) exigia exactamente uno de
+         source_quote_id/granting_amendment_id: un arco de DOS papeles. El alta publica concede
+         sin cotizacion y sin otrosi, asi que el arco pasa a TRES: origin declara cual de los tres
+         es, y el CHECK deja de inferirlo de que columnas esten NULL -mismo razonamiento que 417,
+         y ademas la unica forma tecnica de hacerlo: un CHECK no puede mirar
+         company_trial_windows.origin (columna de OTRA tabla, prohibido por el manual de MySQL 8.4
+         para restricciones CHECK), asi que origin se COPIA aqui igual que measure_kind se copia en
+         catalog_item_limits/company_capacities/company_usage_events para poder atar una FK o un
+         CHECK compuesto contra el.
+
+         Ninguna FK de company_trial_grants cambia: fk_company_trial_grants_quote y
+         fk_company_trial_grants_amendment (302_link_company_trial_grants_fk, YA APLICADA) ya
+         admiten NULL, y fk_company_trial_grants_window no depende del papel.
+
+         Impacto del ALTER: ADD COLUMN NOT NULL sin valor por defecto exige tabla vacia (sin
+         backfill posible, BD asumida vacia); DROP/ADD CONSTRAINT es validacion de motor sin copia
+         de datos. Coste cero en todo entorno real hoy. -->
+    <changeSet id="418_relax_company_trial_grants_paper" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE company_trial_grants
+                ADD COLUMN origin VARCHAR(10) NOT NULL
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE company_trial_grants
+                DROP CONSTRAINT chk_company_trial_grants_paper,
+                ADD CONSTRAINT chk_company_trial_grants_paper
+                    CHECK (origin IN ('SIGNUP', 'QUOTE', 'AMENDMENT')
+                       AND ((origin = 'SIGNUP'    AND source_quote_id IS NULL
+                                                   AND granting_amendment_id IS NULL)
+                         OR (origin = 'QUOTE'     AND source_quote_id IS NOT NULL
+                                                   AND granting_amendment_id IS NULL)
+                         OR (origin = 'AMENDMENT' AND source_quote_id IS NULL
+                                                   AND granting_amendment_id IS NOT NULL)))
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE company_trial_grants
+                    DROP CONSTRAINT chk_company_trial_grants_paper,
+                    ADD CONSTRAINT chk_company_trial_grants_paper
+                        CHECK (((source_quote_id IS NOT NULL)
+                                + (granting_amendment_id IS NOT NULL)) = 1)
+            ]]></sql>
+            <sql><![CDATA[
+                ALTER TABLE company_trial_grants
+                    DROP COLUMN origin
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -12,10 +12,14 @@ import com.vetsoftware.app.daycare.application.dto.DayCareDto;
 import com.vetsoftware.app.daycare.application.port.out.AnimalQueryPort;
 import com.vetsoftware.app.daycare.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.daycare.application.port.out.DayCareRepository;
+import com.vetsoftware.app.daycare.application.port.out.DayCareUsageLimitPort;
 import com.vetsoftware.app.daycare.domain.DayCare;
 import com.vetsoftware.app.daycare.domain.DayCareType;
 import com.vetsoftware.app.daycare.testsupport.DayCareMother;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,6 +40,11 @@ class CreateDayCareServiceTest {
     private AnimalQueryPort animalQueryPort;
     @Mock
     private CompanyQueryPort companyQueryPort;
+    @Mock
+    private DayCareUsageLimitPort usageLimitPort;
+
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-02-01T09:00:00Z"),
+            ZoneOffset.UTC);
 
     private CreateDayCareService service;
 
@@ -47,7 +56,8 @@ class CreateDayCareServiceTest {
 
     @BeforeEach
     void crearServicio() {
-        service = new CreateDayCareService(repository, animalQueryPort, companyQueryPort);
+        service = new CreateDayCareService(repository, animalQueryPort, companyQueryPort,
+                usageLimitPort, CLOCK);
     }
 
     @Nested

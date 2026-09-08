@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateOwnerUseCase {
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('owner.create') and"
-            + " @authz.isMyCompany(#command.companyId))")
+            + " @authz.isMyCompany(#command.companyId) and @authz.requireModuleWritable('CORE'))")
     OwnerDto execute(CreateOwnerCommand command);
 }

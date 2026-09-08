@@ -13,9 +13,13 @@ import com.vetsoftware.app.spa.application.port.out.AnimalQueryPort;
 import com.vetsoftware.app.spa.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.spa.application.port.out.SpaRepository;
 import com.vetsoftware.app.spa.application.port.out.SpaTypeQueryPort;
+import com.vetsoftware.app.spa.application.port.out.SpaUsageLimitPort;
 import com.vetsoftware.app.spa.domain.Spa;
 import com.vetsoftware.app.spa.testsupport.SpaMother;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,6 +42,11 @@ class CreateSpaServiceTest {
     private AnimalQueryPort animalQueryPort;
     @Mock
     private CompanyQueryPort companyQueryPort;
+    @Mock
+    private SpaUsageLimitPort usageLimitPort;
+
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-02-01T09:00:00Z"),
+            ZoneOffset.UTC);
 
     private CreateSpaService service;
 
@@ -50,7 +59,7 @@ class CreateSpaServiceTest {
     @BeforeEach
     void crearServicio() {
         service = new CreateSpaService(repository, spaTypeQueryPort, animalQueryPort,
-                companyQueryPort);
+                companyQueryPort, usageLimitPort, CLOCK);
     }
 
     @Nested

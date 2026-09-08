@@ -6,13 +6,17 @@ import com.vetsoftware.app.owner.application.port.in.CreateOwnerUseCase;
 import com.vetsoftware.app.owner.application.port.out.CityQueryPort;
 import com.vetsoftware.app.owner.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.owner.application.port.out.OwnerRepository;
+import com.vetsoftware.app.owner.application.port.out.OwnerUsageLimitPort;
 import com.vetsoftware.app.owner.domain.CityRef;
 import com.vetsoftware.app.owner.domain.CompanyRef;
 import com.vetsoftware.app.owner.domain.FiscalResponsibility;
 import com.vetsoftware.app.owner.domain.Owner;
 import com.vetsoftware.app.owner.domain.TaxRegime;
 import io.micrometer.observation.annotation.Observed;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Observed(name = "owner.create")
 @Service
@@ -20,15 +24,20 @@ public class CreateOwnerService implements CreateOwnerUseCase {
     private final OwnerRepository repository;
     private final CityQueryPort cityQueryPort;
     private final CompanyQueryPort companyQueryPort;
+    private final OwnerUsageLimitPort usageLimitPort;
+    private final Clock clock;
 
     public CreateOwnerService(OwnerRepository repository, CityQueryPort cityQueryPort,
-            CompanyQueryPort companyQueryPort) {
+            CompanyQueryPort companyQueryPort, OwnerUsageLimitPort usageLimitPort, Clock clock) {
         this.repository = repository;
         this.cityQueryPort = cityQueryPort;
         this.companyQueryPort = companyQueryPort;
+        this.usageLimitPort = usageLimitPort;
+        this.clock = clock;
     }
 
     @Override
+    @Transactional
     public OwnerDto execute(CreateOwnerCommand command) {
         CityRef city = cityQueryPort.findById(command.cityId()).orElseThrow(
                 () -> new IllegalArgumentException("City not found: " + command.cityId()));
@@ -45,10 +54,13 @@ public class CreateOwnerService implements CreateOwnerUseCase {
         FiscalResponsibility fiscalResponsibility = command.fiscalResponsibility() != null
                 ? command.fiscalResponsibility()
                 : FiscalResponsibility.defaultValue();
+        usageLimitPort.checkNotExceeded(command.companyId());
         Owner owner = Owner.create(command.name(), command.email(), command.document(),
                 command.documentType(), command.personType(), command.verificationDigit(),
                 command.legalName(), command.address(), command.phone(), city, company,
                 command.withholdingAgent(), taxRegime, fiscalResponsibility);
-        return OwnerDto.from(repository.save(owner));
+        Owner saved = repository.save(owner);
+        usageLimitPort.record(command.companyId(), saved.getId(), LocalDateTime.now(clock));
+        return OwnerDto.from(saved);
     }
 }

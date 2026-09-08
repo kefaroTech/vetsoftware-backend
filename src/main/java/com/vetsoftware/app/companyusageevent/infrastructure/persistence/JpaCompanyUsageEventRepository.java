@@ -55,6 +55,12 @@ public class JpaCompanyUsageEventRepository implements CompanyUsageEventReposito
                 Pages.request(page, pageSize, timelineOrder())), mapper::toDomain);
     }
 
+    @Override
+    public long countCurrent(Long companyId, Long limitDimensionId, String periodKey) {
+        return jpaRepository.countByCompanyIdAndLimitDimensionIdAndPeriodKey(companyId,
+                limitDimensionId, periodKey);
+    }
+
     /**
      * Lo mas reciente primero, con el {@code id} de desempate.
      *

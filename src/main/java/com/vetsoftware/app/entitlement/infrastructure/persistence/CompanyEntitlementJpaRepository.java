@@ -76,10 +76,18 @@ public interface CompanyEntitlementJpaRepository
             @Param("accessLevels") Collection<String> accessLevels);
 
     /**
-     * Permisos efectivos de un empleado: la asignacion base debe pertenecer a la
-     * misma empresa y tener un entitlement vigente. READ_ONLY conserva solo la
-     * autoridad de lectura; FULL conserva cualquier autoridad base.
+     * Esta consulta es la barrera de solo lectura del sistema
+     * ({@code Authz.requireModuleWritable} es defensa en profundidad): corre en
+     * cada petición autenticada dentro de {@code ResolveAuthContextService} y
+     * decide qué {@code GrantedAuthority} llega al {@code SecurityContext}; un
+     * permiso que no sale de aquí no existe para ningún {@code @PreAuthorize}.
+     * {@code FULL} conserva cualquier autoridad base; {@code READ_ONLY} solo
+     * {@code .read}, salvo submódulo {@code degradation_immune} (R-ENT-05): ese
+     * nunca pierde la escritura, aunque {@code EntitlementCalculator} lo dejara en
+     * {@code READ_ONLY} por error. {@code NONE} no concede nada.
      */
+    // El único sufijo de lectura sembrado en el catálogo es .read; si algún día se
+    // siembra otro (view, list, export...), hay que añadirlo a este LIKE.
     @Query(value = """
             SELECT DISTINCT p.code
             FROM permissions p
@@ -95,7 +103,8 @@ public interface CompanyEntitlementJpaRepository
               AND e.valid_from <= CURRENT_TIMESTAMP(6)
               AND (e.valid_until IS NULL OR e.valid_until > CURRENT_TIMESTAMP(6))
               AND (e.access_level = 'FULL'
-                   OR (e.access_level = 'READ_ONLY' AND p.code LIKE '%.read'))
+                   OR (e.access_level = 'READ_ONLY'
+                       AND (p.code LIKE '%.read' OR sm.degradation_immune = TRUE)))
             """, nativeQuery = true)
     Set<String> findEffectivePermissionCodes(@Param("companyId") Long companyId,
             @Param("permissionCodes") Collection<String> permissionCodes);

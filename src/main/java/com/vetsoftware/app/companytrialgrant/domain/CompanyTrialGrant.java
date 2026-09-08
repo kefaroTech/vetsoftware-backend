@@ -45,11 +45,19 @@ public class CompanyTrialGrant {
     private final TrialPolicyOutcome policyTrialOutcome;
     private final Long sourceQuoteId;
     private final Long grantingAmendmentId;
+    private final TrialOrigin origin;
     private final LocalDateTime consumedAt;
     private final TrialOutcome outcome;
     private final LocalDateTime createdDate;
     private final Long version;
 
+    /**
+     * {@code origin} se deriva de cuál de los dos papeles trae la concesión, y no
+     * se recibe aparte: el alta pública no trae ninguno de los dos, que es la
+     * propia decisión de la política del catálogo y no una prueba sin papel.
+     * {@code chk_company_trial_grants_paper} exige exactamente esta correspondencia
+     * en la fila.
+     */
     public CompanyTrialGrant(Long id, Long companyId, Long catalogItemId, Long trialWindowId,
             LocalDate trialWindowEndDate, LocalDate grantedOn, int daysGranted,
             LocalDate trialEndDate, int policyTrialDays, TrialPolicyOutcome policyTrialOutcome,
@@ -86,10 +94,11 @@ public class CompanyTrialGrant {
             throw new IllegalArgumentException("trial end date must be " + expectedEnd
                     + " (the earlier of granted_on + days - 1 and the window end) but was "
                     + trialEndDate);
-        // chk_company_trial_grants_paper: exactamente un papel concedió la prueba.
-        if ((sourceQuoteId == null) == (grantingAmendmentId == null))
-            throw new IllegalArgumentException("exactly one of source quote or granting amendment"
-                    + " must be set: a trial without paper cannot be defended");
+        // chk_company_trial_grants_paper: como mucho un papel concedió la prueba; el
+        // alta pública no trae ninguno.
+        if (sourceQuoteId != null && grantingAmendmentId != null)
+            throw new IllegalArgumentException("a trial cannot be granted by both a quote and an"
+                    + " amendment at the same time");
         // chk_company_trial_grants_outcome
         if (consumedAt == null && outcome != null)
             throw new IllegalArgumentException(
@@ -108,6 +117,9 @@ public class CompanyTrialGrant {
         this.policyTrialOutcome = policyTrialOutcome;
         this.sourceQuoteId = sourceQuoteId;
         this.grantingAmendmentId = grantingAmendmentId;
+        this.origin = sourceQuoteId != null
+                ? TrialOrigin.QUOTE
+                : grantingAmendmentId != null ? TrialOrigin.AMENDMENT : TrialOrigin.SIGNUP;
         this.consumedAt = consumedAt;
         this.outcome = outcome;
         this.createdDate = createdDate;
@@ -251,6 +263,10 @@ public class CompanyTrialGrant {
 
     public Long getGrantingAmendmentId() {
         return grantingAmendmentId;
+    }
+
+    public TrialOrigin getOrigin() {
+        return origin;
     }
 
     public LocalDateTime getConsumedAt() {

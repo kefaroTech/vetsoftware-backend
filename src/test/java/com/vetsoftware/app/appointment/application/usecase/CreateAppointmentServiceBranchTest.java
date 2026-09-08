@@ -16,6 +16,7 @@ import com.vetsoftware.app.appointment.application.port.out.AppointmentConfirmat
 import com.vetsoftware.app.appointment.application.port.out.AppointmentDurationPolicyPort;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentUsageLimitPort;
 import com.vetsoftware.app.appointment.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.EmployeeQueryPort;
@@ -24,7 +25,10 @@ import com.vetsoftware.app.appointment.domain.Appointment;
 import com.vetsoftware.app.appointment.domain.AppointmentType;
 import com.vetsoftware.app.appointment.domain.BranchRef;
 import com.vetsoftware.app.appointment.domain.EmployeeRef;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -33,6 +37,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
@@ -63,6 +68,10 @@ class CreateAppointmentServiceBranchTest {
     private AppointmentMetrics appointmentMetrics;
     @Mock
     private AppointmentDurationPolicyPort durationPolicyPort;
+    @Mock
+    private AppointmentUsageLimitPort usageLimitPort;
+    @Spy
+    private Clock clock = Clock.fixed(Instant.parse("2026-03-10T09:14:00Z"), ZoneOffset.UTC);
     @InjectMocks
     private CreateAppointmentService service;
 

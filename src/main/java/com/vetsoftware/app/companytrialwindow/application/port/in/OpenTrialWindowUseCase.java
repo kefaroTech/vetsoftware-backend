@@ -5,8 +5,9 @@ import com.vetsoftware.app.companytrialwindow.application.dto.CompanyTrialWindow
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
- * Abre el reloj de la empresa. Se dispara al aceptar la cotización, que es el
- * único camino de alta (D-55): todo cliente nace con su ventana, la use o no.
+ * Abre el reloj de la empresa. Se dispara desde el alta pública, sin cotización
+ * (origin SIGNUP), o al aceptar una cotización (origin QUOTE): todo cliente
+ * nace con su ventana, la use o no.
  *
  * <p>
  * Autorización: {@code hasRole('SYSTEM')} a secas, y esto es una decisión de

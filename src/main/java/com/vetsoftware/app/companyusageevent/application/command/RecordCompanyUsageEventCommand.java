@@ -33,7 +33,13 @@ import java.time.LocalDateTime;
  * @param billable
  *            si el hecho cuenta para el cobro. Un hecho no facturable no puede
  *            colgarse despues de un cargo
+ * @param usageOrigin
+ *            {@code "SPA"} o {@code "DAYCARE"}, y solo cuando
+ *            {@code limitDimensionCode} es {@code GROOMING_SERVICE}: ese eje
+ *            nombra dos ramas a la vez (spa y guarderia) y el codigo del eje no
+ *            alcanza para elegir la columna. {@code null} para los demas ejes
  */
 public record RecordCompanyUsageEventCommand(Long companyId, String limitDimensionCode,
-        Long usageReferenceId, LocalDateTime occurredAt, String periodKey, boolean billable) {
+        Long usageReferenceId, LocalDateTime occurredAt, String periodKey, boolean billable,
+        String usageOrigin) {
 }

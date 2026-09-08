@@ -123,4 +123,9 @@ public class JpaServiceRepository implements ServiceRepository {
     public int reactivate(Long id, Long companyId) {
         return jpaRepository.reactivate(id, companyId);
     }
+
+    @Override
+    public long countEnabledByCompanyId(Long companyId) {
+        return jpaRepository.countByCompany_IdAndEnabledTrue(companyId);
+    }
 }

@@ -46,7 +46,7 @@ class SystemRoleIsolationTest {
 
     @Test
     void systemUserIsSuperadminWithoutAnyWildcardPermission() {
-        var authz = new Authz();
+        var authz = new Authz(companyId -> null);
         var employee = new EmployeeContext(7L, 3L, Set.of("company.update"), Set.of(10L));
         authenticate(employee);
 
@@ -60,7 +60,7 @@ class SystemRoleIsolationTest {
 
     @Test
     void employeeUsesOwnCompanyAndSystemUserMustSendExplicitTenantHeader() {
-        var authz = new Authz();
+        var authz = new Authz(companyId -> null);
         authenticate(new EmployeeContext(7L, 3L, Set.of("company.read"), Set.of(10L)));
         assertEquals(3L, authz.currentCompanyId());
 

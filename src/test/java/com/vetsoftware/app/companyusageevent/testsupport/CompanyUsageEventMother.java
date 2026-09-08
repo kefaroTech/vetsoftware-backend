@@ -41,7 +41,7 @@ public final class CompanyUsageEventMother {
 
     public static RecordCompanyUsageEventCommand comandoRegistrar() {
         return new RecordCompanyUsageEventCommand(COMPANY_ID, "ANIMAL", ANIMAL_ID, OCCURRED_AT,
-                PERIOD_KEY.value(), true);
+                PERIOD_KEY.value(), true, null);
     }
 
     public static AttachUsageEventToChargeCommand comandoColgarCargo() {

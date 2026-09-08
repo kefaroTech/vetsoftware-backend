@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Cuenta gratuita (docs/db/cuenta-gratuita-modelo.md §4, decision 5 del plan). Dos ejes
+         nuevos en limit_dimensions (hoy hay ocho, sembrados por 313, YA APLICADO).
+
+         GROOMING_SERVICE es FLOW/MONTH: un servicio de spa o guarderia prestado este mes no
+         "libera" el mes que viene por enfriamiento, el contador de MONTH siguiente empieza en
+         cero -semantica normal de FLOW-. sub_module_id queda NULL a proposito -columna nulable
+         desde 300-: GROOMING abre SPA y DAYCARE a la vez (309_seed_commercial_catalog_relations)
+         y el eje mide el uso combinado de los dos, asi que no hay un submodulo unico legitimo que
+         elegir.
+
+         SERVICE_ITEM se corrige de "acumulativo" (como lo describia el plan de negocio) a STOCK:
+         "libera al desactivar" es, letra por letra, la definicion de STOCK en este esquema
+         (chk_limit_dimensions_release_delay lo prohibe explicitamente en CUMULATIVE, que exige
+         release_delay_days), no la de un eje que solo libera tras un enfriamiento. Cuelga de
+         SERVICES (submodulo tecnico ya sembrado por 308/309).
+
+         Los techos de fabrica siguen el patron de 313: GROOMING -> GROOMING_SERVICE en 30/MONTH/
+         BLOCK, warn_threshold 60 (eje de flujo/crecimiento, misma convencion de 313: "60 en los
+         ejes de crecimiento y 80 en los de existencias"); SERVICES -> SERVICE_ITEM en 20/BLOCK sin
+         reset_period (STOCK lo exige NULO), warn_threshold 80 (eje de existencias). Ambas filas
+         nacen con trial_mode = 'LIMITED' y trial_limit_quantity = limit_quantity: la decision 3 del
+         plan (techos en prueba = techos gratuitos) aplica tambien a los ejes que nacen despues de
+         revertir D-06 en 420, asi que estas dos nunca pasan por FULL.
+
+         available_from = fecha de publicacion real de esta politica (D-74, comentario de 313: "sin
+         fila porque no se vendio" es techo cero, "sin fila porque el eje no existia" es sin techo;
+         un contrato firmado antes de esta fecha no debe verse bloqueado retroactivamente por un eje
+         que no existia cuando se firmo). -->
+    <changeSet id="421_create_grooming_service_and_service_item_dimensions" author="orlando">
+        <sql><![CDATA[
+            INSERT INTO limit_dimensions
+                    (code, name, measure_kind, sub_module_id, release_delay_days, available_from)
+            SELECT seed.code, seed.name, seed.measure_kind, sm.id, NULL, '2026-09-07'
+              FROM (
+                SELECT 'GROOMING_SERVICE' AS code,
+                       'Servicios de spa y guardería del periodo' AS name,
+                       'FLOW' AS measure_kind, CAST(NULL AS CHAR(30)) AS sub_module_code
+                UNION ALL
+                SELECT 'SERVICE_ITEM', 'Tarifas de servicio activas', 'STOCK', 'SERVICES'
+              ) seed
+              LEFT JOIN sub_modules sm ON sm.code = seed.sub_module_code
+             WHERE NOT EXISTS (SELECT 1 FROM limit_dimensions x WHERE x.code = seed.code)
+        ]]></sql>
+
+        <sql><![CDATA[
+            INSERT INTO catalog_item_limits
+                    (catalog_item_id, limit_dimension_id, measure_kind, mode, limit_quantity,
+                     reset_period, enforcement, overage_unit_amount, warn_threshold,
+                     trial_mode, trial_limit_quantity)
+            SELECT ci.id, ld.id, ld.measure_kind, seed.mode, seed.limit_quantity,
+                   seed.reset_period, seed.enforcement, NULL, seed.warn_threshold,
+                   'LIMITED', seed.limit_quantity
+              FROM (
+                SELECT 'GROOMING' AS item_code, 'GROOMING_SERVICE' AS dimension_code,
+                       'LIMITED' AS mode, 30 AS limit_quantity, 'MONTH' AS reset_period,
+                       'BLOCK' AS enforcement, 60 AS warn_threshold
+                UNION ALL
+                SELECT 'SERVICES', 'SERVICE_ITEM', 'LIMITED', 20, NULL, 'BLOCK', 80
+              ) seed
+              JOIN catalog_items ci    ON ci.code = seed.item_code
+              JOIN limit_dimensions ld ON ld.code = seed.dimension_code
+             WHERE NOT EXISTS (SELECT 1 FROM catalog_item_limits x
+                                WHERE x.catalog_item_id = ci.id
+                                  AND x.limit_dimension_id = ld.id)
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                DELETE cil FROM catalog_item_limits cil
+                  JOIN catalog_items ci ON ci.id = cil.catalog_item_id
+                  JOIN limit_dimensions ld ON ld.id = cil.limit_dimension_id
+                 WHERE ci.code IN ('GROOMING', 'SERVICES')
+                   AND ld.code IN ('GROOMING_SERVICE', 'SERVICE_ITEM')
+            ]]></sql>
+            <sql><![CDATA[
+                DELETE FROM limit_dimensions
+                 WHERE code IN ('GROOMING_SERVICE', 'SERVICE_ITEM')
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

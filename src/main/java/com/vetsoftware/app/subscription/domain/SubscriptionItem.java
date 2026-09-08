@@ -91,6 +91,23 @@ public class SubscriptionItem {
     private final LocalDateTime createdDate;
     private final Long version;
     private final boolean enabled;
+    /**
+     * Columnas del changeset 244. Van en {@code String} y no en un enumerado por lo
+     * mismo que {@code capacityUnit}: el vocabulario cerrado ya lo vigilan
+     * {@code chk_subscription_items_charge_mode} y compañía, y repetirlo aquí daría
+     * dos sitios que pueden divergir del {@code CHECK}.
+     */
+    private final String chargeMode;
+    private final String trialEligibility;
+    private final int maxTrialDays;
+    private final LocalDate trialEndDate;
+    private final String activationPath;
+    /**
+     * La línea que esta reemplaza en una sucesión física: la {@code TRIAL} que
+     * venció o que se compró a mitad de prueba. {@code null} en toda línea que no
+     * sucede a otra.
+     */
+    private final Long succeedsItemId;
 
     public SubscriptionItem(Long id, Long companyId, Long subscriptionId, Long catalogItemId,
             String itemCode, String itemName, SubscriptionItemType itemType, String capacityUnit,
@@ -99,6 +116,39 @@ public class SubscriptionItem {
             BigDecimal discountAmount, boolean discountIsConditional, BigDecimal taxRate,
             EffectivePeriod period, ItemOrigin origin, Long createdAmendmentId,
             Long endedAmendmentId, LocalDateTime createdDate, Long version, boolean enabled) {
+        this(id, companyId, subscriptionId, catalogItemId, itemCode, itemName, itemType,
+                capacityUnit, tierMin, tierMax, includedQuantity, taxTreatment, quantity,
+                unitAmount, discountPercent, discountAmount, discountIsConditional, taxRate, period,
+                origin, createdAmendmentId, endedAmendmentId, createdDate, version, enabled,
+                DEFAULT_CHARGE_MODE, DEFAULT_TRIAL_ELIGIBILITY, 0, null, DEFAULT_ACTIVATION_PATH,
+                null);
+    }
+
+    /**
+     * {@code chk_subscription_items_charge_mode}: lo que cobra hoy todo lo que no
+     * prueba.
+     */
+    private static final String DEFAULT_CHARGE_MODE = "PAID";
+    /**
+     * {@code chk_subscription_items_trial_eligibility}: nunca se regala salvo que
+     * se diga.
+     */
+    private static final String DEFAULT_TRIAL_ELIGIBILITY = "NEVER_FREE";
+    /**
+     * {@code chk_subscription_items_activation_path}: canal por defecto de
+     * plataforma.
+     */
+    private static final String DEFAULT_ACTIVATION_PATH = "PLATFORM";
+
+    public SubscriptionItem(Long id, Long companyId, Long subscriptionId, Long catalogItemId,
+            String itemCode, String itemName, SubscriptionItemType itemType, String capacityUnit,
+            int tierMin, Integer tierMax, int includedQuantity, TaxTreatment taxTreatment,
+            int quantity, BigDecimal unitAmount, BigDecimal discountPercent,
+            BigDecimal discountAmount, boolean discountIsConditional, BigDecimal taxRate,
+            EffectivePeriod period, ItemOrigin origin, Long createdAmendmentId,
+            Long endedAmendmentId, LocalDateTime createdDate, Long version, boolean enabled,
+            String chargeMode, String trialEligibility, int maxTrialDays, LocalDate trialEndDate,
+            String activationPath, Long succeedsItemId) {
         if (companyId == null)
             throw new IllegalArgumentException("companyId is required");
         if (catalogItemId == null)
@@ -168,6 +218,17 @@ public class SubscriptionItem {
         if (endedAmendmentId != null && period.isOpen())
             throw new IllegalArgumentException(
                     "endedAmendmentId requires an effectiveTo on the line");
+        if (chargeMode == null || chargeMode.isBlank())
+            throw new IllegalArgumentException("chargeMode is required");
+        if (trialEligibility == null || trialEligibility.isBlank())
+            throw new IllegalArgumentException("trialEligibility is required");
+        if (activationPath == null || activationPath.isBlank())
+            throw new IllegalArgumentException("activationPath is required");
+        // chk_subscription_items_trial_end
+        if ("TRIAL".equals(chargeMode) && trialEndDate == null)
+            throw new IllegalArgumentException("a TRIAL line requires a trial end date");
+        if (!"TRIAL".equals(chargeMode) && trialEndDate != null)
+            throw new IllegalArgumentException("trial end date is only valid for a TRIAL line");
         this.id = id;
         this.companyId = companyId;
         this.subscriptionId = subscriptionId;
@@ -193,6 +254,12 @@ public class SubscriptionItem {
         this.createdDate = createdDate;
         this.version = version;
         this.enabled = enabled;
+        this.chargeMode = chargeMode;
+        this.trialEligibility = trialEligibility;
+        this.maxTrialDays = maxTrialDays;
+        this.trialEndDate = trialEndDate;
+        this.activationPath = activationPath;
+        this.succeedsItemId = succeedsItemId;
     }
 
     /**
@@ -245,6 +312,41 @@ public class SubscriptionItem {
                 itemName, itemType, capacityUnit, tierMin, tierMax, includedQuantity, taxTreatment,
                 quantity, unitAmount, discountPercent, discountAmount, discountIsConditional,
                 taxRate, period, origin, createdAmendmentId, null, null, null, true);
+    }
+
+    public static SubscriptionItem open(Long companyId, Long subscriptionId, Long catalogItemId,
+            String itemCode, String itemName, SubscriptionItemType itemType, String capacityUnit,
+            int tierMin, Integer tierMax, int includedQuantity, TaxTreatment taxTreatment,
+            int quantity, BigDecimal unitAmount, BigDecimal discountPercent,
+            BigDecimal discountAmount, boolean discountIsConditional, BigDecimal taxRate,
+            EffectivePeriod period, ItemOrigin origin, Long createdAmendmentId, String chargeMode,
+            String trialEligibility, int maxTrialDays, LocalDate trialEndDate,
+            String activationPath) {
+        return open(companyId, subscriptionId, catalogItemId, itemCode, itemName, itemType,
+                capacityUnit, tierMin, tierMax, includedQuantity, taxTreatment, quantity,
+                unitAmount, discountPercent, discountAmount, discountIsConditional, taxRate, period,
+                origin, createdAmendmentId, chargeMode, trialEligibility, maxTrialDays,
+                trialEndDate, activationPath, null);
+    }
+
+    /**
+     * Sucesora física de una línea que se cierra en el mismo instante (vencimiento
+     * natural de una {@code TRIAL} o compra a mitad de prueba);
+     * {@code succeedsItemId} deja la cadena legible sin adivinar por fechas.
+     */
+    public static SubscriptionItem open(Long companyId, Long subscriptionId, Long catalogItemId,
+            String itemCode, String itemName, SubscriptionItemType itemType, String capacityUnit,
+            int tierMin, Integer tierMax, int includedQuantity, TaxTreatment taxTreatment,
+            int quantity, BigDecimal unitAmount, BigDecimal discountPercent,
+            BigDecimal discountAmount, boolean discountIsConditional, BigDecimal taxRate,
+            EffectivePeriod period, ItemOrigin origin, Long createdAmendmentId, String chargeMode,
+            String trialEligibility, int maxTrialDays, LocalDate trialEndDate,
+            String activationPath, Long succeedsItemId) {
+        return new SubscriptionItem(null, companyId, subscriptionId, catalogItemId, itemCode,
+                itemName, itemType, capacityUnit, tierMin, tierMax, includedQuantity, taxTreatment,
+                quantity, unitAmount, discountPercent, discountAmount, discountIsConditional,
+                taxRate, period, origin, createdAmendmentId, null, null, null, true, chargeMode,
+                trialEligibility, maxTrialDays, trialEndDate, activationPath, succeedsItemId);
     }
 
     /**
@@ -459,5 +561,29 @@ public class SubscriptionItem {
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public String getChargeMode() {
+        return chargeMode;
+    }
+
+    public String getTrialEligibility() {
+        return trialEligibility;
+    }
+
+    public int getMaxTrialDays() {
+        return maxTrialDays;
+    }
+
+    public LocalDate getTrialEndDate() {
+        return trialEndDate;
+    }
+
+    public String getActivationPath() {
+        return activationPath;
+    }
+
+    public Long getSucceedsItemId() {
+        return succeedsItemId;
     }
 }

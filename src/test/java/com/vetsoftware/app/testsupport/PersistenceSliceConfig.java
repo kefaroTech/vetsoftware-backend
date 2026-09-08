@@ -370,6 +370,12 @@ import org.springframework.context.annotation.Import;
         com.vetsoftware.app.companylimitevent.infrastructure.persistence.CompanyLimitEventJpaMapper.class,
         com.vetsoftware.app.companyentitlementsnapshot.infrastructure.persistence.JpaCompanyEntitlementSnapshotRepository.class,
         com.vetsoftware.app.companyentitlementsnapshot.infrastructure.persistence.CompanyEntitlementSnapshotJpaMapper.class,
+        // Sucesion fisica de lineas: el vencimiento natural de una TRIAL y la compra
+        // a mitad de prueba. Los dos son @Component sin interfaz Jpa...Repository
+        // que @DataJpaTest pueda autodetectar, asi que necesitan @Import como el
+        // resto de este bloque.
+        com.vetsoftware.app.subscription.infrastructure.persistence.JpaTrialLineSuccessionPort.class,
+        com.vetsoftware.app.quote.infrastructure.persistence.JpaModuleLineSuccessionPort.class,
         // Circuito de cobro (changesets 319-324). Los cinco slices resuelven lo
         // ajeno por companion VO y puerto acotado, asi que aqui solo entran los
         // seis adaptadores y sus mapper: los ValidationPort/QueryPort los

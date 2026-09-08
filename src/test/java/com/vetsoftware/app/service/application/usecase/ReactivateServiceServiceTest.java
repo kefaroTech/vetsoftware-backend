@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.service.application.dto.ServiceDto;
 import com.vetsoftware.app.service.application.port.out.ServiceRepository;
+import com.vetsoftware.app.service.application.port.out.ServiceUsageLimitPort;
 import com.vetsoftware.app.service.domain.ServiceNotFoundException;
 import com.vetsoftware.app.service.testsupport.ServiceMother;
 import java.util.Optional;
@@ -25,6 +26,8 @@ class ReactivateServiceServiceTest {
 
     @Mock
     private ServiceRepository repository;
+    @Mock
+    private ServiceUsageLimitPort usageLimitPort;
 
     @InjectMocks
     private ReactivateServiceService service;

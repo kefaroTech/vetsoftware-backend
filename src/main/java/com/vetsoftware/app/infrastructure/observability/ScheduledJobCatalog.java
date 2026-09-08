@@ -45,10 +45,11 @@ import java.util.Optional;
  * el hueco deja de ser latente.
  *
  * <p>
- * <b>Candado distribuido, pero solo en los cuatro que cobran o cierran
- * dinero</b>: {@code payment.collection}, {@code subscription.billing},
- * {@code quote.expiration} y {@code payment.reconciliation} llevan
- * {@code @SchedulerLock} sobre la tabla {@code shedlock}. Los otros cinco con
+ * <b>Candado distribuido, pero solo en los cinco que cobran, cierran dinero o
+ * sellan una concesión de prueba</b>: {@code payment.collection},
+ * {@code subscription.billing}, {@code quote.expiration},
+ * {@code payment.reconciliation} y {@code subscription.trial.expiration} llevan
+ * {@code @SchedulerLock} sobre la tabla {@code shedlock}. Los demás con
  * {@link #requiresSingleWriter()} siguen sin candado propio: la precondición
  * que los protege es explícita y <b>vigilada</b>, no implementada aquí. El
  * servicio corre con una sola tarea, y la alerta
@@ -75,6 +76,14 @@ public enum ScheduledJobCatalog {
      */
     SUBSCRIPTION_LIFECYCLE("subscription.lifecycle", "subscription.lifecycle.cron", "0 10 3 * * *",
             true),
+
+    /**
+     * Vencimiento por línea {@code TRIAL} (R-TRIAL-13/15). 03:15, justo después del
+     * lifecycle, que mueve el estado del contrato con la misma fecha. Con candado
+     * propio: dos réplicas sellarían dos veces la misma concesión.
+     */
+    SUBSCRIPTION_TRIAL_EXPIRATION("subscription.trial.expiration",
+            "subscription.trial.expiration.cron", "0 15 3 * * *", true),
 
     /**
      * Cobranza: facturas vencidas con saldo. 03:40, media hora después del
@@ -241,7 +250,7 @@ public enum ScheduledJobCatalog {
      * y todas las réplicas avanzan.
      *
      * <p>
-     * Cuatro de ellos llevan {@code @SchedulerLock}; ver el javadoc de la clase.
+     * Cinco de ellos llevan {@code @SchedulerLock}; ver el javadoc de la clase.
      */
     public boolean requiresSingleWriter() {
         return singleWriter;

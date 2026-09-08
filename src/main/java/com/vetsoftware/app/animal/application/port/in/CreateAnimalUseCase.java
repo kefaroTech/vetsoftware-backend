@@ -6,6 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CreateAnimalUseCase {
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('animal.create') and"
-            + " @authz.isMyCompany(#command.companyId))")
+            + " @authz.isMyCompany(#command.companyId) and @authz.requireModuleWritable('CORE'))")
     AnimalDto execute(CreateAnimalCommand command);
 }

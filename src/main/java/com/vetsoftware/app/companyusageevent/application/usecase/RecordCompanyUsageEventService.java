@@ -7,6 +7,7 @@ import com.vetsoftware.app.companyusageevent.application.port.out.CompanyUsageEv
 import com.vetsoftware.app.companyusageevent.application.port.out.LimitDimensionQueryPort;
 import com.vetsoftware.app.companyusageevent.domain.CompanyUsageEvent;
 import com.vetsoftware.app.companyusageevent.domain.LimitDimensionRef;
+import com.vetsoftware.app.companyusageevent.domain.UsageBranch;
 import com.vetsoftware.app.companyusageevent.domain.UsagePeriodKey;
 import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
@@ -72,10 +73,34 @@ public class RecordCompanyUsageEventService implements RecordCompanyUsageEventUs
                 .findByCode(command.limitDimensionCode())
                 .orElseThrow(() -> unknownDimension(command));
         CompanyUsageEvent event = CompanyUsageEvent.record(command.companyId(), dimension.id(),
-                dimension.branch(), command.usageReferenceId(), command.occurredAt(),
+                resolveBranch(dimension, command), command.usageReferenceId(), command.occurredAt(),
                 UsagePeriodKey.of(command.periodKey()), command.billable(),
                 LocalDateTime.now(clock));
         return CompanyUsageEventDto.from(repository.save(event));
+    }
+
+    /**
+     * {@code GROOMING_SERVICE} nombra dos ramas a la vez (spa y guarderia): el
+     * codigo del eje no alcanza para elegir la columna, asi que el llamante tiene
+     * que decirlo en {@code usageOrigin}. Los demas ejes son 1:1 con su rama y no
+     * llevan origen.
+     */
+    private static UsageBranch resolveBranch(LimitDimensionRef dimension,
+            RecordCompanyUsageEventCommand command) {
+        if (command.usageOrigin() == null) {
+            return dimension.branch();
+        }
+        UsageBranch branch = switch (command.usageOrigin()) {
+            case "SPA" -> UsageBranch.GROOMING_SERVICE_SPA;
+            case "DAYCARE" -> UsageBranch.GROOMING_SERVICE_DAYCARE;
+            default -> throw new IllegalArgumentException(
+                    "Unknown usage origin: " + command.usageOrigin() + ". Expected SPA or DAYCARE");
+        };
+        if (!branch.code().equals(dimension.code())) {
+            throw new IllegalArgumentException("usageOrigin " + command.usageOrigin()
+                    + " does not belong to limit dimension " + dimension.code());
+        }
+        return branch;
     }
 
     /**

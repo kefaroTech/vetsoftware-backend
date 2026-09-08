@@ -168,12 +168,15 @@ class CompanyTrialGrantTest {
     class Validaciones {
 
         @Test
-        @DisplayName("una concesión sin papel que la conceda se rechaza")
-        void una_concesion_sin_papel_se_rechaza() {
-            assertThatThrownBy(() -> CompanyTrialGrant.grant(ventana(), INVENTARIO, INICIO, 30, 30,
-                    TrialPolicyOutcome.LIMITED, null, null, CREADA))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("exactly one of source quote or granting" + " amendment");
+        @DisplayName("R-1 (cuenta gratuita) · sin cotización ni otrosí concede igual, con origin"
+                + " SIGNUP: es la propia política del catálogo, no una prueba sin papel")
+        void una_concesion_sin_papel_concede_con_origin_signup() {
+            CompanyTrialGrant concesion = CompanyTrialGrant.grant(ventana(), INVENTARIO, INICIO, 30,
+                    30, TrialPolicyOutcome.LIMITED, null, null, CREADA);
+
+            assertThat(concesion.getSourceQuoteId()).isNull();
+            assertThat(concesion.getGrantingAmendmentId()).isNull();
+            assertThat(concesion.getOrigin()).isEqualTo(TrialOrigin.SIGNUP);
         }
 
         @Test
@@ -182,6 +185,18 @@ class CompanyTrialGrantTest {
             assertThatThrownBy(() -> CompanyTrialGrant.grant(ventana(), INVENTARIO, INICIO, 30, 30,
                     TrialPolicyOutcome.LIMITED, COTIZACION, 99L, CREADA))
                     .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("con cotización concede con origin QUOTE; con otrosí, con origin AMENDMENT")
+        void el_origin_se_deriva_del_papel_que_trae() {
+            CompanyTrialGrant porCotizacion = CompanyTrialGrant.grant(ventana(), INVENTARIO, INICIO,
+                    30, 30, TrialPolicyOutcome.LIMITED, COTIZACION, null, CREADA);
+            CompanyTrialGrant porOtrosi = CompanyTrialGrant.grant(ventana(), CAJA, INICIO, 30, 30,
+                    TrialPolicyOutcome.LIMITED, null, 99L, CREADA);
+
+            assertThat(porCotizacion.getOrigin()).isEqualTo(TrialOrigin.QUOTE);
+            assertThat(porOtrosi.getOrigin()).isEqualTo(TrialOrigin.AMENDMENT);
         }
 
         @Test

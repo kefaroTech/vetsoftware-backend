@@ -20,6 +20,7 @@ import com.vetsoftware.app.companytrialgrant.application.port.in.ListCompanyTria
 import com.vetsoftware.app.companytrialgrant.application.port.in.ListExpiredTrialGrantsUseCase;
 import com.vetsoftware.app.companytrialgrant.domain.TrialAlreadyGrantedException;
 import com.vetsoftware.app.companytrialgrant.domain.TrialOutcome;
+import com.vetsoftware.app.companytrialgrant.domain.TrialOrigin;
 import com.vetsoftware.app.companytrialgrant.domain.TrialPolicyOutcome;
 import com.vetsoftware.app.companytrialgrant.domain.TrialWindowNotOpenException;
 import com.vetsoftware.app.companytrialgrant.infrastructure.web.request.GrantTrialRequest;
@@ -79,14 +80,14 @@ class SystemCompanyTrialGrantControllerTest {
 
     private static CompanyTrialGrantDto viva() {
         return new CompanyTrialGrantDto(11L, LA_CLINICA, 5L, 3L, LocalDate.of(2026, 9, 16), 15, 15,
-                LocalDate.of(2026, 9, 30), 30, TrialPolicyOutcome.LIMITED, 77L, null, null, null,
-                true);
+                LocalDate.of(2026, 9, 30), 30, TrialPolicyOutcome.LIMITED, 77L, null,
+                TrialOrigin.QUOTE, null, null, true);
     }
 
     private static CompanyTrialGrantDto resuelta(TrialOutcome outcome) {
         return new CompanyTrialGrantDto(11L, LA_CLINICA, 5L, 3L, LocalDate.of(2026, 9, 16), 15, 15,
                 LocalDate.of(2026, 9, 30), 30, TrialPolicyOutcome.LIMITED, 77L, null,
-                LocalDateTime.of(2026, 9, 21, 8, 0), outcome, false);
+                TrialOrigin.QUOTE, LocalDateTime.of(2026, 9, 21, 8, 0), outcome, false);
     }
 
     @Nested

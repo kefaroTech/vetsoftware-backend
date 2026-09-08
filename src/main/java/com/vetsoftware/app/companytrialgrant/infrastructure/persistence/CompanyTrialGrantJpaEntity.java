@@ -66,6 +66,14 @@ public class CompanyTrialGrantJpaEntity {
     @Column(name = "granting_amendment_id")
     private Long grantingAmendmentId;
 
+    /**
+     * Copia explícita del papel: {@code chk_company_trial_grants_paper} exige la
+     * columna porque una {@code CHECK} no puede mirar el resultado de un cálculo,
+     * solo columnas de la propia fila.
+     */
+    @Column(name = "origin", nullable = false, length = 10)
+    private String origin;
+
     @Column(name = "consumed_at")
     private LocalDateTime consumedAt;
 
@@ -176,6 +184,14 @@ public class CompanyTrialGrantJpaEntity {
 
     public void setGrantingAmendmentId(Long grantingAmendmentId) {
         this.grantingAmendmentId = grantingAmendmentId;
+    }
+
+    public String getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(String origin) {
+        this.origin = origin;
     }
 
     public LocalDateTime getConsumedAt() {

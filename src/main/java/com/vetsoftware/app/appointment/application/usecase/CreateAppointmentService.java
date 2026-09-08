@@ -11,6 +11,7 @@ import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentMetrics.Channel;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository;
 import com.vetsoftware.app.appointment.application.port.out.AppointmentRepository.Overlap;
+import com.vetsoftware.app.appointment.application.port.out.AppointmentUsageLimitPort;
 import com.vetsoftware.app.appointment.application.port.out.BranchQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.appointment.application.port.out.EmployeeQueryPort;
@@ -23,6 +24,7 @@ import com.vetsoftware.app.appointment.domain.CompanyRef;
 import com.vetsoftware.app.appointment.domain.EmployeeRef;
 import com.vetsoftware.app.appointment.domain.OwnerRef;
 import io.micrometer.observation.annotation.Observed;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.slf4j.Logger;
@@ -46,14 +48,16 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
     private final AppointmentConfirmationEmailSender confirmationEmailSender;
     private final AppointmentMetrics appointmentMetrics;
     private final AppointmentDurationPolicyPort durationPolicyPort;
+    private final AppointmentUsageLimitPort usageLimitPort;
+    private final Clock clock;
 
     public CreateAppointmentService(AppointmentRepository repository,
             AnimalQueryPort animalQueryPort, OwnerQueryPort ownerQueryPort,
             EmployeeQueryPort employeeQueryPort, BranchQueryPort branchQueryPort,
             CompanyQueryPort companyQueryPort,
             AppointmentConfirmationEmailSender confirmationEmailSender,
-            AppointmentMetrics appointmentMetrics,
-            AppointmentDurationPolicyPort durationPolicyPort) {
+            AppointmentMetrics appointmentMetrics, AppointmentDurationPolicyPort durationPolicyPort,
+            AppointmentUsageLimitPort usageLimitPort, Clock clock) {
         this.durationPolicyPort = durationPolicyPort;
         this.repository = repository;
         this.animalQueryPort = animalQueryPort;
@@ -63,6 +67,8 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
         this.companyQueryPort = companyQueryPort;
         this.confirmationEmailSender = confirmationEmailSender;
         this.appointmentMetrics = appointmentMetrics;
+        this.usageLimitPort = usageLimitPort;
+        this.clock = clock;
     }
 
     @Override
@@ -107,6 +113,7 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "Company has no active branch: " + command.companyId()));
 
+        usageLimitPort.checkNotExceeded(command.companyId());
         Appointment appointment = Appointment.create(command.startAt(), command.durationMinutes(),
                 command.type(), command.notes(), animal, owner, command.clientName(),
                 command.clientPhone(), command.clientEmail(), employee,
@@ -148,6 +155,7 @@ public class CreateAppointmentService implements CreateAppointmentUseCase {
         appointment.markOverlapForced(!overlaps.isEmpty() && command.forceOverlap());
 
         Appointment saved = repository.save(appointment);
+        usageLimitPort.record(command.companyId(), saved.getId(), LocalDateTime.now(clock));
 
         // Notificación al cliente (async y no bloqueante; si falla, el agendamiento
         // sigue). Los datos se resuelven AQUÍ, con la transacción y su conexión

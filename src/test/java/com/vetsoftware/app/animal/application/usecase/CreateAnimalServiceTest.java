@@ -12,6 +12,7 @@ import com.vetsoftware.app.animal.application.command.CreateAnimalCommand;
 import com.vetsoftware.app.animal.application.dto.AnimalDto;
 import com.vetsoftware.app.animal.application.port.out.AnimalColorQueryPort;
 import com.vetsoftware.app.animal.application.port.out.AnimalRepository;
+import com.vetsoftware.app.animal.application.port.out.AnimalUsageLimitPort;
 import com.vetsoftware.app.animal.application.port.out.BreedQueryPort;
 import com.vetsoftware.app.animal.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.animal.application.port.out.OwnerQueryPort;
@@ -23,7 +24,10 @@ import com.vetsoftware.app.animal.domain.WeightSource;
 import com.vetsoftware.app.animal.domain.WeightType;
 import com.vetsoftware.app.animal.testsupport.AnimalMother;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -33,6 +37,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,6 +58,10 @@ class CreateAnimalServiceTest {
     private AnimalColorQueryPort animalColorQueryPort;
     @Mock
     private WeightRecordRepository weightRecordRepository;
+    @Mock
+    private AnimalUsageLimitPort usageLimitPort;
+    @Spy
+    private Clock clock = Clock.fixed(Instant.parse("2026-03-10T09:14:00Z"), ZoneOffset.UTC);
 
     @InjectMocks
     private CreateAnimalService service;
