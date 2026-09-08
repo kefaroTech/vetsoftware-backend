@@ -4,6 +4,8 @@ import com.vetsoftware.app.auth.application.dto.AuthContext;
 import com.vetsoftware.app.auth.application.dto.EmployeeContext;
 import com.vetsoftware.app.auth.application.dto.SystemContext;
 import com.vetsoftware.app.auth.application.dto.SystemUserContext;
+import com.vetsoftware.app.auth.domain.SubModuleReadOnlyException;
+import com.vetsoftware.app.entitlement.application.port.in.FindCompanyAccessUseCase;
 import java.util.Collection;
 import java.util.Set;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,6 +23,13 @@ public class Authz {
     private static final String NO_COMPANY_CONTEXT = "No company context";
     private static final String NO_EMPLOYEE_CONTEXT = "No employee context";
     private static final String NO_SYSTEM_USER_CONTEXT = "No system user context";
+    private static final String READ_ONLY = "READ_ONLY";
+
+    private final FindCompanyAccessUseCase findCompanyAccess;
+
+    public Authz(FindCompanyAccessUseCase findCompanyAccess) {
+        this.findCompanyAccess = findCompanyAccess;
+    }
 
     /**
      * Actor autenticado de la request, o {@code null} si no hay ninguno. Único
@@ -270,5 +279,27 @@ public class Authz {
         if (scope.isEmpty())
             throw new BranchAccessDeniedException("Employee has no branch assigned");
         throw new IllegalArgumentException("branchId is required");
+    }
+
+    /**
+     * Defensa en profundidad: la barrera real es
+     * {@code CompanyEntitlementJpaRepository.findEffectivePermissionCodes}, que ya
+     * retira del {@code SecurityContext} las autoridades de escritura de un
+     * submódulo en {@code READ_ONLY}. Devuelve {@code true} en vez de {@code void}
+     * para encadenarse en el mismo SpEL; en {@code READ_ONLY} no devuelve
+     * {@code false}, lanza {@link SubModuleReadOnlyException} (403 con {@code type}
+     * propio). Solo bloquea con {@code READ_ONLY} explícito: un submódulo ausente
+     * de {@code findCompanyAccess} pasa, porque esta barrera degrada una escritura
+     * conocida, no decide qué existe.
+     */
+    public boolean requireModuleWritable(String subModuleCode) {
+        Long companyId = currentCompanyId();
+        boolean readOnly = findCompanyAccess.findByCompanyId(companyId).entitlements().stream()
+                .anyMatch(entitlement -> subModuleCode.equals(entitlement.subModule().code())
+                        && READ_ONLY.equals(entitlement.accessLevel()));
+        if (readOnly) {
+            throw new SubModuleReadOnlyException(companyId, subModuleCode);
+        }
+        return true;
     }
 }

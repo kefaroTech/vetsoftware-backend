@@ -12,11 +12,28 @@ import org.junit.jupiter.params.provider.EnumSource;
 class UsageBranchTest {
 
     @ParameterizedTest(name = "{0} se resuelve por su propio codigo")
-    @EnumSource(UsageBranch.class)
-    @DisplayName("los cuatro ejes contables se resuelven por su codigo")
-    void los_cuatro_ejes_contables_se_resuelven_por_su_codigo(UsageBranch rama) {
+    @EnumSource(value = UsageBranch.class, names = {"OWNER", "ANIMAL", "APPOINTMENT", "INVOICE"})
+    @DisplayName("los cuatro ejes 1:1 se resuelven por su codigo")
+    void los_cuatro_ejes_1_1_se_resuelven_por_su_codigo(UsageBranch rama) {
         assertThat(UsageBranch.ofDimensionCode(rama.code())).isEqualTo(rama);
         assertThat(rama.code()).isEqualTo(rama.name());
+    }
+
+    @ParameterizedTest(name = "{0} nombra el codigo GROOMING_SERVICE, no su propio nombre")
+    @EnumSource(value = UsageBranch.class, names = {"GROOMING_SERVICE_SPA",
+            "GROOMING_SERVICE_DAYCARE"})
+    @DisplayName("las dos ramas de guarderia/spa comparten el mismo codigo de eje")
+    void las_dos_ramas_de_grooming_service_comparten_el_mismo_codigo(UsageBranch rama) {
+        assertThat(rama.code()).isEqualTo("GROOMING_SERVICE");
+        assertThat(rama.code()).isNotEqualTo(rama.name());
+    }
+
+    @Test
+    @DisplayName("GROOMING_SERVICE es ambiguo: resolverlo por codigo falla en voz alta")
+    void grooming_service_es_ambiguo_por_codigo() {
+        assertThatThrownBy(() -> UsageBranch.ofDimensionCode("GROOMING_SERVICE"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("names two branches");
     }
 
     @Test

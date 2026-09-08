@@ -90,7 +90,10 @@ final class AcceptedQuoteContractLines {
                 snapshot.tierMin(), snapshot.tierMax(), snapshot.includedQuantity(),
                 snapshot.taxTreatment(), snapshot.quantity(), snapshot.unitAmount(),
                 snapshot.discountPercent(), snapshot.discountAmount(),
-                snapshot.discountIsConditional(), snapshot.taxRate(), effectiveFrom, effectiveTo);
+                snapshot.discountIsConditional(), snapshot.taxRate(), effectiveFrom, effectiveTo,
+                SubscriptionItemLineCommand.DEFAULT_CHARGE_MODE,
+                SubscriptionItemLineCommand.DEFAULT_TRIAL_ELIGIBILITY, 0, null,
+                SubscriptionItemLineCommand.DEFAULT_ACTIVATION_PATH);
     }
 
     static List<SubscriptionItemLineCommand> emptyIfNull(List<SubscriptionItemLineCommand> items) {

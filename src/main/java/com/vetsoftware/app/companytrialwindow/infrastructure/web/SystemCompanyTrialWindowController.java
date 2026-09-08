@@ -60,7 +60,11 @@ public class SystemCompanyTrialWindowController {
     }
 
     /**
-     * Abre el reloj. Se dispara al aceptar la cotización, el único camino de alta.
+     * Abre el reloj para el camino de cotización: {@code sourceQuoteId} siempre
+     * viene informado aquí, así que la ventana nace con {@code origin = QUOTE}. El
+     * alta pública (sin cotización, {@code origin = SIGNUP}) no pasa por esta ruta:
+     * la abre {@code PlatformCatalogSubscriptionCreator} en la misma transacción
+     * del registro.
      */
     @PostMapping("/companies/{companyId}")
     @ResponseStatus(HttpStatus.CREATED)

@@ -213,7 +213,9 @@ public class CreateSubscriptionService implements CreateSubscriptionUseCase {
                     line.includedQuantity() == null ? 0 : line.includedQuantity(),
                     line.taxTreatment(), line.quantity() == null ? 1 : line.quantity(),
                     line.unitAmount(), line.discountPercentOrZero(), line.discountAmountOrZero(),
-                    line.discountIsConditional(), line.taxRate(), period, ItemOrigin.INITIAL, null);
+                    line.discountIsConditional(), line.taxRate(), period, ItemOrigin.INITIAL, null,
+                    line.chargeMode(), line.trialEligibility(), line.maxTrialDays(),
+                    line.trialEndDate(), line.activationPath());
             // Despues de construir la linea: el dominio decide primero si esa linea
             // puede llevar unidad -una unidad colgada de un MODULE se rechaza por lo
             // que es- y solo entonces se le pregunta al catalogo si el eje existe.

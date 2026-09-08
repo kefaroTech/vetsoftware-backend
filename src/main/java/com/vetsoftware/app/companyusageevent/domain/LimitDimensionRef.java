@@ -31,7 +31,8 @@ public record LimitDimensionRef(Long id, String code) {
 
     /**
      * La rama contable de este eje, o un fallo en voz alta si el eje es de
-     * existencias. Ver {@link UsageBranch#ofDimensionCode(String)}.
+     * existencias o nombra mas de una rama (hoy, {@code GROOMING_SERVICE}). Ver
+     * {@link UsageBranch#ofDimensionCode(String)}.
      */
     public UsageBranch branch() {
         return UsageBranch.ofDimensionCode(code);

@@ -47,4 +47,12 @@ public interface CompanyUsageEventJpaRepository
 
     Page<CompanyUsageEventJpaEntity> findAllByCompanyIdAndChargeId(Long companyId, Long chargeId,
             Pageable pageable);
+
+    /**
+     * Cuantos hechos tiene la empresa sobre este eje y este periodo, ahora mismo.
+     * Es el contador en vivo de los ejes {@code CUMULATIVE}/{@code FLOW}, que no
+     * tienen un {@code company_capacities} que los precalcule.
+     */
+    long countByCompanyIdAndLimitDimensionIdAndPeriodKey(Long companyId, Long limitDimensionId,
+            String periodKey);
 }

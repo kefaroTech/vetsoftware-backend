@@ -40,11 +40,17 @@ import java.time.LocalDateTime;
  * @param billable
  *            si el hecho cuenta para el cobro. Un hecho no facturable no se
  *            puede colgar despues de un cargo
+ * @param usageOrigin
+ *            {@code SPA} o {@code DAYCARE}, y solo cuando
+ *            {@code limitDimensionCode} es {@code GROOMING_SERVICE}: ese eje
+ *            nombra dos ramas a la vez (spa y guarderia) y el codigo del eje no
+ *            alcanza para elegir la columna. {@code null} para los demas ejes
  */
 public record RecordCompanyUsageEventRequest(
-        @NotBlank(message = "Debes indicar el codigo del eje.") @Size(max = 50, message = "El codigo del eje no puede superar los 50 caracteres.") @Schema(description = "Solo los ejes contables: OWNER, ANIMAL, APPOINTMENT o INVOICE.") String limitDimensionCode,
+        @NotBlank(message = "Debes indicar el codigo del eje.") @Size(max = 50, message = "El codigo del eje no puede superar los 50 caracteres.") @Schema(description = "Un eje contable: OWNER, ANIMAL, APPOINTMENT, INVOICE o GROOMING_SERVICE.") String limitDimensionCode,
         @NotNull(message = "Debes indicar el registro consumido.") @Positive(message = "El identificador del registro consumido debe ser positivo.") Long usageReferenceId,
         @NotNull(message = "Debes indicar cuando ocurrio el hecho.") @Schema(description = "El instante del registro consumido, no la hora del proceso que lo mide.") LocalDateTime occurredAt,
         @NotBlank(message = "Debes indicar el periodo.") @Pattern(regexp = "^([0-9]{4}-(0[1-9]|1[0-2])|[0-9]{4}-Q[1-4]|[0-9]{4}-S[12]|ALLTIME)$", message = "El periodo debe ser AAAA-MM, AAAA-Qn, AAAA-Sn o ALLTIME.") String periodKey,
-        @NotNull(message = "Debes indicar si el hecho es facturable.") Boolean billable) {
+        @NotNull(message = "Debes indicar si el hecho es facturable.") Boolean billable,
+        @Pattern(regexp = "^(SPA|DAYCARE)$", message = "El origen debe ser SPA o DAYCARE.") @Schema(description = "Solo para GROOMING_SERVICE: SPA o DAYCARE.") String usageOrigin) {
 }

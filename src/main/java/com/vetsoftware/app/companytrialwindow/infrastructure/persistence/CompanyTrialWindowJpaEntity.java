@@ -51,8 +51,16 @@ public class CompanyTrialWindowJpaEntity {
     @Column(name = "window_days", nullable = false)
     private int windowDays;
 
-    @Column(name = "source_quote_id", nullable = false)
+    @Column(name = "source_quote_id")
     private Long sourceQuoteId;
+
+    /**
+     * Copia explícita del papel: {@code chk_company_trial_windows_origin} exige la
+     * columna porque una {@code CHECK} no puede mirar el resultado de un cálculo,
+     * solo columnas de la propia fila.
+     */
+    @Column(name = "origin", nullable = false, length = 10)
+    private String origin;
 
     /** Vacío = ventana viva. */
     @Column(name = "closed_at")
@@ -114,6 +122,14 @@ public class CompanyTrialWindowJpaEntity {
 
     public void setSourceQuoteId(Long sourceQuoteId) {
         this.sourceQuoteId = sourceQuoteId;
+    }
+
+    public String getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(String origin) {
+        this.origin = origin;
     }
 
     public LocalDateTime getClosedAt() {

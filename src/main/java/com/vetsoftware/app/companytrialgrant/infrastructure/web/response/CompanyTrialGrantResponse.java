@@ -1,6 +1,7 @@
 package com.vetsoftware.app.companytrialgrant.infrastructure.web.response;
 
 import com.vetsoftware.app.companytrialgrant.application.dto.CompanyTrialGrantDto;
+import com.vetsoftware.app.companytrialgrant.domain.TrialOrigin;
 import com.vetsoftware.app.companytrialgrant.domain.TrialOutcome;
 import com.vetsoftware.app.companytrialgrant.domain.TrialPolicyOutcome;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -34,14 +35,16 @@ public record CompanyTrialGrantResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate trialEndDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int policyTrialDays,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) TrialPolicyOutcome policyTrialOutcome,
-        Long sourceQuoteId, Long grantingAmendmentId, LocalDateTime consumedAt,
-        TrialOutcome outcome, @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean live) {
+        Long sourceQuoteId, Long grantingAmendmentId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) TrialOrigin origin,
+        LocalDateTime consumedAt, TrialOutcome outcome,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean live) {
 
     public static CompanyTrialGrantResponse from(CompanyTrialGrantDto dto) {
         return new CompanyTrialGrantResponse(dto.id(), dto.companyId(), dto.catalogItemId(),
                 dto.trialWindowId(), dto.grantedOn(), dto.daysGranted(), dto.effectiveDays(),
                 dto.trialEndDate(), dto.policyTrialDays(), dto.policyTrialOutcome(),
-                dto.sourceQuoteId(), dto.grantingAmendmentId(), dto.consumedAt(), dto.outcome(),
-                dto.live());
+                dto.sourceQuoteId(), dto.grantingAmendmentId(), dto.origin(), dto.consumedAt(),
+                dto.outcome(), dto.live());
     }
 }

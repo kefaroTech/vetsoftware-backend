@@ -88,9 +88,10 @@ public class SystemCompanyUsageEventController {
     @ResponseStatus(HttpStatus.CREATED)
     public CompanyUsageEventResponse record(@RequestParam Long companyId,
             @Valid @RequestBody RecordCompanyUsageEventRequest request) {
-        return toResponse(recordUseCase.execute(new RecordCompanyUsageEventCommand(companyId,
-                request.limitDimensionCode(), request.usageReferenceId(), request.occurredAt(),
-                request.periodKey(), Boolean.TRUE.equals(request.billable()))));
+        return toResponse(recordUseCase
+                .execute(new RecordCompanyUsageEventCommand(companyId, request.limitDimensionCode(),
+                        request.usageReferenceId(), request.occurredAt(), request.periodKey(),
+                        Boolean.TRUE.equals(request.billable()), request.usageOrigin())));
     }
 
     /**

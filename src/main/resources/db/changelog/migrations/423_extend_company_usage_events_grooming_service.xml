@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Cuenta gratuita (docs/db/cuenta-gratuita-modelo.md §5). Extiende company_usage_events (354,
+         YA APLICADO -no se toca-) con la quinta rama clinica: GROOMING_SERVICE es el UNICO eje del
+         modelo con DOS tablas de origen para una sola rama (spa o guarderia), asi que lleva DOS
+         columnas nulas-exclusivas (usage_spa_id, usage_daycare_id) en vez de una. Depende de 422
+         (uq_spas_company_id, uq_daycares_company_id) para las FK compuestas.
+
+         usage_ref_key (columna generada de 354) y su indice unico uq_cue_fact son la proteccion
+         anti-duplicado documentada en 354: "sin ella el reintento del proceso de medicion duplica
+         el hecho y el excedente facturado". Esa proteccion se rompe en silencio para
+         GROOMING_SERVICE si usage_ref_key no entra en el COALESCE tambien con usage_spa_id/
+         usage_daycare_id: las cuatro columnas viejas quedarian NULL en todo hecho de spa/
+         guarderia, asi que usage_ref_key seria SIEMPRE 'GROOMING_SERVICE|NULL' y la deduplicacion
+         dependeria solo de (company_id, occurred_at) por coincidencia, no por diseño -exactamente
+         la misma clase de fallo silencioso que 354 escribio para justificar que la columna
+         existiera-. Por eso este changeset TAMBIEN reconstruye usage_ref_key y uq_cue_fact, aunque
+         el documento de modelo de datos no lo mencione explicitamente.
+
+         chk_cue_branch se reescribe completo (DROP + ADD, BD vacia, sin transicion) con la quinta
+         rama: GROOMING_SERVICE exige exactamente una de las dos columnas nuevas y ninguna de las
+         cuatro viejas -mismo patron OR-exclusivo que las otras cuatro ramas-.
+
+         Impacto del ALTER: ADD COLUMN nulable es in place sin reconstruccion; MODIFY COLUMN de una
+         columna generada STORED recalcula el valor de cada fila (ALGORITHM=COPY segun el manual de
+         MySQL 8.4 para cambios de definicion de columna generada); DROP/ADD CONSTRAINT CHECK es
+         validacion de motor; ADD INDEX es in place; ADD FOREIGN KEY es in place solo con
+         foreign_key_checks deshabilitado, si no cae a COPY (Tabla 17.19 del manual). Con la tabla
+         vacia en todo entorno real hoy, el algoritmo elegido es irrelevante en coste. -->
+    <changeSet id="423_extend_company_usage_events_grooming_service" author="orlando">
+        <sql><![CDATA[
+            ALTER TABLE company_usage_events
+                ADD COLUMN usage_spa_id BIGINT,
+                ADD COLUMN usage_daycare_id BIGINT
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE company_usage_events
+                DROP CONSTRAINT uq_cue_fact,
+                MODIFY COLUMN usage_ref_key VARCHAR(80)
+                    CHARACTER SET ascii COLLATE ascii_bin
+                    GENERATED ALWAYS AS (CONCAT(limit_dimension_code, '|',
+                        COALESCE(usage_owner_id, usage_animal_id, usage_appointment_id,
+                                 usage_electronic_document_id, usage_spa_id,
+                                 usage_daycare_id))) STORED,
+                ADD CONSTRAINT uq_cue_fact
+                    UNIQUE (company_id, limit_dimension_id, usage_ref_key, occurred_at)
+        ]]></sql>
+
+        <sql><![CDATA[
+            ALTER TABLE company_usage_events
+                DROP CONSTRAINT chk_cue_branch,
+                ADD CONSTRAINT chk_cue_branch
+                    CHECK (
+                         (limit_dimension_code = 'OWNER' AND usage_owner_id IS NOT NULL
+                              AND usage_animal_id IS NULL AND usage_appointment_id IS NULL
+                              AND usage_electronic_document_id IS NULL
+                              AND usage_spa_id IS NULL AND usage_daycare_id IS NULL)
+                      OR (limit_dimension_code = 'ANIMAL' AND usage_animal_id IS NOT NULL
+                              AND usage_owner_id IS NULL AND usage_appointment_id IS NULL
+                              AND usage_electronic_document_id IS NULL
+                              AND usage_spa_id IS NULL AND usage_daycare_id IS NULL)
+                      OR (limit_dimension_code = 'APPOINTMENT' AND usage_appointment_id IS NOT NULL
+                              AND usage_owner_id IS NULL AND usage_animal_id IS NULL
+                              AND usage_electronic_document_id IS NULL
+                              AND usage_spa_id IS NULL AND usage_daycare_id IS NULL)
+                      OR (limit_dimension_code = 'INVOICE' AND usage_electronic_document_id IS NOT NULL
+                              AND usage_owner_id IS NULL AND usage_animal_id IS NULL
+                              AND usage_appointment_id IS NULL
+                              AND usage_spa_id IS NULL AND usage_daycare_id IS NULL)
+                      OR (limit_dimension_code = 'GROOMING_SERVICE'
+                              AND ((usage_spa_id IS NOT NULL AND usage_daycare_id IS NULL)
+                                OR (usage_spa_id IS NULL AND usage_daycare_id IS NOT NULL))
+                              AND usage_owner_id IS NULL AND usage_animal_id IS NULL
+                              AND usage_appointment_id IS NULL
+                              AND usage_electronic_document_id IS NULL)
+                    )
+        ]]></sql>
+
+        <createIndex tableName="company_usage_events" indexName="ix_cue_spa">
+            <column name="company_id"/>
+            <column name="usage_spa_id"/>
+        </createIndex>
+        <createIndex tableName="company_usage_events" indexName="ix_cue_daycare">
+            <column name="company_id"/>
+            <column name="usage_daycare_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint baseTableName="company_usage_events"
+                                 baseColumnNames="company_id, usage_spa_id"
+                                 referencedTableName="spas"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_cue_spa"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="company_usage_events"
+                                 baseColumnNames="company_id, usage_daycare_id"
+                                 referencedTableName="daycares"
+                                 referencedColumnNames="company_id, id"
+                                 constraintName="fk_cue_daycare"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="company_usage_events"
+                                      constraintName="fk_cue_daycare"/>
+            <dropForeignKeyConstraint baseTableName="company_usage_events"
+                                      constraintName="fk_cue_spa"/>
+            <dropIndex tableName="company_usage_events" indexName="ix_cue_daycare"/>
+            <dropIndex tableName="company_usage_events" indexName="ix_cue_spa"/>
+            <sql><![CDATA[
+                ALTER TABLE company_usage_events
+                    DROP CONSTRAINT chk_cue_branch,
+                    ADD CONSTRAINT chk_cue_branch
+                        CHECK (
+                             (limit_dimension_code = 'OWNER'       AND usage_owner_id IS NOT NULL
+                                  AND usage_animal_id IS NULL AND usage_appointment_id IS NULL
+                                  AND usage_electronic_document_id IS NULL)
+                          OR (limit_dimension_code = 'ANIMAL'      AND usage_animal_id IS NOT NULL
+                                  AND usage_owner_id IS NULL AND usage_appointment_id IS NULL
+                                  AND usage_electronic_document_id IS NULL)
+                          OR (limit_dimension_code = 'APPOINTMENT' AND usage_appointment_id IS NOT NULL
+                                  AND usage_owner_id IS NULL AND usage_animal_id IS NULL
+                                  AND usage_electronic_document_id IS NULL)
+                          OR (limit_dimension_code = 'INVOICE'
+                                  AND usage_electronic_document_id IS NOT NULL
+                                  AND usage_owner_id IS NULL AND usage_animal_id IS NULL
+                                  AND usage_appointment_id IS NULL))
+            ]]></sql>
+            <sql><![CDATA[
+                ALTER TABLE company_usage_events
+                    DROP CONSTRAINT uq_cue_fact,
+                    MODIFY COLUMN usage_ref_key VARCHAR(80)
+                        CHARACTER SET ascii COLLATE ascii_bin
+                        GENERATED ALWAYS AS (CONCAT(limit_dimension_code, '|',
+                            COALESCE(usage_owner_id, usage_animal_id, usage_appointment_id,
+                                     usage_electronic_document_id))) STORED,
+                    ADD CONSTRAINT uq_cue_fact
+                        UNIQUE (company_id, limit_dimension_id, usage_ref_key, occurred_at)
+            ]]></sql>
+            <sql><![CDATA[
+                ALTER TABLE company_usage_events
+                    DROP COLUMN usage_daycare_id,
+                    DROP COLUMN usage_spa_id
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

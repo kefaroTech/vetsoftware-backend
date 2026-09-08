@@ -47,4 +47,6 @@ public interface CompanyUsageEventRepository {
      */
     PageResult<CompanyUsageEvent> findAllByCompanyIdAndChargeId(Long companyId, Long chargeId,
             int page, int pageSize);
+
+    long countCurrent(Long companyId, Long limitDimensionId, String periodKey);
 }

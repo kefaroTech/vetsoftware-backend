@@ -47,10 +47,18 @@ public class CompanyTrialWindow {
     private final LocalDate endDate;
     private final int windowDays;
     private final Long sourceQuoteId;
+    private final TrialOrigin origin;
     private final LocalDateTime closedAt;
     private final LocalDateTime createdDate;
     private final Long version;
 
+    /**
+     * {@code sourceQuoteId} nulo o no nulo decide {@code origin} por sí solo: el
+     * alta pública abre ventana sin cotización, y es la propia decisión de la
+     * política del catálogo, no la ausencia de un dato.
+     * {@code chk_company_trial_windows_origin} exige exactamente esa
+     * correspondencia en la fila.
+     */
     public CompanyTrialWindow(Long id, Long companyId, LocalDate startDate, LocalDate endDate,
             int windowDays, Long sourceQuoteId, LocalDateTime closedAt, LocalDateTime createdDate,
             Long version) {
@@ -60,8 +68,6 @@ public class CompanyTrialWindow {
             throw new IllegalArgumentException("start date is required");
         if (endDate == null)
             throw new IllegalArgumentException("end date is required");
-        if (sourceQuoteId == null)
-            throw new IllegalArgumentException("source quote id is required");
         // chk_company_trial_windows_days
         if (windowDays <= 0)
             throw new IllegalArgumentException("window days must be greater than zero");
@@ -79,6 +85,7 @@ public class CompanyTrialWindow {
         this.endDate = endDate;
         this.windowDays = windowDays;
         this.sourceQuoteId = sourceQuoteId;
+        this.origin = sourceQuoteId == null ? TrialOrigin.SIGNUP : TrialOrigin.QUOTE;
         this.closedAt = closedAt;
         this.createdDate = createdDate;
         this.version = version;
@@ -180,6 +187,10 @@ public class CompanyTrialWindow {
 
     public Long getSourceQuoteId() {
         return sourceQuoteId;
+    }
+
+    public TrialOrigin getOrigin() {
+        return origin;
     }
 
     public LocalDateTime getClosedAt() {

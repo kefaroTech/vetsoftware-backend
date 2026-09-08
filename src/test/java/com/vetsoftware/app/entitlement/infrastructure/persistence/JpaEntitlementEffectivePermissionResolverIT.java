@@ -23,6 +23,7 @@ class JpaEntitlementEffectivePermissionResolverIT extends AbstractDataJpaTest {
     private static final Long EXPIRED_SUB_MODULE = 984L;
     private static final Long ABSENT_SUB_MODULE = 985L;
     private static final Long FOREIGN_SUB_MODULE = 986L;
+    private static final Long IMMUNE_SUB_MODULE = 987L;
 
     @Autowired
     private JpaEntitlementEffectivePermissionResolver resolver;
@@ -32,11 +33,12 @@ class JpaEntitlementEffectivePermissionResolverIT extends AbstractDataJpaTest {
     @BeforeEach
     void seed() {
         SchemaSeed.seed(entityManager);
-        subModule(READ_ONLY_SUB_MODULE, "READ_ONLY_TEST");
-        subModule(NONE_SUB_MODULE, "NONE_TEST");
-        subModule(EXPIRED_SUB_MODULE, "EXPIRED_TEST");
-        subModule(ABSENT_SUB_MODULE, "ABSENT_TEST");
-        subModule(FOREIGN_SUB_MODULE, "FOREIGN_TEST");
+        subModule(READ_ONLY_SUB_MODULE, "READ_ONLY_TEST", false);
+        subModule(NONE_SUB_MODULE, "NONE_TEST", false);
+        subModule(EXPIRED_SUB_MODULE, "EXPIRED_TEST", false);
+        subModule(ABSENT_SUB_MODULE, "ABSENT_TEST", false);
+        subModule(FOREIGN_SUB_MODULE, "FOREIGN_TEST", false);
+        subModule(IMMUNE_SUB_MODULE, "IMMUNE_TEST", true);
 
         permission(1101L, SchemaSeed.COMPANY_ID, SchemaSeed.SUB_MODULE_ID, "animal.read");
         permission(1102L, SchemaSeed.COMPANY_ID, SchemaSeed.SUB_MODULE_ID, "animal.update");
@@ -46,6 +48,8 @@ class JpaEntitlementEffectivePermissionResolverIT extends AbstractDataJpaTest {
         permission(1106L, SchemaSeed.COMPANY_ID, EXPIRED_SUB_MODULE, "archive.read");
         permission(1107L, SchemaSeed.COMPANY_ID, ABSENT_SUB_MODULE, "absent.read");
         permission(1108L, SchemaSeed.COMPANY_ID, FOREIGN_SUB_MODULE, "foreign.read");
+        permission(1109L, SchemaSeed.COMPANY_ID, IMMUNE_SUB_MODULE, "subscriptionPayment.read");
+        permission(1110L, SchemaSeed.COMPANY_ID, IMMUNE_SUB_MODULE, "subscriptionPayment.create");
 
         entitlement(1201L, SchemaSeed.COMPANY_ID, READ_ONLY_SUB_MODULE, "READ_ONLY",
                 "2026-01-01 00:00:00", null);
@@ -54,6 +58,10 @@ class JpaEntitlementEffectivePermissionResolverIT extends AbstractDataJpaTest {
         entitlement(1203L, SchemaSeed.COMPANY_ID, EXPIRED_SUB_MODULE, "FULL", "2026-01-01 00:00:00",
                 "2026-01-02 00:00:00");
         entitlement(1204L, SchemaSeed.OTRA_COMPANY_ID, FOREIGN_SUB_MODULE, "FULL",
+                "2026-01-01 00:00:00", null);
+        // R-ENT-05: un submódulo degradation_immune nunca pierde su escritura, ni
+        // siquiera si su entitlement quedara en READ_ONLY por error del calculador.
+        entitlement(1205L, SchemaSeed.COMPANY_ID, IMMUNE_SUB_MODULE, "READ_ONLY",
                 "2026-01-01 00:00:00", null);
         entityManager.flush();
         entityManager.clear();
@@ -89,13 +97,23 @@ class JpaEntitlementEffectivePermissionResolverIT extends AbstractDataJpaTest {
         assertThat(resolver.resolveFor(SchemaSeed.COMPANY_ID, null)).isEmpty();
     }
 
-    private void subModule(Long id, String code) {
+    @Test
+    @DisplayName("un submódulo degradation_immune conserva la escritura aunque su entitlement sea READ_ONLY")
+    void submodulo_inmune_conserva_la_escritura_en_read_only() {
+        assertThat(resolver.resolveFor(SchemaSeed.COMPANY_ID,
+                Set.of("subscriptionPayment.read", "subscriptionPayment.create")))
+                .containsExactlyInAnyOrder("subscriptionPayment.read",
+                        "subscriptionPayment.create");
+    }
+
+    private void subModule(Long id, String code, boolean degradationImmune) {
         entityManager.createNativeQuery("""
                 INSERT INTO sub_modules (id, name, code, module_id, created_date, enabled, version,
-                                         is_sellable, read_only_capable)
-                VALUES (:id, :code, :code, :moduleId, NOW(), true, 0, true, true)
+                                         is_sellable, read_only_capable, degradation_immune)
+                VALUES (:id, :code, :code, :moduleId, NOW(), true, 0, true, true, :immune)
                 """).setParameter("id", id).setParameter("code", code)
-                .setParameter("moduleId", SchemaSeed.MODULE_ID).executeUpdate();
+                .setParameter("moduleId", SchemaSeed.MODULE_ID)
+                .setParameter("immune", degradationImmune).executeUpdate();
     }
 
     private void permission(Long id, Long companyId, Long subModuleId, String code) {

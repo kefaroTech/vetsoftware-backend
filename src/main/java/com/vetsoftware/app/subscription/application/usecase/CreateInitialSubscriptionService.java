@@ -3,6 +3,7 @@ package com.vetsoftware.app.subscription.application.usecase;
 import com.vetsoftware.app.subscription.application.command.CreateInitialSubscriptionCommand;
 import com.vetsoftware.app.subscription.application.command.CreateSubscriptionCommand;
 import com.vetsoftware.app.subscription.application.command.SubscriptionItemLineCommand;
+import com.vetsoftware.app.subscription.application.dto.EligibleTrialItemTemplate;
 import com.vetsoftware.app.subscription.application.dto.InitialCapacityTemplate;
 import com.vetsoftware.app.subscription.application.dto.InitialContractTemplate;
 import com.vetsoftware.app.subscription.application.dto.SubscriptionDto;
@@ -78,7 +79,23 @@ public class CreateInitialSubscriptionService implements CreateInitialSubscripti
                 .findInitialCapacityTemplates(cycle);
         requireOperableMinimum(command.companyId(), capacities);
 
-        boolean withTrial = template.defaultTrialDays() > 0;
+        List<SubscriptionItemLineCommand> lines;
+        boolean withTrial;
+        LocalDate trialEndDate;
+        if (command.trialEndDate() != null) {
+            List<EligibleTrialItemTemplate> eligible = platformCatalogPort
+                    .findEligibleTrialItems(cycle);
+            if (eligible.isEmpty())
+                throw new PlatformCatalogNotConfiguredForSubscriptionException(command.companyId());
+            lines = eligibleTrialLines(eligible, start, command.trialEndDate());
+            withTrial = true;
+            trialEndDate = command.trialEndDate();
+        } else {
+            lines = initialLines(template, capacities, start);
+            withTrial = template.defaultTrialDays() > 0;
+            trialEndDate = withTrial ? start.plusDays(template.defaultTrialDays()) : null;
+        }
+
         // El periodo es semiabierto igual que la vigencia de las lineas: arranca hoy y
         // el ultimo dia cubierto es la vispera del siguiente ciclo.
         LocalDate periodEnd = start.plus(cycle == BillingCycle.ANNUAL
@@ -88,15 +105,32 @@ public class CreateInitialSubscriptionService implements CreateInitialSubscripti
         return createSubscriptionUseCase.execute(
                 new CreateSubscriptionCommand(command.companyId(), null, template.priceListId(),
                         cycle, withTrial ? SubscriptionStatus.TRIALING : SubscriptionStatus.ACTIVE,
-                        start, withTrial ? start.plusDays(template.defaultTrialDays()) : null,
+                        start, trialEndDate,
                         // Los dias de gracia van en null a proposito: los resuelve
                         // CreateSubscriptionService desde platform_billing_config, que
                         // es el unico sitio que decide el valor por defecto. Pasar aqui
                         // template.defaultGraceDays() volveria a poner el mismo numero
                         // en dos servicios, que es como los dos caminos divergieron
                         // (#467).
-                        start, periodEnd, periodEnd.plusDays(1), null, null, true, ACTOR,
-                        initialLines(template, capacities, start)));
+                        start, periodEnd, periodEnd.plusDays(1), null, null, true, ACTOR, lines));
+    }
+
+    /**
+     * El fin de la ventana va congelado igual en todas las líneas: es la misma
+     * fecha con la que ya se congeló cada {@code company_trial_grants}, y
+     * {@code fk_subscription_items_trial_grant} exige esa correspondencia.
+     */
+    private static List<SubscriptionItemLineCommand> eligibleTrialLines(
+            List<EligibleTrialItemTemplate> eligible, LocalDate start, LocalDate trialEndDate) {
+        List<SubscriptionItemLineCommand> lines = new ArrayList<>();
+        for (EligibleTrialItemTemplate item : eligible) {
+            lines.add(new SubscriptionItemLineCommand(item.catalogItemId(), item.itemCode(),
+                    item.itemName(), item.itemType(), item.capacityUnit(), 1, null,
+                    item.includedQuantity(), item.taxTreatment(), Math.max(item.minQuantity(), 1),
+                    item.unitAmount(), null, null, false, item.taxRate(), start, null, "TRIAL",
+                    "ELIGIBLE", item.defaultTrialDays(), trialEndDate, "SELF_SERVICE"));
+        }
+        return List.copyOf(lines);
     }
 
     /**
@@ -165,7 +199,9 @@ public class CreateInitialSubscriptionService implements CreateInitialSubscripti
                 capacity.itemName(), SubscriptionItemType.CAPACITY, capacity.capacityUnit(), 1,
                 null, capacity.includedQuantity(), capacity.taxTreatment(),
                 Math.max(capacity.minQuantity(), 1), capacity.unitAmount(), null, null, false,
-                capacity.taxRate(), start, null);
+                capacity.taxRate(), start, null, SubscriptionItemLineCommand.DEFAULT_CHARGE_MODE,
+                SubscriptionItemLineCommand.DEFAULT_TRIAL_ELIGIBILITY, 0, null,
+                SubscriptionItemLineCommand.DEFAULT_ACTIVATION_PATH);
     }
 
     /**
@@ -179,7 +215,9 @@ public class CreateInitialSubscriptionService implements CreateInitialSubscripti
                 template.itemName(), template.itemType(), template.capacityUnit(), 1, null,
                 template.includedQuantity(), template.taxTreatment(),
                 Math.max(template.minQuantity(), 1), template.unitAmount(), null, null, false,
-                template.taxRate(), start, null);
+                template.taxRate(), start, null, SubscriptionItemLineCommand.DEFAULT_CHARGE_MODE,
+                SubscriptionItemLineCommand.DEFAULT_TRIAL_ELIGIBILITY, 0, null,
+                SubscriptionItemLineCommand.DEFAULT_ACTIVATION_PATH);
     }
 
 }

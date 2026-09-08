@@ -43,6 +43,12 @@ public class SubscriptionItemJpaMapper {
         entity.setEffectiveFrom(item.getPeriod().from());
         entity.setEffectiveTo(item.getPeriod().to());
         entity.setOrigin(item.getOrigin());
+        entity.setChargeMode(item.getChargeMode());
+        entity.setTrialEligibility(item.getTrialEligibility());
+        entity.setMaxTrialDays(item.getMaxTrialDays());
+        entity.setTrialEndDate(item.getTrialEndDate());
+        entity.setActivationPath(item.getActivationPath());
+        entity.setSucceedsItemId(item.getSucceedsItemId());
         entity.setCreatedAmendmentId(item.getCreatedAmendmentId());
         entity.setEndedAmendmentId(item.getEndedAmendmentId());
         entity.setCreatedDate(
@@ -62,6 +68,8 @@ public class SubscriptionItemJpaMapper {
                 entity.isDiscountIsConditional(), entity.getTaxRate(),
                 new EffectivePeriod(entity.getEffectiveFrom(), entity.getEffectiveTo()),
                 entity.getOrigin(), entity.getCreatedAmendmentId(), entity.getEndedAmendmentId(),
-                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled());
+                entity.getCreatedDate(), entity.getVersion(), entity.isEnabled(),
+                entity.getChargeMode(), entity.getTrialEligibility(), entity.getMaxTrialDays(),
+                entity.getTrialEndDate(), entity.getActivationPath(), entity.getSucceedsItemId());
     }
 }

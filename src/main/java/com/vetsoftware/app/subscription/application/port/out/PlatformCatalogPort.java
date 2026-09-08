@@ -1,5 +1,6 @@
 package com.vetsoftware.app.subscription.application.port.out;
 
+import com.vetsoftware.app.subscription.application.dto.EligibleTrialItemTemplate;
 import com.vetsoftware.app.subscription.application.dto.InitialCapacityTemplate;
 import com.vetsoftware.app.subscription.application.dto.InitialContractTemplate;
 import com.vetsoftware.app.subscription.domain.BillingCycle;
@@ -65,4 +66,23 @@ public interface PlatformCatalogPort {
      * hay».
      */
     Optional<Integer> findDefaultGraceDays();
+
+    /**
+     * Todos los articulos {@code trial_eligibility = 'ELIGIBLE'} con tramo
+     * publicado para el ciclo pedido: módulos y capacidades por igual.
+     * {@code ELECTRONIC_INVOICING} ({@code NEVER_FREE}) nunca aparece aqui.
+     *
+     * <p>
+     * <strong>Es la unica fuente de "que es elegible para prueba" en toda la
+     * plataforma.</strong> Tanto la linea del contrato como la concesion de prueba
+     * (feature {@code companytrialgrant}, via un puerto de salida en
+     * {@code registration}) leen de aqui: si un articulo tiene concesion tiene
+     * linea, y viceversa, por construccion.
+     *
+     * <p>
+     * Lista vacia —no excepcion— cuando el catalogo no tiene ninguno. Quien decide
+     * si eso basta es el caso de uso, igual que con
+     * {@link #findInitialCapacityTemplates}.
+     */
+    List<EligibleTrialItemTemplate> findEligibleTrialItems(BillingCycle billingCycle);
 }

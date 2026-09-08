@@ -9,8 +9,10 @@ import com.vetsoftware.app.company.application.command.CreateCompanyCommand;
 import com.vetsoftware.app.company.application.command.UpdateCompanyCommand;
 import com.vetsoftware.app.company.application.dto.CompanyDto;
 import com.vetsoftware.app.entitlement.application.command.RecalculateCompanyEntitlementsCommand;
+import com.vetsoftware.app.entitlement.application.dto.CompanyAccessDto;
 import com.vetsoftware.app.entitlement.application.dto.EntitlementRecalculationDto;
 import com.vetsoftware.app.entitlement.application.port.in.RecalculateCompanyEntitlementsUseCase;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -160,7 +162,8 @@ class CompanyAdministrationAuthorizationTest {
 
         @Bean("authz")
         Authz authz() {
-            return new Authz();
+            return new Authz(
+                    companyId -> new CompanyAccessDto(companyId, List.of(), List.of(), null));
         }
 
         @Bean

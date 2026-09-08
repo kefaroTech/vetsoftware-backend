@@ -67,4 +67,6 @@ public interface ServiceJpaRepository
     boolean existsByServiceCategory_Id(Long serviceCategoryId);
 
     boolean existsByIdAndCompany_Id(Long id, Long companyId);
+
+    long countByCompany_IdAndEnabledTrue(Long companyId);
 }

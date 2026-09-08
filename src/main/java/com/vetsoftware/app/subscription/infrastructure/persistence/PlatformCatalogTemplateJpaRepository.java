@@ -155,6 +155,55 @@ public interface PlatformCatalogTemplateJpaRepository
             """, nativeQuery = true)
     Optional<Integer> findDefaultGraceDays();
 
+    /**
+     * Artículos {@code trial_eligibility = 'ELIGIBLE'} con tramo publicado para el
+     * ciclo; {@code ELECTRONIC_INVOICING} es {@code NEVER_FREE} y no aparece. El
+     * {@code EXISTS} sobre {@code catalog_item_sub_modules} solo aplica a los
+     * {@code MODULE}, nunca a las {@code CAPACITY}: una capacidad no abre pantalla
+     * por definición, y un {@code JOIN} como el de
+     * {@link #findInitialContractTemplate} multiplicaría filas si un módulo colgara
+     * de más de un submódulo.
+     */
+    @Query(value = """
+            SELECT ci.id                  AS catalogItemId,
+                   ci.code                AS itemCode,
+                   ci.name                AS itemName,
+                   ci.item_type           AS itemType,
+                   ci.capacity_unit       AS capacityUnit,
+                   ci.min_quantity        AS minQuantity,
+                   pl.id                  AS priceListId,
+                   cp.included_quantity   AS includedQuantity,
+                   cp.unit_amount         AS unitAmount,
+                   cp.tax_rate            AS taxRate,
+                   cp.tax_treatment       AS taxTreatment,
+                   cfg.default_grace_days AS defaultGraceDays,
+                   ci.default_trial_days  AS defaultTrialDays,
+                   ci.trial_outcome       AS trialOutcome
+              FROM platform_billing_config cfg
+              JOIN price_lists pl
+                   ON  pl.id           = cfg.default_price_list_id
+                   AND pl.status       = 'PUBLISHED'
+                   AND pl.published_at IS NOT NULL
+                   AND pl.enabled      = TRUE
+              JOIN catalog_items ci
+                   ON  ci.trial_eligibility = 'ELIGIBLE'
+                   AND ci.status            = 'ACTIVE'
+                   AND ci.enabled           = TRUE
+                   AND (ci.item_type = 'CAPACITY'
+                        OR EXISTS (SELECT 1 FROM catalog_item_sub_modules cism
+                                    WHERE cism.catalog_item_id = ci.id
+                                      AND cism.enabled         = TRUE))
+              JOIN catalog_prices cp
+                   ON  cp.price_list_id   = pl.id
+                   AND cp.catalog_item_id = ci.id
+                   AND cp.billing_cycle   = :billingCycle
+                   AND cp.tier_min        = 1
+                   AND cp.enabled         = TRUE
+             WHERE cfg.singleton = 1
+             ORDER BY ci.sort_order, ci.id
+            """, nativeQuery = true)
+    List<InitialContractRow> findEligibleTrialItems(@Param("billingCycle") String billingCycle);
+
     /** Proyeccion cruda: nada aqui conoce el dominio de otra feature. */
     interface InitialContractRow {
         Long getCatalogItemId();
@@ -182,5 +231,12 @@ public interface PlatformCatalogTemplateJpaRepository
         Integer getDefaultGraceDays();
 
         Integer getDefaultTrialDays();
+
+        /**
+         * Solo la proyeccion de {@link #findEligibleTrialItems} selecciona esta
+         * columna; las otras dos consultas de esta interfaz no la tocan y quedan en
+         * {@code null} si alguien la invocara sobre sus filas.
+         */
+        String getTrialOutcome();
     }
 }

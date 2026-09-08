@@ -5,6 +5,7 @@ import com.vetsoftware.app.animal.application.dto.AnimalDto;
 import com.vetsoftware.app.animal.application.port.in.CreateAnimalUseCase;
 import com.vetsoftware.app.animal.application.port.out.AnimalColorQueryPort;
 import com.vetsoftware.app.animal.application.port.out.AnimalRepository;
+import com.vetsoftware.app.animal.application.port.out.AnimalUsageLimitPort;
 import com.vetsoftware.app.animal.application.port.out.BreedQueryPort;
 import com.vetsoftware.app.animal.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.animal.application.port.out.OwnerQueryPort;
@@ -20,7 +21,9 @@ import com.vetsoftware.app.animal.domain.SpecieRef;
 import com.vetsoftware.app.animal.domain.WeightRecord;
 import com.vetsoftware.app.animal.domain.WeightSource;
 import io.micrometer.observation.annotation.Observed;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,11 +37,14 @@ public class CreateAnimalService implements CreateAnimalUseCase {
     private final CompanyQueryPort companyQueryPort;
     private final AnimalColorQueryPort animalColorQueryPort;
     private final WeightRecordRepository weightRecordRepository;
+    private final AnimalUsageLimitPort usageLimitPort;
+    private final Clock clock;
 
     public CreateAnimalService(AnimalRepository repository, SpecieQueryPort specieQueryPort,
             BreedQueryPort breedQueryPort, OwnerQueryPort ownerQueryPort,
             CompanyQueryPort companyQueryPort, AnimalColorQueryPort animalColorQueryPort,
-            WeightRecordRepository weightRecordRepository) {
+            WeightRecordRepository weightRecordRepository, AnimalUsageLimitPort usageLimitPort,
+            Clock clock) {
         this.repository = repository;
         this.specieQueryPort = specieQueryPort;
         this.breedQueryPort = breedQueryPort;
@@ -46,6 +52,8 @@ public class CreateAnimalService implements CreateAnimalUseCase {
         this.companyQueryPort = companyQueryPort;
         this.animalColorQueryPort = animalColorQueryPort;
         this.weightRecordRepository = weightRecordRepository;
+        this.usageLimitPort = usageLimitPort;
+        this.clock = clock;
     }
 
     @Override
@@ -63,11 +71,13 @@ public class CreateAnimalService implements CreateAnimalUseCase {
         AnimalColorRef color = animalColorQueryPort.findById(command.colorId()).orElseThrow(
                 () -> new IllegalArgumentException("AnimalColor not found: " + command.colorId()));
 
+        usageLimitPort.checkNotExceeded(command.companyId());
         Animal animal = Animal.create(command.name(), command.code(), specie, breed, owner,
                 command.gender(), command.weightType(), command.animalType(),
                 command.reproductiveState(), color, command.bod(), command.size(),
                 command.deceased(), command.deceasedDate(), company);
         Animal saved = repository.save(animal);
+        usageLimitPort.record(command.companyId(), saved.getId(), LocalDateTime.now(clock));
 
         // Peso inicial opcional → primer punto de la serie temporal (source=MANUAL). El
         // peso actual

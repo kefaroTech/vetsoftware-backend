@@ -59,12 +59,15 @@ class CompanyTrialWindowPersistenceIT extends AbstractDataJpaTest {
             + " dominio no la vea pasar")
     void una_fila_con_el_fin_mal_calculado_muere_en_el_motor() {
         assertViolates("chk_company_trial_windows_end", () -> {
-            entityManager.createNativeQuery("""
-                    INSERT INTO company_trial_windows (company_id, start_date, end_date,
-                                                       window_days, source_quote_id, closed_at,
-                                                       created_date, version)
-                    VALUES (:companyId, '2026-09-01', '2026-10-01', 30, :quoteId, NULL, NOW(), 0)
-                    """).setParameter("companyId", SchemaSeed.COMPANY_ID)
+            entityManager
+                    .createNativeQuery(
+                            """
+                                    INSERT INTO company_trial_windows (company_id, start_date, end_date,
+                                                                       window_days, source_quote_id, origin, closed_at,
+                                                                       created_date, version)
+                                    VALUES (:companyId, '2026-09-01', '2026-10-01', 30, :quoteId, 'QUOTE', NULL, NOW(), 0)
+                                    """)
+                    .setParameter("companyId", SchemaSeed.COMPANY_ID)
                     .setParameter("quoteId", SchemaSeed.QUOTE_ID).executeUpdate();
             entityManager.flush();
         });
@@ -78,12 +81,15 @@ class CompanyTrialWindowPersistenceIT extends AbstractDataJpaTest {
         entityManager.flush();
 
         assertViolates("uq_company_trial_windows_open", () -> {
-            entityManager.createNativeQuery("""
-                    INSERT INTO company_trial_windows (company_id, start_date, end_date,
-                                                       window_days, source_quote_id, closed_at,
-                                                       created_date, version)
-                    VALUES (:companyId, '2026-10-01', '2026-10-30', 30, :quoteId, NULL, NOW(), 0)
-                    """).setParameter("companyId", SchemaSeed.COMPANY_ID)
+            entityManager
+                    .createNativeQuery(
+                            """
+                                    INSERT INTO company_trial_windows (company_id, start_date, end_date,
+                                                                       window_days, source_quote_id, origin, closed_at,
+                                                                       created_date, version)
+                                    VALUES (:companyId, '2026-10-01', '2026-10-30', 30, :quoteId, 'QUOTE', NULL, NOW(), 0)
+                                    """)
+                    .setParameter("companyId", SchemaSeed.COMPANY_ID)
                     .setParameter("quoteId", SchemaSeed.QUOTE_ID).executeUpdate();
             entityManager.flush();
         });

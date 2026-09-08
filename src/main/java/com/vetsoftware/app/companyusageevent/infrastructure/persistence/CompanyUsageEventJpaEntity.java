@@ -106,6 +106,12 @@ public class CompanyUsageEventJpaEntity {
     @Column(name = "usage_electronic_document_id")
     private Long usageElectronicDocumentId;
 
+    @Column(name = "usage_spa_id")
+    private Long usageSpaId;
+
+    @Column(name = "usage_daycare_id")
+    private Long usageDaycareId;
+
     /**
      * <strong>El instante del registro consumido, no el del proceso.</strong> Es la
      * columna de la que depende {@code uq_cue_fact}; ver la advertencia completa en
@@ -203,6 +209,22 @@ public class CompanyUsageEventJpaEntity {
 
     public void setUsageElectronicDocumentId(Long usageElectronicDocumentId) {
         this.usageElectronicDocumentId = usageElectronicDocumentId;
+    }
+
+    public Long getUsageSpaId() {
+        return usageSpaId;
+    }
+
+    public void setUsageSpaId(Long usageSpaId) {
+        this.usageSpaId = usageSpaId;
+    }
+
+    public Long getUsageDaycareId() {
+        return usageDaycareId;
+    }
+
+    public void setUsageDaycareId(Long usageDaycareId) {
+        this.usageDaycareId = usageDaycareId;
     }
 
     public LocalDateTime getOccurredAt() {

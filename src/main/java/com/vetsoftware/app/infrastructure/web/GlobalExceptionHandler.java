@@ -12,6 +12,7 @@ import com.vetsoftware.app.appointment.domain.InvalidAppointmentTransitionExcept
 import com.vetsoftware.app.auth.application.exception.EmailNotVerifiedException;
 import com.vetsoftware.app.auth.application.exception.InvalidCredentialsException;
 import com.vetsoftware.app.auth.application.exception.SessionReplacedException;
+import com.vetsoftware.app.auth.domain.SubModuleReadOnlyException;
 import com.vetsoftware.app.auth.infrastructure.security.BranchAccessDeniedException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionHasActiveChildrenException;
 import com.vetsoftware.app.basepermission.domain.BasePermissionNotFoundException;
@@ -44,6 +45,7 @@ import com.vetsoftware.app.company.domain.CompanyHasActiveChildrenException;
 import com.vetsoftware.app.company.domain.CompanyNotFoundException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileAlreadyExistsException;
 import com.vetsoftware.app.companytaxprofile.domain.CompanyTaxProfileNotFoundException;
+import com.vetsoftware.app.companyusageevent.domain.CompanyUsageLimitExceededException;
 import com.vetsoftware.app.consultation.domain.ConsultationHasActiveChildrenException;
 import com.vetsoftware.app.consultation.domain.ConsultationNotFoundException;
 import com.vetsoftware.app.consultationtype.domain.ConsultationTypeHasActiveChildrenException;
@@ -168,6 +170,7 @@ import com.vetsoftware.app.role.domain.RoleHasActiveChildrenException;
 import com.vetsoftware.app.role.domain.RoleNotFoundException;
 import com.vetsoftware.app.rolepermission.domain.RolePermissionNotFoundException;
 import com.vetsoftware.app.service.domain.ServiceNotFoundException;
+import com.vetsoftware.app.service.domain.ServiceLimitExceededException;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryHasActiveChildrenException;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNameAlreadyExistsException;
 import com.vetsoftware.app.servicecategory.domain.ServiceCategoryNotFoundException;
@@ -317,7 +320,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final int MAX_ENUM_VALUES_IN_MESSAGE = 12;
 
     private static final Map<String, String> CAPACITY_DIMENSION_NOUNS = Map.of("BRANCH", "sede",
-            "USER", "usuario");
+            "USER", "usuario", "ANIMAL", "mascota", "OWNER", "propietario", "APPOINTMENT", "cita",
+            "GROOMING_SERVICE", "servicio de spa o guardería", "SERVICE_ITEM",
+            "tarifa de servicio");
 
     private final AuditLogger auditLogger;
     private final Tracer tracer;
@@ -1061,6 +1066,52 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return pd;
     }
 
+    /**
+     * Los techos gratuitos en runtime de ANIMAL/OWNER/APPOINTMENT/GROOMING_SERVICE
+     * ({@code companyusageevent}) y de SERVICE_ITEM ({@code service}). Ninguno de
+     * los dos ejes cuelga de {@code company_capacities} —no son {@code CAPACITY}—
+     * así que no pueden compartir la excepción de arriba sin cruzar el vertical
+     * slicing, pero sí el mismo 409 con el mismo cuerpo: el front los trata igual
+     * que el cupo de sedes o usuarios.
+     */
+    @ExceptionHandler({CompanyUsageLimitExceededException.class,
+            ServiceLimitExceededException.class})
+    public ProblemDetail handleUsageLimitExceeded(RuntimeException ex) {
+        Long companyId;
+        String dimensionCode;
+        int limit;
+        int used;
+        int requestedDelta;
+        switch (ex) {
+            case CompanyUsageLimitExceededException e -> {
+                companyId = e.getCompanyId();
+                dimensionCode = e.getLimitDimensionCode();
+                limit = e.getLimit();
+                used = e.getUsed();
+                requestedDelta = e.getRequestedDelta();
+            }
+            case ServiceLimitExceededException e -> {
+                companyId = e.getCompanyId();
+                dimensionCode = e.getLimitDimensionCode();
+                limit = e.getLimit();
+                used = e.getUsed();
+                requestedDelta = e.getRequestedDelta();
+            }
+            default -> throw new IllegalStateException(
+                    "Unexpected usage limit exception: " + ex.getClass());
+        }
+        log.info(
+                "Usage limit exceeded: companyId={} dimension={} limit={} used={}"
+                        + " requestedDelta={}",
+                companyId, dimensionCode, limit, used, requestedDelta);
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "CAPACITY_LIMIT_EXCEEDED",
+                capacityLimitExceededDetail(dimensionCode, limit));
+        pd.setProperty("dimension", dimensionCode);
+        pd.setProperty("limit", limit);
+        pd.setProperty("used", used);
+        return pd;
+    }
+
     private static String capacityLimitExceededDetail(String dimensionCode, int limit) {
         String noun = CAPACITY_DIMENSION_NOUNS.get(dimensionCode);
         if (noun == null) {
@@ -1652,6 +1703,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.info("Branch access denied: {}", ex.getMessage());
         auditLogger.accessDenied(request.getMethod(), request.getRequestURI());
         return problem(HttpStatus.FORBIDDEN, "BRANCH_NOT_ALLOWED", ex.getMessage());
+    }
+
+    // Techos gratuitos: el submódulo está degradado a solo lectura y el request
+    // pedía escribir. Código propio (SUBMODULE_READ_ONLY) para que el front lo
+    // distinga del 403 genérico por falta de permiso y ofrezca "amplía tu plan" en
+    // vez de un mensaje de acceso denegado sin salida.
+    @ExceptionHandler(SubModuleReadOnlyException.class)
+    public ProblemDetail handleSubModuleReadOnly(SubModuleReadOnlyException ex,
+            HttpServletRequest request) {
+        log.info("Sub module read-only: companyId={} subModule={}", ex.getCompanyId(),
+                ex.getSubModuleCode());
+        auditLogger.accessDenied(request.getMethod(), request.getRequestURI());
+        ProblemDetail pd = problem(HttpStatus.FORBIDDEN, "SUBMODULE_READ_ONLY",
+                "Este módulo está en modo de solo lectura. Amplía tu plan desde Mi suscripción para"
+                        + " volver a crear o modificar.");
+        pd.setProperty("subModule", ex.getSubModuleCode());
+        return pd;
     }
 
     @ExceptionHandler(AccessDeniedException.class)

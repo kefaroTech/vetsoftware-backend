@@ -32,6 +32,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 public interface CreateAppointmentUseCase {
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('appointment.create')"
             + " and @authz.isMyCompany(#command.companyId)"
+            + " and @authz.requireModuleWritable('SCHEDULING')"
             + " and (!#command.forceOverlap or hasAuthority('appointment.overlap.force')))")
     AppointmentDto execute(CreateAppointmentCommand command);
 }

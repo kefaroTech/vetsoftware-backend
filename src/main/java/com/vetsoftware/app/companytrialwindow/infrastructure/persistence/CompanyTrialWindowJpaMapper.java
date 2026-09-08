@@ -15,6 +15,7 @@ public class CompanyTrialWindowJpaMapper {
         entity.setEndDate(window.getEndDate());
         entity.setWindowDays(window.getWindowDays());
         entity.setSourceQuoteId(window.getSourceQuoteId());
+        entity.setOrigin(window.getOrigin().name());
         entity.setClosedAt(window.getClosedAt());
         entity.setCreatedDate(window.getCreatedDate());
         entity.setVersion(window.getVersion());

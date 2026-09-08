@@ -1166,4 +1166,53 @@
          role_permissions de empresas existentes: BD asumida vacia. -->
     <include file="db/changelog/migrations/416_seed_animal_update_and_daycare_permissions.xml"/>
 
+    <!-- 417-423: cuenta gratuita (docs/db/cuenta-gratuita-modelo.md). BD asumida vacia, cero
+         retrocompatibilidad (decision del 2026-09-06): ningun changeset de esta cadena hace
+         backfill de filas existentes; un CHECK viejo se sustituye por el nuevo sin transicion. -->
+
+    <!-- 417: company_trial_windows (301, aplicado, no se toca) exigia source_quote_id NOT NULL
+         (D-55: unico camino de alta era cotizar). El alta publica (POST /register) revierte D-55
+         y abre ventana sin cotizacion: source_quote_id pasa a nulable y origin (SIGNUP/QUOTE)
+         declara por que, con chk_company_trial_windows_origin cerrando el arco. -->
+    <include file="db/changelog/migrations/417_relax_company_trial_windows_paper.xml"/>
+
+    <!-- 418: company_trial_grants. chk_company_trial_grants_paper (302, aplicado) exigia un arco
+         de DOS papeles (source_quote_id XOR granting_amendment_id). El alta publica concede sin
+         cotizacion y sin otrosi: origin (SIGNUP/QUOTE/AMENDMENT) declara el tercer papel y el
+         CHECK se sustituye completo por el arco de tres. -->
+    <include file="db/changelog/migrations/418_relax_company_trial_grants_paper.xml"/>
+
+    <!-- 419: 30 dias de prueba para TODOS los modulos ELIGIBLE (decision 2 del plan de cuenta
+         gratuita). CASH_REGISTER/INVENTORY/PURCHASES/OPEN_ACCOUNTS nacieron con 14 dias en 308
+         (aplicado, no se toca); CAPACITY_TERMINAL entra tambien -no la nombra el plan, pero
+         dejarla en 14 reabriria la fuga de fecha de vencimiento distinta por cuenta que esta
+         decision existe para cerrar-. -->
+    <include file="db/changelog/migrations/419_widen_eligible_modules_trial_to_30_days.xml"/>
+
+    <!-- 420: revierte D-06. 313_seed_catalog_item_limits (aplicado) sembro las ocho filas de
+         fabrica con trial_mode = 'FULL' (prueba sin techo); la decision 3 del plan de cuenta
+         gratuita es la contraria -techos en prueba = techos gratuitos-, asi que las ocho pasan a
+         'LIMITED' con trial_limit_quantity = limit_quantity. -->
+    <include file="db/changelog/migrations/420_revert_catalog_item_limits_trial_mode_to_limited.xml"/>
+
+    <!-- 421: dos ejes nuevos en limit_dimensions -GROOMING_SERVICE (FLOW/MONTH, sub_module_id
+         nulo porque GROOMING abre SPA y DAYCARE a la vez) y SERVICE_ITEM (STOCK, no CUMULATIVE
+         como decia el plan de negocio: "libera al desactivar" es la definicion de STOCK en este
+         esquema)- con sus techos de fabrica (GROOMING->30/MONTH/BLOCK, SERVICES->20/BLOCK),
+         ambos trial_mode = LIMITED desde el dia uno. -->
+    <include file="db/changelog/migrations/421_create_grooming_service_and_service_item_dimensions.xml"/>
+
+    <!-- 422: prerrequisito de 423, mismo patron que 341 (aplicado): spas y daycares no tienen
+         (company_id, id) como clave unica auxiliar, y sin ella la FK compuesta de 423 no se
+         puede crear. -->
+    <include file="db/changelog/migrations/422_add_tenant_uniques_for_grooming_service_usage.xml"/>
+
+    <!-- 423: extiende company_usage_events (354, aplicado, no se toca) con la quinta rama
+         clinica, GROOMING_SERVICE -la unica con dos tablas de origen (spa o guarderia)-:
+         usage_spa_id/usage_daycare_id, chk_cue_branch reescrito, fk_cue_spa/fk_cue_daycare e
+         indices. Reconstruye tambien usage_ref_key/uq_cue_fact (la proteccion anti-duplicado de
+         354) para que cubran las dos columnas nuevas: sin eso, todo hecho de GROOMING_SERVICE
+         quedaria con la misma clave y la deduplicacion se rompe en silencio. -->
+    <include file="db/changelog/migrations/423_extend_company_usage_events_grooming_service.xml"/>
+
 </databaseChangeLog>

@@ -136,13 +136,19 @@ class CompanyTrialWindowTest {
         }
 
         @Test
-        @DisplayName("una ventana sin cotización de origen se rechaza: no hay dos puertas de"
-                + " entrada")
-        void una_ventana_sin_cotizacion_se_rechaza() {
-            assertThatThrownBy(
-                    () -> CompanyTrialWindow.open(ANA, UNO_DE_SEPTIEMBRE, 30, null, CREADA))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("source quote id");
+        @DisplayName("R-1 (cuenta gratuita) · sin cotización de origen abre igual, con origin SIGNUP")
+        void una_ventana_sin_cotizacion_abre_con_origin_signup() {
+            CompanyTrialWindow abierta = CompanyTrialWindow.open(ANA, UNO_DE_SEPTIEMBRE, 30, null,
+                    CREADA);
+
+            assertThat(abierta.getSourceQuoteId()).isNull();
+            assertThat(abierta.getOrigin()).isEqualTo(TrialOrigin.SIGNUP);
+        }
+
+        @Test
+        @DisplayName("con cotización de origen abre con origin QUOTE")
+        void una_ventana_con_cotizacion_abre_con_origin_quote() {
+            assertThat(ventanaDe30Dias().getOrigin()).isEqualTo(TrialOrigin.QUOTE);
         }
 
         @Test

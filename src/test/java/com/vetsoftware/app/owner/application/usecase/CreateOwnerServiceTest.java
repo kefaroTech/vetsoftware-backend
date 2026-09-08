@@ -13,12 +13,16 @@ import com.vetsoftware.app.owner.application.dto.OwnerDto;
 import com.vetsoftware.app.owner.application.port.out.CityQueryPort;
 import com.vetsoftware.app.owner.application.port.out.CompanyQueryPort;
 import com.vetsoftware.app.owner.application.port.out.OwnerRepository;
+import com.vetsoftware.app.owner.application.port.out.OwnerUsageLimitPort;
 import com.vetsoftware.app.owner.domain.FiscalResponsibility;
 import com.vetsoftware.app.owner.domain.Owner;
 import com.vetsoftware.app.owner.domain.OwnerDocumentType;
 import com.vetsoftware.app.owner.domain.PersonType;
 import com.vetsoftware.app.owner.domain.TaxRegime;
 import com.vetsoftware.app.owner.testsupport.OwnerMother;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,11 +42,17 @@ class CreateOwnerServiceTest {
     private CityQueryPort cityQueryPort;
     @Mock
     private CompanyQueryPort companyQueryPort;
+    @Mock
+    private OwnerUsageLimitPort usageLimitPort;
+
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-03-10T09:14:00Z"),
+            ZoneOffset.UTC);
 
     private CreateOwnerService service;
 
     private void construirService() {
-        service = new CreateOwnerService(repository, cityQueryPort, companyQueryPort);
+        service = new CreateOwnerService(repository, cityQueryPort, companyQueryPort,
+                usageLimitPort, CLOCK);
     }
 
     @Nested

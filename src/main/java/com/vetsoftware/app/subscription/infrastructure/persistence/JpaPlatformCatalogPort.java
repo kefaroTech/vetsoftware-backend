@@ -1,5 +1,6 @@
 package com.vetsoftware.app.subscription.infrastructure.persistence;
 
+import com.vetsoftware.app.subscription.application.dto.EligibleTrialItemTemplate;
 import com.vetsoftware.app.subscription.application.dto.InitialCapacityTemplate;
 import com.vetsoftware.app.subscription.application.dto.InitialContractTemplate;
 import com.vetsoftware.app.subscription.application.port.out.PlatformCatalogPort;
@@ -53,6 +54,23 @@ public class JpaPlatformCatalogPort implements PlatformCatalogPort {
     @Override
     public Optional<Integer> findDefaultGraceDays() {
         return templateJpaRepository.findDefaultGraceDays();
+    }
+
+    @Override
+    public List<EligibleTrialItemTemplate> findEligibleTrialItems(BillingCycle billingCycle) {
+        if (billingCycle == null)
+            return List.of();
+        return templateJpaRepository.findEligibleTrialItems(billingCycle.name()).stream()
+                .map(JpaPlatformCatalogPort::toEligibleTrialItem).toList();
+    }
+
+    private static EligibleTrialItemTemplate toEligibleTrialItem(InitialContractRow row) {
+        return new EligibleTrialItemTemplate(row.getCatalogItemId(), row.getItemCode(),
+                row.getItemName(), SubscriptionItemType.valueOf(row.getItemType()),
+                row.getCapacityUnit(), orZero(row.getIncludedQuantity()),
+                orZero(row.getMinQuantity()), row.getUnitAmount(), row.getTaxRate(),
+                TaxTreatment.valueOf(row.getTaxTreatment()), orZero(row.getDefaultTrialDays()),
+                row.getTrialOutcome());
     }
 
     private static InitialContractTemplate toTemplate(InitialContractRow row) {

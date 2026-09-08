@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.vetsoftware.app.auth.infrastructure.security.Authz;
 import com.vetsoftware.app.companytrialwindow.application.dto.CompanyTrialWindowDto;
+import com.vetsoftware.app.companytrialwindow.domain.TrialOrigin;
 import com.vetsoftware.app.companytrialwindow.application.port.in.FindCurrentTrialWindowUseCase;
 import com.vetsoftware.app.companytrialwindow.domain.CompanyTrialWindowNotFoundException;
 import com.vetsoftware.app.testsupport.WebMvcSliceConfig;
@@ -58,7 +59,7 @@ class CompanyTrialWindowControllerTest {
     /** Del 1 al 30 de septiembre: treinta días con el último incluido. */
     private static CompanyTrialWindowDto ventanaDe(Long companyId) {
         return new CompanyTrialWindowDto(3L, companyId, LocalDate.of(2026, 9, 1),
-                LocalDate.of(2026, 9, 30), 30, 77L, null, true);
+                LocalDate.of(2026, 9, 30), 30, 77L, TrialOrigin.QUOTE, null, true);
     }
 
     @Nested

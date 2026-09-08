@@ -52,7 +52,7 @@ class ProvisionCompanyServiceTest {
             InOrder order = inOrder(companyCreationPort, initialContractProvisioningPort);
             order.verify(companyCreationPort).create(CompanyMother.comandoCrear());
             order.verify(initialContractProvisioningPort)
-                    .provisionForCompany(CompanyMother.COMPANY_ID);
+                    .provisionForCompany(CompanyMother.COMPANY_ID, "Clinica Norte");
         }
 
         @Test
@@ -62,13 +62,14 @@ class ProvisionCompanyServiceTest {
             IllegalStateException failure = new IllegalStateException("catalog not configured");
             when(companyCreationPort.create(CompanyMother.comandoCrear())).thenReturn(company);
             doThrow(failure).when(initialContractProvisioningPort)
-                    .provisionForCompany(CompanyMother.COMPANY_ID);
+                    .provisionForCompany(CompanyMother.COMPANY_ID, "Clinica Norte");
 
             assertThatThrownBy(() -> service.execute(CompanyMother.comandoCrear()))
                     .isSameAs(failure).hasMessageContaining("catalog not configured");
 
             verify(companyCreationPort).create(CompanyMother.comandoCrear());
-            verify(initialContractProvisioningPort).provisionForCompany(CompanyMother.COMPANY_ID);
+            verify(initialContractProvisioningPort).provisionForCompany(CompanyMother.COMPANY_ID,
+                    "Clinica Norte");
         }
     }
 

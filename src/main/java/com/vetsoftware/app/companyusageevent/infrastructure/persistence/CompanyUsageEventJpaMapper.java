@@ -50,12 +50,36 @@ public class CompanyUsageEventJpaMapper {
     }
 
     public CompanyUsageEvent toDomain(CompanyUsageEventJpaEntity entity) {
-        UsageBranch branch = UsageBranch.ofDimensionCode(entity.getLimitDimensionCode());
+        UsageBranch branch = branchOf(entity);
         return new CompanyUsageEvent(entity.getId(), entity.getCompanyId(),
                 entity.getLimitDimensionId(), branch, referenceOf(entity, branch),
                 entity.getOccurredAt(), UsagePeriodKey.of(entity.getPeriodKey()),
                 entity.isBillable(), entity.getChargeId(), entity.getCreatedDate(),
                 entity.getVersion());
+    }
+
+    /**
+     * La rama, casi siempre resuelta por el codigo del eje
+     * ({@link UsageBranch#ofDimensionCode(String)}). {@code GROOMING_SERVICE} es la
+     * unica excepcion: nombra dos ramas a la vez
+     * ({@link UsageBranch#GROOMING_SERVICE_SPA}/{@link UsageBranch#GROOMING_SERVICE_DAYCARE}),
+     * asi que ahi se mira <strong>cual columna esta poblada</strong> en vez del
+     * codigo — {@code chk_cue_branch} garantiza que exactamente una lo este.
+     */
+    private static UsageBranch branchOf(CompanyUsageEventJpaEntity entity) {
+        if (!"GROOMING_SERVICE".equals(entity.getLimitDimensionCode())) {
+            return UsageBranch.ofDimensionCode(entity.getLimitDimensionCode());
+        }
+        if (entity.getUsageSpaId() != null) {
+            return UsageBranch.GROOMING_SERVICE_SPA;
+        }
+        if (entity.getUsageDaycareId() != null) {
+            return UsageBranch.GROOMING_SERVICE_DAYCARE;
+        }
+        throw new IllegalStateException("company_usage_events row " + entity.getId()
+                + " has axis 'GROOMING_SERVICE' but no reference in usage_spa_id or"
+                + " usage_daycare_id: chk_cue_branch makes that row unwritable, so either it was"
+                + " inserted bypassing the engine or the constraint was dropped in a migration");
     }
 
     /**
@@ -76,6 +100,9 @@ public class CompanyUsageEventJpaMapper {
         entity.setUsageAppointmentId(branch == UsageBranch.APPOINTMENT ? usageReferenceId : null);
         entity.setUsageElectronicDocumentId(
                 branch == UsageBranch.INVOICE ? usageReferenceId : null);
+        entity.setUsageSpaId(branch == UsageBranch.GROOMING_SERVICE_SPA ? usageReferenceId : null);
+        entity.setUsageDaycareId(
+                branch == UsageBranch.GROOMING_SERVICE_DAYCARE ? usageReferenceId : null);
     }
 
     /**
@@ -96,6 +123,8 @@ public class CompanyUsageEventJpaMapper {
             case ANIMAL -> entity.getUsageAnimalId();
             case APPOINTMENT -> entity.getUsageAppointmentId();
             case INVOICE -> entity.getUsageElectronicDocumentId();
+            case GROOMING_SERVICE_SPA -> entity.getUsageSpaId();
+            case GROOMING_SERVICE_DAYCARE -> entity.getUsageDaycareId();
         };
         if (reference == null) {
             throw new IllegalStateException("company_usage_events row " + entity.getId()

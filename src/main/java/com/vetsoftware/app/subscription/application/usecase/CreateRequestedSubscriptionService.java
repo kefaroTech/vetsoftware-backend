@@ -116,6 +116,9 @@ public class CreateRequestedSubscriptionService implements CreateRequestedSubscr
                 item.itemName(), item.itemType(), item.capacityUnit(), tierLine.tier().tierMin(),
                 tierLine.tier().tierMax(), tierLine.includedQuantity(),
                 tierLine.tier().taxTreatment(), tierLine.quantity(), tierLine.tier().unitAmount(),
-                null, null, false, tierLine.tier().taxRate(), effectiveFrom, effectiveTo);
+                null, null, false, tierLine.tier().taxRate(), effectiveFrom, effectiveTo,
+                SubscriptionItemLineCommand.DEFAULT_CHARGE_MODE,
+                SubscriptionItemLineCommand.DEFAULT_TRIAL_ELIGIBILITY, 0, null,
+                SubscriptionItemLineCommand.DEFAULT_ACTIVATION_PATH);
     }
 }

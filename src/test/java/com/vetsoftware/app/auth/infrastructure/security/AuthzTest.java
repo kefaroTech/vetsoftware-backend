@@ -2,15 +2,23 @@ package com.vetsoftware.app.auth.infrastructure.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.auth.application.dto.SystemContext;
+import com.vetsoftware.app.auth.domain.SubModuleReadOnlyException;
 import com.vetsoftware.app.auth.testsupport.AuthMother;
+import com.vetsoftware.app.entitlement.application.dto.CompanyAccessDto;
+import com.vetsoftware.app.entitlement.application.dto.CompanyEntitlementDto;
+import com.vetsoftware.app.entitlement.application.dto.SubModuleSummaryDto;
+import com.vetsoftware.app.entitlement.application.port.in.FindCompanyAccessUseCase;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,13 +28,17 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * {@code Authz} decide autorización a partir del {@code AuthContext} que deja
- * el {@code AuthFilter} en el {@code SecurityContextHolder}. No tiene puertos
- * que mockear: es JUnit puro manipulando el contexto de seguridad, igual que
- * {@code SystemRoleIsolationTest}.
+ * el {@code AuthFilter} en el {@code SecurityContextHolder}. JUnit puro
+ * manipulando el contexto de seguridad, igual que
+ * {@code SystemRoleIsolationTest}; {@code findCompanyAccess} es el único puerto
+ * (lo necesita {@code requireModuleWritable}) y se mockea sin extensión de
+ * Mockito.
  */
 class AuthzTest {
 
-    private final Authz authz = new Authz();
+    private final FindCompanyAccessUseCase findCompanyAccess = Mockito
+            .mock(FindCompanyAccessUseCase.class);
+    private final Authz authz = new Authz(findCompanyAccess);
 
     @AfterEach
     void limpiarContextos() {
@@ -575,6 +587,65 @@ class AuthzTest {
             autenticar(AuthMother.empleado(Set.of(), Set.of(AuthMother.BRANCH_ID, 20L)));
             assertThatThrownBy(() -> authz.resolveAccessibleBranch(null))
                     .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("branchId");
+        }
+    }
+
+    @Nested
+    @DisplayName("requireModuleWritable")
+    class BarreraDeSoloLectura {
+
+        private static final String CORE = "CORE";
+
+        private CompanyEntitlementDto entitlement(String subModuleCode, String accessLevel) {
+            return new CompanyEntitlementDto(1L, AuthMother.COMPANY_ID,
+                    new SubModuleSummaryDto(1L, subModuleCode, subModuleCode), accessLevel, "CORE",
+                    null, null, LocalDateTime.now(), null, LocalDateTime.now());
+        }
+
+        @Test
+        @DisplayName("FULL deja escribir")
+        void full_deja_escribir() {
+            autenticar(AuthMother.empleado());
+            when(findCompanyAccess.findByCompanyId(AuthMother.COMPANY_ID))
+                    .thenReturn(new CompanyAccessDto(AuthMother.COMPANY_ID,
+                            List.of(entitlement(CORE, "FULL")), List.of(), LocalDateTime.now()));
+
+            assertThat(authz.requireModuleWritable(CORE)).isTrue();
+        }
+
+        @Test
+        @DisplayName("READ_ONLY bloquea con SubModuleReadOnlyException, no con un booleano falso")
+        void read_only_bloquea_con_excepcion_propia() {
+            autenticar(AuthMother.empleado());
+            when(findCompanyAccess.findByCompanyId(AuthMother.COMPANY_ID))
+                    .thenReturn(new CompanyAccessDto(AuthMother.COMPANY_ID,
+                            List.of(entitlement(CORE, "READ_ONLY")), List.of(),
+                            LocalDateTime.now()));
+
+            assertThatThrownBy(() -> authz.requireModuleWritable(CORE))
+                    .isInstanceOf(SubModuleReadOnlyException.class);
+        }
+
+        @Test
+        @DisplayName("un submódulo ausente de la lista no bloquea (falla abierto)")
+        void submodulo_ausente_no_bloquea() {
+            autenticar(AuthMother.empleado());
+            when(findCompanyAccess.findByCompanyId(AuthMother.COMPANY_ID)).thenReturn(
+                    new CompanyAccessDto(AuthMother.COMPANY_ID, List.of(), List.of(), null));
+
+            assertThat(authz.requireModuleWritable(CORE)).isTrue();
+        }
+
+        @Test
+        @DisplayName("READ_ONLY de OTRO submódulo no bloquea este")
+        void read_only_de_otro_submodulo_no_bloquea() {
+            autenticar(AuthMother.empleado());
+            when(findCompanyAccess.findByCompanyId(AuthMother.COMPANY_ID))
+                    .thenReturn(new CompanyAccessDto(AuthMother.COMPANY_ID,
+                            List.of(entitlement("SCHEDULING", "READ_ONLY")), List.of(),
+                            LocalDateTime.now()));
+
+            assertThat(authz.requireModuleWritable(CORE)).isTrue();
         }
     }
 }

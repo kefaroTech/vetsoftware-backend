@@ -30,7 +30,7 @@ public class ProvisionCompanyService implements ProvisionCompanyUseCase {
     @Transactional
     public CompanyDto execute(CreateCompanyCommand command) {
         CompanyDto company = companyCreationPort.create(command);
-        initialContractProvisioningPort.provisionForCompany(company.id());
+        initialContractProvisioningPort.provisionForCompany(company.id(), company.name());
         return company;
     }
 }

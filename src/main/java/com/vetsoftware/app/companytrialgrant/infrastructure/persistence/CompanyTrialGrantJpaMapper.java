@@ -23,6 +23,7 @@ public class CompanyTrialGrantJpaMapper {
         entity.setPolicyTrialOutcome(grant.getPolicyTrialOutcome().name());
         entity.setSourceQuoteId(grant.getSourceQuoteId());
         entity.setGrantingAmendmentId(grant.getGrantingAmendmentId());
+        entity.setOrigin(grant.getOrigin().name());
         entity.setConsumedAt(grant.getConsumedAt());
         entity.setOutcome(grant.getOutcome() == null ? null : grant.getOutcome().name());
         entity.setCreatedDate(grant.getCreatedDate());

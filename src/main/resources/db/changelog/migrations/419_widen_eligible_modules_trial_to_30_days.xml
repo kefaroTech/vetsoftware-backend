@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Cuenta gratuita (docs/db/cuenta-gratuita-modelo.md §4, decision 2 del plan): 30 dias para
+         TODOS los modulos ELIGIBLE, una sola fecha de vencimiento por cuenta. CASH_REGISTER,
+         INVENTORY, PURCHASES y OPEN_ACCOUNTS nacieron con 14 dias en 308_seed_commercial_catalog_items
+         (YA APLICADO -no se toca-).
+
+         CAPACITY_TERMINAL entra tambien, y el plan de negocio no la nombro: tiene hoy
+         default_trial_days = 14 igual que CASH_REGISTER, del que depende (una terminal de caja
+         sin el modulo de Caja no sirve de nada). Dejarla en 14 mientras el resto de la cuenta sigue
+         viva hasta el dia 30 reabriria exactamente la fuga que "una sola fecha de vencimiento por
+         cuenta" existe para cerrar, en el articulo que menos sentido tiene que se adelante.
+
+         chk_catalog_items_trial_policy (229, YA APLICADO) sigue satisfecho: solo exige
+         default_trial_days > 0 y trial_outcome NOT NULL, ninguno de los dos cambia aqui.
+
+         UPDATE_MASIVO_MUEVE_LA_VERSION: catalog_items esta versionada y este UPDATE no pasa por el
+         ciclo de Hibernate, asi que version = version + 1 va en el SET. Impacto: UPDATE puro sobre
+         cinco filas de un catalogo global sin company_id; coste nulo en cualquier entorno real
+         hoy. -->
+    <changeSet id="419_widen_eligible_modules_trial_to_30_days" author="orlando">
+        <sql><![CDATA[
+            UPDATE catalog_items
+               SET default_trial_days = 30,
+                   version = version + 1
+             WHERE code IN ('CASH_REGISTER', 'INVENTORY', 'PURCHASES', 'OPEN_ACCOUNTS',
+                             'CAPACITY_TERMINAL')
+               AND trial_eligibility = 'ELIGIBLE'
+        ]]></sql>
+
+        <rollback>
+            <sql><![CDATA[
+                UPDATE catalog_items
+                   SET default_trial_days = 14,
+                       version = version + 1
+                 WHERE code IN ('CASH_REGISTER', 'INVENTORY', 'PURCHASES', 'OPEN_ACCOUNTS',
+                                 'CAPACITY_TERMINAL')
+                   AND trial_eligibility = 'ELIGIBLE'
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

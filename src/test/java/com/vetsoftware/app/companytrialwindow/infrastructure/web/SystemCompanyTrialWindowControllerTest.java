@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.vetsoftware.app.companytrialwindow.application.command.OpenTrialWindowCommand;
 import com.vetsoftware.app.companytrialwindow.application.dto.CompanyTrialWindowDto;
+import com.vetsoftware.app.companytrialwindow.domain.TrialOrigin;
 import com.vetsoftware.app.companytrialwindow.application.port.in.CloseTrialWindowUseCase;
 import com.vetsoftware.app.companytrialwindow.application.port.in.FindCurrentTrialWindowUseCase;
 import com.vetsoftware.app.companytrialwindow.application.port.in.OpenTrialWindowUseCase;
@@ -71,12 +72,13 @@ class SystemCompanyTrialWindowControllerTest {
 
     private static CompanyTrialWindowDto abierta() {
         return new CompanyTrialWindowDto(3L, LA_CLINICA, LocalDate.of(2026, 9, 1),
-                LocalDate.of(2026, 9, 30), 30, 77L, null, true);
+                LocalDate.of(2026, 9, 30), 30, 77L, TrialOrigin.QUOTE, null, true);
     }
 
     private static CompanyTrialWindowDto cerrada() {
         return new CompanyTrialWindowDto(3L, LA_CLINICA, LocalDate.of(2026, 9, 1),
-                LocalDate.of(2026, 9, 30), 30, 77L, LocalDateTime.of(2026, 9, 12, 10, 30), false);
+                LocalDate.of(2026, 9, 30), 30, 77L, TrialOrigin.QUOTE,
+                LocalDateTime.of(2026, 9, 12, 10, 30), false);
     }
 
     @Nested

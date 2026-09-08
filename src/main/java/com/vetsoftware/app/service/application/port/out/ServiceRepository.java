@@ -28,4 +28,6 @@ public interface ServiceRepository {
     void delete(Long id);
 
     int reactivate(Long id, Long companyId);
+
+    long countEnabledByCompanyId(Long companyId);
 }

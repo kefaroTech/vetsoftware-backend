@@ -1,6 +1,7 @@
 package com.vetsoftware.app.companytrialwindow.infrastructure.web.response;
 
 import com.vetsoftware.app.companytrialwindow.application.dto.CompanyTrialWindowDto;
+import com.vetsoftware.app.companytrialwindow.domain.TrialOrigin;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,12 +27,13 @@ public record CompanyTrialWindowResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long companyId,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate startDate,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Último día en prueba, incluido") LocalDate endDate,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int windowDays,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long sourceQuoteId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int windowDays, Long sourceQuoteId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) TrialOrigin origin,
         LocalDateTime closedAt, @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean open) {
 
     public static CompanyTrialWindowResponse from(CompanyTrialWindowDto dto) {
         return new CompanyTrialWindowResponse(dto.id(), dto.companyId(), dto.startDate(),
-                dto.endDate(), dto.windowDays(), dto.sourceQuoteId(), dto.closedAt(), dto.open());
+                dto.endDate(), dto.windowDays(), dto.sourceQuoteId(), dto.origin(), dto.closedAt(),
+                dto.open());
     }
 }

@@ -43,13 +43,13 @@ package com.vetsoftware.app.companyusageevent.domain;
 public enum UsageBranch {
 
     /** Propietario dado de alta. Referencia a {@code owners}. */
-    OWNER,
+    OWNER("OWNER"),
 
     /** Mascota dada de alta. Referencia a {@code animals}. */
-    ANIMAL,
+    ANIMAL("ANIMAL"),
 
     /** Cita agendada. Referencia a {@code appointments}. */
-    APPOINTMENT,
+    APPOINTMENT("APPOINTMENT"),
 
     /**
      * Documento electronico emitido. Referencia a {@code electronic_documents}.
@@ -62,7 +62,28 @@ public enum UsageBranch {
      * {@code limit_dimensions}, hay que renombrarlo aqui <em>y</em> en el
      * {@code CHECK}, o la clave foranea compuesta deja de casar.
      */
-    INVOICE;
+    INVOICE("INVOICE"),
+
+    /**
+     * Servicio de spa prestado. Referencia a {@code spas}.
+     *
+     * <p>
+     * <strong>Unico eje del modelo con dos ramas para un solo codigo de
+     * catalogo.</strong> {@code GROOMING_SERVICE} mide el uso combinado de spa y
+     * guarderia (309: {@code GROOMING} abre las dos a la vez), asi que
+     * {@code ofDimensionCode(String)} no puede resolverla sola: quien escribe el
+     * hecho tiene que decir de cual de las dos tablas viene.
+     */
+    GROOMING_SERVICE_SPA("GROOMING_SERVICE"),
+
+    /** Servicio de guarderia prestado. Referencia a {@code daycares}. */
+    GROOMING_SERVICE_DAYCARE("GROOMING_SERVICE");
+
+    private final String dimensionCode;
+
+    UsageBranch(String dimensionCode) {
+        this.dimensionCode = dimensionCode;
+    }
 
     /**
      * El eje del catalogo traducido a rama, o un fallo en voz alta.
@@ -74,10 +95,24 @@ public enum UsageBranch {
      * nadie se enterara. El mensaje nombra el eje y explica la diferencia entre
      * acumular y contar, porque quien lo lea va a estar mirando por que «no se
      * registra el consumo» de algo que si se vendio.
+     *
+     * <p>
+     * <strong>No sirve para {@code GROOMING_SERVICE}</strong>: ese codigo nombra
+     * dos ramas a la vez y este metodo devuelve la primera coincidencia por
+     * declaracion, que seria adivinar el origen. Quien escribe un hecho de
+     * {@code GROOMING_SERVICE} tiene que nombrar la rama exacta
+     * ({@link #GROOMING_SERVICE_SPA} o {@link #GROOMING_SERVICE_DAYCARE}) en vez de
+     * llamar a este metodo.
      */
     public static UsageBranch ofDimensionCode(String limitDimensionCode) {
         if (limitDimensionCode == null || limitDimensionCode.isBlank()) {
             throw new IllegalArgumentException("limitDimensionCode is required");
+        }
+        if ("GROOMING_SERVICE".equals(limitDimensionCode)) {
+            throw new IllegalArgumentException(
+                    "Limit dimension 'GROOMING_SERVICE' names two branches (spa and daycare):"
+                            + " resolve GROOMING_SERVICE_SPA or GROOMING_SERVICE_DAYCARE explicitly"
+                            + " instead of calling ofDimensionCode for this axis");
         }
         for (UsageBranch branch : values()) {
             if (branch.name().equals(limitDimensionCode)) {
@@ -85,14 +120,14 @@ public enum UsageBranch {
             }
         }
         throw new IllegalArgumentException("Limit dimension '" + limitDimensionCode
-                + "' does not accumulate usage events: company_usage_events only accepts the four"
-                + " countable axes (OWNER, ANIMAL, APPOINTMENT, INVOICE). Stock axes such as USER,"
-                + " BRANCH, TERMINAL or STORAGE_GB are counted against their own table, not summed"
-                + " fact by fact, and chk_cue_branch rejects them at the engine");
+                + "' does not accumulate usage events: company_usage_events only accepts the"
+                + " countable axes (OWNER, ANIMAL, APPOINTMENT, INVOICE, GROOMING_SERVICE). Stock"
+                + " axes such as USER, BRANCH, TERMINAL or STORAGE_GB are counted against their own"
+                + " table, not summed fact by fact, and chk_cue_branch rejects them at the engine");
     }
 
     /** El codigo tal como viaja a {@code limit_dimension_code}. */
     public String code() {
-        return name();
+        return dimensionCode;
     }
 }

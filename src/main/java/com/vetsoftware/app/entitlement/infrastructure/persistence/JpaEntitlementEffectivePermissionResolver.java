@@ -14,6 +14,14 @@ import org.springframework.stereotype.Component;
  * base aun contenga una asignacion anterior.
  *
  * <p>
+ * Sin caché a propósito: el JWT no lleva permisos ({@code JwtProvider} firma
+ * solo id, tipo, empresa y {@code authVersion}) y este método relee
+ * {@code company_entitlements} en cada petición, así que un recálculo de
+ * entitlements no tiene nada que evictar. La única caché de la cadena
+ * ({@code employee-permissions}, rol → permiso) es ortogonal al contrato y ya
+ * se invalida al cambiar roles.
+ *
+ * <p>
  * <strong>La ausencia de fila significa cero acceso, nunca acceso
  * ilimitado</strong>, y es el mismo criterio que ya se fijo para
  * {@code company_capacities}. Se escribe aqui porque es una decision que

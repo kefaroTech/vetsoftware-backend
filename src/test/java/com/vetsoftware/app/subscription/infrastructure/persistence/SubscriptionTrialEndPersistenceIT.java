@@ -165,9 +165,9 @@ class SubscriptionTrialEndPersistenceIT extends AbstractDataJpaTest {
     private Long abrirVentana() {
         entityManager.createNativeQuery("""
                 INSERT INTO company_trial_windows (company_id, start_date, end_date, window_days,
-                                                   source_quote_id, closed_at, created_date,
+                                                   source_quote_id, origin, closed_at, created_date,
                                                    version)
-                VALUES (:companyId, :desde, :hasta, 30, :quoteId, NULL, NOW(), 0)
+                VALUES (:companyId, :desde, :hasta, 30, :quoteId, 'QUOTE', NULL, NOW(), 0)
                 """).setParameter("companyId", SchemaSeed.COMPANY_ID)
                 .setParameter("desde", INICIO_VENTANA).setParameter("hasta", FIN_VENTANA)
                 .setParameter("quoteId", SchemaSeed.QUOTE_ID).executeUpdate();
@@ -184,16 +184,19 @@ class SubscriptionTrialEndPersistenceIT extends AbstractDataJpaTest {
      * {@code chk_company_trial_grants_end} cuadre.
      */
     private void sembrarConcesion(Long catalogItemId, LocalDate finDePrueba) {
-        entityManager.createNativeQuery("""
-                INSERT INTO company_trial_grants (company_id, catalog_item_id, trial_window_id,
-                                                  trial_window_end_date, granted_on, days_granted,
-                                                  trial_end_date, policy_trial_days,
-                                                  policy_trial_outcome, source_quote_id,
-                                                  granting_amendment_id, consumed_at, outcome,
-                                                  created_date, version)
-                VALUES (:companyId, :itemId, :windowId, :windowEnd, :desde, :dias, :fin, 30,
-                        'LIMITED', :quoteId, NULL, NULL, NULL, NOW(), 0)
-                """).setParameter("companyId", SchemaSeed.COMPANY_ID)
+        entityManager
+                .createNativeQuery(
+                        """
+                                INSERT INTO company_trial_grants (company_id, catalog_item_id, trial_window_id,
+                                                                  trial_window_end_date, granted_on, days_granted,
+                                                                  trial_end_date, policy_trial_days,
+                                                                  policy_trial_outcome, source_quote_id,
+                                                                  granting_amendment_id, origin, consumed_at, outcome,
+                                                                  created_date, version)
+                                VALUES (:companyId, :itemId, :windowId, :windowEnd, :desde, :dias, :fin, 30,
+                                        'LIMITED', :quoteId, NULL, 'QUOTE', NULL, NULL, NOW(), 0)
+                                """)
+                .setParameter("companyId", SchemaSeed.COMPANY_ID)
                 .setParameter("itemId", catalogItemId).setParameter("windowId", ventanaId)
                 .setParameter("windowEnd", FIN_VENTANA).setParameter("desde", INICIO_VENTANA)
                 .setParameter("dias",
