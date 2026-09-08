@@ -33,10 +33,13 @@ public interface SubscriptionChargeJpaRepository
      * {@code (company_id, subscription_id, status, service_period_start)}.
      *
      * <p>
-     * El periodo se compara por <b>contención</b>: solo entran los cargos cuyo
-     * periodo de servicio cae entero dentro del periodo que se factura. Un cargo a
-     * caballo entre dos periodos no se parte aquí — se devenga ya partido, que es
-     * para lo que existen {@code proration_days} y {@code period_days}.
+     * <b>Sin cota inferior de periodo, a propósito.</b> Una empresa paga UNA
+     * factura por ciclo, y todo lo devengado y no cobrado cae en la siguiente. Un
+     * cargo {@code PRORATION} nace a mitad de ciclo con {@code service_period_end}
+     * en el {@code current_period_end} de entonces, anterior al {@code periodStart}
+     * del ciclo que lo factura: exigir {@code service_period_start >= periodStart}
+     * lo dejaría {@code PENDING} para siempre. La cota superior basta para no
+     * arrastrar nada del futuro.
      *
      * <p>
      * <b>El filtro que decide si algo se cobra es {@code charge_mode = 'PAID'} de
@@ -77,7 +80,6 @@ public interface SubscriptionChargeJpaRepository
             WHERE c.company_id = :companyId
               AND c.subscription_id = :subscriptionId
               AND c.status = :status
-              AND c.service_period_start >= :periodStart
               AND c.service_period_end <= :periodEnd
               AND (c.subscription_item_id IS NULL OR i.charge_mode = 'PAID')
             ORDER BY c.service_period_start ASC, c.id ASC

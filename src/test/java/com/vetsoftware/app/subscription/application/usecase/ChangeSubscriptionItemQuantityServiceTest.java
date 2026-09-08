@@ -10,6 +10,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.vetsoftware.app.subscription.application.command.ChangeSubscriptionItemQuantityCommand;
@@ -22,6 +23,8 @@ import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPo
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionProrationChargePort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionProrationLine;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
 import com.vetsoftware.app.subscription.application.port.out.SystemUserValidationPort;
 import com.vetsoftware.app.subscription.domain.AmendmentType;
@@ -91,6 +94,8 @@ class ChangeSubscriptionItemQuantityServiceTest {
     private SubscriptionChangedPort subscriptionChangedPort;
     @Mock
     private SubscriptionAuditPort audit;
+    @Mock
+    private SubscriptionProrationChargePort prorationChargePort;
 
     @InjectMocks
     private ChangeSubscriptionItemQuantityService service;
@@ -295,6 +300,49 @@ class ChangeSubscriptionItemQuantityServiceTest {
             assertThat(resultado.id()).isEqualTo(501L);
             verify(itemRepository, never()).save(any());
             verify(amendmentRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("Prorrateo — solo cuando la cantidad sube")
+    class CargoDeProrrateo {
+
+        @Test
+        @DisplayName("subir la cantidad genera un cargo de prorrateo con el periodo de servicio, el "
+                + "precio firmado y el otrosi")
+        void subir_la_cantidad_genera_un_cargo_de_prorrateo() {
+            escenarioFeliz();
+            when(itemRepository.findOverlapping(anyLong(), anyLong(), anyLong(), any(), any(),
+                    any())).thenReturn(List.of());
+
+            service.execute(comando(7));
+
+            ArgumentCaptor<SubscriptionProrationLine> captor = ArgumentCaptor
+                    .forClass(SubscriptionProrationLine.class);
+            verify(prorationChargePort).chargeProration(captor.capture());
+            SubscriptionProrationLine cargo = captor.getValue();
+            assertThat(cargo.companyId()).isEqualTo(EMPRESA);
+            assertThat(cargo.subscriptionId()).isEqualTo(CONTRATO);
+            assertThat(cargo.servicePeriodStart()).isEqualTo(ENERO_17);
+            assertThat(cargo.servicePeriodEnd()).isEqualTo(LocalDate.of(2026, 1, 31));
+            assertThat(cargo.prorationDays()).isEqualTo(15);
+            assertThat(cargo.periodDays()).isEqualTo(31);
+            assertThat(cargo.subtotalAmount()).isEqualByComparingTo("14516.13");
+            assertThat(cargo.taxRate()).isEqualByComparingTo("19.00");
+            assertThat(cargo.taxTreatment()).isEqualTo(TaxTreatment.TAXED);
+            assertThat(cargo.amendmentId()).isEqualTo(902L);
+        }
+
+        @Test
+        @DisplayName("bajar la cantidad no genera ningun cargo de prorrateo")
+        void bajar_la_cantidad_no_genera_cargo() {
+            escenarioFeliz();
+            when(itemRepository.findOverlapping(anyLong(), anyLong(), anyLong(), any(), any(),
+                    any())).thenReturn(List.of());
+
+            service.execute(comando(2));
+
+            verifyNoInteractions(prorationChargePort);
         }
     }
 }

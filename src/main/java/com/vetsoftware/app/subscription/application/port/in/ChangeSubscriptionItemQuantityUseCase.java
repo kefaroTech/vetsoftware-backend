@@ -23,12 +23,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * principal y aqui se revalida.
  *
  * <p>
- * <strong>Lo que este gate NO cubre.</strong> {@code prorationAmount} y
- * {@code monthlyDeltaAmount} si llegan del cuerpo y se persisten tal cual: este
- * slice no tiene motor de prorrateo y esa aritmetica no esta en el modelo. Hoy
- * ninguna cifra de cobro se deriva de esas dos columnas —la base recurrente
- * sale de {@code subscription_items}—, pero el dia que se derive hay que
- * resolverlas en servidor antes de dejarlas en manos del tenant.
+ * <strong>Un aumento genera un cargo real</strong> ({@code PRORATION} por los
+ * dias que quedan del ciclo) sin mas evidencia de aceptacion que la propia
+ * peticion. Se admite porque el precio unitario ya estaba pactado al firmar y
+ * el cliente solo elige cuantas unidades; el importe del prorrateo lo calcula
+ * el servidor y el delta que se le mostro queda en la auditoria (#607).
  */
 public interface ChangeSubscriptionItemQuantityUseCase {
     @PreAuthorize("hasRole('SYSTEM') or (hasAuthority('subscription.update') "

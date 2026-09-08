@@ -10,6 +10,8 @@ import com.vetsoftware.app.subscription.application.port.out.SubscriptionAuditPo
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionChangedPort;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionItemRepository;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionNumberPort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionProrationChargePort;
+import com.vetsoftware.app.subscription.application.port.out.SubscriptionProrationLine;
 import com.vetsoftware.app.subscription.application.port.out.SubscriptionRepository;
 import com.vetsoftware.app.subscription.application.port.out.SystemUserValidationPort;
 import com.vetsoftware.app.subscription.domain.AmendmentType;
@@ -63,13 +65,15 @@ public class ChangeSubscriptionItemQuantityService
     private final SubscriptionNumberPort subscriptionNumberPort;
     private final SubscriptionChangedPort subscriptionChangedPort;
     private final SubscriptionAuditPort audit;
+    private final SubscriptionProrationChargePort prorationChargePort;
 
     public ChangeSubscriptionItemQuantityService(SubscriptionRepository subscriptionRepository,
             SubscriptionItemRepository itemRepository,
             SubscriptionAmendmentRepository amendmentRepository,
             EmployeeQueryPort employeeQueryPort, SystemUserValidationPort systemUserValidationPort,
             SubscriptionNumberPort subscriptionNumberPort,
-            SubscriptionChangedPort subscriptionChangedPort, SubscriptionAuditPort audit) {
+            SubscriptionChangedPort subscriptionChangedPort, SubscriptionAuditPort audit,
+            SubscriptionProrationChargePort prorationChargePort) {
         this.subscriptionRepository = subscriptionRepository;
         this.itemRepository = itemRepository;
         this.amendmentRepository = amendmentRepository;
@@ -78,6 +82,7 @@ public class ChangeSubscriptionItemQuantityService
         this.subscriptionNumberPort = subscriptionNumberPort;
         this.subscriptionChangedPort = subscriptionChangedPort;
         this.audit = audit;
+        this.prorationChargePort = prorationChargePort;
     }
 
     @Override
@@ -121,8 +126,9 @@ public class ChangeSubscriptionItemQuantityService
                 .recurringSubtotalOf(command.newQuantity() == null ? 0 : command.newQuantity(),
                         original.getIncludedQuantity(), original.getUnitAmount())
                 .subtract(original.recurringSubtotal());
-        Proration proration = ProrationCalculator.onCurrentPeriod(cycleDelta,
-                BillingPeriod.of(subscription), EffectivePeriod.openFrom(command.effectiveDate()));
+        BillingPeriod billingPeriod = BillingPeriod.of(subscription);
+        Proration proration = ProrationCalculator.onCurrentPeriod(cycleDelta, billingPeriod,
+                EffectivePeriod.openFrom(command.effectiveDate()));
 
         SubscriptionAmendment amendment = amendmentRepository
                 .save(SubscriptionAmendment.issue(command.companyId(), subscription.getId(),
@@ -152,6 +158,19 @@ public class ChangeSubscriptionItemQuantityService
                         successor.getPeriod().to(), original.getId()));
 
         SubscriptionItem saved = itemRepository.save(successor);
+
+        // Una reduccion no acredita aqui: el prorrateo negativo dentro de la factura
+        // de ciclo sigue sin resolverse (#809).
+        if (proration.amount().signum() > 0) {
+            BillingPeriod.CoveredRange servicePeriod = billingPeriod
+                    .coveredRange(saved.getPeriod());
+            prorationChargePort.chargeProration(new SubscriptionProrationLine(command.companyId(),
+                    subscription.getId(), saved.getId(), saved.getItemName(), servicePeriod.start(),
+                    servicePeriod.end(), BigDecimal.valueOf(saved.billableQuantity()),
+                    saved.getUnitAmount(), proration.amount(), saved.getTaxRate(),
+                    saved.getTaxTreatment(), proration.prorationDays(), proration.periodDays(),
+                    amendment.getId()));
+        }
 
         // Los dos valores juntos a proposito: «paso a 12» no es auditable sin saber de
         // cuanto venia, y el delta mensual es lo que el cliente vio antes de aceptar.
