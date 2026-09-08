@@ -1,5 +1,7 @@
 package com.vetsoftware.app.electronicdocument.infrastructure.web.request;
 
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import com.vetsoftware.app.electronicdocument.application.command.SaleLineKind;
 import com.vetsoftware.app.electronicdocument.domain.ElectronicDocumentType;
 import com.vetsoftware.app.electronicdocument.domain.PaymentMeans;
@@ -20,7 +22,9 @@ import java.util.List;
  */
 public record RegisterPosSaleRequest(
         @NotNull(message = "Debes seleccionar el tipo de documento electrónico.") ElectronicDocumentType documentType,
-        boolean finalConsumer, Long customerOwnerId,
+        // Jackson 3: sin @JsonSetter, omitir el campo responde 400 en vez de caer a
+        // false (ver CreateAppointmentRequest.forceOverlap).
+        @JsonSetter(nulls = Nulls.AS_EMPTY) boolean finalConsumer, Long customerOwnerId,
         @NotEmpty(message = "Debes asignar al menos un ítem a la venta.") @Valid List<SaleLineRequest> lines,
         @NotEmpty(message = "Debes asignar al menos un pago a la venta.") @Valid List<SalePaymentRequest> payments,
         /**

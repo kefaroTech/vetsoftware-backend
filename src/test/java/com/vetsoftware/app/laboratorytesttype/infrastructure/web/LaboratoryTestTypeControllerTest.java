@@ -170,6 +170,19 @@ class LaboratoryTestTypeControllerTest {
         }
 
         @Test
+        @DisplayName("omitir general equivale a enviarlo en false")
+        void post_omitir_general_equivale_a_false() throws Exception {
+            when(createUseCase.execute(any())).thenReturn(hemograma());
+
+            mockMvc.perform(post("/laboratory-test-types").contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {"name":"Hemograma","description":"Hemograma completo"}
+                            """)).andExpect(status().isCreated());
+
+            verify(createUseCase).execute(comandoDeCreacionEsperado());
+        }
+
+        @Test
         @DisplayName("un companyId colado en el cuerpo no suplanta a la empresa del contexto")
         void un_company_id_colado_en_el_cuerpo_no_suplanta_al_contexto() throws Exception {
             when(createUseCase.execute(any())).thenReturn(hemograma());
@@ -326,6 +339,20 @@ class LaboratoryTestTypeControllerTest {
 
             mockMvc.perform(put("/laboratory-test-types/70").contentType(MediaType.APPLICATION_JSON)
                     .content(CUERPO_VALIDO));
+
+            verify(updateUseCase).execute(new UpdateLaboratoryTestTypeCommand(70L, "Hemograma",
+                    "Hemograma completo", COMPANY_ID, false));
+        }
+
+        @Test
+        @DisplayName("PUT: omitir general equivale a enviarlo en false")
+        void put_omitir_general_equivale_a_false() throws Exception {
+            when(updateUseCase.execute(any())).thenReturn(hemograma());
+
+            mockMvc.perform(put("/laboratory-test-types/70").contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {"name":"Hemograma","description":"Hemograma completo"}
+                            """)).andExpect(status().isOk());
 
             verify(updateUseCase).execute(new UpdateLaboratoryTestTypeCommand(70L, "Hemograma",
                     "Hemograma completo", COMPANY_ID, false));

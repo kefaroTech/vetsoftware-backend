@@ -144,6 +144,20 @@ class SurgeryTypeControllerTest {
         }
 
         @Test
+        @DisplayName("omitir general equivale a enviarlo en false")
+        void post_omitir_general_equivale_a_false() throws Exception {
+            when(createUseCase.execute(any())).thenReturn(propio());
+
+            mockMvc.perform(
+                    post("/surgery-types").contentType(MediaType.APPLICATION_JSON).content("""
+                            {"name":"Castracion","description":"Cirugia de esterilizacion"}
+                            """)).andExpect(status().isCreated());
+
+            verify(createUseCase).execute(new CreateSurgeryTypeCommand("Castracion",
+                    "Cirugia de esterilizacion", COMPANY_ID, false));
+        }
+
+        @Test
         @DisplayName("un tipo general responde con company null en el JSON")
         void un_tipo_general_responde_con_company_null() throws Exception {
             when(createUseCase.execute(any())).thenReturn(tipo(true));
@@ -297,6 +311,20 @@ class SurgeryTypeControllerTest {
 
             mockMvc.perform(put("/surgery-types/700").contentType(MediaType.APPLICATION_JSON)
                     .content(CUERPO_VALIDO));
+
+            verify(updateUseCase).execute(new UpdateSurgeryTypeCommand(SURGERY_TYPE_ID,
+                    "Castracion", "Cirugia de esterilizacion", COMPANY_ID, false));
+        }
+
+        @Test
+        @DisplayName("PUT: omitir general equivale a enviarlo en false")
+        void put_omitir_general_equivale_a_false() throws Exception {
+            when(updateUseCase.execute(any())).thenReturn(propio());
+
+            mockMvc.perform(
+                    put("/surgery-types/700").contentType(MediaType.APPLICATION_JSON).content("""
+                            {"name":"Castracion","description":"Cirugia de esterilizacion"}
+                            """)).andExpect(status().isOk());
 
             verify(updateUseCase).execute(new UpdateSurgeryTypeCommand(SURGERY_TYPE_ID,
                     "Castracion", "Cirugia de esterilizacion", COMPANY_ID, false));

@@ -142,6 +142,20 @@ class DiagnosticImagingTypeControllerTest {
         }
 
         @Test
+        @DisplayName("omitir general equivale a enviarlo en false")
+        void post_omitir_general_equivale_a_false() throws Exception {
+            when(createUseCase.execute(any())).thenReturn(tipoDeEmpresa());
+
+            mockMvc.perform(post("/diagnostic-imaging-types")
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {"name":"Ecografia abdominal","description":"Ecografia de rutina"}
+                            """)).andExpect(status().isCreated());
+
+            verify(createUseCase).execute(new CreateDiagnosticImagingTypeCommand(
+                    "Ecografia abdominal", "Ecografia de rutina", COMPANY_ID, false));
+        }
+
+        @Test
         @DisplayName("un principal de plataforma crea un tipo global: el command va sin empresa y con general")
         void un_principal_de_plataforma_crea_un_tipo_global() throws Exception {
             // El arreglo de #565. Con currentCompanyId() ningun actor podia crear un
@@ -258,6 +272,20 @@ class DiagnosticImagingTypeControllerTest {
 
             mockMvc.perform(put("/diagnostic-imaging-types/501")
                     .contentType(MediaType.APPLICATION_JSON).content(CUERPO_VALIDO));
+
+            verify(updateUseCase).execute(new UpdateDiagnosticImagingTypeCommand(501L,
+                    "Ecografia abdominal", "Ecografia de rutina", COMPANY_ID, false));
+        }
+
+        @Test
+        @DisplayName("PUT: omitir general equivale a enviarlo en false")
+        void put_omitir_general_equivale_a_false() throws Exception {
+            when(updateUseCase.execute(any())).thenReturn(tipoDeEmpresa());
+
+            mockMvc.perform(put("/diagnostic-imaging-types/501")
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {"name":"Ecografia abdominal","description":"Ecografia de rutina"}
+                            """)).andExpect(status().isOk());
 
             verify(updateUseCase).execute(new UpdateDiagnosticImagingTypeCommand(501L,
                     "Ecografia abdominal", "Ecografia de rutina", COMPANY_ID, false));

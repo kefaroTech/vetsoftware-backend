@@ -1,5 +1,7 @@
 package com.vetsoftware.app.owner.infrastructure.web.request;
 
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import com.vetsoftware.app.owner.domain.FiscalResponsibility;
 import com.vetsoftware.app.owner.domain.OwnerDocumentType;
 import com.vetsoftware.app.owner.domain.PersonType;
@@ -19,7 +21,10 @@ public record CreateOwnerRequest(
         @Size(max = 255, message = "La razón social no puede superar los 255 caracteres.") String legalName,
         @Size(max = 255, message = "La dirección no puede superar los 255 caracteres.") String address,
         @Size(max = 30, message = "El teléfono no puede superar los 30 caracteres.") String phone,
-        @NotNull(message = "Debes seleccionar la ciudad.") Long cityId, boolean withholdingAgent,
+        @NotNull(message = "Debes seleccionar la ciudad.") Long cityId,
+        // Jackson 3: sin @JsonSetter, omitir el campo responde 400 en vez de caer a
+        // false (ver CreateAppointmentRequest.forceOverlap).
+        @JsonSetter(nulls = Nulls.AS_EMPTY) boolean withholdingAgent,
         // Opcional: si no se envía, el backend lo infiere (jurídica/NIT → Responsable
         // de IVA).
         TaxRegime taxRegime,

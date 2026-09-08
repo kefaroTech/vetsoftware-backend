@@ -118,6 +118,21 @@ class ElectronicDocumentControllerTest {
             verify(emitUseCase).execute(new EmitElectronicDocumentCommand(100L,
                     ElectronicDocumentType.FE_VENTA, COMPANY_ID, true));
         }
+
+        @Test
+        @DisplayName("omitir finalConsumer equivale a enviarlo en false")
+        void emit_omitir_final_consumer_equivale_a_false() throws Exception {
+            var dto = ElectronicDocumentDto.from(facturaValidada(2L));
+            when(emitUseCase.execute(any())).thenReturn(dto);
+
+            mockMvc.perform(post("/electronic-documents/emit")
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {"openAccountId": 100, "documentType": "FE_VENTA"}
+                            """)).andExpect(status().isCreated());
+
+            verify(emitUseCase).execute(new EmitElectronicDocumentCommand(100L,
+                    ElectronicDocumentType.FE_VENTA, COMPANY_ID, false));
+        }
     }
 
     @Nested
@@ -146,6 +161,34 @@ class ElectronicDocumentControllerTest {
 
             verify(registerPosSaleUseCase).execute(new RegisterPosSaleCommand(COMPANY_ID,
                     ElectronicDocumentType.DOC_EQUIV_POS, true, null,
+                    List.of(new RegisterPosSaleCommand.SaleLine(SaleLineKind.PRODUCT, 5L,
+                            "Alimento", BigDecimal.ONE, new BigDecimal("10000"))),
+                    List.of(new RegisterPosSaleCommand.SalePayment(PaymentMeans.EFECTIVO,
+                            new BigDecimal("10000"))),
+                    "req-1", EMPLOYEE_ID, SEDE_RESUELTA));
+        }
+
+        @Test
+        @DisplayName("omitir finalConsumer equivale a enviarlo en false")
+        void register_pos_sale_omitir_final_consumer_equivale_a_false() throws Exception {
+            var dto = ElectronicDocumentDto.from(facturaValidada(3L));
+            when(registerPosSaleUseCase.execute(any())).thenReturn(dto);
+
+            mockMvc.perform(post("/electronic-documents/from-sale")
+                    .contentType(MediaType.APPLICATION_JSON).content("""
+                            {
+                              "documentType": "DOC_EQUIV_POS",
+                              "customerOwnerId": null,
+                              "lines": [{"kind": "PRODUCT", "refId": 5, "description": "Alimento",
+                                         "quantity": 1, "unitPrice": 10000}],
+                              "payments": [{"means": "EFECTIVO", "amount": 10000}],
+                              "clientRequestId": "req-1",
+                              "branchId": null
+                            }
+                            """)).andExpect(status().isCreated());
+
+            verify(registerPosSaleUseCase).execute(new RegisterPosSaleCommand(COMPANY_ID,
+                    ElectronicDocumentType.DOC_EQUIV_POS, false, null,
                     List.of(new RegisterPosSaleCommand.SaleLine(SaleLineKind.PRODUCT, 5L,
                             "Alimento", BigDecimal.ONE, new BigDecimal("10000"))),
                     List.of(new RegisterPosSaleCommand.SalePayment(PaymentMeans.EFECTIVO,

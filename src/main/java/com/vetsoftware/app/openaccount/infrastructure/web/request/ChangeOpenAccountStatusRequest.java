@@ -1,5 +1,7 @@
 package com.vetsoftware.app.openaccount.infrastructure.web.request;
 
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import jakarta.validation.constraints.NotBlank;
 
 public record ChangeOpenAccountStatusRequest(
@@ -11,7 +13,10 @@ public record ChangeOpenAccountStatusRequest(
         // ("DOC_EQUIV_POS" |
         // "FE_VENTA";
         // null → DOC_EQUIV_POS) y si es venta a consumidor final. Se ignoran en CANCEL.
-        String documentType, boolean finalConsumer,
+        String documentType,
+        // Jackson 3: sin @JsonSetter, omitir el campo responde 400 en vez de caer a
+        // false (ver CreateAppointmentRequest.forceOverlap).
+        @JsonSetter(nulls = Nulls.AS_EMPTY) boolean finalConsumer,
         // Versión optimista de la cuenta que vio el front (opt-in) para detección
         // temprana de
         // conflicto.
