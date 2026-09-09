@@ -1215,4 +1215,7 @@
          quedaria con la misma clave y la deduplicacion se rompe en silencio. -->
     <include file="db/changelog/migrations/423_extend_company_usage_events_grooming_service.xml"/>
 
+    <!-- 424: siembra DC/NC/ND, los prefijos que DocumentKind fija en codigo; idempotente por prefijo. -->
+    <include file="db/changelog/migrations/424_seed_billing_document_sequences.xml"/>
+
 </databaseChangeLog>
