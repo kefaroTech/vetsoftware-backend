@@ -74,7 +74,7 @@ public class WompiGatewayClient implements PaymentGatewayPort {
         body.put("token", request.cardToken());
         body.put("customer_email", request.customerEmail());
         body.put("acceptance_token", request.acceptanceToken());
-        body.put("accept_personal_auth", request.acceptPersonalAuth());
+        body.put("accept_personal_auth", request.personalDataAuthToken());
         try {
             PaymentSourceEnvelope envelope = restClient.post()
                     .uri(properties.baseUrl() + "/payment_sources")

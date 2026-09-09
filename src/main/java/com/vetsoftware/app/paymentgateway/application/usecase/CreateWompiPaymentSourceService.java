@@ -70,7 +70,7 @@ public class CreateWompiPaymentSourceService implements CreateWompiPaymentSource
         MerchantAcceptance acceptance = paymentGatewayPort.fetchAcceptance();
         GatewayPaymentSource paymentSource = paymentGatewayPort
                 .createPaymentSource(new CreatePaymentSourceRequest(command.cardToken(),
-                        fiscalEmail, command.acceptanceToken(), true));
+                        fiscalEmail, command.acceptanceToken(), command.personalDataAuthToken()));
 
         LocalDateTime authorizedAt = LocalDateTime.now(clock);
         LocalDate expiresOn = YearMonth.of(command.expYear(), command.expMonth()).atEndOfMonth();
