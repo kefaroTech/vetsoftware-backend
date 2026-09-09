@@ -26,11 +26,11 @@ class WompiEventJsonAdapterTest {
     private static final String CHECKSUM_ESPERADO = "5a18ec5e8fdb7df463e9f94774cba8f583ba21bd04a09ceff2ea68a4bc0aefbe";
 
     private final WompiEventJsonAdapter adapter = new WompiEventJsonAdapter(new ObjectMapper(),
-            propiedades(true, EVENTS_SECRET));
+            propiedades(true));
 
-    private static WompiProperties propiedades(boolean enabled, String eventsSecret) {
+    private static WompiProperties propiedades(boolean enabled) {
         return new WompiProperties(enabled, "https://sandbox.wompi.test/v1", "pub_test", "prv_test",
-                "test_integrity", eventsSecret, 6, Duration.ofSeconds(2), Duration.ofHours(24),
+                "test_integrity", EVENTS_SECRET, 6, Duration.ofSeconds(2), Duration.ofHours(24),
                 65536L, Duration.ofHours(24));
     }
 
@@ -244,19 +244,9 @@ class WompiEventJsonAdapterTest {
         @DisplayName("con Wompi deshabilitado lanza PaymentGatewayNotConfiguredException")
         void deshabilitado_lanza() {
             WompiEventJsonAdapter deshabilitado = new WompiEventJsonAdapter(new ObjectMapper(),
-                    propiedades(false, EVENTS_SECRET));
+                    propiedades(false));
 
             assertThatThrownBy(deshabilitado::requireConfigured)
-                    .isInstanceOf(PaymentGatewayNotConfiguredException.class);
-        }
-
-        @Test
-        @DisplayName("con el secreto de eventos en blanco lanza PaymentGatewayNotConfiguredException")
-        void secreto_en_blanco_lanza() {
-            WompiEventJsonAdapter sinSecreto = new WompiEventJsonAdapter(new ObjectMapper(),
-                    propiedades(true, ""));
-
-            assertThatThrownBy(sinSecreto::requireConfigured)
                     .isInstanceOf(PaymentGatewayNotConfiguredException.class);
         }
 

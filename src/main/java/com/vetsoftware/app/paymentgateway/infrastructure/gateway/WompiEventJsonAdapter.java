@@ -82,11 +82,6 @@ public class WompiEventJsonAdapter implements WompiEventPort {
             throw new PaymentGatewayNotConfiguredException(
                     "Wompi no está habilitado (vetsoftware.payments.wompi.enabled=false)");
         }
-        if (properties.eventsSecret().isBlank()) {
-            throw new PaymentGatewayNotConfiguredException(
-                    "Wompi no tiene configurado el secreto de eventos"
-                            + " (vetsoftware.payments.wompi.events-secret)");
-        }
     }
 
     @Override
