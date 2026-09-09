@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Los prefijos no los elige el operador: los fija DocumentKind.sequencePrefix() en codigo
+         (DC cuentas de cobro, NC notas credito, ND notas debito). Por eso las tres series se
+         siembran aqui, siempre arrancando en 1, en vez de exigir un alta manual por entorno.
+
+         Un changeset por prefijo con "onFail=MARK_RAN": si una serie ya existe (creada a mano
+         en la consola), ese changeset se marca ejecutado sin tocar la fila y las otras se
+         siembran igual. -->
+    <changeSet id="424_seed_billing_document_sequence_DC" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM billing_document_sequences WHERE prefix = 'DC'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="billing_document_sequences">
+            <column name="prefix" value="DC"/>
+            <column name="next_value" valueNumeric="1"/>
+            <column name="created_date" valueComputed="CURRENT_TIMESTAMP"/>
+        </insert>
+        <rollback>
+            <delete tableName="billing_document_sequences">
+                <where>prefix = 'DC'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="424_seed_billing_document_sequence_NC" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM billing_document_sequences WHERE prefix = 'NC'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="billing_document_sequences">
+            <column name="prefix" value="NC"/>
+            <column name="next_value" valueNumeric="1"/>
+            <column name="created_date" valueComputed="CURRENT_TIMESTAMP"/>
+        </insert>
+        <rollback>
+            <delete tableName="billing_document_sequences">
+                <where>prefix = 'NC'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="424_seed_billing_document_sequence_ND" author="orlando">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM billing_document_sequences WHERE prefix = 'ND'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="billing_document_sequences">
+            <column name="prefix" value="ND"/>
+            <column name="next_value" valueNumeric="1"/>
+            <column name="created_date" valueComputed="CURRENT_TIMESTAMP"/>
+        </insert>
+        <rollback>
+            <delete tableName="billing_document_sequences">
+                <where>prefix = 'ND'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
