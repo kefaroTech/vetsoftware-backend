@@ -10,6 +10,12 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * default) el cliente falla cerrado con
  * {@code PaymentGatewayNotConfiguredException} en vez de intentar hablar con
  * una URL o unas credenciales vacías.
+ *
+ * <p>
+ * Con {@code enabled = true} una credencial vacía tumba el arranque: para Wompi
+ * no es «sin configurar» sino un 401 en cada checkout que nadie ve hasta horas
+ * después en el tenant. Fallar aquí hace que el despliegue falle y haga
+ * rollback.
  */
 @ConfigurationProperties("vetsoftware.payments.wompi")
 public record WompiProperties(boolean enabled, String baseUrl, String publicKey, String privateKey,
@@ -27,6 +33,12 @@ public record WompiProperties(boolean enabled, String baseUrl, String publicKey,
             @DefaultValue("24h") Duration eventFreshnessTolerance,
             @DefaultValue("65536") long maxEventBodyBytes,
             @DefaultValue("24h") Duration pendingTransactionMaxAge) {
+        if (enabled) {
+            requireConfigured(publicKey, "public-key");
+            requireConfigured(privateKey, "private-key");
+            requireConfigured(integritySecret, "integrity-secret");
+            requireConfigured(eventsSecret, "events-secret");
+        }
         this.enabled = enabled;
         this.baseUrl = baseUrl;
         this.publicKey = publicKey;
@@ -38,5 +50,13 @@ public record WompiProperties(boolean enabled, String baseUrl, String publicKey,
         this.eventFreshnessTolerance = eventFreshnessTolerance;
         this.maxEventBodyBytes = maxEventBodyBytes;
         this.pendingTransactionMaxAge = pendingTransactionMaxAge;
+    }
+
+    private static void requireConfigured(String value, String property) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("Wompi habilitado sin vetsoftware.payments.wompi."
+                    + property + ": la aplicación no arranca para no llamar a la pasarela con"
+                    + " credenciales vacías");
+        }
     }
 }
