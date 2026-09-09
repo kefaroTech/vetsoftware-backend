@@ -83,7 +83,7 @@ class WompiGatewayClientTest {
             WompiGatewayClient client = clientRespondingWith(okJson(
                     "{\"data\":{\"id\":987654,\"type\":\"CARD\",\"status\":\"AVAILABLE\"}}"));
             CreatePaymentSourceRequest request = new CreatePaymentSourceRequest("tok_test_card",
-                    "cliente@correo.co", "tok-eula", true);
+                    "cliente@correo.co", "tok-eula", "tok-pda");
 
             GatewayPaymentSource source = client.createPaymentSource(request);
 
@@ -95,7 +95,7 @@ class WompiGatewayClientTest {
             assertThat(body.get("token").asString()).isEqualTo("tok_test_card");
             assertThat(body.get("customer_email").asString()).isEqualTo("cliente@correo.co");
             assertThat(body.get("acceptance_token").asString()).isEqualTo("tok-eula");
-            assertThat(body.get("accept_personal_auth").asBoolean()).isTrue();
+            assertThat(body.get("accept_personal_auth").asString()).isEqualTo("tok-pda");
         }
     }
 
@@ -293,7 +293,7 @@ class WompiGatewayClientTest {
             WompiGatewayClient client = clientRespondingWith(errorStatus(HttpStatus.UNAUTHORIZED,
                     "{\"error\":{\"type\":\"UNAUTHORIZED\"}}"));
             CreatePaymentSourceRequest request = new CreatePaymentSourceRequest("tok_super_secreto",
-                    "cliente@correo.co", "tok-eula", true);
+                    "cliente@correo.co", "tok-eula", "tok-pda");
 
             assertThatThrownBy(() -> client.createPaymentSource(request))
                     .isInstanceOf(WompiGatewayException.class).hasMessageNotContaining(PRIVATE_KEY)

@@ -111,7 +111,7 @@ class CreateWompiPaymentSourceServiceTest {
         assertThat(requestCaptor.getValue().cardToken()).isEqualTo("tok_test_7f3a");
         assertThat(requestCaptor.getValue().customerEmail()).isEqualTo("facturacion@clinica.co");
         assertThat(requestCaptor.getValue().acceptanceToken()).isEqualTo("acc-token");
-        assertThat(requestCaptor.getValue().acceptPersonalAuth()).isTrue();
+        assertThat(requestCaptor.getValue().personalDataAuthToken()).isEqualTo("pda-token");
 
         ArgumentCaptor<String> evidenceCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<LocalDateTime> authorizedAtCaptor = ArgumentCaptor
